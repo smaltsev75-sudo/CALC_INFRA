@@ -1296,7 +1296,14 @@ function renderStandCard(sid, result, period, ctx, isDisabled, standResources = 
                             ...topCats.map(cat => {
                                 const v = byCat[cat] || 0;
                                 const share = totalStandMonthly > 0 ? v / totalStandMonthly : 0;
-                                return el('div', { class: 'dash-stand-card-cats-legend-item' },
+                                /* Stand-карточки узкие (5 в ряд), label-колонка получает
+                                   ~30-40px и обрезается до 3 символов. title= на самой
+                                   строке legend-item — hover в любом месте показывает
+                                   полное имя категории + точную сумму и долю. */
+                                return el('div', {
+                                    class: 'dash-stand-card-cats-legend-item',
+                                    title: `${CATEGORY_LABELS[cat]}: ${fmtRubForPeriod(v * periodMul(period), period)} ${slash} (${percent(share)})`
+                                },
                                     el('span', { class: 'dash-stand-card-cats-legend-dot',
                                         style: { background: CATEGORY_COLORS[cat] } }),
                                     el('span', { class: 'dash-stand-card-cats-legend-label', text: CATEGORY_LABELS[cat] }),
