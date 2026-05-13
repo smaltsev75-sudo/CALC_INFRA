@@ -1,0 +1,4342 @@
+/* ============================================================
+ * dashboard.css — Hynex-style дашборд (Этап 9.6)
+ * ============================================================ */
+
+/* ===== Empty state ===== */
+
+.dashboard-empty {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+}
+
+/* ===== Profile banner (14.U3 / Sprint 2.2 пункт 2) =====
+   Тонкая инфо-полоса над dashboard-grid: показывается только для расчётов,
+   созданных через Quick Start Wizard. Содержит компактную сводку профиля,
+   3 счётчика источников полей (manual / profile / scale) и кнопку
+   «Изменить параметры». */
+.profile-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    margin-bottom: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    font-size: 0.86rem;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+}
+.profile-banner-icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+.profile-banner-label {
+    color: var(--text);
+    font-weight: 500;
+    flex-shrink: 0;
+}
+.profile-banner-counts {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+/* Счётчик: переиспользуем .field-source-badge--{cls} палитру (forms.css).
+   Stage 4.7: рядом с числом теперь видимый short-label («Профиль / Масштаб /
+   Вручную»), чтобы не было голых [20] [11] [3]. Tooltip остаётся для
+   полной формулировки. */
+.profile-banner-count {
+    min-width: 22px;
+    justify-content: center;
+    /* padding на стороне числа сохраняем 8px, на label — 8px тоже,
+       gap между label и числом — 5px. */
+    padding: 1px 8px;
+    gap: 5px;
+    cursor: help;
+}
+.profile-banner-count-label {
+    font-weight: 500;
+    /* Чуть приглушённее числа — глаз сначала видит число, потом подпись. */
+    opacity: 0.85;
+}
+.profile-banner-count-num {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.profile-banner-edit {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* Sprint 3.0 Stage 2: «Применить заново» рядом с «Изменить параметры».
+   Не auto-margin — Edit уже занял пространство, Re-apply просто следует за ним. */
+.profile-banner-reapply {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* Узкие экраны (≤720px): счётчики переходят на следующую строку, кнопки
+   «Изменить» и «Применить заново» прижимаются к правому краю. */
+@media (max-width: 720px) {
+    .profile-banner {
+        gap: 8px;
+        padding: 8px 10px;
+    }
+    .profile-banner-edit {
+        margin-left: 0;
+    }
+    .profile-banner-reapply {
+        margin-left: 0;
+    }
+}
+
+/* Stage 18.2 (v2.13.1) — empty-state карточка для сценариев без wizard'а.
+   Визуально похожа на обычный profile-banner: тот же фон, тот же высота. Отличается:
+   - иконка settings вместо zap;
+   - текст в двух строках (title + hint);
+   - CTA «Задать профиль сценария» — primary, заметный.
+   Не выглядит как ошибка — это «настраиваемая зона», не warning. */
+.profile-banner-empty {
+    /* Берёт базовый стиль .profile-banner; здесь — только overrides. */
+    align-items: center;
+}
+.profile-banner-empty-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+.profile-banner-empty-title {
+    color: var(--text);
+    font-weight: 600;
+    font-size: 0.92rem;
+    line-height: 1.3;
+}
+.profile-banner-empty-hint {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+.profile-banner-empty-action {
+    align-self: center;
+    min-height: var(--touch-target, 44px);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+@media (max-width: 720px) {
+    .profile-banner-empty {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .profile-banner-empty-action {
+        align-self: flex-start;
+    }
+}
+@media print {
+    .profile-banner-empty {
+        background: white !important;
+        color: black !important;
+        border-color: black !important;
+    }
+    .profile-banner-empty-title,
+    .profile-banner-empty-hint { color: black !important; }
+    .profile-banner-empty-action { display: none !important; }
+}
+
+/* ===== Корневая сетка ===== */
+
+.dashboard-grid {
+    display: grid;
+    /* Top row: 3 карточки в одну строку.
+       Hero — самая широкая (большая цифра + sparkline + CAPEX/OPEX),
+       Categories — donut + bars,
+       Risk — компактные pills. */
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.3fr) minmax(0, 1fr);
+    grid-template-areas:
+        'hero       categories risk'
+        'stands     stands     stands';
+    gap: 18px;
+}
+
+.dash-card-hero       { grid-area: hero; }
+.dash-stands-row      { grid-area: stands; }
+.dash-card-categories { grid-area: categories; }
+.dash-card-risk       { grid-area: risk; }
+
+@media (max-width: 1380px) {
+    .dashboard-grid {
+        grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+        grid-template-areas:
+            'hero       hero'
+            'categories risk'
+            'stands     stands';
+    }
+}
+
+@media (max-width: 880px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            'hero'
+            'categories'
+            'risk'
+            'stands';
+    }
+}
+
+/* ===== Базовая карточка ===== */
+
+.dash-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    /* 13.U10-fix: 22→14 vertical padding + 14→10 gap для компактности —
+       раньше Hero / Categories / RiskFactors занимали столько вертикали,
+       что стенд-карточки уезжали ниже viewport на 1366px laptop. */
+    padding: 14px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+    box-shadow: var(--shadow-sm);
+}
+.dash-card:hover {
+    border-color: var(--border-light);
+    box-shadow: var(--shadow);
+}
+
+.dash-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.dash-card-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 600;
+}
+.dash-card-eyebrow .icon { color: var(--accent); }
+
+.dash-card-eyebrow-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--accent-faint);
+    color: var(--accent);
+    font-size: 0.66rem;
+    letter-spacing: 0.4px;
+}
+
+.dash-card-eyebrow-tag-warn {
+    background: var(--warning-faint);
+    color: var(--warning);
+    cursor: help;
+}
+
+.dash-card-eyebrow-sub {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    margin-top: 2px;
+    /* 12.U25-fix-9: flex+wrap делает дочерние spans атомарными единицами — при
+     * нехватке места целиком переносится «+85.6%» или «· 75 тыс. ₽ / день»,
+     * а не середина числа. column-gap для пробела между ними. */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 4px;
+    row-gap: 2px;
+}
+
+.dash-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* .dash-info-btn / .dash-info-btn-inline удалены — используем общий .info-icon (см. components.css). */
+
+/* Hover/focus на риск-row — сигнализируем что есть tooltip. */
+.dash-risk-row {
+    cursor: help;
+    border-radius: 6px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    transition: background var(--t-fast);
+}
+.dash-risk-row:hover {
+    background: var(--bg-elevated);
+}
+/* Keyboard-фокус: подсветка фоном + ring для WCAG 2.4.7. */
+.dash-risk-row:focus-visible {
+    background: var(--bg-elevated);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent-faint);
+}
+
+/* ============================================================
+ * HERO
+ * ============================================================ */
+
+.dash-card-hero {
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-elevated) 100%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.dash-hero-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 2px 0 2px;
+}
+
+.dash-hero-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;          /* главная цифра по центру карточки */
+    gap: 6px;
+    min-width: 0;
+    text-align: center;
+}
+
+.dash-hero-value {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    line-height: 1.05;
+    word-break: break-word;
+}
+
+.dash-hero-value-amount {
+    font-family: var(--font-mono);
+    /* 13.U10-fix: 2.8rem → 2.2rem — главное число всё ещё доминирует
+       (tabular-nums + accent-gradient), но Hero перестаёт занимать
+       полэкрана и стенд-карточки попадают в первый viewport. */
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--text);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.6px;
+    line-height: 1;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-hero-value-unit {
+    font-family: var(--font-mono);
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+
+.dash-hero-sub {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.dash-hero-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: var(--font-mono);
+}
+.dash-hero-delta-up   { background: var(--warning-faint); color: var(--warning); }
+.dash-hero-delta-down { background: var(--success-faint); color: var(--success); }
+
+.dash-hero-alt {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+}
+
+.dash-hero-alt-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.dash-hero-alt-item-left  { align-items: flex-start; text-align: left; }
+.dash-hero-alt-item-right { align-items: flex-end;   text-align: right; }
+
+.dash-hero-alt-value {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.dash-hero-alt-label {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+/* === Hero: блок CAPEX/OPEX (12.U25-fix-18) ===
+ * Структурно — отдельная секция с явным eyebrow-заголовком «Структура расходов»
+ * (визуальная группировка: ИТОГ → разбивка → ресурсы). Табличное выравнивание:
+ * dot — фикс 8px; label — фикс ~70px (CAPEX, OPEX = одинаковые); amount — flex
+ * с right-align; pct — фикс 60px right-align. Так суммы и проценты всегда лежат
+ * в одной вертикали → глаз сравнивает по столбцам без сканирования. */
+
+.dash-hero-cost-types {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.dash-hero-cost-type-label {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+/* 12.U25-fix-19: actions в правом верхнем углу Hero — кнопка «Детали расчёта» + info-icon. */
+.dash-hero-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.dash-hero-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+    white-space: nowrap;
+}
+.dash-hero-action:hover {
+    background: var(--accent-faint);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.dash-hero-action:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent-faint);
+    border-color: var(--accent);
+}
+@media (pointer: coarse), (max-width: 720px) {
+    .dash-hero-action { min-height: var(--touch-target); }
+}
+
+/* 12.U25-fix-19: stacked progress bar — пропорция CAPEX vs OPEX одной полосой.
+   Сегменты получают ширину inline-style'ом из JS (capexPct/opexPct в процентах). */
+.dash-hero-cost-types-bar {
+    display: flex;
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--bg-elevated);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+    margin: 4px 0 8px;
+}
+.dash-hero-cost-types-bar-capex {
+    background: linear-gradient(90deg, #a78bfa 0%, #c4b5fd 100%);
+    transition: width var(--t-med);
+}
+.dash-hero-cost-types-bar-opex {
+    background: linear-gradient(90deg, #14b8a6 0%, #5eead4 100%);
+    transition: width var(--t-med);
+}
+@media (prefers-reduced-motion: reduce) {
+    .dash-hero-cost-types-bar-capex,
+    .dash-hero-cost-types-bar-opex { transition: none; }
+}
+
+.dash-hero-cost-types .dash-cost-row {
+    grid-template-columns: 8px 70px 1fr 60px;
+    font-size: 0.88rem;
+    align-items: baseline;
+    column-gap: 12px;
+}
+.dash-hero-cost-types .dash-cost-row-amount {
+    font-size: 0.92rem;
+    color: var(--text);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+.dash-hero-cost-types .dash-cost-row-pct {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    /* % — это аналитическая метрика (доля), визуально слабее money-amount; */
+    /* пользователь смотрит сначала на сумму, потом сверяется с долей. */
+}
+
+/* === Stand colors (sparkline + per-card accent) === */
+
+.stand-seg-DEV  { background: var(--stand-dev); }
+.stand-seg-IFT  { background: var(--stand-ift); }
+.stand-seg-PSI  { background: var(--stand-psi); }
+.stand-seg-PROD { background: var(--stand-prod); }
+.stand-seg-LOAD { background: var(--stand-load); }
+
+/* ============================================================
+ * CATEGORIES (горизонтальные progress-bars)
+ * ============================================================ */
+
+.dash-categories-body {
+    gap: 10px;
+}
+
+/* ============================================================
+ * STANDS (5 карточек)
+ * ============================================================ */
+
+.dash-stands-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.dash-section-title {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+}
+
+.dash-section-title-hint {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-weight: 400;
+}
+
+.dash-stands-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+}
+
+@media (max-width: 1380px) {
+    .dash-stands-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 880px) {
+    .dash-stands-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+    .dash-stands-grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+ * 2026-05-05 (UI-улучшения после ревью): @container queries для stand-card.
+ *
+ * Карточка стенда — независимый компонент, чьи внутренние пропорции должны
+ * адаптироваться к ШИРИНЕ САМОЙ КАРТОЧКИ, а не viewport. На viewport=1500px
+ * с 5 видимыми стендами (grid 5 колонок) каждая карточка получает ~280px;
+ * с 3 колонками (≤1380px) — ~440px. @media по viewport не различает эти
+ * случаи, потому что viewport одинаков, а внутренний layout разный.
+ *
+ * @container позволяет сделать так:
+ *   • узкая карточка (< 240px) — компактная: меньше шрифт total, скрываем
+ *     дополнительные блоки (cats-legend), убираем верхнюю полоску;
+ *   • средняя (240–360px) — стандартная;
+ *   • широкая (≥ 480px) — крупный total, расширенный header.
+ *
+ * `container-type: inline-size` создаёт containing context по ширине.
+ * `container-name: stand-card` — явное имя для @container queries.
+ *
+ * Браузерная поддержка @container queries (Chrome 105+, Safari 16+, Firefox 110+) —
+ * 95%+ глобально (caniuse 2024). На старых браузерах @container правила
+ * игнорируются → карточки рендерятся в default-состоянии (как раньше).
+ * Никакого фолбэка не требуется — degradation graceful.
+ * ============================================================ */
+.dash-stand-card {
+    container-type: inline-size;
+    container-name: stand-card;
+}
+/* @container правила перенесены В КОНЕЦ файла (после базовых .dash-stand-card-*),
+   чтобы выиграть каскад при равной специфичности. См. комментарий ниже файла. */
+
+/* 12.U26-fix: slot-обёртка для disabled-стенда — чтобы бейдж «Исключён из ИТОГО»
+   жил как sibling карточки (а не внутри неё) и не «съедался» opacity: 0.4 disabled-карточки. */
+.dash-stand-card-slot {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+.dash-stand-card-excluded-banner {
+    align-self: flex-start;
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--warning);
+    background: var(--warning-faint);
+    border: 1px solid rgba(251, 191, 36, 0.30);
+    border-radius: var(--radius-sm);
+    line-height: 1.2;
+    cursor: help;
+}
+
+.dash-stand-card {
+    --stand-color: var(--text-muted);
+    position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color var(--t-fast), transform var(--t-fast),
+                box-shadow var(--t-fast);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.dash-stand-card:hover {
+    border-color: var(--border-light);
+    box-shadow: var(--shadow);
+}
+
+.dash-stand-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--stand-color);
+    opacity: 0.85;
+}
+
+.stand-card-DEV  { --stand-color: var(--stand-dev); }
+.stand-card-IFT  { --stand-color: var(--stand-ift); }
+.stand-card-PSI  { --stand-color: var(--stand-psi); }
+.stand-card-PROD { --stand-color: var(--stand-prod); }
+.stand-card-LOAD { --stand-color: var(--stand-load); }
+
+.dash-stand-card-disabled {
+    /* Stage 4.15: 0.5 → 0.4 для единого disabled-уровня по всему UI
+       (forms.css `.switch-disabled`, components.css `.stand-toggle`). */
+    opacity: 0.4;
+}
+.dash-stand-card-disabled::before { opacity: 0.4; }
+
+/* === Header === */
+
+/* 12.U24-fix-3: header теперь EXPLICIT 2-row через flex-direction: column.
+ * Дочерние ряды:
+ *   .dash-stand-card-header-top  — title + arrow горизонтально.
+ *   .dash-stand-card-badges      — оба бейджа на отдельной строке.
+ * Никакого flex-wrap-magic — длина subtitle (с ellipsis) уже не может
+ * переносить arrow или бейджи на «странные» позиции. */
+.dash-stand-card-header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.dash-stand-card-header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.dash-stand-card-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    /* Title-wrap занимает всё свободное место, но сжимается при нехватке —
+     * чтобы arrow гарантированно остался справа в той же строке. */
+    flex: 1 1 auto;
+}
+
+.dash-stand-card-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--stand-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.dash-stand-card-title-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.dash-stand-card-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    /* Если для названия не хватает места из-за бейджей — обрезаем эллипсисом,
+     * как уже сделано для subtitle ниже. Без этого название «накладывалось» на
+     * соседний бейдж «БЕЗ РИСКОВ» при добавлении VAT-бейджа. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.dash-stand-card-subtitle {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dash-stand-card-link {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    color: var(--text-dim);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--t-fast), color var(--t-fast);
+    flex-shrink: 0;
+}
+
+/* 12.U9: бейдж режима в шапке стенд-карточки — справа от названия, перед иконкой
+   «открыть». Раньше базовый стиль .dash-resources-badge задавался для подблока
+   «Объёмы ресурсов»; здесь мы только притираем размер к высоте header'а.
+   12.U24-fix: убраны margin-left:auto / margin-right — теперь оба бейджа лежат
+   в .dash-stand-card-badges-контейнере с собственным gap, отдельные margin'ы
+   создавали лишние отступы. */
+.dash-stand-card-badge {
+    align-self: center;
+    flex-shrink: 0;
+}
+
+/* 12.U24-fix-3: вторая строка header'а — оба бейджа стенда. Родитель
+ * `.dash-stand-card-header` имеет `flex-direction: column`, поэтому бейджи
+ * автоматически уходят на свою строку. Внутри — flex-row с gap, перенос
+ * по словам бейджей запрещён через `white-space: nowrap` на самих бейджах. */
+.dash-stand-card-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;     /* fallback: если экстремально узкая карточка */
+    row-gap: 4px;
+}
+
+/* 12.U25-fix-5: share-бейдж «X%» — третий пилл в шапке стенд-карточки.
+ * Стиль нейтрально-серый (НЕ статусный — это просто справочное число),
+ * но та же форма пилл как у С РИСКАМИ / С НДС для визуальной согласованности. */
+.dash-stand-card-share-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.10);
+    color: var(--text-dim);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: help;
+}
+.dash-stand-card-link:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
+}
+
+/* === Numbers === */
+
+.dash-stand-card-numbers {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    /* Tabular-nums на всю числовую колонку карточки — total, alt-период,
+       VAT/риск-разбивки. Числа разной ширины («12 345» vs «99 999») перестают
+       «прыгать» между соседними карточками. */
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-stand-card-total {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    line-height: 1.1;
+}
+
+.dash-stand-card-total-value {
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.3px;
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-stand-card-total-unit {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0;
+}
+
+.dash-stand-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.dash-stand-card-share { color: var(--stand-color); font-family: var(--font-mono); font-weight: 600; }
+
+.dash-stand-card-alt {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-stand-card-excluded {
+    margin-top: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--warning-faint);
+    color: var(--warning);
+    font-size: 0.72rem;
+    text-align: center;
+    cursor: help;
+}
+
+/* === По категориям === */
+
+.dash-stand-card-cats {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
+.dash-stand-card-cats-title {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    font-weight: 600;
+}
+
+/* 12.U25-fix-17: collapsible-toggle для блока «По категориям» в стенд-карточке.
+ * Заголовок-кнопка во всю ширину; стрелочка справа поворачивается через CSS-only;
+ * hover лишь подсвечивает label (не «прыгающий» bg, чтобы не отвлекать от чисел). */
+.dash-stand-card-cats-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+}
+.dash-stand-card-cats-toggle:hover .dash-stand-card-cats-title {
+    color: var(--text);
+}
+.dash-stand-card-cats-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+.dash-stand-card-cats-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    transition: color var(--t-fast), transform var(--t-med);
+}
+.dash-stand-card-cats-toggle:hover .dash-stand-card-cats-chevron {
+    color: var(--text);
+}
+/* Раскрытое состояние: одна иконка `chevron-down` в JS — поворот через CSS,
+   плавная анимация. Раньше был JS-swap chevron-down ↔ chevron-up без перехода. */
+.dash-stand-card-cats-expanded .dash-stand-card-cats-chevron {
+    transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+    .dash-stand-card-cats-chevron { transition: none; }
+}
+.dash-stand-card-cats-body {
+    /* плавное появление содержимого после раскрытия */
+    animation: standCatsIn 0.18s ease-out;
+}
+@keyframes standCatsIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .dash-stand-card-cats-body { animation: none; }
+}
+
+.dash-stand-card-cats-bar {
+    display: flex;
+    height: 6px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--bg-input);
+}
+
+.dash-stand-card-cats-seg {
+    display: block;
+    height: 100%;
+}
+
+.dash-stand-card-cats-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.dash-stand-card-cats-legend-item {
+    /* Унифицированная сетка с .dash-cost-row: dot · label · amount · pct.
+       Третья колонка `minmax(72px, auto)` не даёт сумме «съезжать»
+       по горизонтали между строками. Pct фиксирован 44px. */
+    display: grid;
+    grid-template-columns: 8px 1fr minmax(72px, auto) 44px;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.74rem;
+}
+
+.dash-stand-card-cats-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+.dash-stand-card-cats-legend-label {
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.dash-stand-card-cats-legend-amount {
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.dash-stand-card-cats-legend-pct {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* === CAPEX/OPEX rows (суммы + доля) === */
+
+.dash-stand-card-cost-types {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
+.dash-cost-row {
+    /* Унифицированная сетка с .dash-stand-card-cats-legend-item:
+       dot · label · amount · pct — числа CAPEX/OPEX и категорий теперь
+       стоят на ОДНИХ вертикальных линиях карточки. */
+    display: grid;
+    grid-template-columns: 8px 1fr minmax(72px, auto) 44px;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.74rem;
+}
+
+.dash-cost-row-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.dash-cost-row-label {
+    font-weight: 700;
+    font-size: 0.7rem;
+    letter-spacing: 0.4px;
+}
+
+.dash-cost-row-amount {
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-cost-row-pct {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-cost-row-capex .dash-cost-row-dot   { background: #a78bfa; }
+.dash-cost-row-capex .dash-cost-row-label { color: #c4b5fd; }
+
+.dash-cost-row-opex .dash-cost-row-dot    { background: #14b8a6; }
+.dash-cost-row-opex .dash-cost-row-label  { color: #5eead4; }
+
+/* === 12.U6: блок «Объёмы ресурсов» — стат-карточки label-выше-значения. === */
+.dash-resources {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+/* 12.U9: на стенд-карточках блок «Объёмы ресурсов» — последний и его надо
+   прижимать к низу карточки. Так блок выравнивается по нижней границе карточки,
+   а CSS Grid (align-items: stretch) растягивает все карточки строки до одной
+   высоты → «Объёмы ресурсов» оказываются на одной горизонтали между соседями.
+   Для Hero не применяется — там margin-top уже задан явно (12px). */
+.dash-stand-card > .dash-resources { margin-top: auto; }
+.dash-resources-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+.dash-resources-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: var(--accent);
+    text-transform: uppercase;
+}
+/* Бейдж режима «С РИСКАМИ»/«БЕЗ РИСКОВ» — синхронен с Hero pill, цвета из палитры. */
+.dash-resources-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    cursor: help;
+}
+.dash-resources-badge-risk {
+    background: rgba(38, 212, 154, 0.15);
+    color: var(--accent);
+    border: 1px solid rgba(38, 212, 154, 0.35);
+}
+.dash-resources-badge-base {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fcd34d;
+    border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+/* ============================================================
+ * 12.U23 — VAT-бейдж и разбивка НДС
+ *
+ * НДС — независимая ось от риск-коэффициентов (12.U20). Пользователь должен
+ * видеть на Дашборде и в Детализации, включают ли все суммы НДС, и сколько
+ * это в ₽. Стиль бейджа отличается от риск-бейджа, чтобы их легко различать
+ * взглядом — лазурно-голубая палитра вместо «accent» зелёной.
+ * ============================================================ */
+.vat-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    cursor: help;
+    display: inline-block;
+    /* nowrap + flex-shrink:0 — чтобы «С НДС 20%» не переносился в столбик при сжатии
+     * шапки стенд-карточки (где рядом ещё «С РИСКАМИ» и иконка-стрелка). */
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+/* 12.U24-fix: специфический стиль для VAT-бейджа в шапке стенд-карточки удалён —
+ * контейнер `.dash-stand-card-badges` (flex с gap) сам выравнивает оба бейджа,
+ * margin/align на конкретном бейдже не нужны. */
+.vat-badge-on {
+    background: rgba(56, 189, 248, 0.14);
+    color: #7dd3fc;
+    border: 1px solid rgba(56, 189, 248, 0.40);
+}
+.vat-badge-off {
+    background: rgba(148, 163, 184, 0.12);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+/* Строка под главной суммой Hero / в section-title Детализации:
+ * «в т.ч. НДС 20%: 200 000 ₽ /мес» либо просто «без НДС». */
+.vat-breakdown {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+    cursor: help;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.vat-breakdown-on {
+    /* Подсветка цифры суммы НДС — чтобы выделить её взглядом. */
+}
+.vat-breakdown-label {
+    font-weight: 500;
+}
+.vat-breakdown-amount {
+    color: #7dd3fc;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.vat-breakdown-off {
+    font-style: italic;
+    opacity: 0.7;
+}
+
+/* 12.U25-fix-6: разбивка суммы рисков — структурно идентична .vat-breakdown,
+ * но с зелёной accent-палитрой (под «С РИСКАМИ»-бейдж). Хелпер возвращает null
+ * при applyRisks=false или нулевой риск-наценке, так что состояния «-off»
+ * у этой строки нет — она либо есть, либо отсутствует. */
+.risk-breakdown {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+    cursor: help;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.risk-breakdown-label {
+    font-weight: 500;
+}
+.risk-breakdown-amount {
+    color: var(--accent);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 12.U25-fix-7: «потенциальная» риск-наценка (когда applyRisks=false) —
+ * приглушённый стиль с курсивом и амбер-цветом (как у бейджа БЕЗ РИСКОВ),
+ * чтобы пользователь сразу различал «реальную» наценку от «if-сценария». */
+.risk-breakdown-potential .risk-breakdown-amount {
+    color: #fcd34d;
+    font-style: italic;
+    font-weight: 500;
+}
+
+/* 12.U25-fix-8: inline-пилл «+85.6% от базы» справа от риск-суммы (только на Hero).
+ * В режиме С РИСКАМИ — accent-зелёный (актуальная наценка); в БЕЗ РИСКОВ —
+ * амбер курсивом (потенциальный сценарий). Маленький pill, как другие бейджи. */
+.risk-breakdown-pct {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    cursor: help;
+    white-space: nowrap;
+}
+.risk-breakdown-pct-actual {
+    background: rgba(38, 212, 154, 0.14);
+    color: var(--accent);
+    border: 1px solid rgba(38, 212, 154, 0.35);
+}
+.risk-breakdown-pct-potential {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fcd34d;
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    font-style: italic;
+}
+/* 12.U25-fix-19: «hot» состояние pill — наценка превышает 80% от базы.
+   Перебивает actual-цвет, чтобы привлечь внимание: красный фон + текст. */
+.risk-breakdown-pct-hot {
+    background: rgba(248, 113, 113, 0.14);
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.35);
+}
+
+/* В section-title Детализации .vat-breakdown ставим инлайн справа от бейджей. */
+.details-section-title .vat-breakdown {
+    margin-top: 0;
+    margin-left: 8px;
+}
+/* Дефолт (стенд-карточки) — авто-фит 3 колонок, на узких — 2 колонки. */
+.dash-resources-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+    gap: 6px 8px;
+}
+/* Каждый ресурс — мини-стат: метка вверху, число с единицей внизу. Легко
+ * сканируется глазом по горизонтали (метки) и по вертикали (числа). */
+.dash-resource-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+    border: 1px solid transparent;
+    transition: background var(--t-fast), border-color var(--t-fast);
+}
+.dash-resource-row:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+/* 12.U10: пустая ячейка — приглушённая, чтобы взгляд не цеплялся за «—»,
+   но сама строка занимала своё место (выравнивание сетки и одинаковый набор
+   меток на всех карточках). Cursor=help сигналит про tooltip. */
+.dash-resource-row-empty {
+    opacity: 0.55;
+    cursor: help;
+}
+.dash-resource-row-qty-empty {
+    color: var(--text-dim);
+    font-weight: 400;
+}
+.dash-resource-row-label {
+    font-weight: 700;
+    font-size: 0.66rem;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+/* PATCH 2.14.15: qty + unit разнесены по двум строкам (раньше inline-flex
+   baseline). На Hero (~360px колонка, 6 ресурсов в auto-fit minmax(56px))
+   и узких стенд-карточках длинные mono-значения «9 068,76 ТБ»/«1 589,99 ТБ»
+   не помещались в ячейку и выходили за её border — `inline-flex` не shrink'ался
+   ниже min-content. Теперь qty крупнее сверху, unit мелкий снизу — тот же
+   паттерн, что уже работает у .dash-ai-metric-row-value (PATCH 2.4.36).
+   min-width: 0 разрешает flex-item шринкаться ниже intrinsic min-content. */
+.dash-resource-row-value {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-width: 0;
+}
+.dash-resource-row-qty {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+}
+.dash-resource-row-unit {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.2;
+    margin-top: 1px;
+}
+/* В Hero блок «ИТОГО» — все ресурсы в одну строку (5-6 шт. равными колонками),
+ * фон с лёгкой подсветкой, числа крупнее. */
+.dash-card-hero .dash-resources {
+    margin-top: 12px;
+    padding: 12px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.22);
+}
+.dash-card-hero .dash-resources-grid {
+    /* В Hero (узкая колонка ~360px) — auto-fit с минимумом 56px поместит
+     * все 5-6 ресурсов в одну строку, на действительно узких экранах сожмёт. */
+    grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+    gap: 6px;
+}
+.dash-card-hero .dash-resource-row {
+    padding: 8px 6px;
+    background: rgba(255, 255, 255, 0.05);
+    text-align: left;
+    align-items: center;
+}
+/* PATCH 2.14.15: после перевода value-block в flex-column qty/unit стекаются
+   flush-left внутри блока. В Hero parent центрирует блок целиком, но qty
+   («9 068,76») заметно шире unit («ТБ») → unit визуально съезжает влево.
+   Дополнительный align-items: center делает qty/unit центрированными
+   относительно друг друга, восстанавливая Hero-вид «всё по центру ячейки». */
+.dash-card-hero .dash-resource-row-value { align-items: center; }
+.dash-card-hero .dash-resource-row-qty { font-size: 0.98rem; }
+.dash-card-hero .dash-resource-row-unit { font-size: 0.7rem; }
+.dash-card-hero .dash-resource-row-label { font-size: 0.62rem; }
+
+/* ============================================================
+ * CATEGORIES card (горизонтальные progress-bars)
+ * ============================================================ */
+
+.dash-categories-empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 24px 0;
+}
+
+.dash-categories-body { gap: 8px; }
+
+.dash-category-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dash-category-row-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+}
+
+.dash-category-row-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.dash-category-row-label { flex: 1; color: var(--text); }
+/* 12.U30-fix: согласовано с .dash-risk-row-* (Вклад риск-коэффициентов).
+ * Сумма — акцент (`text` + 600), % — приглушённый (text-muted + 500).
+ * Раньше было ровно наоборот: сумма приглушена, % жирный → пользователь
+ * видел один и тот же набор данных в двух карточках с инвертированной
+ * иерархией. */
+.dash-category-row-value {
+    color: var(--text);
+    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    min-width: 130px;
+    text-align: right;
+}
+.dash-category-row-pct {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-variant-numeric: tabular-nums;
+    min-width: 56px;
+    text-align: right;
+}
+
+.dash-category-row-bar {
+    height: 6px;
+    background: var(--bg-input);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.dash-category-row-bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    transition: width var(--t-base);
+}
+
+/* ============================================================
+ * RISK card
+ * ============================================================ */
+
+.dash-risk-empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 24px 0;
+}
+
+.dash-risk-surplus {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--warning-faint);
+    color: var(--warning);
+    font-weight: 700;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    /* 12.U25-fix-9: атомарный пилл «+85.6%» — не рвётся между знаком и числом
+     * при flex-wrap родителя. */
+    white-space: nowrap;
+}
+
+.dash-risk-body { gap: 8px; }
+
+.dash-risk-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.82rem;
+}
+
+.dash-risk-row-label { color: var(--text-muted); }
+
+.dash-risk-row-bar {
+    display: block;
+    height: 6px;
+    background: var(--bg-input);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.dash-risk-row-bar-fill {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 100%);
+    border-radius: 999px;
+    transition: width var(--t-base);
+}
+
+/* 12.U30-fix: согласовано с .dash-category-row-* — сумма акцент (text + 600),
+ * % приглушённый (text-muted + 500). Tabular-nums для выравнивания цифр. */
+.dash-risk-row-amount {
+    color: var(--text);
+    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.dash-risk-row-value {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-variant-numeric: tabular-nums;
+    min-width: 56px;
+    text-align: right;
+}
+
+.dash-risk-surplus-amount {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    /* 12.U25-fix-9: «· 75 тыс. ₽ / день» — атомарная единица; иначе при
+     * flex-wrap родителя ломается «75 тыс.» на одну строку, «₽ / день» — на другую. */
+    white-space: nowrap;
+}
+
+/* ============================================================
+ * Period switcher (toolbar)
+ * ============================================================ */
+
+.period-switcher {
+    display: inline-flex;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.period-btn {
+    padding: 6px 14px;
+    border-radius: 7px;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    font-weight: 500;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+
+.period-btn:hover:not(.period-btn-active) {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+}
+
+.period-btn-active {
+    background: var(--accent);
+    color: var(--text-inverse);
+    box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* ============================================================
+ * Stand toggles (chip-row)
+ * ============================================================ */
+
+.stand-toggles {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.stand-toggles-label {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-right: 2px;
+}
+
+.stand-toggle {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+
+.stand-toggle[aria-pressed='true'] {
+    background: var(--accent-faint);
+    color: var(--accent);
+    box-shadow: inset 0 0 0 1px rgba(38, 212, 154, 0.30);
+}
+
+.stand-toggle:hover:not([aria-pressed='true']) {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+}
+
+/* ============================================================
+ * Кнопки toolbar с иконкой и текстом (общий стиль)
+ * ============================================================ */
+
+.btn-icon-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.btn-icon-text .icon { color: inherit; }
+
+/* ============================================================
+ * Toggle «Скрыть ЭК без бюджета» (Детализация)
+ * ============================================================ */
+
+.details-hide-zero {
+    transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast);
+}
+.details-hide-zero-active {
+    background: var(--accent-faint);
+    color: var(--accent);
+    box-shadow: inset 0 0 0 1px rgba(38, 212, 154, 0.30);
+}
+.details-hide-zero-active:hover {
+    background: var(--accent-faint);
+    color: var(--accent);
+}
+
+/* ============================================================
+ * @container queries для .dash-stand-card (UI-ревью 2026-05-05).
+ *
+ * РАСПОЛОЖЕНИЕ В КОНЦЕ ФАЙЛА — ВАЖНО: правила .dash-stand-card-total-value
+ * (font-size: 1.5rem), .dash-stand-card-title и .dash-stand-card-meta объявлены
+ * ВЫШЕ. При равной специфичности побеждает правило, объявленное последним.
+ * Перенос @container в конец файла гарантирует, что они переопределяют
+ * base font-size при попадании карточки в нужную полосу ширины.
+ *
+ * `container-type: inline-size` объявлен на .dash-stand-card в основной
+ * секции (выше) — это включает container context.
+ * ============================================================ */
+
+/* Узкая карточка (< 240px): уменьшаем главное число total, чтобы оно не
+   переносилось на 2 строки или не вылезало из карточки. */
+@container stand-card (max-width: 240px) {
+    .dash-stand-card-total-value {
+        font-size: 1.25rem;
+    }
+    .dash-stand-card-title {
+        font-size: 0.88rem;
+    }
+    .dash-stand-card-meta {
+        font-size: 0.72rem;
+    }
+}
+
+/* Широкая карточка (≥ 360px): можно увеличить total, чтобы доминировал. */
+@container stand-card (min-width: 360px) {
+    .dash-stand-card-total-value {
+        font-size: 1.7rem;
+    }
+}
+
+/* ============================================================
+ * Этап 13.U6: Метрики AI / RAG / агентов — sub-block рядом с «Объёмами ресурсов»
+ * ============================================================
+ *
+ * Аналог .dash-resources, встраивается:
+ *   - в Hero — ИТОГО по активным стендам (под «Объёмы ресурсов · ИТОГО»);
+ *   - в каждую стенд-карточку — per-stand агрегаты (под «Объёмы ресурсов»).
+ *
+ * Стиль повторяет .dash-resources (та же типографика заголовка, та же сетка
+ * строк), но цветовая палитра — accent-faint фон, чтобы визуально отличить
+ * от hardware-блока и сигналить «это операционные метрики AI, не железо».
+ *
+ * Появляется только при наличии хотя бы одной AI-ЭК с qty>0 в этом scope
+ * (renderAiMetricsBlock возвращает null иначе) — для не-AI расчётов и для
+ * стендов без AI-нагрузки блок не появляется.
+ */
+
+.dash-ai-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    margin-top: 4px;
+    background: var(--accent-faint);
+    border: 1px solid rgba(38, 212, 154, 0.18);
+    border-radius: var(--radius-sm);
+}
+
+.dash-ai-metrics-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.dash-ai-metrics-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: var(--accent);
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* info-кнопка в шапке блока — мельче дефолта, спокойного цвета. */
+.dash-ai-metrics-header .info-icon {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    color: var(--text-muted);
+}
+.dash-ai-metrics-header .info-icon:hover {
+    color: var(--accent);
+}
+
+/* PATCH 2.4.30: фиксированная 2×2 раскладка вместо auto-fit. С 4 AI-метриками
+   (Токены / RAG-индекс / Эмбеддинги / CPU агентов) auto-fit давал 3+1 при
+   широком grid'е (3 cards в row 1, одинокая card в row 2 — визуально несимметрично).
+   2 cols × 2 rows симметрично. На <520px collapse в 1 col через @media ниже. */
+.dash-ai-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 8px;
+}
+@media (max-width: 520px) {
+    .dash-ai-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Строка метрики — параллельна .dash-resource-row. overflow:hidden +
+   min-width:0 нужны, чтобы лейбл с word-wrap не выскакивал за пределы
+   ячейки в соседнюю колонку. */
+.dash-ai-metric-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 4px;
+    border: 1px solid transparent;
+    overflow: hidden;
+    min-width: 0;
+    transition: background var(--t-fast), border-color var(--t-fast);
+}
+.dash-ai-metric-row:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.10);
+}
+.dash-ai-metric-row-empty {
+    opacity: 0.55;
+    cursor: help;
+}
+
+/* Label-wrap: block-flex, min-width:0 — обязательно, иначе flex-child
+   распирает родителя по контенту и переполняет grid-cell. */
+.dash-ai-metric-row-label-wrap {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 0;
+    width: 100%;
+}
+.dash-ai-metric-row-label {
+    font-weight: 700;
+    font-size: 0.66rem;
+    color: var(--text-muted);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    line-height: 1.2;
+    /* Лейблы могут быть длинными — даём перенос по словам и принудительный
+       break внутри слова при необходимости. Никакого ellipsis: цифры внизу
+       без контекста бесполезны, лучше две строки лейбла, чем «...». */
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    flex: 1 1 0;
+    min-width: 0;
+}
+/* Микро-info-кнопка рядом с лейблом метрики — 12px (внутри строки). */
+.dash-ai-metric-row .info-icon {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    color: var(--text-dim);
+}
+.dash-ai-metric-row .info-icon:hover {
+    color: var(--accent);
+}
+
+/* PATCH 2.4.36: qty + unit разнесены по двум строкам (раньше inline-flex
+   baseline). На стенд-карточках длинные русские unit'ы («млн токенов / мес»)
+   wrap'ились прямо за числом и ломали выравнивание разрядов tabular-nums.
+   Теперь qty крупным шрифтом сверху, unit мелкий и приглушённый снизу — как
+   в hardware-метриках. */
+.dash-ai-metric-row-value {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-width: 0;
+}
+.dash-ai-metric-row-qty {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+}
+.dash-ai-metric-row-qty-empty {
+    color: var(--text-dim);
+    font-weight: 400;
+    font-family: var(--font-mono);
+}
+.dash-ai-metric-row-unit {
+    font-size: 0.66rem;
+    color: var(--text-muted);
+    line-height: 1.2;
+    margin-top: 1px;
+    /* На узких стенд-карточках длинный unit может занять 2 строки —
+       не зажимать, читабельнее с переносом, чем эллипсис. */
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: anywhere;
+}
+
+/* В Hero блок «· ИТОГО» — параллельный .dash-card-hero .dash-resources, чтобы
+   AI-метрики смотрелись как продолжение hardware-блока, а не инородное тело. */
+.dash-card-hero .dash-ai-metrics {
+    margin-top: 8px;
+    padding: 12px 16px;
+    border: 1px solid rgba(38, 212, 154, 0.22);
+    background: rgba(38, 212, 154, 0.08);
+}
+/* PATCH 2.4.35: Hero-override фиксирует 2×2 (без auto-fit). Раньше
+   auto-fit давал 3+1 на широком Hero — асимметричный «обрубок» вместо
+   симметричной 2×2. Базовое .dash-ai-metrics-grid (PATCH 2.4.30) уже
+   2×2, но этот более-специфичный селектор перебивал каскад. Теперь
+   оба правила согласованы. */
+.dash-card-hero .dash-ai-metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+.dash-card-hero .dash-ai-metric-row {
+    padding: 8px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    text-align: left;
+    /* НЕ align-items: center — иначе двухстрочный лейбл центрируется по
+       вертикали, а мы хотим лейбл сверху, цифру снизу как у hardware-блока. */
+    align-items: stretch;
+}
+.dash-card-hero .dash-ai-metric-row-qty { font-size: 0.98rem; }
+.dash-card-hero .dash-ai-metric-row-unit { font-size: 0.7rem; }
+.dash-card-hero .dash-ai-metric-row-label { font-size: 0.62rem; }
+
+/* На стенд-карточках — компактнее, чтобы не раздуть карточку. */
+.dash-stand-card .dash-ai-metrics {
+    padding: 8px 10px;
+}
+
+/* Светлая тема — пересчёт прозрачности (accent в light = emerald-700). */
+[data-theme="light"] .dash-ai-metrics {
+    border-color: rgba(4, 120, 87, 0.20);
+    background: rgba(4, 120, 87, 0.06);
+}
+[data-theme="light"] .dash-ai-metric-row {
+    background: rgba(4, 120, 87, 0.05);
+}
+[data-theme="light"] .dash-ai-metric-row:hover {
+    background: rgba(4, 120, 87, 0.10);
+    border-color: rgba(4, 120, 87, 0.20);
+}
+[data-theme="light"] .dash-card-hero .dash-ai-metrics {
+    border-color: rgba(4, 120, 87, 0.28);
+    background: rgba(4, 120, 87, 0.08);
+}
+
+/* ============================================================
+ * Stage 15.1 — Calculation Health Check
+ * ============================================================ */
+
+/* Stage 18.2: `.health-block` (Dashboard-карточка «Качество расчёта») удалён —
+   поглощён композитной «Сводкой состояния расчёта» (.calc-state-summary).
+   Health-chip остаётся в Опроснике (renderHealthStickyChip) и в модалке
+   «Проверка расчёта» — стили chip ниже сохранены. */
+
+/* ===== Score chip (общий: модалка + sticky chip) ===== */
+.health-score-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    font-variant-numeric: tabular-nums;
+    border: 1px solid transparent;
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+}
+.health-score-chip-lg {
+    font-size: 1.05rem;
+    padding: 6px 14px;
+}
+.health-score-good {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.health-score-warning {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.40);
+    background: rgba(245, 158, 11, 0.10);
+}
+.health-score-critical {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.40);
+    background: rgba(239, 68, 68, 0.10);
+}
+@supports not (background: color-mix(in srgb, red 10%, transparent)) {
+    .health-score-good {
+        background: rgba(38, 212, 154, 0.10);
+        border-color: rgba(38, 212, 154, 0.40);
+    }
+}
+
+/* ===== Sticky chip в Опроснике ===== */
+.health-sticky-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.86rem;
+    margin: 8px 0 4px;
+    border: 1px solid transparent;
+    background: var(--bg-card);
+}
+.health-sticky-chip.health-score-good     { border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+.health-sticky-chip.health-score-warning  { border-color: rgba(245, 158, 11, 0.30); }
+.health-sticky-chip.health-score-critical { border-color: rgba(239, 68, 68, 0.30); }
+
+.health-sticky-chip-label {
+    color: var(--text-muted);
+}
+.health-sticky-chip-score {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.health-sticky-chip-btn {
+    background: none;
+    border: 0;
+    padding: 0 4px;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+    text-decoration: underline;
+}
+.health-sticky-chip-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+}
+
+/* ===== Модалка ===== */
+.health-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.health-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+.health-modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.health-modal-header-summary {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+}
+
+.health-modal-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+}
+.health-modal-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    padding: 8px 14px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.92rem;
+    border-radius: 4px 4px 0 0;
+    min-height: var(--touch-target);
+}
+.health-modal-tab:hover { color: var(--text); }
+.health-modal-tab-active {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.health-modal-tab-empty {
+    opacity: 0.55;
+    cursor: default;
+}
+.health-modal-tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.health-modal-tab-count {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    padding: 0 6px;
+    border-radius: 8px;
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.06));
+    font-size: 0.82rem;
+    min-width: 22px;
+    text-align: center;
+}
+.health-modal-tab--error .health-modal-tab-count    { background: rgba(239, 68, 68, 0.18); color: #ef4444; }
+.health-modal-tab--warning .health-modal-tab-count  { background: rgba(245, 158, 11, 0.18); color: #f59e0b; }
+.health-modal-tab--recommendation .health-modal-tab-count { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.health-modal-tab--info .health-modal-tab-count {
+    background: rgba(125, 211, 252, 0.18);
+    color: #7dd3fc;
+}
+
+.health-modal-empty {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+}
+
+.health-findings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.health-finding-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    background: var(--bg-card);
+    border-left-width: 4px;
+}
+.health-finding-error       { border-left-color: #ef4444; }
+.health-finding-warning     { border-left-color: #f59e0b; }
+.health-finding-recommendation { border-left-color: var(--accent); }
+.health-finding-info        { border-left-color: #7dd3fc; }
+
+.health-finding-card-header {
+    margin-bottom: 6px;
+}
+.health-finding-title {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: var(--text);
+}
+.health-finding-message {
+    margin: 4px 0 8px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+.health-finding-action {
+    margin: 4px 0;
+    font-size: 0.88rem;
+}
+.health-finding-action-label {
+    color: var(--text);
+    font-weight: 500;
+}
+
+.health-finding-fields {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    font-size: 0.84rem;
+}
+.health-finding-fields-label {
+    color: var(--text-muted);
+}
+.health-finding-fieldlink {
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 8px;
+    color: var(--accent);
+    cursor: pointer;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.82rem;
+    min-height: 24px;
+}
+.health-finding-fieldlink:hover {
+    border-color: var(--accent);
+}
+.health-finding-fieldlink:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* ===== Светлая тема ===== */
+[data-theme="light"] .health-score-warning {
+    color: #b45309;
+    border-color: rgba(180, 83, 9, 0.40);
+    background: rgba(180, 83, 9, 0.10);
+}
+[data-theme="light"] .health-score-critical {
+    color: #b91c1c;
+    border-color: rgba(185, 28, 28, 0.40);
+    background: rgba(185, 28, 28, 0.10);
+}
+[data-theme="light"] .health-modal-tab--info .health-modal-tab-count {
+    background: rgba(2, 132, 199, 0.18);
+    color: #0284c7;
+}
+[data-theme="light"] .health-finding-info { border-left-color: #0284c7; }
+
+/* ===== Печать: интерактивные health-элементы скрывать ===== */
+@media print {
+    .health-sticky-chip,
+    .health-modal-tabs,
+    .health-finding-fields {
+        display: none !important;
+    }
+    .health-finding-card {
+        background: white !important;
+        color: black !important;
+        border-color: #ccc !important;
+    }
+}
+
+/* ===== Stage 15.2: Assumptions Register Modal ===== */
+
+.assumptions-register-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4, 16px);
+}
+
+.assumptions-register-filter-notice {
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    background: var(--bg-elevated, rgba(255,255,255,.05));
+    border-left: 3px solid var(--color-warning, #eab308);
+    border-radius: 4px;
+    font-size: var(--font-sm, .875rem);
+    color: var(--text-muted, #94a3b8);
+}
+
+.assumptions-register-section {
+    border: 1px solid var(--border, rgba(255,255,255,.08));
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.assumptions-register-section-header {
+    margin: 0;
+    padding: var(--space-3, 12px) var(--space-4, 16px);
+    background: var(--bg-elevated, rgba(255,255,255,.05));
+    font-size: var(--font-sm, .875rem);
+    font-weight: 600;
+    color: var(--text, #e2e8f0);
+    border-bottom: 1px solid var(--border, rgba(255,255,255,.08));
+}
+
+.assumptions-register-section-body {
+    padding: var(--space-3, 12px) var(--space-4, 16px);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3, 12px);
+}
+
+.assumptions-register-section-summary {
+    margin: 0;
+    font-size: var(--font-sm, .875rem);
+    color: var(--text-muted, #94a3b8);
+}
+
+.assumptions-register-empty {
+    padding: var(--space-4, 16px);
+    font-size: var(--font-sm, .875rem);
+    color: var(--text-muted, #94a3b8);
+    text-align: center;
+}
+
+/* --- Source group --- */
+
+.assumption-source-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2, 8px);
+}
+
+.assumption-source-group-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 8px);
+}
+
+.assumption-source-group-count {
+    font-size: var(--font-xs, .75rem);
+    color: var(--text-muted, #94a3b8);
+}
+
+.assumption-source-group-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2, 8px);
+}
+
+/* --- Source badge --- */
+
+.assumption-source-badge {
+    display: inline-block;
+    padding: 2px var(--space-2, 8px);
+    border-radius: 4px;
+    font-size: var(--font-xs, .75rem);
+    font-weight: 500;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+}
+
+.assumption-source-badge--manual {
+    background: rgba(16, 185, 129, .15);
+    color: var(--color-success, #10b981);
+    border: 1px solid rgba(16, 185, 129, .25);
+}
+
+.assumption-source-badge--quick_start {
+    background: rgba(56, 189, 248, .15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, .25);
+}
+
+.assumption-source-badge--default {
+    background: rgba(148, 163, 184, .12);
+    color: var(--text-muted, #94a3b8);
+    border: 1px solid rgba(148, 163, 184, .2);
+}
+
+/* --- Assumption card --- */
+
+.assumption-card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: var(--space-1, 4px) var(--space-2, 8px);
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    background: var(--bg-card, #1e293b);
+    border: 1px solid var(--border, rgba(255,255,255,.08));
+    border-left-width: 3px;
+    border-radius: 6px;
+}
+
+.assumption-confidence-low {
+    border-left-color: var(--color-error, #ef4444);
+}
+
+.assumption-confidence-medium {
+    border-left-color: var(--color-warning, #eab308);
+}
+
+.assumption-confidence-high {
+    border-left-color: var(--color-success, #10b981);
+}
+
+.assumption-card-label {
+    grid-column: 1;
+    grid-row: 1;
+    font-size: var(--font-sm, .875rem);
+    font-weight: 600;
+    color: var(--text, #e2e8f0);
+}
+
+.assumption-card-value {
+    grid-column: 1;
+    grid-row: 2;
+    font-size: var(--font-sm, .875rem);
+    color: var(--text-muted, #94a3b8);
+    font-variant-numeric: tabular-nums;
+}
+
+.assumption-card-reason {
+    grid-column: 1;
+    grid-row: 3;
+    font-size: var(--font-xs, .75rem);
+    color: var(--text-muted, #94a3b8);
+    opacity: .8;
+}
+
+.assumption-card-navigate {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
+    white-space: nowrap;
+    font-size: var(--font-xs, .75rem);
+}
+
+/* --- Prices section --- */
+
+.assumptions-prices-section .assumptions-register-section-body p {
+    margin: 0;
+    font-size: var(--font-sm, .875rem);
+    color: var(--text-muted, #94a3b8);
+}
+
+/* --- Health finding cross-link button --- */
+
+.health-finding-assumptions-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px var(--space-2, 8px);
+    background: rgba(56, 189, 248, .1);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, .2);
+    border-radius: 4px;
+    font-size: var(--font-xs, .75rem);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s;
+}
+
+.health-finding-assumptions-link:hover {
+    background: rgba(56, 189, 248, .2);
+}
+
+/* --- Light theme overrides --- */
+
+[data-theme="light"] .assumptions-register-filter-notice {
+    background: #fef9c3;
+}
+
+[data-theme="light"] .assumptions-register-section-header {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+[data-theme="light"] .assumption-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+}
+
+[data-theme="light"] .assumption-card-label {
+    color: #0f172a;
+}
+
+[data-theme="light"] .assumption-card-value,
+[data-theme="light"] .assumption-card-reason,
+[data-theme="light"] .assumptions-register-section-summary,
+[data-theme="light"] .assumptions-register-empty {
+    color: #64748b;
+}
+
+[data-theme="light"] .assumption-source-badge--default {
+    background: #f1f5f9;
+    color: #64748b;
+    border-color: #cbd5e1;
+}
+
+[data-theme="light"] .health-finding-assumptions-link {
+    background: #e0f2fe;
+    color: #0284c7;
+    border-color: #bae6fd;
+}
+
+[data-theme="light"] .health-finding-assumptions-link:hover {
+    background: #bae6fd;
+}
+
+/* ===== Stage 15.3: Sensitivity Analysis Modal ===== */
+
+.sensitivity-modal {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3, 12px);
+    min-height: 0;
+}
+
+.sensitivity-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3, 12px);
+}
+
+/* Filter row: cost-type toggle + category chips */
+.sensitivity-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2, 8px);
+    align-items: center;
+    padding-bottom: var(--space-2, 8px);
+    border-bottom: 1px solid var(--border, #334155);
+}
+
+/* Cost-type toggle buttons */
+.sensitivity-cost-toggle {
+    display: flex;
+    gap: 2px;
+    background: var(--bg-elevated, #1e293b);
+    border-radius: 6px;
+    padding: 2px;
+    flex-shrink: 0;
+}
+
+.sensitivity-cost-btn {
+    padding: 4px 12px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-muted, #94a3b8);
+    font-size: var(--font-sm, 0.8125rem);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+
+.sensitivity-cost-btn:hover {
+    background: var(--bg-hover, #334155);
+    color: var(--text, #f1f5f9);
+}
+
+.sensitivity-cost-btn--active {
+    background: var(--accent, #26d49a);
+    color: #0f172a;
+}
+
+.sensitivity-cost-btn--active:hover {
+    background: var(--accent, #26d49a);
+    color: #0f172a;
+}
+
+/* Category chips */
+.sensitivity-category-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.sensitivity-category-chip {
+    padding: 3px 10px;
+    border-radius: 9999px;
+    border: 1px solid var(--border, #334155);
+    background: transparent;
+    color: var(--text-muted, #94a3b8);
+    font-size: var(--font-xs, 0.75rem);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    white-space: nowrap;
+}
+
+.sensitivity-category-chip:hover {
+    border-color: var(--accent, #26d49a);
+    color: var(--text, #f1f5f9);
+}
+
+.sensitivity-category-chip--active {
+    border-color: var(--accent, #26d49a);
+    background: color-mix(in srgb, var(--accent, #26d49a) 15%, transparent);
+    color: var(--accent, #26d49a);
+}
+
+/* Results section header */
+.sensitivity-results-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2, 8px);
+}
+
+.sensitivity-results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--space-2, 8px);
+}
+
+.sensitivity-results-count {
+    font-size: var(--font-sm, 0.8125rem);
+    font-weight: 600;
+    color: var(--text, #f1f5f9);
+}
+
+.sensitivity-results-hint {
+    font-size: var(--font-xs, 0.75rem);
+    color: var(--text-muted, #94a3b8);
+}
+
+/* Driver list */
+.sensitivity-driver-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Driver card */
+.sensitivity-driver-card {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 0 var(--space-2, 8px);
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    background: var(--bg-card, #1e293b);
+    border: 1px solid var(--border, #334155);
+    border-radius: 8px;
+    transition: border-color 0.12s;
+}
+
+.sensitivity-driver-card:hover {
+    border-color: var(--accent, #26d49a);
+}
+
+.sensitivity-driver-rank {
+    grid-row: 1 / 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-sm, 0.8125rem);
+    font-weight: 700;
+    color: var(--text-muted, #94a3b8);
+    font-variant-numeric: tabular-nums;
+}
+
+.sensitivity-driver-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.sensitivity-driver-label {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2, 8px);
+    flex-wrap: wrap;
+}
+
+.sensitivity-driver-name {
+    font-size: var(--font-sm, 0.8125rem);
+    font-weight: 600;
+    color: var(--text, #f1f5f9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sensitivity-driver-category {
+    font-size: var(--font-xs, 0.75rem);
+    color: var(--text-muted, #94a3b8);
+    flex-shrink: 0;
+}
+
+.sensitivity-driver-change {
+    font-size: var(--font-xs, 0.75rem);
+    color: var(--text-muted, #94a3b8);
+}
+
+.sensitivity-driver-delta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    grid-row: 1 / 2;
+    font-variant-numeric: tabular-nums;
+}
+
+.sensitivity-driver-delta-money {
+    font-size: var(--font-sm, 0.8125rem);
+    font-weight: 700;
+}
+
+.sensitivity-driver-delta-pct {
+    font-size: var(--font-xs, 0.75rem);
+}
+
+.sensitivity-driver-delta--up .sensitivity-driver-delta-money,
+.sensitivity-driver-delta--up .sensitivity-driver-delta-pct {
+    color: #f97316; /* orange — cost goes up */
+}
+
+.sensitivity-driver-delta--down .sensitivity-driver-delta-money,
+.sensitivity-driver-delta--down .sensitivity-driver-delta-pct {
+    color: var(--accent, #26d49a); /* green — cost goes down */
+}
+
+.sensitivity-driver-note {
+    grid-column: 2 / 4;
+    font-size: var(--font-xs, 0.75rem);
+    color: var(--text-muted, #94a3b8);
+    font-style: italic;
+    padding-top: 2px;
+}
+
+/* N/A section */
+.sensitivity-na-section {
+    margin-top: var(--space-2, 8px);
+    border: 1px solid var(--border, #334155);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.sensitivity-na-summary {
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    font-size: var(--font-sm, 0.8125rem);
+    color: var(--text-muted, #94a3b8);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.sensitivity-na-summary::-webkit-details-marker { display: none; }
+
+.sensitivity-na-list {
+    list-style: none;
+    margin: 0;
+    padding: 0 var(--space-3, 12px) var(--space-2, 8px);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sensitivity-na-item {
+    display: flex;
+    gap: var(--space-2, 8px);
+    font-size: var(--font-xs, 0.75rem);
+    color: var(--text-muted, #94a3b8);
+}
+
+.sensitivity-na-label {
+    font-weight: 500;
+    color: var(--text, #f1f5f9);
+    flex-shrink: 0;
+}
+
+.sensitivity-na-reason {
+    color: var(--text-muted, #94a3b8);
+}
+
+/* Empty state */
+.sensitivity-empty-state {
+    padding: var(--space-4, 16px);
+    text-align: center;
+    font-size: var(--font-sm, 0.8125rem);
+    color: var(--text-muted, #94a3b8);
+}
+
+/* Light theme overrides */
+[data-theme="light"] .sensitivity-cost-toggle {
+    background: #f1f5f9;
+}
+
+[data-theme="light"] .sensitivity-cost-btn {
+    color: #64748b;
+}
+
+[data-theme="light"] .sensitivity-cost-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+[data-theme="light"] .sensitivity-cost-btn--active {
+    background: var(--accent, #059669);
+    color: #ffffff;
+}
+
+[data-theme="light"] .sensitivity-cost-btn--active:hover {
+    background: var(--accent, #059669);
+    color: #ffffff;
+}
+
+[data-theme="light"] .sensitivity-category-chip {
+    border-color: #cbd5e1;
+    color: #64748b;
+}
+
+[data-theme="light"] .sensitivity-category-chip:hover {
+    border-color: var(--accent, #059669);
+    color: #0f172a;
+}
+
+[data-theme="light"] .sensitivity-category-chip--active {
+    border-color: var(--accent, #059669);
+    background: #d1fae5;
+    color: var(--accent, #059669);
+}
+
+[data-theme="light"] .sensitivity-driver-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+}
+
+[data-theme="light"] .sensitivity-driver-card:hover {
+    border-color: var(--accent, #059669);
+}
+
+[data-theme="light"] .sensitivity-driver-name {
+    color: #0f172a;
+}
+
+[data-theme="light"] .sensitivity-na-section {
+    border-color: #e2e8f0;
+}
+
+[data-theme="light"] .sensitivity-na-label {
+    color: #0f172a;
+}
+
+/* ============================================================
+ * Stage 15.4 (PATCH 2.8.3) — Budget Guardrails
+ * ============================================================ */
+
+/* ----- Dashboard card ----- */
+/* Stage 18.2: `.budget-block` (Dashboard-карточка «Бюджет») удалён — поглощён
+   композитной «Сводкой состояния расчёта» (.calc-state-summary). Chip-стили
+   ниже остаются — они используются в модалке Budget Guardrails. */
+
+/* ----- Status chip (модалка Budget Guardrails) ----- */
+.budget-status-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.86rem;
+    border: 1px solid transparent;
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+    font-variant-numeric: tabular-nums;
+}
+.budget-status-ok {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.budget-status-warning {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.40);
+    background: rgba(245, 158, 11, 0.10);
+}
+.budget-status-muted {
+    color: var(--text-muted);
+    border-color: var(--border, rgba(255, 255, 255, 0.10));
+}
+@supports not (background: color-mix(in srgb, red 10%, transparent)) {
+    .budget-status-ok {
+        background: rgba(38, 212, 154, 0.10);
+        border-color: rgba(38, 212, 154, 0.40);
+    }
+}
+
+/* ----- Modal ----- */
+.budget-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.budget-modal-empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 24px 0;
+}
+.budget-overall-status {
+    display: flex;
+    justify-content: flex-start;
+}
+.budget-sections-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+@media (min-width: 720px) {
+    .budget-sections-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+.budget-section {
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.10));
+    border-radius: 8px;
+    padding: 14px 16px;
+    background: var(--bg-card);
+    min-width: 0;
+}
+.budget-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.budget-section-label {
+    font-weight: 600;
+    color: var(--text);
+}
+.budget-section-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.92rem;
+    color: var(--text);
+}
+.budget-section-body-muted {
+    color: var(--text-muted);
+}
+.budget-section-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-variant-numeric: tabular-nums;
+}
+.budget-section-row-label {
+    color: var(--text-muted);
+}
+.budget-section-row-value {
+    font-weight: 500;
+}
+.budget-section-row-gap {
+    margin-top: 4px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--border, rgba(255, 255, 255, 0.08));
+    font-weight: 600;
+}
+.budget-gap-value {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+}
+.budget-gap-percent {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-size: 0.86rem;
+}
+
+/* ----- Reasons / Hints ----- */
+.budget-subtitle {
+    font-size: 0.95rem;
+    margin: 0 0 8px 0;
+    color: var(--text);
+}
+.budget-reason-list {
+    margin: 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.budget-reason-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.92rem;
+}
+.budget-reason-label {
+    color: var(--text);
+}
+.budget-reason-impact {
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.budget-hint-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.budget-hint-card {
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.10));
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--bg-card);
+}
+.budget-hint-card-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+.budget-hint-label {
+    font-weight: 500;
+    color: var(--text);
+}
+.budget-hint-saving {
+    color: var(--accent);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.budget-hint-message {
+    font-size: 0.86rem;
+    color: var(--text-muted);
+}
+.budget-hints-empty {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    padding: 8px 0;
+}
+.budget-empty-budget-hint {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    border-left: 3px solid var(--border, rgba(255, 255, 255, 0.10));
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.03));
+    border-radius: 0 6px 6px 0;
+}
+.budget-ok-message {
+    font-size: 0.95rem;
+    color: var(--accent);
+    padding: 8px 0;
+}
+.budget-stale-warning {
+    font-size: 0.9rem;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    padding: 8px 12px;
+    border-radius: 6px;
+}
+
+/* ----- Print: интерактивные элементы модалки скрыть ----- */
+@media print {
+    .budget-modal-body {
+        display: none !important;
+    }
+}
+
+/* ============================================================
+ * Stage 15.5 (PATCH 2.8.4) — Decision Memo Export
+ * ============================================================ */
+
+.decision-memo-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.decision-memo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+.decision-memo-section-title {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    margin-top: 4px;
+}
+.decision-memo-empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 24px 0;
+}
+.decision-memo-preview {
+    /* Прокручиваемый preview Markdown-вывода. Высота ограничена,
+     * чтобы модалка не разрасталась на длинных memo. */
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 14px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.10));
+    border-radius: 8px;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--text);
+}
+.decision-memo-preview h1,
+.decision-memo-preview h2,
+.decision-memo-preview h3,
+.decision-memo-preview h4 {
+    margin: 0.6em 0 0.3em;
+    color: var(--text);
+}
+.decision-memo-preview h1 { font-size: 1.4rem; }
+.decision-memo-preview h2 { font-size: 1.15rem; }
+.decision-memo-preview h3 { font-size: 1.0rem; }
+.decision-memo-preview ul,
+.decision-memo-preview ol {
+    margin: 0.4em 0;
+    padding-left: 1.6em;
+}
+.decision-memo-preview li {
+    margin: 0.15em 0;
+}
+.decision-memo-preview p {
+    margin: 0.4em 0;
+}
+.decision-memo-preview strong {
+    color: var(--text);
+    font-weight: 600;
+}
+.decision-memo-preview code {
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.06));
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.88em;
+}
+/* Stage 18.1.10: стилизация Markdown-таблиц внутри memo-preview.
+   Без этих правил browser-default рендерит без border'ов и padding'а —
+   колонки слипаются (₽/мес и Доля без визуального разделителя), числа
+   не выровнены по правому краю несмотря на `--:` в markdown. */
+.decision-memo-preview table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.6em 0;
+    font-size: 0.92em;
+}
+.decision-memo-preview thead {
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.06));
+}
+.decision-memo-preview th,
+.decision-memo-preview td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.10));
+    text-align: left;
+    vertical-align: middle;
+}
+.decision-memo-preview th {
+    font-weight: 600;
+    color: var(--text);
+}
+.decision-memo-preview th[align="right"],
+.decision-memo-preview td[align="right"] {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.decision-memo-preview tbody tr:hover {
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+}
+
+/* Footer-обёртка для модалок (Stage 15.5) — выравнивает несколько кнопок. */
+.budget-modal-footer,
+.health-modal-footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+@media print {
+    .decision-memo-actions { display: none !important; }
+    .decision-memo-preview {
+        max-height: none !important;
+        overflow: visible !important;
+        background: white !important;
+        color: black !important;
+        border-color: #ccc !important;
+    }
+}
+
+/* ============================================================
+ * Stage 16.5 (PATCH 2.9.4) — Health Score Trend.
+ * ============================================================ */
+
+.health-score-trend {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2, 8px);
+    padding: var(--space-3, 12px) 0;
+    border-top: 1px solid var(--border);
+    margin-top: var(--space-3, 12px);
+}
+
+.health-score-trend-title {
+    margin: 0;
+    font-size: var(--font-sm, 0.92rem);
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.health-score-trend-mini {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2, 8px);
+    flex-wrap: wrap;
+    margin-top: var(--space-2, 8px);
+    font-size: var(--font-sm, 0.92rem);
+}
+
+.health-score-trend-label {
+    color: var(--text-muted);
+}
+
+.health-score-trend-value {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.health-score-trend-hint {
+    color: var(--text-muted);
+    font-size: var(--font-xs, 0.82rem);
+    font-style: italic;
+}
+
+.health-score-trend-mini-single .health-score-trend-hint {
+    margin-left: var(--space-1, 4px);
+}
+
+.health-score-trend-empty {
+    color: var(--text-muted);
+    font-size: var(--font-sm, 0.92rem);
+}
+
+.health-score-trend-timeline {
+    font-size: var(--font-md, 1.05rem);
+    font-weight: 600;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+.health-score-trend-summary {
+    display: flex;
+    gap: var(--space-3, 12px);
+    flex-wrap: wrap;
+    font-size: var(--font-sm, 0.92rem);
+    color: var(--text-muted);
+}
+
+.health-score-trend-summary-item {
+    font-variant-numeric: tabular-nums;
+}
+
+.health-score-trend-summary-delta {
+    font-weight: 600;
+}
+
+.health-score-trend-delta-positive {
+    color: var(--accent);
+}
+
+.health-score-trend-delta-negative {
+    color: var(--danger, #ef4444);
+}
+
+.health-score-trend-delta-zero {
+    color: var(--text-muted);
+}
+
+.health-score-trend-last {
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.03));
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+}
+
+.health-score-trend-last-title {
+    margin: 0 0 var(--space-1, 4px);
+    font-size: var(--font-sm, 0.92rem);
+    color: var(--text);
+}
+
+.health-score-trend-last-list {
+    margin: 0;
+    padding: 0 0 0 var(--space-3, 12px);
+    list-style: disc;
+    color: var(--text-muted);
+    font-size: var(--font-sm, 0.92rem);
+}
+
+.health-score-trend-last-list li {
+    line-height: 1.5;
+}
+
+.health-score-trend-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.health-score-trend-clear {
+    font-size: var(--font-xs, 0.82rem);
+}
+
+/* ============================================================
+ * Stage 17.1 (MINOR 2.10.0) — Calculation Diff modal.
+ * ============================================================ */
+
+.calc-diff-modal {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3, 12px);
+}
+
+.calc-diff-empty {
+    padding: var(--space-4, 16px);
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.calc-diff-summary {
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.03));
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: var(--space-3, 12px);
+}
+
+.calc-diff-summary-empty {
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.calc-diff-summary-title {
+    margin: 0 0 var(--space-2, 8px);
+    font-size: var(--font-sm, 0.92rem);
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.calc-diff-summary-labels {
+    margin: 0 0 var(--space-2, 8px);
+    color: var(--text-muted);
+    font-size: var(--font-sm, 0.92rem);
+}
+
+.calc-diff-summary-list {
+    margin: 0;
+    padding-left: var(--space-3, 12px);
+    list-style: disc;
+    color: var(--text);
+    font-size: var(--font-sm, 0.92rem);
+}
+
+.calc-diff-summary-list li {
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+}
+
+.calc-diff-tabs {
+    display: flex;
+    gap: var(--space-1, 4px);
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: var(--space-1, 4px);
+}
+
+.calc-diff-tab {
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    color: var(--text-muted);
+    padding: var(--space-1, 4px) var(--space-2, 8px);
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1, 4px);
+    font-size: var(--font-sm, 0.92rem);
+    transition: background var(--t-fast, 120ms) ease,
+                color var(--t-fast, 120ms) ease;
+}
+
+.calc-diff-tab:hover,
+.calc-diff-tab:focus-visible {
+    color: var(--text);
+}
+
+.calc-diff-tab-active {
+    color: var(--text);
+    border-color: var(--border);
+    border-bottom-color: var(--bg-card);
+    background: var(--bg-card);
+    margin-bottom: -1px;
+    font-weight: 600;
+}
+
+.calc-diff-tab-empty {
+    opacity: 0.5;
+}
+
+.calc-diff-tab-count {
+    background: var(--accent);
+    color: var(--bg-card);
+    border-radius: 10px;
+    padding: 0 6px;
+    font-size: var(--font-xs, 0.82rem);
+    font-weight: 600;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+}
+
+.calc-diff-tab-empty .calc-diff-tab-count {
+    background: var(--text-muted);
+}
+
+.calc-diff-tab-content {
+    padding: var(--space-2, 8px) 0;
+}
+
+.calc-diff-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2, 8px);
+}
+
+.calc-diff-item {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    background: var(--bg-card);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1, 4px);
+}
+
+.calc-diff-item-added    { border-left: 3px solid var(--accent); }
+.calc-diff-item-removed  { border-left: 3px solid var(--danger, #ef4444); }
+.calc-diff-item-changed  { border-left: 3px solid var(--warn, #f59e0b); }
+
+.calc-diff-item-header {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-2, 8px);
+    align-items: baseline;
+}
+
+.calc-diff-item-label {
+    color: var(--text);
+    font-weight: 500;
+}
+
+.calc-diff-item-type {
+    color: var(--text-muted);
+    font-size: var(--font-xs, 0.82rem);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.calc-diff-item-values {
+    display: flex;
+    gap: var(--space-2, 8px);
+    align-items: baseline;
+    flex-wrap: wrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+}
+
+.calc-diff-item-before {
+    color: var(--text-muted);
+}
+
+.calc-diff-item-arrow {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.calc-diff-item-after {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.calc-diff-item-delta {
+    color: var(--accent);
+    font-weight: 500;
+    margin-left: auto;
+}
+
+.calc-diff-scenarios {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3, 12px);
+}
+
+.calc-diff-scenario-group-title {
+    margin: 0 0 var(--space-1, 4px);
+    font-size: var(--font-sm, 0.92rem);
+    color: var(--text);
+}
+
+.calc-diff-scenario-group-added .calc-diff-scenario-group-title    { color: var(--accent); }
+.calc-diff-scenario-group-removed .calc-diff-scenario-group-title  { color: var(--danger, #ef4444); }
+.calc-diff-scenario-group-changed .calc-diff-scenario-group-title  { color: var(--warn, #f59e0b); }
+
+.calc-diff-scenario-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1, 4px);
+}
+
+.calc-diff-scenario-item {
+    display: flex;
+    gap: var(--space-2, 8px);
+    align-items: baseline;
+    padding: var(--space-1, 4px) var(--space-2, 8px);
+    border-radius: 4px;
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.03));
+    font-size: var(--font-sm, 0.92rem);
+}
+
+.calc-diff-scenario-flags {
+    color: var(--text-muted);
+    font-size: var(--font-xs, 0.82rem);
+    margin-left: auto;
+}
+
+.calc-diff-totals {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2, 8px);
+}
+
+.calc-diff-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-2, 8px);
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-variant-numeric: tabular-nums;
+}
+
+.calc-diff-total-label {
+    color: var(--text);
+    font-weight: 500;
+}
+
+.calc-diff-total-values {
+    color: var(--text-muted);
+}
+
+.calc-diff-total-delta {
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.calc-diff-total-delta-positive { color: var(--danger, #ef4444); }
+.calc-diff-total-delta-negative { color: var(--accent); }
+.calc-diff-total-delta-zero     { color: var(--text-muted); }
+
+.calc-diff-provider {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2, 8px);
+}
+
+.calc-diff-provider-type {
+    margin: 0;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.calc-diff-provider-pair {
+    display: flex;
+    gap: var(--space-2, 8px);
+    align-items: baseline;
+    flex-wrap: wrap;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+}
+
+.calc-diff-provider-before {
+    color: var(--text-muted);
+}
+
+.calc-diff-provider-after {
+    color: var(--text);
+    font-weight: 600;
+}
+
+/* ============================================================
+ * Stage 16.1 (MINOR 2.9.0) — Guided Completion modal styles.
+ * Добавлено в Stage 17.1 hotfix: ранее CSS-правила отсутствовали,
+ * header-row склеивался в одну строку без разделения, footer-кнопки
+ * становились вертикальной колонкой (default display: block).
+ * ============================================================ */
+
+.guided-completion-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2, 8px);
+    margin-bottom: var(--space-3, 12px);
+}
+
+.guided-completion-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-3, 12px);
+    flex-wrap: wrap;
+}
+
+.guided-completion-step-label {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.guided-completion-score {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+}
+
+.guided-completion-score--up   { color: var(--accent); }
+.guided-completion-score--down { color: var(--danger, #ef4444); }
+.guided-completion-score--flat { color: var(--text-muted); }
+
+.guided-completion-progress {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.06));
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.guided-completion-progress-bar {
+    height: 100%;
+    background: var(--accent);
+    transition: width var(--t-fast, 120ms) ease;
+}
+
+.guided-completion-counts {
+    display: flex;
+    gap: var(--space-2, 8px);
+    flex-wrap: wrap;
+    font-size: var(--font-sm, 0.92rem);
+    color: var(--text-muted);
+}
+
+.guided-completion-count {
+    font-variant-numeric: tabular-nums;
+}
+
+.guided-completion-count--done    { color: var(--accent); }
+.guided-completion-count--skipped { color: var(--text-muted); }
+
+.guided-completion-footer {
+    display: flex;
+    gap: var(--space-2, 8px);
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.guided-completion-footer-spacer {
+    flex: 1;
+}
+
+.guided-completion-footer-rollback {
+    /* Левая кнопка отката — отделена от Назад/Пропустить spacer'ом справа. */
+}
+
+/* ============================================================
+ * Stage 18.2 (PATCH 2.14.12) — Сводка состояния расчёта.
+ *
+ * Композитный Dashboard-блок: объединяет бывшие 4 карточки (Готовность /
+ * Качество / Бюджет / Следующие шаги) в один управленческий status-блок.
+ *
+ * Палитра:
+ *   ready/green   → var(--accent)  (#26d49a в dark)
+ *   warning/yellow → #f59e0b
+ *   danger/red    → #ef4444
+ *
+ * Layout:
+ *   header    — заголовок + 3 badge'а (readiness / quality / budget)
+ *   verdict   — одна строка с короткой формулировкой состояния
+ *   diagnostic rows — 2 строки: Качество расчёта / Бюджет
+ *   next step — embedded primary action (один)
+ * ============================================================ */
+
+.calc-state-summary {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3, 12px);
+}
+
+/* ----- Header (title + badges) ----- */
+
+.calc-state-summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-3, 12px);
+    flex-wrap: wrap;
+}
+
+.calc-state-summary-title {
+    margin: 0;
+    font-size: var(--font-md, 1.05rem);
+    font-weight: 600;
+    color: var(--text);
+    flex-shrink: 0;
+}
+
+.calc-state-summary-badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2, 8px);
+    justify-content: flex-end;
+}
+
+.calc-state-summary-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.86rem;
+    border: 1px solid transparent;
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.calc-state-summary-badge-ready {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.calc-state-summary-badge-warning {
+    color: var(--warning);
+    border-color: color-mix(in srgb, var(--warning) 40%, transparent);
+    background: color-mix(in srgb, var(--warning) 10%, transparent);
+}
+.calc-state-summary-badge-danger {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+@supports not (background: color-mix(in srgb, red 10%, transparent)) {
+    .calc-state-summary-badge-ready {
+        background: rgba(38, 212, 154, 0.10);
+        border-color: rgba(38, 212, 154, 0.40);
+    }
+    .calc-state-summary-badge-warning {
+        background: var(--warning-faint);
+        border-color: var(--warning);
+    }
+    .calc-state-summary-badge-danger {
+        background: var(--danger-faint);
+        border-color: var(--danger);
+    }
+}
+
+/* ----- Verdict (одна строка) ----- */
+
+.calc-state-summary-verdict {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-sm, 0.95rem);
+    line-height: 1.4;
+}
+.calc-state-summary-green  .calc-state-summary-verdict { color: var(--text); }
+.calc-state-summary-yellow .calc-state-summary-verdict { color: var(--text); }
+.calc-state-summary-red    .calc-state-summary-verdict { color: var(--text); }
+
+/* ----- Diagnostic rows (Качество / Бюджет) ----- */
+
+.calc-state-summary-diagnostics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2, 8px);
+}
+@container (max-width: 720px) {
+    .calc-state-summary-diagnostics { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+    .calc-state-summary-diagnostics { grid-template-columns: 1fr; }
+}
+
+.calc-state-summary-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    background: var(--bg-elevated, var(--bg-card));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.calc-state-summary-row-title {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: var(--font-xs, 0.82rem);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.calc-state-summary-row-body {
+    color: var(--text);
+    font-size: var(--font-sm, 0.92rem);
+    line-height: 1.4;
+}
+
+.calc-state-summary-row-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
+/* ----- Next step (primary action) ----- */
+
+.calc-state-summary-next {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--space-3, 12px);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated, var(--bg-card));
+    border-left: 3px solid var(--accent);
+}
+.calc-state-summary-next-high   { border-left-color: var(--danger); }
+.calc-state-summary-next-medium { border-left-color: var(--warning); }
+.calc-state-summary-next-low    { border-left-color: var(--accent); }
+.calc-state-summary-next-info   { border-left-color: var(--text-muted); }
+
+.calc-state-summary-next-label {
+    color: var(--text-muted);
+    font-size: var(--font-xs, 0.82rem);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
+
+.calc-state-summary-next-title {
+    color: var(--text);
+    font-size: var(--font-md, 1.0rem);
+    font-weight: 600;
+}
+
+.calc-state-summary-next-body {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-sm, 0.92rem);
+    line-height: 1.4;
+}
+
+.calc-state-summary-next-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--space-2, 8px);
+}
+
+.calc-state-summary-next-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+}
+
+/* ----- Cost Optimization teaser (Stage 18.2.x — secondary action) -----
+   Бывшая отдельная Dashboard-карточка `.cop-teaser` встроена как secondary
+   section внутри composite-сводки. Должна визуально читаться вторичной
+   относительно блока `.calc-state-summary-next` (там — primary CTA). */
+
+.calc-state-summary-optimization {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    border-radius: 8px;
+    /* Stage 18.2.x fix: bg выровнен с siblings (.calc-state-summary-row /
+       .calc-state-summary-next), которые залиты --bg-elevated. До этого
+       был `transparent` → просвечивал --bg-card родительского composite
+       (в light: #faf2db vs sibling #e3d4ad, в dark: #243044 vs #334155 —
+       визуальное «другая подложка»). Dashed-border сохраняем как явный
+       secondary-action signal (см. шапку секции 3725-3728). */
+    border: 1px dashed var(--border);
+    background: var(--bg-elevated, var(--bg-card));
+}
+
+.calc-state-summary-optimization-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2, 8px);
+    justify-content: space-between;
+}
+
+.calc-state-summary-optimization-title {
+    color: var(--text);
+    font-weight: 600;
+    font-size: var(--font-sm, 0.95rem);
+}
+
+.calc-state-summary-optimization-tags {
+    color: var(--text-muted);
+    font-size: var(--font-xs, 0.82rem);
+    letter-spacing: 0.04em;
+}
+
+.calc-state-summary-optimization-text {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-sm, 0.92rem);
+    line-height: 1.4;
+}
+
+.calc-state-summary-optimization-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
+.calc-state-summary-optimization-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ----- Печать ----- */
+@media print {
+    .calc-state-summary {
+        background: white !important;
+        color: black !important;
+        border-color: #ccc !important;
+    }
+    .calc-state-summary-row,
+    .calc-state-summary-next,
+    .calc-state-summary-optimization {
+        background: white !important;
+        color: black !important;
+        border-color: #ccc !important;
+    }
+    .calc-state-summary-badge {
+        background: white !important;
+        color: black !important;
+        border-color: black !important;
+    }
+    .calc-state-summary-row-actions,
+    .calc-state-summary-next-actions,
+    .calc-state-summary-optimization-actions {
+        display: none !important;
+    }
+}
+
+/* ============================================================
+ * Stage 18.1 (v2.13.0) — Cost Optimization Planner
+ *
+ * Dashboard: одна teaser-card (.cop-teaser) с одним CTA, открывающим editor-
+ * модалку. Модалка — draft editor: level tabs / constraints / summary /
+ * editable levers / inline high-risk confirm panel / rollback bar.
+ *
+ * Палитра risk (текст + цвет, дублирующий цвет ради a11y):
+ *   low    → var(--accent) (зелёный)
+ *   medium → #f59e0b (amber)
+ *   high   → #ef4444 (red)
+ *
+ * Legacy 3-tile dashboard (.cop-tile/.cop-block) и read-only modal-планы
+ * (.cop-plan-*) удалены в Phase 4 cleanup pass (предыдущая v2.12.0).
+ * ============================================================ */
+
+/* ---------- Risk badge (общая палитра, используется и в levers, и в confirm) ---------- */
+
+.cop-risk-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+.cop-risk-badge-sm { padding: 1px 6px; font-size: 0.72rem; }
+
+.cop-risk-low {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.cop-risk-medium {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.40);
+    background: rgba(245, 158, 11, 0.10);
+}
+.cop-risk-high {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.40);
+    background: rgba(239, 68, 68, 0.10);
+}
+@supports not (background: color-mix(in srgb, red 10%, transparent)) {
+    .cop-risk-low { background: rgba(38, 212, 154, 0.10); border-color: rgba(38, 212, 154, 0.40); }
+}
+
+/* ---------- Modal: empty-state ---------- */
+
+.cop-modal-empty p { color: var(--text-muted); }
+
+@media print {
+    .cop-risk-badge {
+        background: white !important;
+        color: black !important;
+        border-color: black !important;
+    }
+}
+
+/* Stage 18.2.x: бывшие `.cop-teaser*` (отдельная Dashboard-карточка) удалены —
+   entry point в planner встроен внутрь composite-сводки как
+   .calc-state-summary-optimization (см. CSS блока «Сводка состояния расчёта»
+   выше). Модалочные классы `.cop-modal*` / `.cop-risk-badge` остаются. */
+
+/* ---------- Modal: общий контейнер ---------- */
+
+.cop-modal-body { display: flex; flex-direction: column; gap: 20px; }
+
+.cop-modal-disclaimer {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--bg-elevated);
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.cop-modal-section { display: flex; flex-direction: column; gap: 10px; }
+.cop-modal-section-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+}
+.cop-modal-section-hint {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+/* ---------- Level tabs ---------- */
+
+.cop-level-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+@media (max-width: 720px) {
+    .cop-level-tabs { grid-template-columns: 1fr; }
+}
+.cop-level-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 120ms ease, background 120ms ease;
+    min-height: var(--touch-target, 44px);
+}
+.cop-level-tab:hover { border-color: var(--accent); }
+.cop-level-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cop-level-tab.is-active {
+    border-color: var(--accent);
+    background: var(--bg-elevated);
+    box-shadow: inset 0 0 0 1px var(--accent);
+}
+.cop-level-tab-title { font-weight: 600; font-size: 0.92rem; }
+.cop-level-tab-range { font-size: 0.78rem; color: var(--text-muted); }
+
+/* ---------- Constraints grid ---------- */
+
+.cop-modal-constraints-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+@media (max-width: 720px) {
+    .cop-modal-constraints-grid { grid-template-columns: 1fr; }
+}
+.cop-modal-constraint {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    cursor: pointer;
+    min-height: var(--touch-target, 44px);
+    font-size: 0.88rem;
+}
+.cop-modal-constraint-on { border-color: var(--accent); background: var(--bg-elevated); }
+.cop-modal-constraint-label { flex: 1; }
+.cop-modal-constraint-touched {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+/* ---------- Summary preview ---------- */
+
+.cop-summary-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    /* Дополнительный воздух над секцией «Итог»: cop-modal-body даёт 20px
+       gap между секциями, но switcher визуально похож на constraint-toggle
+       (бордерный rect справа), и без margin-top пользователь воспринимает
+       его как продолжение «Защитить compliance». 12px поверх 20px = 32px,
+       чёткое отделение секции «Итог» от «Ограничений». */
+    margin-top: 12px;
+}
+.cop-summary-period {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    line-height: 1;
+}
+.cop-summary-period-btn {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    padding: 3px 8px;
+    border-radius: 5px;
+    font: inherit;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+.cop-summary-period-btn:first-child { border-top-left-radius: 5px; border-bottom-left-radius: 5px; }
+.cop-summary-period-btn:last-child  { border-top-right-radius: 5px; border-bottom-right-radius: 5px; }
+.cop-summary-period-btn + .cop-summary-period-btn { border-left: 1px solid var(--border); border-radius: 0; }
+.cop-summary-period-btn:not(:first-child):not(:last-child) { border-radius: 0; }
+.cop-summary-period-btn:hover { color: var(--text); }
+.cop-summary-period-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+.cop-summary-period-btn.is-active {
+    background: var(--bg-card);
+    color: var(--accent);
+    font-weight: 600;
+}
+@media (pointer: coarse) {
+    .cop-summary-period-btn { min-height: var(--touch-target); padding: 6px 12px; }
+}
+
+.cop-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+@media (max-width: 720px) {
+    .cop-summary-cards { grid-template-columns: 1fr; }
+}
+.cop-summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+}
+.cop-summary-card-saving { border-color: var(--accent); background: var(--bg-elevated); }
+.cop-summary-card-label { font-size: 0.78rem; color: var(--text-muted); }
+.cop-summary-card-value { font-size: 1.05rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.cop-summary-card-sub { font-size: 0.78rem; color: var(--text-muted); }
+
+.cop-summary-status {
+    margin: 0;
+    font-size: 0.88rem;
+    padding: 6px 10px;
+    border-radius: 6px;
+}
+.cop-summary-status-empty   { color: var(--text-muted); background: transparent; }
+.cop-summary-status-in-range{ color: var(--accent); background: var(--bg-elevated); }
+.cop-summary-status-below   { color: #d97706; background: var(--bg-elevated); }
+.cop-summary-status-above   { color: #d97706; background: var(--bg-elevated); }
+.cop-summary-meta { margin: 0; font-size: 0.78rem; color: var(--text-muted); }
+.cop-modal-summary-error .cop-modal-summary-error-line { color: #dc2626; }
+
+/* ---------- Levers (Stage 18.1.1 — grouped accordion) ---------- */
+
+.cop-lever-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.cop-lever-group {
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    overflow: hidden;
+}
+.cop-lever-group.is-expanded { border-color: var(--accent); }
+.cop-lever-group-blocked { background: var(--bg-elevated); opacity: 0.85; }
+.cop-lever-group-empty   { opacity: 0.75; }
+.cop-lever-group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    transition: background var(--t-fast);
+}
+.cop-lever-group-header:hover { background: var(--bg-elevated); }
+.cop-lever-group-header:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+.cop-lever-group-blocked .cop-lever-group-header { cursor: default; }
+.cop-lever-group-blocked .cop-lever-group-header:hover { background: transparent; }
+.cop-lever-group-chevron { display: inline-flex; align-items: center; color: var(--text-muted); }
+.cop-lever-group-title {
+    font-size: 0.94rem;
+    font-weight: 600;
+    color: var(--text);
+    flex: 0 0 auto;
+    margin-right: auto;
+}
+.cop-lever-group-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.cop-lever-group-meta-saving {
+    color: var(--accent);
+    font-weight: 600;
+}
+.cop-lever-group-meta-blocked,
+.cop-lever-group-meta-empty {
+    font-style: italic;
+}
+.cop-lever-group-meta-risk { font-style: normal; }
+.cop-lever-group-body {
+    padding: 4px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 1px solid var(--border);
+}
+.cop-lever-group-body.is-collapsed { display: none; }
+.cop-lever-group-description {
+    margin: 4px 0 0;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+.cop-lever-group-empty-hint {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+.cop-lever-group-blocked-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+}
+.cop-lever-group-blocked-reason {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--text);
+}
+.cop-lever-group-unblock { align-self: flex-start; }
+@media (max-width: 720px) {
+    .cop-lever-group-meta { width: 100%; justify-content: flex-start; }
+    .cop-lever-group-title { flex: 1 1 100%; }
+}
+@media (pointer: coarse) {
+    .cop-lever-group-header { min-height: var(--touch-target); }
+}
+
+.cop-lever-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.cop-lever {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+}
+.cop-lever-modified { border-color: var(--accent); }
+.cop-lever-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.cop-lever-title { font-weight: 600; font-size: 0.92rem; }
+/* PATCH 2.14.17: одна строка-подпись под title, объясняет что за параметр.
+   Берётся из metadata модели (SETTINGS_DESCRIPTIONS / question.description).
+   Стиль идентичен .cop-lever-consequence — оба «мелкий приглушённый текст»,
+   но смысл разный: description — «что это», consequence — «что произойдёт». */
+.cop-lever-description {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+.cop-lever-editor { display: flex; flex-direction: column; gap: 6px; }
+.cop-lever-editor-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.cop-lever-editor-label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.cop-lever-editor-from { font-size: 0.82rem; color: var(--text-muted); }
+.cop-lever-input,
+.cop-lever-select {
+    min-width: 120px;
+    max-width: 220px;
+    font-variant-numeric: tabular-nums;
+}
+.cop-lever-suggested { font-size: 0.78rem; color: var(--accent); }
+.cop-lever-range-hint { margin: 0; font-size: 0.75rem; color: var(--text-muted); }
+.cop-lever-consequence { margin: 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; }
+.cop-lever-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---------- Footer ---------- */
+
+.cop-modal-footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+.cop-modal-apply[disabled],
+.cop-modal-footer .btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+/* ---------- Phase 3: rollback bar (показывается после apply) ---------- */
+
+.cop-rollback-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+}
+.cop-rollback-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+}
+.cop-rollback-icon { display: inline-flex; align-items: center; }
+.cop-rollback-btn { white-space: nowrap; }
+
+/* ---------- Phase 3: inline high-risk confirmation panel ---------- */
+
+.cop-confirm-panel {
+    border: 1px solid #f59e0b;          /* amber accent */
+    background: rgba(245, 158, 11, 0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+    gap: 8px;
+}
+.cop-confirm-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+}
+.cop-confirm-intro {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.4;
+    color: var(--text);
+}
+.cop-confirm-list {
+    margin: 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.cop-confirm-list-item { font-size: 0.88rem; line-height: 1.4; }
+.cop-confirm-list-delta {
+    margin-left: 6px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+}
+.cop-confirm-list-consequence {
+    margin: 2px 0 0;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+.cop-confirm-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+}
+
+@media print {
+    .cop-rollback-bar,
+    .cop-confirm-panel,
+    .cop-confirm-list-item,
+    .cop-confirm-actions { background: white !important; color: black !important; border-color: black !important; }
+}
+
+/* ---------- Print ---------- */
+
+@media print {
+    .cop-modal-body,
+    .cop-modal-disclaimer,
+    .cop-modal-section,
+    .cop-level-tab,
+    .cop-modal-constraint,
+    .cop-summary-card,
+    .cop-lever {
+        background: white !important;
+        color: black !important;
+        border-color: black !important;
+    }
+    .cop-modal-footer { display: none !important; }
+}

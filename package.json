@@ -1,0 +1,19 @@
+{
+    "name": "infrastructure-calculator",
+    "version": "2.16.0",
+    "description": "Локальное web-приложение для расчёта инфраструктуры и стоимости программных продуктов по 5 стендам (DEV / ИФТ / ПСИ / ПРОМ / Нагрузка). Работает offline, без зависимостей.",
+    "type": "module",
+    "private": true,
+    "license": "UNLICENSED",
+    "scripts": {
+        "start": "python -m http.server 8000",
+        "start:node": "npx --yes http-server -p 8000 -c-1",
+        "test": "node tests/run.js",
+        "test:watch": "node --watch tests/run.js",
+        "generate:providers": "node scripts/generate-providers-bundled.js",
+        "syntax-check": "node -e \"const fs=require('fs');const p=require('path');function walk(d){return fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(p.join(d,e.name)):p.join(d,e.name))} const files=walk('js').filter(f=>f.endsWith('.js')); for(const f of files){require('child_process').execSync('node --check '+JSON.stringify(f),{stdio:'inherit'})}\""
+    },
+    "engines": {
+        "node": ">=18"
+    }
+}

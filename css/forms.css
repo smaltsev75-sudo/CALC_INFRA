@@ -1,0 +1,2637 @@
+/* ============================================================
+ * forms.css — формы расчёта (опросник + настройки)
+ * ============================================================ */
+
+/* Шапка вкладки «Опросник» — стилизована как .tab-toolbar других вкладок,
+   чтобы между sticky-хедером и полем «Название расчёта» был стабильный зазор
+   и текст не накрывался кнопками шапки при скролле. */
+.calc-header-edit {
+    align-items: flex-end;
+    gap: 24px;
+    margin-bottom: 16px;
+    padding-top: 8px;
+    scroll-margin-top: 24px;
+}
+.calc-header-edit-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.calc-header-name-field {
+    flex: 1;
+    min-width: 280px;
+    max-width: 640px;
+}
+
+.settings-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--space-5);
+    overflow: hidden;
+}
+
+/* 12.U1: header settings-панели — кликабельный accordion-toggle. */
+.settings-panel-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: var(--space-4) var(--space-6);
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: background var(--t-fast);
+}
+.settings-panel-header:hover { background: var(--bg-elevated); }
+.settings-panel-collapsed .settings-panel-header { padding: var(--space-3) var(--space-6); }
+
+.settings-title {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+/* Краткая сводка для свёрнутого состояния. */
+.settings-summary {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-family: var(--font-mono);
+    margin-left: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* Тело settings-панели (раскрытое состояние). */
+.settings-panel-body {
+    padding: var(--space-1) var(--space-6) var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+/* Подгруппа внутри settings-панели (Период / Риски / НДС). */
+.settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 12.U3: «Срок проекта» + «НДС» в одной строке — обе группы узкие, экономим
+ * вертикальное место на экране. На узком экране переходят в столбец. */
+.settings-row-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+}
+@media (max-width: 720px) {
+    .settings-row-2col { grid-template-columns: 1fr; gap: 16px; }
+}
+.settings-group-title {
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 0.88rem;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Master-toggle «Учитывать риск-коэффициенты» — наверху своей группы. */
+.settings-master-toggle {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+.settings-master-toggle-text {
+    flex: 1;
+    min-width: 0;
+}
+.settings-master-toggle-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text);
+    margin-bottom: 2px;
+}
+.settings-master-toggle-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* Приглушение группы при выключенном master-toggle. */
+.settings-grid-faded {
+    opacity: 0.6;
+    transition: opacity var(--t-base);
+}
+
+/* Accordion-chevron: rotate при раскрытии. */
+.accordion-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform var(--t-fast);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.accordion-chevron-open {
+    transform: rotate(90deg);
+    color: var(--accent);
+}
+
+.settings-grid {
+    display: grid;
+    /* PATCH 2.4.27: minmax 260→380px. Inline-row .field-percent (Stage 5.5.2,
+       PATCH 2.4.18) внутри settings-grid имеет минимум ~420px (label 180px +
+       input 100px + slider 140px + 2 gaps). На 260px cells field-description
+       overflow'ил в соседнюю колонку → 4 риск-поля наезжали друг на друга
+       по горизонтали. 380px → auto-fit даёт ≤2 cols на типичной ширине
+       settings-panel (~800-1100px), каждая cell ≥550px — .field-percent
+       помещается полностью. На <580px @media уже даёт стек-fallback. */
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 14px 16px;
+    margin-bottom: 14px;
+    align-items: end;
+}
+
+/* Унификация высоты разнотипных полей внутри .settings-grid (number/select/percent/switch),
+   чтобы строки сетки выглядели ровно.
+   PATCH 2.7.3 hotfix (тот же паттерн что 2.4.37 для .questionnaire-grid):
+   label-floor 2.4em гарантирует, что 1-line («Ставка НДС», «Годовая инфляция»)
+   и 2-line («Запас на проектные риски») заголовки занимают одинаковое
+   место → input/slider/select на одинаковой y между cells одной row.
+   Без этого fix'а inputs сдвигались на 17-34px в зависимости от того,
+   wrap'нулся ли label в 2 строки. */
+.settings-grid .field {
+    min-height: 64px;
+    justify-content: flex-end;
+}
+.settings-grid .field > .field-label {
+    min-height: 2.4em;
+    align-items: flex-end;
+    line-height: 1.2;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+/* .field-percent — grid с label на col 1. Те же правила применяются — span
+   с min-height 2.4em fix'ит row 1 высоту, контрол центрируется в этом row.
+   `min-width: 0 + overflow-wrap: anywhere` дублируют PATCH 2.4.27 fix
+   для grid-item-default-min-width-auto ловушки. */
+.settings-grid .field-percent > .field-label {
+    min-height: 2.4em;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.2;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.settings-grid .field > .input,
+.settings-grid .field > .percent-input > .input,
+.settings-grid .field > select.input {
+    height: 38px;
+    line-height: 1.2;
+}
+.settings-grid .field > .switch {
+    height: 38px;
+}
+
+.percent-input {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+.percent-input input { padding-right: 32px; width: 100px; }
+.percent-input-suffix {
+    position: absolute;
+    right: 12px;
+    color: var(--text-muted);
+    pointer-events: none;
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+}
+
+/* 12.U2: row с number-input + slider для быстрой грубой оценки.
+   Stage 5.5.2: при inline-layout родителя (.field-percent) обёртка теряет
+   собственный flex и становится «прозрачной» (display: contents), чтобы
+   .percent-input + slider участвовали в grid'е верхнего уровня — это даёт
+   horizontal-row [label | number+% | slider] вместо 2-строчной раскладки. */
+.percent-input-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+.field-percent > .percent-input-row {
+    display: contents;
+}
+
+/* Stage 5.5.2: inline horizontal layout для риск-полей (8 штук + НДС-ставка).
+   Раньше каждое поле занимало 3 визуальные строки (label / number-input+% /
+   slider) — блок «Риск-коэффициенты» при 8 полях занимал пол-экрана. Теперь
+   одна строка: [label .................. value%] [─────●──────]. Уменьшает
+   vertical-scroll в 1.5–2× для settings-panel. Описание (field-description)
+   занимает всю ширину под grid-row через grid-column: 1 / -1.
+
+   Совместимость с master-toggle applyRiskFactors: при выкл. родительский
+   .field-disabled добавляет opacity 0.4 на input — сохраняется. min-height
+   из .settings-grid .field остаётся для вертикального ритма строк grid'а. */
+.field-percent {
+    display: grid;
+    /* PATCH 2.4.30: внутренние minimums уменьшены — было `minmax(180px, 1fr)
+       auto minmax(140px, 240px)` = 444px минимум, что overflow'ило на screen'ах
+       ≥1500px settings-panel (4 cols × 380-425px из 2.4.27 minmax(380px, 1fr)).
+       Новые: 120 (label) + ~100 (input) + 80 (slider min) + 24 (gaps) = 324px,
+       фитит в любую settings-grid cell ≥380px с запасом. Label и slider
+       растягиваются до 1fr / 200px max при наличии места. */
+    grid-template-columns: minmax(120px, 1fr) auto minmax(80px, 200px);
+    gap: var(--space-3);
+    align-items: center;
+    /* PATCH 2.4.27: позволяет .field-percent shrink в parent grid-cell.
+       Без этого field-percent claim'ает min-content и расширяет parent track
+       сверх 1fr-аллокации (ловушка grid-item-default-min-width-auto, ровно
+       как 13.U11 .comparison-ai-block). */
+    min-width: 0;
+}
+.field-percent > .field-label {
+    margin: 0;
+    /* PATCH 2.4.27: длинные labels («Запас на риски задач») не должны
+       раздувать min-content track сверх minmax(180px, 1fr) — wrap в 2 строки
+       при необходимости. */
+    min-width: 0;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+}
+.field-percent > .field-description {
+    grid-column: 1 / -1;
+    margin-top: 0;
+    /* PATCH 2.7.3 hotfix-2: фиксированный min-height 3em (= 2 × line-height 1.5em
+       = ровно 2 строки текста) стандартизирует высоту description'ов percent-полей.
+       Без этого descriptions разной длины («Применяется только к гибким ресурсам —
+       сети, трафику, услугам, токенам LLM.» = 2 строки vs «Применяется только к
+       разовым работам и стенду «Нагрузка».» = 1 строка) давали ячейки разной
+       высоты → align-items: end на родителе сдвигал короткую ячейку вниз track'а
+       → input/slider оказывались на 18-20px ниже соседей. С 3em-floor короткие
+       descriptions занимают пустое место снизу (по одобренному выбору пользователя
+       — inline layout сохранён, vertical-padding на 1-line descriptions). */
+    min-height: 3em;
+    /* PATCH 2.4.27: width ограничена column-span 1/-1, но grid-item по дефолту
+       min-width: auto = min-content (ширина самого длинного слова без переноса).
+       На длинных русских описаниях («Применяется только к гибким ресурсам — сети,
+       трафику, услугам, токенам LLM») это раздувало трек и overflow'ило в
+       соседний parent grid-cell. min-width: 0 + overflow-wrap: anywhere фиксят. */
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+/* На узких экранах (settings-panel рядом с другими карточками) — обратно в стек. */
+@media (max-width: 580px) {
+    .field-percent {
+        grid-template-columns: 1fr;
+    }
+    .field-percent > .percent-input-row {
+        display: flex;
+    }
+}
+.percent-slider {
+    flex: 1;
+    min-width: 80px;
+    height: 8px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--bg-elevated);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+}
+.percent-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg-main);
+    cursor: pointer;
+    box-shadow: 0 0 0 1px var(--accent);
+    transition: transform var(--t-fast);
+}
+.percent-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.percent-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg-main);
+    cursor: pointer;
+    box-shadow: 0 0 0 1px var(--accent);
+}
+.percent-slider:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-faint);
+}
+.percent-slider:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.settings-formula {
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.settings-formula-label {
+    color: var(--text-muted);
+}
+.settings-formula-value {
+    font-family: var(--font-mono);
+    color: var(--accent);
+}
+.settings-formula-note {
+    margin-top: 6px;
+    padding: 8px 14px;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    line-height: 1.45;
+}
+
+/* === Неактивные поля (когда выключено «Учитывать риск-коэффициенты в бюджете») === */
+
+.field-disabled .field-label {
+    color: var(--text-dim);
+}
+.field-disabled .input,
+.field-disabled .input:focus {
+    /* Stage 4.15: единая opacity 0.4 для всех disabled элементов проекта
+       (см. также .stand-toggle, .dash-stand-card-disabled, .switch-disabled). */
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: var(--border);
+    box-shadow: none;
+}
+.field-disabled .percent-input-suffix {
+    color: var(--text-dim);
+    opacity: 0.4;
+}
+
+/* Switch в неактивном состоянии — приглушаем track, label и блокируем клик. */
+.switch-disabled {
+    cursor: not-allowed !important;
+    opacity: 0.4;
+}
+.switch-disabled .switch-track,
+.switch-disabled .switch-label {
+    pointer-events: none;
+}
+
+/* Блок «Итоговый коэффициент удорожания» в режиме без рисков — приглушаем целиком.
+   Stage 4.15: 0.5 → 0.4 для единого disabled-уровня по проекту. */
+.settings-formula-disabled {
+    opacity: 0.4;
+    cursor: help;
+}
+.settings-formula-disabled .settings-formula-value {
+    color: var(--text-muted);
+}
+
+/* Размеры стендов (множители от ПРОМ) */
+.stand-size-ratios {
+    margin-top: 14px;
+    padding: 14px 16px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+.stand-size-ratios-title {
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+    font-size: 0.92rem;
+}
+.stand-size-ratios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+}
+.stand-size-ratios-hint {
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    line-height: 1.45;
+}
+.input-readonly,
+.stand-size-ratios input[disabled] {
+    color: var(--text-muted);
+    background: var(--bg-input);
+    /* Stage 4.15: 0.75 → 0.4 для единого disabled-уровня. Readonly-input PROD =
+       100% в stand-size-ratios всё ещё читается через color: text-muted. */
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* PATCH 2.4.33: ПРОМ-anchor — визуально отличный от input блок «100% эталон».
+   Раньше PROD рендерился как disabled-input (см. .input-readonly выше) что
+   воспринималось как «поле в которое можно кликнуть» — пользователь жаловался
+   «зачем выводишь, если нельзя корректировать?». Решение: dashed border +
+   accent цвет + явный label «эталон» — однозначно non-input affordance. */
+.stand-prod-anchor {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    height: 38px;
+    box-sizing: border-box;
+    background: var(--accent-faint);
+    border: 1px dashed var(--accent);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: help;
+    font-variant-numeric: tabular-nums;
+}
+.stand-prod-anchor-value {
+    font-weight: 700;
+}
+.stand-prod-anchor-suffix {
+    font-size: 0.72rem;
+    font-weight: 500;
+    opacity: 0.85;
+    text-transform: lowercase;
+    letter-spacing: 0.02em;
+}
+
+/* 12.U12: Per-resource множители (CPU/GPU/RAM/SSD/HDD/S3 × DEV/IFT/PSI/LOAD).
+   Таблица 5×7 (заголовок + 4 стенда × 1 лейбл + 6 ресурсов). */
+.resource-ratios {
+    margin-top: 14px;
+    padding: 14px 16px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+.resource-ratios-title {
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+    font-size: 0.92rem;
+}
+.resource-ratios-table {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.resource-ratio-row {
+    /* 12.U13: после транспонирования — 4 колонки стендов (DEV/IFT/PSI/LOAD) +
+       первая лейбл-колонка ресурса. */
+    display: grid;
+    grid-template-columns: 80px repeat(4, minmax(80px, 1fr));
+    gap: 6px;
+    align-items: center;
+}
+.resource-ratio-cell {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+}
+.resource-ratio-cell-head {
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.4px;
+}
+.resource-ratio-cell-label {
+    justify-content: flex-start;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding-left: 4px;
+}
+.resource-ratio-cell-input {
+    text-align: center;
+    padding: 4px 6px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+.resource-ratio-cell-na {
+    color: var(--text-dim);
+    opacity: 0.55;
+    cursor: help;
+    font-family: var(--font-mono);
+}
+.resource-ratios-hint {
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    line-height: 1.45;
+}
+@media (max-width: 720px) {
+    /* На узких экранах схлопываем в горизонтальный скролл — лучше сохранить
+       табличную структуру, чем переверстать в стек (теряется визуальная связь). */
+    .resource-ratios-table { overflow-x: auto; }
+    .resource-ratio-row { grid-template-columns: 70px repeat(4, 70px); min-width: 350px; }
+}
+
+/* === Опросник === */
+
+.questionnaire-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-6) 28px;
+    margin-bottom: var(--space-5);
+}
+
+/* Stage 6.6.B (PATCH 2.4.22): transient glow секции после изменения поля.
+   Аналог .field-recent на section-уровне. animation: section-highlight
+   запускается при появлении класса .section-recent (Q-rerender от
+   recentlyChangedKey). 1.2s — то же значение, что и .field-recent для
+   синхронности обоих glow'ов. */
+.section-recent {
+    animation: section-highlight 1.2s ease;
+}
+@keyframes section-highlight {
+    0%   { box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-sm); }
+    100% { box-shadow: 0 0 0 3px transparent, var(--shadow-sm); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .section-recent { animation: none; }
+}
+
+/* Stage 12.5 (PATCH 2.6.4): transient glow подгруппы — точка изменения.
+   В renderSection (questionnaire.js) при смене ответа вычисляется и
+   isRecentSection (вся секция содержит изменённый вопрос), и
+   isRecentSubgroup (та подгруппа, где он лежит). Оба класса навешиваются
+   одновременно — пользователь видит и точку изменения, и контекст:
+   подгрузка glow начинается в подгруппе, секция подсвечивается синхронно.
+   1.2s совпадает с .section-recent для одновременного завершения. */
+.questionnaire-subgroup-recent {
+    animation: subgroup-highlight 1.2s ease;
+}
+@keyframes subgroup-highlight {
+    0%   { box-shadow: 0 0 0 2px var(--accent-glow); }
+    100% { box-shadow: 0 0 0 2px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .questionnaire-subgroup-recent { animation: none; }
+}
+
+/* 12.U1: section-title — кликабельный accordion-toggle. */
+.questionnaire-section-title {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 var(--space-4);
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--text);
+    padding: 0 0 var(--space-3);
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    cursor: pointer;
+    text-align: left;
+    transition: color var(--t-fast);
+}
+.questionnaire-section-title:hover { color: var(--accent); }
+.questionnaire-section-collapsed .questionnaire-section-title {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+.questionnaire-section-label { flex: 1; min-width: 0; }
+
+.questionnaire-section-count {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    padding: 2px 10px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+}
+/* Все вопросы секции уточнены — успех. */
+.questionnaire-section-count-done {
+    background: var(--accent-faint);
+    color: var(--accent);
+}
+/* Stage 5.4: секция полностью gated по master-toggle — chip «—» с приглушённым
+   видом. Visible-уровень: dashed-border + opacity 0.5 = «нет активных вопросов
+   сейчас, доступ открывается через master-переключатель». */
+.questionnaire-section-count-gated {
+    background: transparent;
+    border: 1px dashed var(--border);
+    opacity: 0.5;
+    cursor: help;
+}
+
+/* 12.U1: sticky прогресс-бар поверх settings и секций. */
+.questionnaire-progress {
+    position: sticky;
+    top: var(--tabs-top);
+    z-index: 5;
+    background: var(--bg-main);
+    padding: 10px 0 12px;
+    margin: -8px 0 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    cursor: help;
+}
+.questionnaire-progress-bar {
+    height: 4px;
+    background: var(--bg-elevated);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.questionnaire-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    border-radius: 2px;
+    transition: width var(--t-base);
+    min-width: 2px;
+}
+.questionnaire-progress-text {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+/* 12.U2: подсказка под прогрессом — что ответы относятся к ПРОМ. */
+.questionnaire-prod-hint {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    background: var(--accent-faint);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    font-size: 0.84rem;
+    line-height: 1.45;
+    color: var(--text);
+}
+.questionnaire-prod-hint .icon {
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.questionnaire-prod-hint-text strong { color: var(--accent); }
+
+.questionnaire-grid {
+    display: grid;
+    /* PATCH 2.4.30: minmax 280→360px. Узкие cells приводили к 3-4 строчному
+       wrap длинных русских labels («Соотношение оперативной памяти к процессору,
+       ГБ на vCPU» — 4 строки на 280px), а соседние короткие labels (1-2 строки)
+       давали разную высоту label area → разную y-позицию inputs. 360px cells
+       сокращают wrap до 2-3 строк, в комбинации с min-height на .field-label
+       (ниже) получаем устойчивую alignment. */
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: var(--space-5);
+    /* PATCH 2.4.29: align-items: end УДАЛЕНО. Bottom-align cells приводил к
+       misalignment input'ов когда .field-description у соседних полей в одной
+       row имели разную высоту (например, в подгруппе «Объём запросов»: Field 1
+       и Field 3 — 2-строчная desc, Field 2 — 1-строчная). Cell с более короткой
+       desc сдвигалась вниз track'а, утаскивая input на 16-20px ниже соседей.
+       Default align-items: stretch — все cells одинаковой высоты, input
+       располагается на одной горизонтали (см. также margin-top: auto на
+       .field-description ниже для сохранения нижнего baseline desc). */
+}
+
+/* 12.U3: явная (детерминированная) сетка для подгрупп с жёсткой раскладкой
+ * (LLM/RAG/PDn/Customization). Колонки задаются inline через style.gridTemplateColumns. */
+.questionnaire-explicit-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.questionnaire-grid-explicit {
+    display: grid;
+    gap: 16px;
+    /* PATCH 2.4.29: align-items: end УДАЛЕНО (см. .questionnaire-grid выше — тот же bug-паттерн). */
+}
+.questionnaire-cell-empty {
+    /* Пустая ячейка — занимает место в сетке, но визуально невидима. */
+}
+@media (max-width: 720px) {
+    /* На узком экране сворачиваем в один столбец, чтобы поля не схлопывались до неюзабельной ширины. */
+    .questionnaire-grid-explicit { grid-template-columns: 1fr !important; }
+    .questionnaire-cell-empty { display: none; }
+}
+
+/* PATCH 2.4.33: переход с flex на grid для детерминированной y-позиции
+   control'ов. Раньше flex-column + min-height:64px давал плавающий control —
+   когда у соседних полей label занимал разное число строк (1 vs 2 vs 3),
+   control оказывался на разной y-позиции внутри cell. Grid с явным
+   `grid-template-rows: minmax(LABEL_FLOOR, auto) auto 1fr` фиксирует:
+     row 1: label area, минимум LABEL_FLOOR (3em ≈ 2 текстовых строки + breath)
+     row 2: control (input/switch/segmented/multiselect) — auto-sized
+     row 3: description — занимает оставшееся, прижата к низу через align-self: end.
+   Все 3 controls в одной row на одной y-позиции независимо от label/desc длин.
+   min-height: 64px на cell сохраняется для общего вертикального ритма. */
+.questionnaire-grid .field {
+    display: grid;
+    grid-template-rows: minmax(4.5em, auto) auto 1fr;
+    gap: 6px;
+    min-height: 64px;
+}
+.questionnaire-grid .field-label {
+    align-items: flex-start;
+}
+.questionnaire-grid .field > .field-description {
+    align-self: start;
+}
+.questionnaire-grid .field > .switch,
+.questionnaire-grid .field > .input,
+.questionnaire-grid .field > select.input,
+.questionnaire-grid .field > .percent-input,
+.questionnaire-grid .field > .segmented,
+.questionnaire-grid .field > .multiselect {
+    align-self: center;
+}
+.questionnaire-grid .field > .input,
+.questionnaire-grid .field > select.input {
+    height: 38px;
+    line-height: 1.2;
+}
+.questionnaire-grid .field > .switch {
+    height: 38px;
+}
+.questionnaire-grid .field > .multiselect {
+    min-height: 38px;
+    align-content: flex-start;
+}
+
+/* PATCH 2.4.38: дублирующие правила для .questionnaire-grid-explicit .field.
+   Раньше grid-layout с фиксированным label-floor (4.5em) применялся только
+   к .questionnaire-grid (auto-fit), а explicit-layout subgroups
+   («Использование LLM» / «RAG» / «Кастомизация и приватность» из
+   SUBGROUP_LAYOUTS) использовали `.questionnaire-grid-explicit` и получали
+   FALLBACK-flex без min-height на label → controls плавали по y.
+   Юзер-feedback PATCH 2.4.37 «не выровнены по вертикали» — именно про
+   эти секции. Дублируем правила (две отдельные rule-blocks вместо
+   comma-группы — тесты ruleBody match'ат каждое отдельно). */
+.questionnaire-grid-explicit .field {
+    display: grid;
+    grid-template-rows: minmax(4.5em, auto) auto 1fr;
+    gap: 6px;
+    min-height: 64px;
+}
+.questionnaire-grid-explicit .field-label {
+    align-items: flex-start;
+}
+.questionnaire-grid-explicit .field > .field-description {
+    align-self: start;
+}
+.questionnaire-grid-explicit .field > .switch,
+.questionnaire-grid-explicit .field > .input,
+.questionnaire-grid-explicit .field > select.input,
+.questionnaire-grid-explicit .field > .percent-input,
+.questionnaire-grid-explicit .field > .segmented,
+.questionnaire-grid-explicit .field > .multiselect {
+    align-self: center;
+}
+.questionnaire-grid-explicit .field > .input,
+.questionnaire-grid-explicit .field > select.input {
+    height: 38px;
+    line-height: 1.2;
+}
+.questionnaire-grid-explicit .field > .switch {
+    height: 38px;
+}
+.questionnaire-grid-explicit .field > .multiselect {
+    min-height: 38px;
+    align-content: flex-start;
+}
+
+/* Подгруппы внутри раздела (например, ИИ / Email / Голос / Безопасность) */
+.questionnaire-subgroups {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.questionnaire-subgroup {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+}
+/* Stage 6.2.A (PATCH 2.4.21): подзаголовок subgroup'а превращается в flex-row
+   с label слева и progress chip справа. Border-bottom переезжает с title на
+   header — иначе chip оказался бы под линией и визуально оторвался от group.
+
+   Stage 6.2.B (PATCH 2.4.23): header теперь <button> — clickable accordion.
+   Сбрасываем native button-стили (background, border, color, font), чтобы
+   визуально совпадал с предыдущим div-вариантом. cursor: pointer + hover —
+   стандартное accordion-поведение. */
+.questionnaire-subgroup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    width: 100%;
+    background: transparent;
+    border-top: 0;
+    border-left: 0;
+    border-right: 0;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: opacity var(--t-fast);
+}
+.questionnaire-subgroup-header:hover {
+    opacity: 0.85;
+}
+.questionnaire-subgroup-header:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+/* В свёрнутом виде header не имеет border-bottom — иначе линия висит
+   на «ничего» (body скрыт), создаёт визуальный мусор. */
+.questionnaire-subgroup-collapsed .questionnaire-subgroup-header {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+.questionnaire-subgroup-title {
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 0.92rem;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Stage 6.2.A: mini-chip прогресса в заголовке подгруппы. Семантика 1-в-1
+   с .questionnaire-section-count (Stage 5.4): базовый bg-elevated, done →
+   accent-faint, gated → dashed-border + opacity 0.5. */
+.questionnaire-subgroup-count-chip {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    border-radius: 999px;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+    cursor: help;
+}
+.questionnaire-subgroup-count-chip-done {
+    background: var(--accent-faint);
+    color: var(--accent);
+}
+.questionnaire-subgroup-count-chip-gated {
+    background: transparent;
+    border: 1px dashed var(--border);
+    opacity: 0.5;
+}
+/* Stage 5.5.1: gated-subgroup — все вопросы заблокированы master-toggle.
+   Visible-сигнал: вся карточка приглушена до opacity 0.4, cursor: help
+   подсказывает «hover за объяснением». Сами поля внутри подгруппы уже
+   приглушены через .field-disabled (dependsOnUnmet → исходное opacity 0.4),
+   но блочное приглушение даёт пользователю понять, что это ВСЯ группа,
+   а не россыпь несвязанных полей. */
+.questionnaire-subgroup-gated {
+    opacity: 0.4;
+    cursor: help;
+}
+.questionnaire-subgroup-gated .questionnaire-subgroup-title {
+    color: var(--text-muted);
+}
+
+.empty-row {
+    padding: 14px;
+    text-align: center;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+}
+
+/* 12.U1: «Не знаю» — компактный pill с Lucide-иконкой (без ASCII-чекбоксов). */
+.field-unknown-toggle {
+    margin-left: auto;
+    padding: 3px 10px 3px 8px;
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.field-unknown-toggle:hover {
+    color: var(--text);
+    border-color: var(--border-light);
+}
+.field-unknown-toggle-active {
+    color: var(--warning);
+    border-color: var(--warning);
+    background: var(--warning-faint);
+}
+.field-unknown-toggle .icon { color: inherit; }
+
+.field-warning-icon {
+    color: var(--warning);
+    cursor: help;
+    font-size: 0.92rem;
+    line-height: 1;
+}
+
+/* 12.U2: segmented control для select ≤4 опций. Все варианты видны сразу,
+ * 1 клик вместо 2 (без открытия dropdown). */
+.segmented {
+    display: inline-flex;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 2px;
+    gap: 2px;
+    flex-wrap: wrap;
+    min-height: 38px;
+    align-items: stretch;
+    max-width: 100%;
+}
+
+/* 12.U4: вертикальный segmented для select с длинными подписями. Каждая
+ * опция занимает всю ширину контейнера, читается отдельной строкой. */
+.segmented-vertical {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    width: 100%;
+    align-items: stretch;
+}
+.segmented-vertical .segmented-option {
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+}
+.segmented-option {
+    padding: 6px 12px;
+    min-height: 32px;
+    border-radius: 4px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+    white-space: normal;
+    text-align: left;
+    display: inline-flex;
+    align-items: center;
+}
+.segmented-option:hover:not([disabled]) {
+    color: var(--text);
+    background: var(--bg-card);
+}
+.segmented-option-active {
+    background: var(--accent);
+    color: var(--text-inverse);
+    font-weight: 500;
+}
+.segmented-option-active:hover:not([disabled]) {
+    background: var(--accent-hover);
+    color: var(--text-inverse);
+}
+.segmented-option:disabled {
+    /* Stage 4.15: 0.5 → 0.4 для единого disabled-уровня. */
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.segmented-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* 12.U2: multiselect toolbar для опций ≥5 — массовые операции «Все» / «Снять». */
+.multiselect-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.multiselect-toolbar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.multiselect-toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px 3px 8px;
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.multiselect-toolbar-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+.multiselect-toolbar-counter {
+    margin-left: auto;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+}
+
+/* 12.U1: subtle confirmation подсветка после change.
+ * Класс field-recent навешивается в questionnaire.js когда
+ * state.ui.recentlyChangedKey совпадает с этим полем. Glow
+ * исчезает за 1.2 с — даёт пользователю визуальное подтверждение,
+ * что значение записалось, без отдельного snackbar. */
+.field-recent .input,
+.field-recent .switch,
+.field-recent .multiselect {
+    box-shadow: 0 0 0 2px var(--accent-faint);
+    transition: box-shadow 1200ms ease-out;
+    border-radius: var(--radius-sm);
+}
+
+/* 14.U4: provider — глобальная настройка, занимает всю ширину settings-row
+   (а не auto-fit minmax(260px, 1fr) как обычные settings-fields). */
+.settings-group-provider .settings-grid {
+    grid-template-columns: 1fr;
+}
+.settings-group-provider .field-description {
+    /* Stage 4.6: расширено с 600 до 800 — короткое описание провайдера
+       (~90 символов) перестаёт wrap'иться на 2 строки на 1366+ ноутбуках.
+       На ≤720px родительский settings-grid:1fr и так растянет под viewport. */
+    max-width: 800px;
+}
+
+/* 14.U6 / 14.U9: расширяемая сводка тарифов overlay под provider-dropdown.
+   Свёрнутый header — top-3 цены + chevron, кликабельно (whole row + chevron).
+   Развёрнутое body — 6 категорий со всеми 14 ЭК. Hover — bg-tint, indicates clickable.
+   Persist через state.ui.providerOverlayExpanded. */
+.provider-price-summary {
+    margin-top: 6px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    border-left: 2px solid var(--accent);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+}
+.provider-price-summary-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: 6px 10px;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--t-fast, 120ms);
+}
+.provider-price-summary-header:hover {
+    background: var(--bg-hover, rgba(255,255,255,.04));
+}
+.provider-price-summary-header:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+.provider-price-summary-line {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.provider-price-summary-label {
+    font-weight: 500;
+    color: var(--text);
+}
+.provider-price-summary-name {
+    color: var(--text-muted);
+}
+.provider-price-summary-value {
+    color: var(--text);
+    font-weight: 500;
+}
+.provider-price-summary-sep {
+    color: var(--text-dim);
+}
+.provider-price-summary-more {
+    color: var(--accent);
+    font-weight: 500;
+}
+.provider-price-summary-chevron {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-muted);
+    transition: transform var(--t-fast, 120ms), color var(--t-fast, 120ms);
+    flex: 0 0 auto;
+}
+.provider-price-summary-chevron.is-rotated {
+    transform: rotate(180deg);
+    color: var(--accent);
+}
+.provider-price-summary-body {
+    padding: 4px 10px 10px;
+    border-top: 1px solid var(--border-subtle, rgba(255,255,255,.06));
+    display: grid;
+    /* Stage 4.1 fix: minmax 180→220px. После переименования labels на бизнес-русский
+       («Балансировщик HTTP/HTTPS (L7)», «Мониторинг безопасности (SIEM/EDR)»,
+       «Лицензия СУБД») 180px перестало хватать — labels обрезались многоточием.
+       220px даёт запас на 5-6 категорий в ряд на 1366px desktop. */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--space-3) var(--space-4);
+}
+.provider-price-category-title {
+    /* PATCH 2.4.26: flex для inline-Lucide-иконки + текста. Иконка
+       красится в --accent через дочернее правило ниже (currentColor
+       inheritance из icons.js). Размер иконки 14px фиксирован в
+       вызове icon('<name>', { size: 14 }). */
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--text);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 2px;
+}
+.provider-price-category-title .icon {
+    color: var(--accent);
+    flex-shrink: 0;
+}
+/* PATCH 2.7.3 hotfix-3: единица измерения категории — приглушённо справа от
+   лейбла, без uppercase-letter-spacing'а самого title. Заменяет повтор юнита
+   у каждой строки внутри категорий с однородными единицами (CPU/RAM/Storage/
+   Network/Service). License остаётся per-row (смешанные единицы). */
+.provider-price-category-unit {
+    margin-left: auto;
+    font-weight: 400;
+    color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.72rem;
+}
+.provider-price-category-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+/* PATCH 2.4.26 (Stage 7): 2-колоночная раскладка для категорий с длинными
+   русскими лейблами (license, service). column-count: 2 — multi-column
+   balance, items идут top-to-bottom-left-to-right (естественный порядок
+   чтения прайс-списка). break-inside: avoid не даёт строке разорваться
+   между колонками. На <720px collapse в 1 col (см. @media ниже).
+   Override `display: flex` родителя — multicolumn требует block-level. */
+.provider-price-category-list-dense {
+    display: block;
+    column-count: 2;
+    column-gap: var(--space-3);
+}
+.provider-price-category-list-dense .provider-price-row {
+    break-inside: avoid;
+    /* В multicolumn flex-row теряет автоматический margin между items
+       (раньше давал .provider-price-category-list { gap: 2px }). Ставим
+       явный margin-bottom — визуальный ритм между ценами. */
+    margin-bottom: 2px;
+}
+.provider-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-2);
+}
+.provider-price-row-name {
+    color: var(--text-muted);
+    /* Stage 4.1 fix: разрешаем word-wrap для длинных русских labels
+       («Балансировщик HTTP/HTTPS (L7)», «Мониторинг безопасности (SIEM/EDR)»,
+       «Объектное хранилище»). До этого был ellipsis, который скрывал текст
+       — после переименования labels на бизнес-русский это стало багом. */
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    line-height: 1.3;
+    flex: 1;
+    min-width: 0;
+    word-break: normal;
+    overflow-wrap: anywhere;
+}
+.provider-price-row-value {
+    color: var(--text);
+    font-weight: 500;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+}
+.provider-price-row-value-num {
+    color: inherit;
+    font-weight: inherit;
+}
+/* Stage 9.1: delta-pill — точечный visual diff цены провайдера между frozen-default
+   и applied override. Размер мелкий, чтобы не доминировать над числом цены.
+   --up = warning (рост = негативно для пользователя; цены выросли).
+   --down = accent (падение = позитивно). */
+.delta-pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.delta-pill--up {
+    background: color-mix(in srgb, var(--warning, #f59e0b) 25%, transparent);
+    color: var(--warning, #f59e0b);
+}
+.delta-pill--down {
+    background: color-mix(in srgb, var(--accent) 25%, transparent);
+    color: var(--accent);
+}
+/* Fallback для браузеров без color-mix (Safari < 16.2 / старые мобильные).
+   Безопасные сплошные цвета — потеря «прозрачного фона» не критична. */
+@supports not (background: color-mix(in srgb, red 50%, transparent)) {
+    .delta-pill--up   { background: rgba(245, 158, 11, 0.18); }
+    .delta-pill--down { background: rgba(38, 212, 154, 0.18); }
+}
+/* PATCH 2.7.3 hotfix-3: облегчённая версия delta-pill для inline-цен в
+   provider-price-summary. В этой панели 5-7 пиллов рядом с ценами доминировали
+   визуально (золотые pill'ы конкурировали с самими ценами как первичной
+   информацией). Scoped override снимает background и понижает font-weight —
+   delta остаётся видимой и цветной (стрелка + знак + %), но не перетягивает
+   фокус. В модалках (providerAnalytics, scenarioComparison, deltaHistory)
+   pill-style с фоном сохраняется как контрастный бейдж в плотных таблицах. */
+.provider-price-summary .delta-pill {
+    padding: 0;
+    background: none !important;
+    font-size: 0.72rem;
+    font-weight: 500;
+}
+/* PATCH 2.4.25 (Stage 7.X): подсветка самого дорогого ЭК в категории.
+   Применяется JS-кондом в renderProviderPriceSummary при rows.length>1.
+   var(--accent) автоматически адаптируется к dark/light темам. Оба
+   child-span'а (name + value) красятся в accent, чтобы пара «лейбл-цена»
+   читалась как одна выделенная строка — без дробления по полу-строке. */
+.provider-price-row.is-top-expensive .provider-price-row-name,
+.provider-price-row.is-top-expensive .provider-price-row-value {
+    color: var(--accent);
+    font-weight: 600;
+}
+@media (max-width: 720px) {
+    .provider-price-summary {
+        font-size: 0.78rem;
+    }
+    .provider-price-summary-header {
+        padding: 6px 8px;
+    }
+    /* На мобиле строка top-3 переносится — отключаем nowrap, пользователь
+       видит сводку столбиком. */
+    .provider-price-summary-line {
+        white-space: normal;
+        text-overflow: clip;
+    }
+    .provider-price-summary-body {
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+        padding: 4px 8px 8px;
+    }
+    /* PATCH 2.4.26: на узких экранах dense-категории collapse в 1 col
+       (читаемость > компактность). */
+    .provider-price-category-list-dense {
+        column-count: 1;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .provider-price-summary-header,
+    .provider-price-summary-chevron {
+        transition: none;
+    }
+}
+
+/* ---------- Stage 8.2: «Обновить прайс» блок под селектом провайдера ---------- */
+.provider-update-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-top: 6px;
+    /* Stage 10.2: для glow-animation overlay'а — относительное позиционирование. */
+    position: relative;
+    border-radius: var(--radius-sm);
+    transition: background-color var(--t-base, 220ms);
+}
+/* Stage 10.2: pulse-glow подтверждение успешного обновления.
+   Задаётся в renderProviderUpdateRow, когда status='success'. Анимация
+   проигрывается один раз при первом render'е status='success'; при
+   prefers-reduced-motion — отключена (см. base.css правило). */
+.provider-update-row--just-updated {
+    animation: providerJustUpdatedGlow 1500ms ease-out 1 both;
+}
+@keyframes providerJustUpdatedGlow {
+    0%   { box-shadow: 0 0 0 0 var(--accent-faint, rgba(56, 211, 159, 0.45)); }
+    35%  { box-shadow: 0 0 0 6px var(--accent-faint, rgba(56, 211, 159, 0.30)); }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+/* Stage 10.2: суффикс «N мин назад» рядом с label rollback-кнопки. */
+.provider-rollback-btn-ago {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 400;
+    margin-left: 2px;
+}
+/* Stage 10.3: кнопка «История» — открывает DeltaHistoryPanel модалку. */
+.provider-history-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background-color var(--t-fast, 120ms), color var(--t-fast, 120ms);
+    min-height: var(--touch-target);
+}
+.provider-history-btn:hover {
+    background: var(--bg-hover, rgba(255,255,255,.04));
+    color: var(--text);
+    border-color: var(--text-muted);
+}
+.provider-history-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Stage 10.3: DeltaHistoryPanel модалка. */
+.delta-history-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+.delta-history-hint {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 0 0 var(--space-2) 0;
+}
+.delta-history-row {
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--bg-elevated);
+}
+.delta-history-row--current {
+    border-color: var(--accent);
+    background: var(--bg-card);
+}
+.delta-history-row-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+.delta-history-row-version {
+    font-weight: 600;
+    color: var(--text);
+}
+.delta-history-row-time {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+.delta-history-row-time-current {
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+.delta-history-row-summary {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+.delta-history-row-summary-stat {
+    font-variant-numeric: tabular-nums;
+}
+.delta-history-row-top {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+.delta-history-row-rollback {
+    align-self: flex-start;
+    margin-top: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+.delta-history-empty {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: var(--space-4);
+    text-align: center;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+}
+
+/* Stage 14.4 (PATCH 2.7.2): multi-provider accordion внутри модалки истории.
+   Каждый провайдер с историей — отдельный раскрываемый блок. */
+.delta-history-accordion-row {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-2);
+    background: var(--bg-card);
+    overflow: hidden;
+}
+
+.delta-history-accordion-row--expanded {
+    border-color: var(--accent);
+}
+
+.delta-history-accordion-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 0.95rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background 150ms ease;
+}
+
+.delta-history-accordion-toggle:hover {
+    background: var(--bg-elevated);
+}
+
+.delta-history-accordion-toggle:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.delta-history-accordion-toggle--expanded {
+    background: var(--bg-elevated);
+}
+
+.delta-history-accordion-label {
+    font-weight: 600;
+    flex: 1;
+}
+
+.delta-history-accordion-counter {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.delta-history-accordion-body {
+    padding: var(--space-2) var(--space-3) var(--space-3);
+    border-top: 1px solid var(--border);
+    animation: delta-accordion-expand 200ms ease;
+}
+
+@keyframes delta-accordion-expand {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .delta-history-accordion-toggle { transition: none; }
+    .delta-history-accordion-body   { animation: none; }
+}
+
+/* Stage 14.5 (PATCH 2.7.3): Cross-Provider Scenario Comparison модалка.
+   Items × providers таблица для активного calc. */
+.scenario-cmp-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+.scenario-cmp-hint {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin: 0;
+}
+.scenario-cmp-filter {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+.scenario-cmp-filter-label {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-right: var(--space-2);
+}
+.scenario-cmp-filter-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.scenario-cmp-filter-item:hover {
+    border-color: var(--accent);
+    color: var(--text);
+}
+.scenario-cmp-filter-item.is-checked {
+    background: rgba(38, 212, 154, 0.12);
+    border-color: var(--accent);
+    color: var(--text);
+}
+.scenario-cmp-filter-item input[type="checkbox"] {
+    margin: 0;
+}
+.scenario-cmp-filter-current-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--bg-card);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scenario-cmp-filter-item { transition: none; }
+}
+
+.scenario-cmp-table-wrap {
+    /* Без overflow-* (CLAUDE.md ловушка): wide tables полагаются на body
+       horizontal scroll, sticky-thead там нет — этот wrap — обычный block. */
+}
+.scenario-cmp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+.scenario-cmp-table th,
+.scenario-cmp-table td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-light);
+    vertical-align: middle;
+}
+.scenario-cmp-table th {
+    color: var(--text-muted);
+    font-weight: 500;
+    user-select: none;
+    text-align: right;
+    white-space: nowrap;
+}
+.scenario-cmp-th-item {
+    text-align: left !important;
+    min-width: 180px;
+    max-width: 260px;
+}
+.scenario-cmp-th-provider {
+    min-width: 140px;
+}
+.scenario-cmp-th-provider.is-current {
+    color: var(--accent);
+}
+.scenario-cmp-th-provider > span {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0;
+    line-height: 1.15;
+}
+.scenario-cmp-th-provider-name {
+    font-weight: 600;
+    color: var(--text);
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.4px;
+}
+.scenario-cmp-th-provider.is-current .scenario-cmp-th-provider-name {
+    color: var(--accent);
+}
+.scenario-cmp-th-provider-unit {
+    font-size: 0.66rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: 0;
+    margin-top: 2px;
+}
+.scenario-cmp-td-item {
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 260px;
+}
+.scenario-cmp-td-item-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* td.scenario-cmp-td-cell — специфичность (0,0,2,1) обходит общее правило
+   `.scenario-cmp-table td { text-align: left }` (0,0,2,1) — побеждает по
+   позиции (это правило ниже в CSS, при равной специфичности победитель —
+   позже). */
+td.scenario-cmp-td-cell {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+td.scenario-cmp-td-cell.is-baseline {
+    background: rgba(38, 212, 154, 0.04);
+    border-left: 2px solid rgba(38, 212, 154, 0.5);
+}
+/* PATCH 2.7.3 hotfix: число — block-row, delta-pill под ним отдельной строкой
+   меньшим шрифтом. Раньше pill стоял справа от числа inline, что (а) занимал
+   ширину колонки, (б) визуально «оттягивал» число от правого края. */
+.scenario-cmp-num {
+    display: block;
+    text-align: right;
+}
+td.scenario-cmp-td-cell .delta-pill {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 0.7rem;
+    padding: 0 5px;
+}
+/* PATCH 2.7.3 hotfix: ИТОГО строка переехала в <thead> 2-й строкой и
+   sticky'ится при vertical scroll'е tbody. Тот же паттерн что в details-table
+   (12.U27): sticky на <td>, а не <tr> — Chrome не sticky'ит row.
+   Headers row натурально занимает ~49px (2-line: title + unit). Totals top: 50px
+   = ровно под shall-row, без gap'а через который просвечивал бы tbody.
+   z-index: headers=3, totals=2 — totals под headers если бы они одновременно
+   попали в одно место (страховка). */
+/* Sticky-row backgrounds: используем --bg-elevated (visible-distinct от
+   tbody --bg-card), чтобы при scroll'е через scroll-context (.modal-body)
+   tbody-row не «просвечивал» через sticky из-за того, что обе зоны
+   одного цвета. Box-shadow на bottom создаёт визуальное «отделение»
+   sticky thead от scrolling tbody. */
+.scenario-cmp-thead-row-headers th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--bg-elevated);
+    height: 50px;
+    box-sizing: border-box;
+    box-shadow: inset 0 -1px 0 var(--border);
+}
+.scenario-cmp-thead-row-totals td {
+    position: sticky;
+    top: 50px;
+    z-index: 2;
+    background: var(--bg-elevated);
+    border-top: 2px solid var(--border);
+    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+    padding-top: 10px;
+    font-weight: 600;
+}
+/* Baseline-выделение для sticky cells — layered gradient: top tint (полу-
+   прозрачный) ПОВЕРХ solid bg-elevated. Без layering полупрозрачный
+   accent-tint позволял tbody-row просвечивать через sticky thead при
+   scroll'е (PATCH 2.7.3 hotfix симптом). */
+.scenario-cmp-thead-row-totals td.scenario-cmp-td-cell-total.is-baseline {
+    background:
+        linear-gradient(rgba(38, 212, 154, 0.18), rgba(38, 212, 154, 0.18)),
+        var(--bg-elevated);
+}
+.scenario-cmp-thead-row-headers th.scenario-cmp-th-provider.is-current {
+    background:
+        linear-gradient(rgba(38, 212, 154, 0.12), rgba(38, 212, 154, 0.12)),
+        var(--bg-elevated);
+}
+.scenario-cmp-td-item-total {
+    text-align: left;
+    text-transform: uppercase;
+    font-size: 0.78rem;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+}
+td.scenario-cmp-td-cell-total {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    white-space: nowrap;
+}
+td.scenario-cmp-td-cell-total.is-baseline {
+    background: rgba(38, 212, 154, 0.06);
+    border-left: 2px solid rgba(38, 212, 154, 0.5);
+}
+.scenario-cmp-num-total {
+    display: block;
+    text-align: right;
+}
+td.scenario-cmp-td-cell-total .delta-pill {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 0.7rem;
+    padding: 0 5px;
+}
+.scenario-cmp-empty {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: var(--space-4);
+    text-align: center;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+}
+
+/* Stage 10.4: Cross-provider analytics модалка. */
+.provider-analytics-btn {
+    /* Лёгкий outline-вариант (chip-стиль) — третья кнопка в группе фит'ит
+       визуально как «вторичное действие», не перекрывает primary-кнопку
+       обновления. */
+    color: var(--accent);
+    border-color: var(--accent);
+    border-style: solid;
+}
+.provider-analytics-btn:hover {
+    background: var(--accent-faint, rgba(56,211,159,.08));
+    color: var(--text);
+}
+.analytics-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+.analytics-hint {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 0 0 var(--space-2) 0;
+}
+.analytics-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+.analytics-table th,
+.analytics-table td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-light);
+    vertical-align: middle;
+}
+.analytics-table th {
+    color: var(--text-muted);
+    font-weight: 500;
+    user-select: none;
+}
+.analytics-th-cat,
+.analytics-th-total {
+    cursor: pointer;
+    text-align: right;
+    white-space: nowrap;
+}
+/* PATCH 2.7.2 hotfix: display:flex на <th> ломал table-cell layout —
+   thead-row рендерился вертикальным стеком вместо горизонтального ряда.
+   Возвращаем дефолтный table-cell, label + sort-icon выравниваем через
+   inline-flex на дочерних span'ах. */
+.analytics-th-cat > span,
+.analytics-th-total > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    vertical-align: middle;
+}
+.analytics-th-cat .icon,
+.analytics-th-total .icon {
+    margin-left: 4px;
+    vertical-align: middle;
+}
+/* PATCH 2.7.3: 2-line header в каждой колонке — название категории сверху +
+   единица измерения снизу мелко (тот же паттерн, что в .col-stand details-table).
+   Без этого пользователь не понимал, что именно сравнивает (₽/vCPU vs ₽/ГБ vs
+   ₽/узел/год — разные единицы). */
+.analytics-th-cat > span,
+.analytics-th-total > span {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0;
+    line-height: 1.15;
+}
+.analytics-th-cat-name {
+    font-weight: 600;
+    color: var(--text);
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.4px;
+}
+.analytics-th-cat-unit {
+    font-size: 0.66rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: 0;
+    margin-top: 2px;
+    font-variant-numeric: normal;
+}
+.analytics-th-cat.is-sorted,
+.analytics-th-total.is-sorted {
+    color: var(--accent);
+}
+.analytics-th-check {
+    width: 36px;
+}
+.analytics-td-check {
+    width: 36px;
+}
+/* PATCH 2.7.3 hotfix: специфичность td.analytics-td-cat (0,0,2,1) обходит
+   общее `.analytics-table th, td { text-align: left }` (0,0,2,1) — побеждает
+   позднее в каскаде. Без `td.` префикса — `.analytics-td-cat { text-align:
+   right }` (0,0,1,0) проигрывает и числа выравниваются влево. То же что
+   PATCH 2.7.3 hotfix для `td.scenario-cmp-td-cell`. */
+td.analytics-td-cat {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.analytics-td-cat-num {
+    margin-right: 6px;
+}
+td.analytics-td-total {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.analytics-td-provider {
+    font-weight: 500;
+}
+.analytics-row--unchecked {
+    opacity: 0.55;
+}
+.analytics-bulk-update-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+.analytics-empty {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: var(--space-4);
+    text-align: center;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+}
+
+/* Stage 14.1 (PATCH 2.7.1): фильтр колонок аналитики. Pill-кнопки toggle. */
+.analytics-cat-filter {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    margin: var(--space-3) 0;
+}
+.analytics-cat-filter-label {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-right: var(--space-2);
+}
+.analytics-cat-toggle {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    /* Плавный переход «вкл/выкл» — единственный реальный animation в фильтре,
+       так как table-cells display:none не анимируются браузерами. */
+    transition: background var(--t-fast), color var(--t-fast),
+                border-color var(--t-fast), opacity var(--t-fast);
+    min-height: var(--touch-target);
+}
+.analytics-cat-toggle.is-active {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+@supports not (background: color-mix(in srgb, red 50%, transparent)) {
+    .analytics-cat-toggle.is-active { background: rgba(38, 212, 154, 0.18); }
+}
+.analytics-cat-toggle:not(.is-active) { opacity: 0.7; }
+.analytics-cat-toggle:hover { opacity: 1; }
+.analytics-cat-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .analytics-cat-toggle { transition: none; }
+}
+
+/* Stage 9 ext → Stage 17.2: группа кнопок управления прайсом провайдера в одну строку
+   (Загрузить JSON / Импорт CSV/JSON / Сравнить / Сравнить расчёт). Wrapping на узких экранах.
+   Кнопка «Обновить с сервера» удалена в Stage 17.2. */
+.provider-update-btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+.provider-update-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--t-fast, 120ms), border-color var(--t-fast, 120ms);
+    min-height: var(--touch-target);
+}
+/* Ghost-вариант для secondary действия (например, fetch для onprem).
+   Менее выраженный, но всё ещё clickable с явным dashed border. */
+.provider-update-btn.btn-ghost {
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+}
+.provider-update-btn.btn-ghost:hover:not(:disabled) {
+    background: var(--bg-hover, rgba(255,255,255,.04));
+    border-color: var(--text-muted);
+    color: var(--text);
+}
+.provider-update-btn:hover:not(:disabled) {
+    background: var(--bg-hover, rgba(255,255,255,.04));
+    border-color: var(--accent);
+}
+.provider-update-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.provider-update-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.provider-update-status {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+.provider-update-status--loading { color: var(--text-muted); }
+.provider-update-status--success { color: var(--accent); font-weight: 500; }
+.provider-update-status--error   { color: var(--danger, #ef4444); font-weight: 500; }
+/* Stage 11.2: «обновляется в другой вкладке» — нейтральный info-style. */
+.provider-update-status--cross-tab {
+    color: var(--accent);
+    font-style: italic;
+    font-weight: 500;
+}
+/* Stage 11.2: визуальная маркировка кнопки, заблокированной cross-tab'ом
+   (помимо disabled — отдельный класс на случай, если нужны гибкие стили). */
+.provider-update-btn.btn-disabled-cross-tab {
+    cursor: not-allowed;
+}
+
+/* Stage 8.3: блок «Пересчитать на новом прайсе» — появляется при isStale.
+   Layout: badge + кнопка в одну строку, на узких экранах wrap. */
+.provider-stale-block {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border-left: 3px solid var(--warning, #f59e0b);
+    width: 100%;
+}
+.provider-stale-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--warning, #f59e0b);
+    color: #1a1a1a;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.provider-stale-badge--fresh {
+    background: var(--accent);
+    color: #fff;
+}
+.provider-recalculate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: filter var(--t-fast, 120ms);
+    min-height: var(--touch-target);
+}
+.provider-recalculate-btn:hover:not(:disabled) {
+    filter: brightness(1.1);
+}
+.provider-recalculate-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.provider-recalculate-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--t-fast, 120ms), border-color var(--t-fast, 120ms);
+    min-height: var(--touch-target);
+}
+.provider-recalculate-all-btn:hover:not(:disabled) {
+    background: var(--bg-hover, rgba(255,255,255,.04));
+    border-color: var(--accent);
+}
+.provider-recalculate-all-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Stage 9.5: ghost-style для rollback (низкоприоритетная утилита, не должна
+   соревноваться с primary «Пересчитать»). */
+.provider-rollback-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--t-fast, 120ms), border-color var(--t-fast, 120ms), color var(--t-fast, 120ms);
+    min-height: var(--touch-target);
+}
+.provider-rollback-btn:hover:not(:disabled) {
+    background: var(--bg-hover, rgba(255,255,255,.04));
+    border-color: var(--text-muted);
+    color: var(--text);
+}
+.provider-rollback-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .provider-update-btn,
+    .provider-recalculate-btn,
+    .provider-recalculate-all-btn,
+    .provider-rollback-btn {
+        transition: none;
+    }
+}
+
+/* «i» рядом с label вопроса теперь использует общий .info-icon (см. components.css). */
+.field-label-text {
+    overflow-wrap: anywhere;
+    flex: 1;
+    min-width: 0;
+}
+
+/* 14.U2: Source-бейджи происхождения значения (Из профиля / Из масштаба / Вы изменили).
+   Палитра по типу источника. Видимы рядом с label вопроса, когда поле было
+   заполнено wizard'ом или поправлено вручную. Tooltip — расшифровка источника. */
+.field-source-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    line-height: 1.4;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border: 1px solid transparent;
+    cursor: help;
+}
+
+/* Профиль / Из мастера — зелёный (positive автозаполнение). */
+.field-source-badge--wizard,
+.field-source-badge--profile {
+    background: rgba(38, 212, 154, 0.14);
+    color: rgb(110, 231, 183);
+    border-color: rgba(38, 212, 154, 0.28);
+}
+[data-theme="light"] .field-source-badge--wizard,
+[data-theme="light"] .field-source-badge--profile {
+    background: rgba(5, 150, 105, 0.14);
+    color: rgb(4, 120, 87);
+    border-color: rgba(5, 150, 105, 0.32);
+}
+
+/* Из масштаба — синий (структурный driver). */
+.field-source-badge--scale {
+    background: rgba(96, 165, 250, 0.14);
+    color: rgb(147, 197, 253);
+    border-color: rgba(96, 165, 250, 0.28);
+}
+[data-theme="light"] .field-source-badge--scale {
+    background: rgba(37, 99, 235, 0.12);
+    color: rgb(29, 78, 216);
+    border-color: rgba(37, 99, 235, 0.30);
+}
+
+/* Из типа / географии / активности — фиолетовый (вторичные модификаторы). */
+.field-source-badge--type,
+.field-source-badge--geography,
+.field-source-badge--activity {
+    background: rgba(192, 132, 252, 0.14);
+    color: rgb(216, 180, 254);
+    border-color: rgba(192, 132, 252, 0.28);
+}
+[data-theme="light"] .field-source-badge--type,
+[data-theme="light"] .field-source-badge--geography,
+[data-theme="light"] .field-source-badge--activity {
+    background: rgba(126, 34, 206, 0.12);
+    color: rgb(107, 33, 168);
+    border-color: rgba(126, 34, 206, 0.30);
+}
+
+/* Производное — нейтральный slate (рассчитано из других ответов). */
+.field-source-badge--derived {
+    background: rgba(148, 163, 184, 0.16);
+    color: rgb(203, 213, 225);
+    border-color: rgba(148, 163, 184, 0.28);
+}
+[data-theme="light"] .field-source-badge--derived {
+    background: rgba(71, 85, 105, 0.10);
+    color: rgb(51, 65, 85);
+    border-color: rgba(71, 85, 105, 0.28);
+}
+
+/* Из SLA — янтарный (compliance-cousin, но soft). */
+.field-source-badge--sla {
+    background: rgba(251, 191, 36, 0.14);
+    color: rgb(252, 211, 77);
+    border-color: rgba(251, 191, 36, 0.28);
+}
+[data-theme="light"] .field-source-badge--sla {
+    background: rgba(217, 119, 6, 0.14);
+    color: rgb(146, 64, 14);
+    border-color: rgba(217, 119, 6, 0.32);
+}
+
+/* Sprint 3.0 Stage 2: AI-default — фиолетовый бейдж, парирует с другими источниками.
+   Появляется на полях, prefilled при ai_used=true в Quick Start. Manual override
+   перезатирает .--manual через стандартный setAnswer. */
+.field-source-badge--ai-default {
+    background: rgba(168, 85, 247, 0.16);
+    color: rgb(216, 180, 254);
+    border-color: rgba(168, 85, 247, 0.32);
+}
+[data-theme="light"] .field-source-badge--ai-default {
+    background: rgba(126, 34, 206, 0.10);
+    color: rgb(107, 33, 168);
+    border-color: rgba(126, 34, 206, 0.32);
+}
+
+/* Compliance — красный (продиктовано требованиями, не optional). */
+.field-source-badge--compliance {
+    background: rgba(248, 113, 113, 0.14);
+    color: rgb(252, 165, 165);
+    border-color: rgba(248, 113, 113, 0.28);
+}
+[data-theme="light"] .field-source-badge--compliance {
+    background: rgba(185, 28, 28, 0.10);
+    color: rgb(153, 27, 27);
+    border-color: rgba(185, 28, 28, 0.32);
+}
+
+/* Вы изменили — outlined slate с приглушённым acccent.
+   Манually-правленые ВСЕГДА имеют приоритет над профилем и видимо отличаются. */
+.field-source-badge--manual {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--border-strong);
+    border-style: dashed;
+}
+[data-theme="light"] .field-source-badge--manual {
+    color: rgb(15, 23, 42);
+    border-color: rgba(120, 80, 30, 0.40);
+}
+
+.field-unknown .input,
+.field-unknown select,
+.input-unknown {
+    font-style: italic;
+    color: var(--text-muted);
+    background: var(--bg-input);
+}
+.field-unknown .input::placeholder,
+.input-unknown::placeholder {
+    color: var(--text-dim);
+    font-style: italic;
+}
+
+/* Дополнительные подсказки под полем */
+.field-recommendation,
+.field-impact {
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+    display: inline-flex;
+    gap: 4px;
+    align-items: flex-start;
+}
+.field-recommendation .field-meta-icon,
+.field-impact .field-meta-icon {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+/* Inline-ошибка валидации числового поля.
+ * Визуальный стиль .input-invalid и .input[aria-invalid="true"] дублируется
+ * в components.css — там же добавлены focus-state'ы. Здесь только сообщение. */
+.field-inline-error {
+    color: var(--danger);
+    font-size: 0.74rem;
+    line-height: 1.3;
+    margin-top: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 12.U26 Phase 2: sticky-нижняя панель.
+ * Прилипает к низу viewport'а при скролле — кнопки «Печать (PDF)» и «Сбросить ответы»
+ * всегда под рукой, не нужно мотать к концу длинного опросника.
+ * margin: 0 -28px компенсирует горизонтальный padding .questionnaire-section,
+ * чтобы фон футера тянулся к краям секции (визуально «отделяет» CTA-зону).
+ * ВАЖНО: sticky работает потому, что вертикальный скролл идёт у <body> /
+ * <html> (после PATCH 2.4.31 body не имеет overflow-x: hidden — sticky
+ * анкорится к viewport-у); .tab-pane имеет contain:layout, но это не
+ * блокирует sticky (containment не отключает sticky positioning). */
+.questionnaire-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    background: var(--bg-panel);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border);
+    margin: var(--space-6) 0 0;
+    padding: var(--space-4) var(--space-6);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+}
+/* @supports фолбэк (UI-ревью 2026-05-05): без backdrop-filter footer теряет
+   blur-эффект, фон bg-panel остаётся непрозрачным — это и есть фолбэк
+   (правило не меняется), но добавляем явное указание для семантической
+   ясности и автоматического теста наличия @supports. */
+@supports not (backdrop-filter: blur(1px)) {
+    .questionnaire-footer {
+        background: var(--bg-panel);
+    }
+}
+
+/* === Формы редактирования (модалки) === */
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+}
+
+.form-grid-question {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.form-row-wide { grid-column: 1 / -1; }
+
+.form-errors {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    padding: 12px 16px;
+    background: rgba(255, 92, 122, 0.08);
+    border: 1px solid var(--danger);
+    border-radius: var(--radius);
+    color: var(--danger);
+    font-size: 0.85rem;
+}
+.form-errors-title { font-weight: 600; margin-bottom: 4px; }
+.form-errors ul { margin: 0; padding-left: 18px; }
+.form-errors code {
+    background: rgba(255, 92, 122, 0.15);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+/* Sub-табы (внутри модалок ЭК) */
+.sub-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+}
+.sub-tab {
+    padding: 8px 14px;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    transition: color var(--t-fast), border-color var(--t-fast);
+}
+.sub-tab:hover { color: var(--text); }
+.sub-tab-active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+/* Формулы */
+.formulas-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.formulas-grid-hint {
+    background: var(--bg-elevated);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    border-left: 3px solid var(--accent);
+}
+.formula-row {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 12px;
+    align-items: start;
+}
+.formula-row-na {
+    opacity: 0.5;
+}
+.formula-row-label {
+    font-weight: 600;
+    color: var(--text);
+    padding-top: 10px;
+}
+.formula-row-na-mark {
+    display: block;
+    font-weight: 400;
+    font-size: 0.76rem;
+    color: var(--text-muted);
+}
+.formula-input {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+
+.formula-lint {
+    font-size: 0.78rem;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    margin-top: 4px;
+    font-family: var(--font-mono);
+}
+.formula-lint-ok    { color: var(--success); }
+.formula-lint-warn  { color: var(--warning); background: var(--warning-faint); }
+.formula-lint-error { color: var(--danger); background: var(--danger-faint); }
+
+.help-edit textarea {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+
+/* Editor of options */
+.options-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.option-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr 36px;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Stage VAT-1 Phase 5: бейдж режима НДС + кнопки переключения + multi-period
+   warning. Все цвета через theme tokens — работает в light/dark одинаково. */
+.vat-mode-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+.vat-mode-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-size: var(--font-sm);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+.vat-mode-badge-auto {
+    color: var(--accent);
+    background: var(--accent-faint);
+    border-color: rgba(38, 212, 154, 0.30);
+}
+.vat-mode-badge-manual {
+    color: var(--text);
+    background: var(--bg-elevated);
+    border-color: var(--border);
+}
+.vat-mode-badge-frozen {
+    color: var(--warning);
+    background: var(--warning-faint);
+    border-color: rgba(251, 191, 36, 0.30);
+}
+.vat-mode-actions {
+    display: inline-flex;
+    gap: var(--space-1);
+}
+.vat-mode-action {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-xs);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+.vat-mode-action:hover {
+    color: var(--text);
+    border-color: var(--text-muted);
+}
+.vat-mode-action:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.vat-mode-action-active {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-faint);
+}
+@media (pointer: coarse), (max-width: 720px) {
+    .vat-mode-action {
+        min-height: var(--touch-target);
+        padding-left: var(--space-3);
+        padding-right: var(--space-3);
+    }
+}
+
+.vat-multiperiod-warning {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(251, 191, 36, 0.30);
+    background: var(--warning-faint);
+    color: var(--warning);
+    font-size: var(--font-sm);
+    line-height: 1.4;
+}
+.vat-multiperiod-warning-text { color: inherit; }
+
+/* Stage VAT-2 Phase 5: VAT policy choice modal — 3 кнопки без default'а. */
+.vat-policy-choice-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+}
+.vat-policy-choice-question {
+    margin: 0;
+    font-weight: 600;
+    font-size: var(--font-base);
+}
+.vat-policy-choice-hint {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    line-height: 1.4;
+}
+.vat-policy-choice-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+.vat-policy-choice-btn {
+    width: 100%;
+    text-align: left;
+    justify-content: flex-start;
+}
+
+/* Stage VAT-2 Phase 5: VAT-policy label в provider price summary. */
+.provider-price-vat-label {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    line-height: 1.4;
+}
+.provider-price-vat-label-line {
+    color: inherit;
+}
+.provider-price-vat-label-line + .provider-price-vat-label-line {
+    margin-top: var(--space-1);
+}
+.provider-price-vat-label-warning {
+    border-color: rgba(251, 191, 36, 0.30);
+    background: var(--warning-faint);
+    color: var(--warning);
+}
+.provider-price-vat-label-assumed {
+    border-color: rgba(251, 191, 36, 0.20);
+}

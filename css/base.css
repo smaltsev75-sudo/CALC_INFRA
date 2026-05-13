@@ -1,0 +1,629 @@
+/* ============================================================
+ * base.css — палитра, reset, типографика
+ *
+ * 2026-05-05 (UI-улучшения после ревью):
+ *   • @layer — явный порядок каскада: tokens → themes → reset → utilities.
+ *     Прочие CSS-файлы (layout/components/dashboard/forms/tables/comparison/
+ *     modals/sidebar) остаются неслоёными → имеют ВЫСШИЙ приоритет в каскаде
+ *     (по spec неслоёные правила выигрывают у слоёных). Так мы получаем
+ *     детерминированный порядок «темы перебивают токены, утилиты — после
+ *     компонентов», без риска регрессий в существующих стилях.
+ *   • clamp() — fluid typography для крупных размеров; на мобильных шрифт
+ *     не съезжает за минимум, на больших экранах не «улетает».
+ *   • Светлая тема: усилены границы, поверхности отделены контрастом,
+ *     адаптированы кастомные scrollbar/градиенты тела.
+ * ============================================================ */
+
+/* Порядок слоёв — позднее объявленный имеет ПРИОРИТЕТ среди слоёных правил.
+ * tokens (низший) → reset → themes (выше reset, чтобы темы перебивали body-фон)
+ * → utilities. Все НЕслоёные правила (компоненты, layout) имеют МАКСИМАЛЬНЫЙ
+ * приоритет — выше любой layer. Поэтому component-specific theme overrides
+ * (например, [data-theme="light"] .app-topbar) живут ВНЕ @layer themes —
+ * иначе они проигрывают неслоёному `.app-topbar` в layout.css. */
+@layer tokens, reset, themes, utilities;
+
+@layer tokens {
+
+:root {
+    /* Фоны (Clean & Modern B2B: slate/gray-палитра, мягкая глубина).
+     * Ступени bg-main → bg-panel → bg-card → bg-elevated делают depth-stack
+     * читаемым: фон тёмный, поверх него карточка чуть светлее, элементы
+     * внутри карточки ещё светлее. Phase 1 (12.U26). */
+    --bg-main:        #0f172a;          /* slate-900 — общий фон страницы */
+    --bg-panel:       #1e293b;          /* slate-800 — sidebar/topbar */
+    --bg-card:        #243044;          /* slate-700-mid — поверхность карточек */
+    --bg-elevated:    #334155;          /* slate-600 — chips/buttons-ghost внутри карточки */
+    --bg-input:       #0f172a;          /* slate-900 — input темнее карточки (контраст) */
+    --bg-table-row:   #243044;          /* = bg-card, согласовано */
+    --bg-table-row-alt: #2a3754;        /* чуть светлее для зебры */
+
+    /* Границы — почти невидимые, чтобы карточки держались на фоне без рамок */
+    --border:         rgba(255, 255, 255, 0.06);
+    --border-light:   rgba(255, 255, 255, 0.10);
+    --border-strong:  rgba(255, 255, 255, 0.16);
+
+    /* Primary accent — Hynex green */
+    --accent:         #26d49a;
+    --accent-hover:   #1fbd87;
+    --accent-glow:    rgba(38, 212, 154, 0.35);
+    --accent-faint:   rgba(38, 212, 154, 0.10);
+
+    /* Secondary accent — violet (для charts и второй цвет gradient) */
+    --accent-2:       #a78bfa;
+    --accent-2-glow:  rgba(167, 139, 250, 0.30);
+
+    /* Семантика — success чуть темнее primary, чтобы не сливаться */
+    --success:        #10b981;
+    --success-faint:  rgba(16, 185, 129, 0.10);
+    --warning:        #fbbf24;
+    --warning-faint:  rgba(251, 191, 36, 0.10);
+    --danger:         #f87171;
+    --danger-glow:    rgba(248, 113, 113, 0.35);
+    --danger-faint:   rgba(248, 113, 113, 0.10);
+
+    /* Текст — slate-палитра, контраст с bg-card #243044 проверен ≥4.5:1 (12.U26).
+       12.U31 (E.1): --text-dim поднят с #64748b (4.0:1, WCAG AA fail) до #8a99ad
+       (≥4.7:1). Использование: даты/мета/hints в `.cmp-calc-currency`,
+       `.vat-breakdown`, `.category-count`, `.details-section-title sub-info`. */
+    --text:           #f1f5f9;          /* slate-100 — основной текст, ~13:1 */
+    --text-muted:     #94a3b8;          /* slate-400 — лейблы, подписи, ~7.0:1 */
+    --text-dim:       #8a99ad;          /* slate-450ish — дата/мета, ~4.7:1 (WCAG AA) */
+    --text-inverse:   #0f172a;          /* slate-900 — для контента поверх accent */
+
+    /* Категории — приглушённая палитра, контрастная между собой */
+    --cat-hw:         #06b6d4;          /* cyan — аппаратные ресурсы */
+    --cat-license:    #a78bfa;          /* violet — лицензии */
+    --cat-traffic:    #fbbf24;          /* amber — трафик */
+    --cat-services:   #fb923c;          /* orange — услуги */
+    --cat-reserves:   #94a3b8;          /* slate — резервы */
+    --cat-security:   #ec4899;          /* pink — безопасность */
+    --cat-ai:         #84cc16;          /* lime — AI / LLM */
+
+    /* Цвета акцентов карточек стендов (border-left + glow) */
+    --stand-dev:      #26d49a;          /* green */
+    --stand-ift:      #a78bfa;          /* violet */
+    --stand-psi:      #fbbf24;          /* amber */
+    --stand-prod:     #06b6d4;          /* cyan */
+    --stand-load:     #fb923c;          /* orange */
+
+    /* Touch-targets — WCAG 2.5.5 минимум 44×44 для пальца */
+    --touch-target:     44px;
+
+    /* Spacing-токены (4-px шкала). Использовать в новых правилах вместо магических px. */
+    --space-1:  4px;
+    --space-2:  8px;
+    --space-3:  12px;
+    --space-4:  16px;
+    --space-5:  20px;
+    --space-6:  24px;
+    --space-8:  32px;
+    --space-10: 40px;
+
+    /* Font-size токены (modular scale). Использовать в новых правилах вместо магических rem.
+     * Крупные размеры (lg/xl/2xl) используют clamp() — fluid typography:
+     *   - на узком viewport (≤480px) шрифт не уезжает в нечитаемый минимум;
+     *   - на широком (≥1280px) шрифт не «улетает» в гигантский размер;
+     *   - между значениями плавный интерполированный рост через 1vw.
+     * Формула: clamp(MIN, FALLBACK + 0.5vw, MAX). Базовое значение совпадает
+     * с прежним rem на reference-viewport ~1024px. */
+    --font-xs:    0.75rem;
+    --font-sm:    0.875rem;
+    --font-base:  1rem;
+    --font-md:    1.125rem;
+    --font-lg:    clamp(1.15rem, 1.05rem + 0.4vw, 1.3rem);
+    --font-xl:    clamp(1.35rem, 1.2rem  + 0.6vw, 1.6rem);
+    --font-2xl:   clamp(1.65rem, 1.4rem  + 1vw,   2.1rem);
+
+    /* Размеры layout */
+    --header-height:    72px;     /* высота шапки (визуальная, устаревшая) */
+    --header-pad-top:   16px;
+    --header-pad-bot:   12px;
+    --tabs-top:         calc(var(--header-pad-top) + var(--header-height) + var(--header-pad-bot));
+    /* 12.U30-fix: реальная высота нового sticky `.app-topbar` (padding 14+14
+       + button-row ~32px). Используется sticky-thead/totals в больших таблицах,
+       чтобы они прилипали ПОД topbar, а не закрывались им (z-index topbar=40 > 3).
+       12.U31 (E.1): поднято 60→64px — Playwright измерил реальную высоту 64.4px;
+       раньше под topbar просвечивал 4.4px-гэп при scrolling (под cat-row). */
+    --topbar-height:    64px;
+
+    /* Размеры */
+    --radius-sm: 6px;
+    --radius:    10px;
+    --radius-lg: 14px;
+    --shadow-sm: 0 2px 6px rgba(0,0,0,0.25);
+    --shadow:    0 4px 18px rgba(0,0,0,0.35);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
+
+    /* Шрифты */
+    --font-sans: 'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
+
+    /* Переходы */
+    --t-fast: 120ms ease;
+    --t-base: 200ms ease;
+    --t-slow: 400ms ease;
+}
+
+}  /* end @layer tokens */
+
+/* ============================================================
+ * 12.U33 — Светлая тема + sand-итерация 2026-05-05.
+ * 13.U12 — Warmer-latte рефакторинг 2026-05-08 (variant B).
+ *
+ * Активируется атрибутом `[data-theme="light"]` на <html>. Управляется
+ * через state.ui.theme + persist в localStorage (STORAGE_KEYS.THEME).
+ * Persist гарантирует, что F5 не сбрасывает выбор пользователя.
+ *
+ * ПАЛИТРА: warm latte — единая земляно-золотистая семья. Старая «sand»
+ * имела смешение: тёплый bg + холодные cat-* цвета (cyan/violet/lime/pink),
+ * что создавало «карнавальный» эффект на песочном фоне. Новая палитра
+ * harmonized: ВСЕ декоративные цвета (cat-*, stand-*, warning, danger) —
+ * исключительно warm/earth hue (gold/terracotta/sienna/olive/teal-muted),
+ * никаких чисто-холодных тонов на тёплом базе.
+ *
+ * Шкала фонов (компрессирована относительно итерации 3 — меньше «ступенек»):
+ *   bg-main (#ede1c2) → bg-panel (#f5e9cb) → bg-card (#faf2db)
+ *   bg-elevated (#e3d4ad)  — внутрикарточные блоки
+ *
+ * Требования к контрасту (WCAG 2.1 AA):
+ *   - --text (#2d2520) на --bg-card (#faf2db)        ~13:1 ✓
+ *   - --text-muted (#6b5e4a) на bg-card              ~5.8:1 ✓
+ *   - --text-dim (#806f56) на bg-card                ~4.7:1 ✓ (приподнят с #8a7a62 для нового тёплого bg)
+ *   - --accent (emerald-700 #047857) на bg-card      ~6:1  ✓
+ *   - --warning (#a96a1f) на bg-card                 ~4.6:1 ✓
+ *   - --danger (#a64030) на bg-card                  ~5.5:1 ✓
+ *
+ * Cat-* / stand-* теперь темо-зависимы: для тёмной темы оригинальные
+ * неоновые тона (cyan/violet/lime — они ярко работают на slate-фоне),
+ * для светлой — приглушённые warm-семьи. Каскад через [data-theme="light"]
+ * перекрывает базовые :root значения.
+ * ============================================================ */
+@layer themes {
+
+[data-theme="light"] {
+    /* ===== Bg-stack: компрессированная глубина в тёплой гамме =====
+     *
+     * Иерархия (от самого тёплого/тёмного к самому светлому):
+     *   bg-elevated — chips/cat-rows / blocks ВНУТРИ карточек (sand 200, тёмнее main)
+     *   bg-main     — основная страница (sand 90, опорный тон)
+     *   bg-panel    — sidebar/topbar (cream 60, чуть светлее main)
+     *   bg-card     — карточки и таблицы (latte, самый светлый, но не белый)
+     *
+     * Все 4 уровня в одной hue-семье (~40-44° golden), разница в светлоте
+     * ~3-5% между соседними слоями — depth ощущается, но не «ступеньками». */
+    --bg-main:        #ede1c2;          /* warm sand — тёплый фон страницы */
+    --bg-panel:       #f5e9cb;          /* cream — sidebar/topbar */
+    --bg-card:        #faf2db;          /* latte — карточки и таблицы */
+    --bg-elevated:    #e3d4ad;          /* deeper sand — внутрикарточные блоки */
+    --bg-input:       #faf2db;
+    --bg-table-row:   #faf2db;
+    --bg-table-row-alt: #f3e8c8;        /* лёгкая зебра */
+
+    /* Границы — тёплый коричневый undertone rgba(120, 80, 30, ...). Альфы
+     * приглушены относительно sand-итерации (0.14→0.12) — на компрессированном
+     * bg-stack карточки уже отделяются shadow + светлотой, грубая контурная
+     * линия больше не нужна. 0.12 — необходимый минимум читабельности на
+     * тёплом фоне (закрепляет линтер light-theme-readability.test.js). */
+    --border:         rgba(120, 80, 30, 0.12);
+    --border-light:   rgba(120, 80, 30, 0.18);
+    --border-strong:  rgba(120, 80, 30, 0.28);
+
+    /* Primary accent — emerald-700 (#047857) на bg-card даёт ~6:1
+       (выше WCAG AA для normal text). Glow приглушён с 0.35→0.25 — был
+       слишком ярким зелёным halo на тёплом фоне. */
+    --accent:         #047857;
+    --accent-hover:   #065f46;          /* emerald-800, глубже на hover */
+    --accent-glow:    rgba(4, 120, 87, 0.25);
+    --accent-faint:   rgba(4, 120, 87, 0.10);
+
+    --accent-2:       #6d28d9;          /* violet-700 для редких вторичных акцентов */
+    --accent-2-glow:  rgba(109, 40, 217, 0.25);
+
+    /* Семантика в землянно-warm семье — никаких неон-amber/red,
+       которые конфликтовали с warm bg. */
+    --success:        #047857;          /* emerald-700 */
+    --success-faint:  rgba(4, 120, 87, 0.10);
+    --warning:        #a96a1f;          /* burnt amber — гармоничнее старого #b45309 */
+    --warning-faint:  rgba(169, 106, 31, 0.12);
+    --danger:         #a64030;          /* deep rust — мягче чисто-red #b91c1c */
+    --danger-glow:    rgba(166, 64, 48, 0.28);
+    --danger-faint:   rgba(166, 64, 48, 0.10);
+
+    /* Текст — warm-tinted нейтрали. text-dim приподнят с #8a7a62 до #806f56
+       для AA на новом, чуть более тёплом bg-card #faf2db. */
+    --text:           #2d2520;
+    --text-muted:     #6b5e4a;
+    --text-dim:       #806f56;
+    --text-inverse:   #ffffff;          /* контент поверх accent */
+
+    /* Тени тёплые — rgba(120, 80, 30, ...). Первая alpha shadow-sm = 0.10 —
+       минимум depth-маркера для карточек, ниже — линтер ловит регрессию
+       (light-theme-readability.test.js: «карточка визуально отрывается»). */
+    --shadow-sm: 0 1px 2px rgba(120, 80, 30, 0.10), 0 1px 1px rgba(120, 80, 30, 0.06);
+    --shadow:    0 4px 12px rgba(120, 80, 30, 0.12), 0 2px 4px rgba(120, 80, 30, 0.06);
+    --shadow-lg: 0 12px 32px rgba(120, 80, 30, 0.18), 0 4px 8px rgba(120, 80, 30, 0.09);
+
+    /* ===== Категорийные цвета — warm/earth палитра для светлой темы =====
+     *
+     * В тёмной теме (:root) cat-* — неоновые cyan/violet/amber/orange/pink/lime,
+     * они ярко работают на slate-фоне. На warm-bg те же тона дают «карнавал».
+     * Здесь подменяем на единую земляную семью: gold / terracotta / sienna /
+     * olive / muted teal. Различимость сохраняется (7 разных hue), но без
+     * чисто-холодных тонов и без неон-saturation. */
+    --cat-hw:         #5b8a9a;          /* muted teal — единственный cool, anchor для палитры */
+    --cat-license:    #886c50;          /* warm brown — был violet */
+    --cat-traffic:    #c89c4b;          /* rich gold — был bright amber */
+    --cat-services:   #b56e4a;          /* terracotta — был orange */
+    --cat-reserves:   #7d6e58;          /* deep taupe — был cool slate */
+    --cat-security:   #9a4a4a;          /* rust red — был neon pink */
+    --cat-ai:         #6c8c4a;          /* olive green — был lime */
+
+    /* Стенды — те же hue-семьи, чуть глубже (для разделения иерархии
+       cat ↔ stand). Используются как top-strip акцент карточек стендов
+       и в segmented-сетке. */
+    --stand-dev:      #5b8d6e;          /* forest green */
+    --stand-ift:      #826b48;          /* sienna */
+    --stand-psi:      #c89c4b;          /* rich gold */
+    --stand-prod:     #5b8a9a;          /* deep teal */
+    --stand-load:     #b56e4a;          /* terracotta */
+}
+
+}  /* end @layer themes — только токены живут внутри слоя */
+
+/* ============================================================
+ * Component-specific theme overrides — НЕслоёные.
+ *
+ * Эти правила перебивают неслоёные базовые стили компонентов из
+ * layout/dashboard/components.css (которые сами не в @layer). По спеку CSS
+ * Cascade Level 5 неслоёные стили имеют ПРИОРИТЕТ над любым @layer, поэтому
+ * жить эти overrides должны ВНЕ @layer themes — иначе они теряют каскад
+ * против неслоёных правил компонентов.
+ * ============================================================ */
+
+/* Body-фон для светлой темы — корректируем radial-gradient.
+   В тёмной теме градиенты на rgba(38,212,154,0.04) видны как мягкое подсвечивание
+   углов; на светлом фоне (slate-100) ту же intensity 0.04 не видно вообще, но и
+   усиливать нельзя — иначе появляется «грязный» зелёный налёт. Поэтому в светлой
+   теме отключаем radial-gradients совсем — чистый flat slate-фон выглядит лучше. */
+[data-theme="light"] body {
+    background-image: none;
+}
+
+/* Sidebar в светлой теме — тонкая видимая граница справа (отделяет от main).
+   Это компенсация за отсутствие drop-shadow между sidebar и main-column. */
+[data-theme="light"] .app-sidebar {
+    border-right-color: var(--border-light);
+}
+
+/* Topbar в светлой теме — заменяем dark-fade-gradient на чистый bg-panel.
+   Существующее правило в layout.css использует hardcoded rgba(10,15,26,0.92) —
+   это тёмный hue, который на светлом фоне даёт грязное серое размытие. */
+[data-theme="light"] .app-topbar {
+    background: var(--bg-panel);
+    border-bottom-color: var(--border-light);
+}
+
+/* Hero-карточка дашборда: gradient bg-card→bg-elevated в тёмной теме делает
+   красивый depth-эффект, но в светлой #ffffff→#f1f5f9 слишком сильно убивает
+   читаемость (нижняя часть Hero сливается с фоном страницы). Заменяем на
+   чистый bg-card с акцентной верхней полоской — более чистый и плоский look. */
+[data-theme="light"] .dash-card-hero {
+    background: var(--bg-card);
+    box-shadow: var(--shadow);
+}
+
+/* dash-resources блок (ИТОГО ресурсов) в Hero: rgba(0,0,0,0.22) фон в светлой
+   теме выглядит грязно-серым; rgba(255,255,255,0.05) в стенд-карточках вообще
+   невидим на белом. Подменяем на bg-elevated. */
+[data-theme="light"] .dash-card-hero .dash-resources {
+    background: var(--bg-elevated);
+    border-color: var(--border-light);
+}
+[data-theme="light"] .dash-card-hero .dash-resource-row,
+[data-theme="light"] .dash-resource-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+}
+[data-theme="light"] .dash-resource-row:hover {
+    background: var(--bg-elevated);
+    border-color: var(--border-light);
+}
+
+/* dash-stand-card-icon: rgba(255,255,255,0.04) на белом → невидимый плейсхолдер. */
+[data-theme="light"] .dash-stand-card-icon {
+    background: var(--bg-elevated);
+    box-shadow: inset 0 0 0 1px var(--border);
+}
+
+/* Hero stacked-bar (CAPEX/OPEX): inset shadow на белом — невидим. Используем
+   тёплый коричневый rgba для гармонии с sand-палитрой. */
+[data-theme="light"] .dash-hero-cost-types-bar {
+    background: var(--bg-elevated);
+    box-shadow: inset 0 1px 2px rgba(61, 46, 21, 0.10);
+}
+
+/* Stand-card cats-bar: bg-input #ffffff на белой карточке — невидим. */
+[data-theme="light"] .dash-stand-card-cats-bar,
+[data-theme="light"] .dash-category-row-bar,
+[data-theme="light"] .dash-risk-row-bar {
+    background: var(--bg-elevated);
+}
+
+/* Period-switcher / stand-toggle hover: rgba(255,255,255,0.04) — на светлом
+   тоже не видно. */
+[data-theme="light"] .period-btn:hover:not(.period-btn-active),
+[data-theme="light"] .stand-toggle:hover:not([aria-pressed='true']) {
+    background: var(--bg-elevated);
+    color: var(--text);
+}
+
+/* Stand-toggle active в светлой теме: inset 1px shadow rgba(38,212,154,...) —
+   яркий зелёный hardcoded из тёмной палитры. В sand-теме используем
+   emerald-700 (соответствует --accent в светлой теме). */
+[data-theme="light"] .stand-toggle[aria-pressed='true'] {
+    box-shadow: inset 0 0 0 1px rgba(4, 120, 87, 0.40);
+}
+
+/* Disabled-стенд banner: rgba(251,191,36,0.30) в светлой переключаем на
+   amber-700 для согласованности с --warning. */
+[data-theme="light"] .dash-stand-card-excluded-banner {
+    border-color: rgba(180, 83, 9, 0.40);
+}
+
+/* Settings-formula-disabled, fade-rules — pixel-perfect те же значения,
+   но за счёт усиленных границ блок «Итоговый коэффициент» сразу читается. */
+
+/* Calc-card actions tray в светлой теме: bg-panel #f8fafc хорошо отделяет
+   tray от основной карточки (bg-card #ffffff). */
+
+/* Modal-overlay в светлой теме — чёрный rgba(5,10,24,0.78) выглядит ОК
+   (overlay должен быть тёмный для контраста с любой темой). */
+
+/* Стрелка select.input в светлой теме — fill #94a3b8 (slate-400) уже подходит
+   для светлой палитры (на белом read-able). Не трогаем. */
+
+/* Custom scrollbar в светлой теме: track bg-panel + thumb тёплый коричневый
+   rgba от #3d2e15 (вместо холодного slate). Гармонирует с sand-палитрой. */
+[data-theme="light"] ::-webkit-scrollbar-track { background: var(--bg-panel); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(61, 46, 21, 0.20); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* dash-stand-card-link:hover — иконка-стрелка наверху карточки. Базовый стиль
+   `rgba(255,255,255,0.06)` на песочной теме невидим. Заменяем на bg-elevated. */
+[data-theme="light"] .dash-stand-card-link:hover {
+    background: var(--bg-elevated);
+    color: var(--text);
+}
+
+/* .input:hover inset highlight — `rgba(255,255,255,0.04)` создаёт тонкий
+   светлый бордюр сверху input'а. На песочной теме это «холодный» осветлитель,
+   на тёплом paper-фоне выглядит инородно. Заменяем на тёплый тонкий тон. */
+[data-theme="light"] .input:hover {
+    box-shadow: inset 0 1px 0 rgba(61, 46, 21, 0.04);
+}
+
+/* .category-count / .items-cat-count — счётчики в шапках аккордеонов категорий.
+   На category-row (с фоном-pill) белый rgba(255,255,255,0.06) в светлой теме
+   почти невидим. Используем bg-card (paper) — pill читается как «вшитый» элемент
+   на цветной полоске категории. */
+[data-theme="light"] .category-count,
+[data-theme="light"] .items-cat-count {
+    background: var(--bg-card);
+}
+
+/* Плавный переход цвета/фона при переключении темы.
+   prefers-reduced-motion обнуляет ниже, так что accessibility ОК. */
+html, body, .app-topbar, .app-sidebar, .calc-card, .dash-card,
+.dash-stand-card, .modal, .modal-overlay,
+.input, .btn, .field, .chip, .cmp-cat-row, .category-row,
+.items-table-wrap, .details-table-wrap, .questions-table-wrap,
+.comparison-table-wrap, .questionnaire-section, .settings-panel {
+    transition: background-color var(--t-base), color var(--t-base),
+                border-color var(--t-base);
+}
+
+/* ===== Reset ===== */
+
+@layer reset {
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+body {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--bg-main);
+    background-image:
+        radial-gradient(at 0% 0%, rgba(38, 212, 154, 0.04) 0%, transparent 35%),
+        radial-gradient(at 100% 100%, rgba(167, 139, 250, 0.04) 0%, transparent 35%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* PATCH 2.4.31: убрано overflow-x: hidden. Дизайн-намерение по 12.U31
+       (см. tables.css:42) — широкие таблицы (Детализация с 16-17 колонками)
+       расширяются и горизонтальный scroll уходит на body. overflow-x: hidden
+       клипал этот scroll → правые колонки «РИСК ₽», «ИТОГО / ГОД» обрезались
+       без возможности до них доскроллить. Sticky-thead продолжает работать —
+       анкорится к viewport (initial containing block) когда у body нет scroll
+       container'а. */
+}
+
+/* ===== Иконки (line-SVG из icons.js) ===== */
+
+.icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 0;
+    vertical-align: middle;
+    color: currentColor;
+}
+.icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 24px;
+    max-height: 24px;
+}
+.icon-missing {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background: var(--danger-faint);
+    color: var(--danger);
+    border-radius: 50%;
+    text-align: center;
+    line-height: 1em;
+    font-size: 0.7em;
+    font-weight: bold;
+}
+
+button {
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: inherit;
+}
+
+input, textarea, select {
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+}
+
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+code, pre, .mono {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-track { background: var(--bg-panel); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* Скрытие нативных стрелок у number-input в Firefox */
+input[type=number] { -moz-appearance: textfield; }
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Фокус */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+/* Skip-link (WCAG 2.4.1 Bypass Blocks) — спрятан до фокуса.
+ * Tab по странице сразу вызывает focus на этой ссылке, она появляется
+ * сверху-слева и позволяет перейти к main-content, минуя sidebar. */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--accent);
+    color: var(--text-inverse);
+    padding: var(--space-2) var(--space-4);
+    border-radius: 0 0 var(--radius-sm) 0;
+    font-weight: 600;
+    z-index: 1000;
+    transition: top var(--t-fast);
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+    top: 0;
+    outline: 2px solid var(--text-inverse);
+    outline-offset: -4px;
+}
+
+}  /* end @layer reset */
+
+/* Утилиты */
+@layer utilities {
+
+.hidden { display: none !important; }
+.mono { font-family: var(--font-mono); }
+.text-muted { color: var(--text-muted); }
+.text-dim { color: var(--text-dim); }
+
+}  /* end @layer utilities */
+
+/* Fallback-сообщение при открытии через file:// (ES-модуль не загрузился) */
+.boot-fallback {
+    max-width: 640px;
+    margin: 80px auto;
+    padding: 32px 36px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    line-height: 1.6;
+}
+.boot-fallback-title {
+    color: var(--danger);
+    font-size: 1.4rem;
+    margin: 0 0 16px;
+}
+.boot-fallback p { margin: 8px 0; color: var(--text); }
+.boot-fallback ul { margin: 8px 0; padding-left: 22px; }
+.boot-fallback li { margin: 4px 0; }
+.boot-fallback code {
+    background: var(--bg-input);
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    font-family: var(--font-mono);
+}
+.boot-fallback pre {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    margin: 8px 0;
+}
+.boot-fallback pre code { background: none; padding: 0; }
+.boot-fallback a { color: var(--accent); text-decoration: underline; }
+.boot-fallback-hint {
+    margin-top: 16px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+/* ============================================================
+ * WCAG 2.3.3 Animation from Interactions
+ * Уважаем системную настройку «уменьшить анимации» (OS-level
+ * accessibility): обнуляем длительности и итерации анимаций,
+ * чтобы пользователи с вестибулярными расстройствами не получали
+ * движения интерфейса.
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

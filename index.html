@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <!--
+        Content Security Policy (Этап 11.3.1, ужесточение в 12.U32 #3).
+        - default-src 'self'         — всё подгружается только с того же origin.
+        - script-src 'self'          — никаких inline-скриптов и eval (ES-модули + DSL-парсер вместо new Function).
+        - style-src 'self' 'unsafe-inline' — необходим для динамических inline-стилей:
+            (a) progress-bar `width: ${pct}%` (dashboard.js, questionnaire.js);
+            (b) категорийные цвета `background: CATEGORY_COLORS[cat]` (dashboard/details/items/comparison);
+            (c) grid-layout `gridTemplateColumns: repeat(${cols}, ...)` для SUBGROUP_LAYOUTS.
+            На статической HTML-странице без сервера CSP nonce невозможен — `'unsafe-inline'`
+            это осознанный архитектурный компромисс. Защита от user-input в `style:` — через
+            архитектурный линтер tests/unit/architecture/style-no-user-input.test.js
+            (12.U32 #3): `props.style` запрещён для значений из `Q.*`/`answers.*`/search.
+            Линтер гарантирует, что style: всегда из доверенного кода (CATEGORY_COLORS, pct).
+        - img-src 'self' data:       — favicon встроен как data:image/svg+xml.
+        - connect-src 'self'         — fetch('UserManual.md') в helpController (PATCH 2.7.2).
+        - object-src 'none'          — запрет <object>/<embed>.
+        - base-uri 'self'            — фикс <base>.
+        - form-action 'none'         — приложение не использует <form action="...">.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор инфраструктуры и стоимости</title>
+    <meta name="description" content="Локальный калькулятор инфраструктуры и стоимости программных продуктов по 5 стендам (DEV, ИФТ, ПСИ, ПРОМ, Нагрузка). Работает offline.">
+    <meta name="theme-color" content="#0a0f1a">
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230a0f1a'/%3E%3Cpath d='M30 70V30h40M30 50h30' stroke='%2326d49a' stroke-width='6' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='75' cy='65' r='10' fill='%23a78bfa'/%3E%3C/svg%3E">
+
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/sidebar.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/tables.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/forms.css">
+    <link rel="stylesheet" href="css/modals.css">
+    <link rel="stylesheet" href="css/comparison.css">
+    <link rel="stylesheet" href="css/print.css" media="print">
+</head>
+<body>
+    <!--
+        Корневой контейнер.
+        Содержимое по умолчанию — сообщение «запустите через HTTP-сервер».
+        Если открыть страницу через `file://`, ES-модуль `js/app.js` не загрузится
+        (политика CORS), и пользователь увидит инструкцию ниже.
+        При запуске через локальный HTTP-сервер `mountUi()` заменит этот блок
+        на интерфейс приложения.
+    -->
+    <div id="app">
+        <div class="boot-fallback">
+            <h1 class="boot-fallback-title">Запустите через локальный HTTP-сервер</h1>
+            <p>Приложение использует ES-модули, которые не работают через <code>file://</code>.</p>
+            <p>Запустите один из скриптов:</p>
+            <ul>
+                <li><strong>Windows:</strong> двойной клик по <code>start-server.bat</code></li>
+                <li><strong>Linux / macOS:</strong> <code>bash start-server.sh</code></li>
+            </ul>
+            <p>Или вручную:</p>
+            <pre><code>python -m http.server 8000
+# или
+npx http-server -p 8000</code></pre>
+            <p>Затем откройте <a href="http://localhost:8000">http://localhost:8000</a>.</p>
+            <p class="boot-fallback-hint">Подробнее — в файле <code>HOW_TO_START.md</code>.</p>
+        </div>
+    </div>
+
+    <!-- Контейнер для модальных окон -->
+    <div id="app-modals"></div>
+
+    <!-- ES-модули. Запускать через локальный HTTP-сервер (см. start-server.bat / start-server.sh). -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

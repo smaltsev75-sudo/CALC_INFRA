@@ -1,0 +1,981 @@
+/* ============================================================
+ * components.css — кнопки, поля, карточки, чипы, переключатели
+ * ============================================================ */
+
+/* ===== Кнопки ===== */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    font-size: 0.9rem;
+    line-height: 1;
+    transition: background var(--t-fast), color var(--t-fast),
+                border-color var(--t-fast), box-shadow var(--t-fast),
+                transform var(--t-fast);
+    border: 1px solid transparent;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.btn:disabled,
+.btn[disabled] {
+    /* Stage 4.15: 0.45 → 0.4 для единого disabled-уровня по проекту. */
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Loading-state: показываем CSS-spinner и блокируем повторный клик.
+ * Применяется через js/ui/dom.js → setButtonLoading(btn, true). */
+.btn-loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+}
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    /* Цвет spinner'а наследуется от исходного цвета кнопки (transparent на тексте, но виден на border). */
+    color: var(--accent);
+    animation: btn-spin 0.7s linear infinite;
+}
+.btn-primary.btn-loading::after { color: var(--text-inverse); }
+.btn-danger.btn-loading::after  { color: white; }
+@keyframes btn-spin {
+    to { transform: rotate(360deg); }
+}
+
+.btn:hover:not(:disabled) { transform: translateY(-1px); }
+.btn:active:not(:disabled) { transform: translateY(0); }
+
+.btn-primary {
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+    color: var(--text-inverse);
+    box-shadow: var(--shadow-sm);
+}
+.btn-primary:hover:not(:disabled) {
+    box-shadow: var(--shadow);
+}
+
+.btn-ghost {
+    background: var(--bg-elevated);
+    color: var(--text);
+    border-color: var(--border);
+}
+.btn-ghost:hover:not(:disabled) {
+    background: var(--bg-card);
+    border-color: var(--border-light);
+}
+
+.btn-danger {
+    background: linear-gradient(180deg, var(--danger), #e63d5d);
+    color: white;
+}
+.btn-danger:hover:not(:disabled) {
+    box-shadow: 0 0 18px var(--danger-glow);
+}
+
+.btn-danger-ghost {
+    background: var(--bg-elevated);
+    color: var(--danger);
+    border-color: var(--border);
+}
+.btn-danger-ghost:hover:not(:disabled) {
+    background: rgba(255, 92, 122, 0.08);
+    border-color: var(--danger);
+}
+
+.btn-large {
+    padding: 12px 22px;
+    font-size: 1rem;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    transition: all var(--t-fast);
+}
+.btn-icon:hover {
+    background: var(--bg-card);
+    color: var(--text);
+    border-color: var(--border-light);
+}
+.btn-icon-danger:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: var(--danger-faint);
+}
+
+/* ===== Поля ввода ===== */
+
+.input {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    color: var(--text);
+    font-size: 0.92rem;
+    width: 100%;
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.input:hover {
+    border-color: var(--border-light);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+/* Mouse-фокус: только акцентная рамка, без яркого ring (не отвлекает). */
+.input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+/* Keyboard-фокус: добавляем ring через box-shadow для WCAG 2.4.7. */
+.input:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-faint);
+}
+.input::placeholder { color: var(--text-dim); }
+
+/* ============================================================
+ * 2026-05-05 (UI-улучшения после ревью): error-state для input.
+ *
+ * Через `[aria-invalid="true"]` — стандартный ARIA-атрибут (WAI-ARIA 1.2),
+ * автоматически считывается screen-reader'ами как «invalid entry». Поле с
+ * ошибкой обязано связываться с inline-сообщением через `aria-describedby`,
+ * чтобы вспомогательная технология озвучивала текст ошибки сразу после
+ * имени поля (см. js/ui/questionnaire.js → showInlineError).
+ *
+ * Селектор `.input[aria-invalid="true"]` ровно совпадает с устаревшим
+ * `.input-invalid` — JS навешивает оба класса/атрибута (для совместимости),
+ * но именно ARIA-вариант — наш source-of-truth для accessibility.
+ *
+ * `:focus-visible` на ошибочном поле подсвечивает «зону ошибки» через
+ * красный ring — оставляет визуальную сигнатуру даже при keyboard-фокусе. */
+.input[aria-invalid="true"],
+.input-invalid {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 1px var(--danger-faint);
+}
+.input[aria-invalid="true"]:focus,
+.input[aria-invalid="true"]:focus-visible,
+.input-invalid:focus,
+.input-invalid:focus-visible {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px var(--danger-faint);
+    outline: none;
+}
+
+textarea.input {
+    resize: vertical;
+    min-height: 60px;
+    font-family: inherit;
+}
+
+select.input {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3e%3cpath fill='%2394a3b8' d='M0 0l5 6 5-6z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    appearance: none;
+}
+
+.input-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Поля формы */
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.field-label {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Sprint 3.0 Stage 3 fix: правило `.field-hint { display: inline-flex; 16×16
+   круглая иконка }` удалено как dead-code. Никто из JS-кода не использовал
+   .field-hint как info-кружок — фактическое использование (quickStartModal,
+   scenarioRenameModal) это **текстовая подсказка** под полем формы. Правило
+   из components.css лишь конфликтовало с активным [modals.css:205-211] и
+   формально переопределялось каскадом, но из-за same-specificity создавало
+   риск регрессий. Сценарий обнаружения: 2026-05-08 при открытии Quick Start
+   модалки text-описания field-hint визуально сжимались в обрывки и налезали
+   на следующие поля — ровно симптом «правило-иконка частично применилось».
+   Если кому-то понадобится info-кружок рядом с label — использовать `infoIcon`
+   helper из js/ui/dom.js (он рендерит правильную clickable-иконку). */
+
+.field-description {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+}
+
+.field-recent .input,
+.field-recent .switch-track,
+.field-recent select {
+    animation: highlight 1.2s ease;
+}
+
+@keyframes highlight {
+    0%   { box-shadow: 0 0 0 3px var(--accent-glow); }
+    100% { box-shadow: 0 0 0 3px transparent; }
+}
+
+/* Переключатель (switch) */
+.switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+.switch input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+.switch-track {
+    position: relative;
+    width: 42px;
+    height: 22px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    transition: background var(--t-fast), border-color var(--t-fast);
+}
+.switch-track::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition: transform var(--t-fast), background var(--t-fast);
+}
+.switch input:checked + .switch-track {
+    background: var(--accent-faint);
+    border-color: var(--accent);
+}
+.switch input:checked + .switch-track::after {
+    transform: translateX(20px);
+    background: var(--accent);
+}
+.switch-label {
+    font-size: 0.88rem;
+    color: var(--text);
+}
+
+/* Чипы (multiselect, applicable stands) */
+.multiselect {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+/* 12.U3: 6 колонок × 2 строки для опций «12 месяцев» — симметричный год. */
+.multiselect-grid-6 {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+}
+.multiselect-grid-6 .chip {
+    justify-content: center;
+    width: 100%;
+}
+@media (max-width: 720px) {
+    /* На мобильном — 3 × 4, чипы с лейблами по 8 символов умещаются. */
+    .multiselect-grid-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all var(--t-fast);
+    user-select: none;
+}
+.chip input { display: none; }
+.chip:hover { border-color: var(--border-light); color: var(--text); }
+.chip-active {
+    background: var(--accent-faint);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* ============================================================
+ * Универсальная info-иконка («i»-индикатор)
+ *
+ * Один класс для всех мест в UI: круглая 18×18, теплый акцент при hover.
+ * Поведение задаётся тэгом:
+ *   <button class="info-icon"> — clickable (курсор pointer), открывает модалку или snackbar
+ *   <span   class="info-icon"> — tooltip-only (курсор help), показывает native title при hover
+ *
+ * НЕ использовать другие классы (.dash-info-btn, .field-info-icon, и т.п.) — все
+ * сведены к этому через replace.
+ * ============================================================ */
+
+.info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    line-height: 0;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.info-icon:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-faint);
+}
+.info-icon:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+button.info-icon { cursor: pointer; }
+span.info-icon,
+[role='note'].info-icon { cursor: help; }
+.info-icon svg { width: 12px; height: 12px; }
+.info-icon .icon { width: 12px; height: 12px; }
+
+/* Empty state */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 80px 24px;
+    background: var(--bg-panel);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+}
+.empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 16px;
+    opacity: 0.7;
+}
+.empty-state-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.empty-state-subtitle {
+    color: var(--text-muted);
+    max-width: 540px;
+    margin-bottom: 24px;
+}
+.empty-state-actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.empty-state-hint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    max-width: 600px;
+    text-align: left;
+}
+.empty-state-hint > span:first-child {
+    color: var(--accent);
+    font-weight: 600;
+}
+.empty-state-compact {
+    padding: 40px 16px;
+}
+
+/* ============================================================
+ * Welcome / entry-point variant — пустой экран «Расчёты», когда
+ * у пользователя ещё ничего нет. Цель: не констатировать пустоту,
+ * а пригласить начать. Каскадирует поверх базового .empty-state,
+ * не ломая остальные empty-states в comparison/items/questions.
+ *
+ * Иерархия (8px-grid, gap кратен var(--space-N)):
+ *   .empty-state-hero      — круглая accent-faint подложка под крупную иконку
+ *   .empty-state-title     — позитивный заголовок (наследуется)
+ *   .empty-state-subtitle  — длинная описательная строка (наследуется)
+ *   .empty-state-stats     — три stat-карточки: вопросы / ЭК / стенды
+ *   .empty-state-actions   — primary CTA + ghost «Загрузить из JSON»
+ *   .empty-state-hotkeys   — мелкая шпаргалка по горячим клавишам с <kbd>
+ *
+ * Цветов своих нет — только токены (--accent / --bg-card / --text*),
+ * поэтому переключение тем работает автоматически.
+ * ============================================================ */
+.empty-state-welcome {
+    padding: 64px 24px 56px;
+    gap: 0;
+    max-width: 720px;
+    margin: 24px auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.empty-state-hero {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: var(--accent-faint);
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--space-5);
+    box-shadow: 0 0 0 8px var(--accent-faint);
+}
+.empty-state-welcome .empty-state-title {
+    font-size: var(--font-2xl);
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+    margin-bottom: var(--space-2);
+}
+.empty-state-welcome .empty-state-subtitle {
+    font-size: var(--font-sm);
+    line-height: 1.55;
+    max-width: 520px;
+    margin-bottom: var(--space-6);
+}
+
+/* Stat-карточки: 3 чипа с фактами наполнения справочников. На узком экране
+   складываются в одну колонку через auto-fit (минимум 160px на ячейку). */
+.empty-state-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--space-3);
+    width: 100%;
+    max-width: 520px;
+    margin: 0 0 var(--space-6);
+}
+.empty-state-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: var(--space-3) var(--space-3);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color var(--t-fast), transform var(--t-fast);
+}
+.empty-state-stat:hover {
+    border-color: var(--border-light);
+    transform: translateY(-1px);
+}
+.empty-state-stat-icon {
+    color: var(--accent);
+    margin-bottom: var(--space-1);
+    display: inline-flex;
+}
+.empty-state-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+.empty-state-stat-label {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    line-height: 1.3;
+    text-align: center;
+}
+
+/* Action row: primary + ghost. Существующий .btn-large даёт нужный размер. */
+.empty-state-welcome .empty-state-actions {
+    margin-bottom: var(--space-5);
+    gap: var(--space-3);
+}
+.empty-state-welcome .empty-state-actions .btn-primary {
+    box-shadow: 0 4px 14px var(--accent-glow);
+}
+.empty-state-welcome .empty-state-actions .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 6px 20px var(--accent-glow);
+    transform: translateY(-1px);
+}
+
+/* Шпаргалка горячих клавиш — без тяжёлой подложки, только мелкий текст
+   и обёртка <kbd> с тонкой рамкой. */
+.empty-state-hotkeys {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    justify-content: center;
+    font-size: var(--font-xs);
+    color: var(--text-dim);
+}
+.empty-state-hotkeys kbd {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-sm);
+    padding: 1px 6px;
+    margin-right: 4px;
+    line-height: 1.4;
+}
+.empty-state-hotkeys-sep {
+    color: var(--border-light);
+    font-weight: 700;
+}
+
+/* Адаптив: на узком экране кнопки занимают всю строку, hero чуть меньше. */
+@media (max-width: 560px) {
+    .empty-state-welcome {
+        padding: 40px 16px 32px;
+        margin: 12px auto;
+    }
+    .empty-state-hero {
+        width: 80px;
+        height: 80px;
+        box-shadow: 0 0 0 6px var(--accent-faint);
+    }
+    .empty-state-welcome .empty-state-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    .empty-state-welcome .empty-state-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Карточки расчётов */
+.calc-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+/* ============================================================
+ * Calc card — редизайн 12.U25-fix-15.
+ *
+ * Структура (8px-grid, gaps кратны var(--space-N)):
+ *   .calc-card                 — flex column, padding 16, gap 16
+ *     .calc-card-header        — row: <h3> + active-dot
+ *     .calc-card-metric        — column: eyebrow + hero + sub
+ *     .calc-card-chips         — wrap row: pills (С рисками + НДС)
+ *     .calc-card-footer        — row: date + actions toolbar
+ *
+ * Иерархия по типографике:
+ *   eyebrow  = 11px / 600 / upper / muted   — лейбл метрики
+ *   hero     = 28px / 700 / accent / mono   — главное число (₽/год)
+ *   sub      = 13px / 500 / muted / mono    — вторичное (₽/мес)
+ *   title    = 16px / 600 / text            — название расчёта
+ *   chip     = 12px / 600                   — статус-pills
+ *   date     = 11px / 400 / dim / mono      — мета-инфа
+ *   action   = 14px icon в 28×28 кнопке     — toolbar
+ * ============================================================ */
+.calc-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    cursor: pointer;
+    transition: transform var(--t-fast), border-color var(--t-fast),
+                box-shadow var(--t-fast);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    box-shadow: var(--shadow-sm);
+}
+.calc-card::before {
+    /* Тонкая accent-полоска сверху — появляется при hover/active. Декор. */
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    opacity: 0;
+    transition: opacity var(--t-fast);
+}
+.calc-card:hover {
+    border-color: var(--border-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+.calc-card:hover::before { opacity: 1; }
+.calc-card-active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent-faint), 0 6px 24px var(--accent-glow);
+}
+.calc-card-active::before { opacity: 1; }
+
+/* Header: title + active-dot. Заголовок усечён ellipsis при длинном имени. */
+.calc-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-2);
+}
+.calc-card-name {
+    font-size: var(--font-base);     /* 16px */
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text);
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+.calc-card-active-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-faint);
+    flex-shrink: 0;
+}
+
+/* Metric блок: eyebrow → hero → sub.
+ * gap'ы внутри намеренно tight (4-6px) — ассоциация «один блок информации». */
+.calc-card-metric {
+    display: flex;
+    flex-direction: column;
+}
+.calc-card-metric-eyebrow {
+    font-size: 0.69rem;              /* 11px */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: var(--space-1);   /* 4px → hero */
+}
+.calc-card-metric-hero {
+    font-size: 1.75rem;              /* 28px */
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    letter-spacing: -0.5px;
+    /* tabular-nums делает цифры одной ширины — числа в списке выравниваются. */
+    font-variant-numeric: tabular-nums;
+}
+.calc-card-metric-sub {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 0.81rem;              /* 13px */
+    font-family: var(--font-mono);
+    margin-top: 6px;                 /* hero → sub */
+    font-variant-numeric: tabular-nums;
+}
+.calc-card-metric-sub svg { opacity: 0.7; }
+
+/* Chips: status pills для риск/НДС режима. cursor:help — это информационные
+ * индикаторы (показывают статус, не кнопки). Tooltip объясняет «как изменить». */
+.calc-card-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);             /* 8px */
+}
+.calc-card-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;              /* ~11.5px */
+    font-weight: 600;
+    cursor: help;
+    user-select: none;
+    line-height: 1.4;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+.calc-card-chip-ok {
+    background: var(--accent-faint);
+    color: var(--accent);
+    border-color: rgba(38, 212, 154, 0.30);
+}
+.calc-card-chip-warn {
+    background: var(--warning-faint);
+    color: var(--warning);
+    border-color: rgba(251, 191, 36, 0.30);
+}
+/* НДС — голубой, отличается от accent (риски): две независимых оси состояния. */
+.calc-card-chip-vat {
+    background: rgba(125, 211, 252, 0.12);
+    color: #7dd3fc;
+    border-color: rgba(125, 211, 252, 0.30);
+}
+.calc-card-chip-novat {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    border-color: var(--border);
+}
+/* Stage 4.2: чип «Исключено: STAND…» — outline-only amber.
+   Семантически близок к chip-warn (отклонение от дефолта), но отличается
+   визуально (без заливки) — две независимые «warning»-оси не сливаются. */
+.calc-card-chip-stands {
+    background: var(--bg-elevated);
+    color: var(--warning);
+    border-color: rgba(251, 191, 36, 0.40);
+}
+/* Stage 4.5: чип «N сценариев» — neutral indigo-tone, отличается от chip-vat
+   (голубой, ось НДС) и chip-stands (amber, ось disabled-стенды). Это «factual»
+   индикатор, не warning — отображает scope расчёта (сколько профилей). */
+.calc-card-chip-scenarios {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    border-color: var(--border);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Footer: divider + дата (вторичная мета) + actions tray.
+ * margin-top:auto прижимает футер вниз, если карточка вытянута grid'ом. */
+.calc-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding-top: var(--space-3);     /* 12px */
+    border-top: 1px solid var(--border);
+    margin-top: auto;
+}
+.calc-card-date {
+    font-size: 0.69rem;              /* 11px */
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    letter-spacing: 0.3px;
+    cursor: help;
+}
+
+/* Actions toolbar: визуально оформлен как «панель действий» — собственный
+ * tray-фон + radius + внутренний padding делают группу читаемой как
+ * функциональный блок (а не россыпь иконок поверх фона карточки). */
+.calc-card-actions {
+    display: flex;
+    gap: 0;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px;
+}
+.calc-card-action {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+.calc-card-action:hover {
+    color: var(--text);
+    background: var(--bg-elevated);
+}
+.calc-card-action:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+.calc-card-action-danger:hover {
+    color: var(--danger);
+    background: var(--danger-faint);
+}
+
+/* Поиск */
+.search-input {
+    min-width: 240px;
+    width: auto;
+}
+
+/* Разделитель между группами кнопок в тулбаре */
+.toolbar-divider {
+    display: inline-block;
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+    margin: 0 4px;
+    align-self: center;
+}
+
+/* KV-строка (формула-модалка) */
+.kv-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88rem;
+}
+.kv-key { color: var(--text-muted); }
+.kv-value { color: var(--text); font-family: var(--font-mono); }
+
+/* ===== Переключатель стендов (chip-toggles) =====
+ * Используется в toolbar дашборда и детализации, чтобы временно выключить
+ * отдельные стенды из ИТОГО. Выключенный чип — приглушённый и перечёркнутый;
+ * сам стенд остаётся видимым в детализации, но его суммы не входят в общую
+ * цифру и графики.
+ */
+.stand-toggles {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.stand-toggles-label {
+    font-size: 12px;
+    color: var(--text-muted, var(--text-secondary));
+    margin-right: 6px;
+}
+.stand-toggle {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--bg-elevated, var(--bg-card));
+    color: var(--text);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    transition: opacity var(--t-fast), background var(--t-fast), border-color var(--t-fast);
+}
+.stand-toggle:hover { border-color: var(--border-light, var(--border)); }
+.stand-toggle[aria-pressed="false"] {
+    /* Stage 4.15: единая opacity 0.4 для disabled-состояний (была 0.45). */
+    opacity: 0.4;
+    text-decoration: line-through;
+}
+
+/* Карточка выключенного стенда (дашборд) */
+.stand-card-disabled {
+    opacity: 0.4;
+}
+.stand-card-disabled .stand-card-total-value {
+    text-decoration: line-through;
+}
+.stand-card-excluded-tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: var(--bg-panel, var(--bg-card));
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    white-space: nowrap;
+}
+
+/* Колонка / ячейка выключенного стенда (детализация) */
+.stand-disabled,
+td.stand-disabled,
+th.stand-disabled {
+    opacity: 0.4;     /* Stage 4.2: унифицировано с .stand-card-disabled (дашборд) */
+}
+
+/* ============================================================
+ * Pill — каноническая база для меток-таблеток (Этап 12.2.4)
+ * Используется новыми компонентами. Существующие .chip/.calc-card-tag/
+ * .stand-toggle/.cost-type-pill оставлены без изменений (риск регрессий),
+ * но новые pills в проекте должны строиться на этой базе.
+ * ============================================================ */
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    border-radius: 999px;
+    font-size: var(--font-xs);
+    font-weight: 500;
+    line-height: 1;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    user-select: none;
+    white-space: nowrap;
+}
+.pill-success { color: var(--accent);  background: var(--accent-faint);  border-color: rgba(38, 212, 154, 0.30); }
+.pill-warn    { color: var(--warning); background: var(--warning-faint); border-color: rgba(251, 191, 36, 0.30); }
+.pill-danger  { color: var(--danger);  background: var(--danger-faint);  border-color: rgba(248, 113, 113, 0.30); }
+.pill-info    { color: var(--accent-2); background: rgba(167, 139, 250, 0.10); border-color: rgba(167, 139, 250, 0.30); }
+
+/* ============================================================
+ * WCAG 2.5.5 — Touch-targets ≥44×44 на сенсорных устройствах
+ * Включается на любом «грубом» указателе (палец) либо на
+ * mobile-viewport, чтобы не ломать desktop с мышью.
+ * ============================================================ */
+@media (pointer: coarse), (max-width: 720px) {
+    .btn,
+    .btn-large,
+    .btn-icon {
+        min-height: var(--touch-target);
+        min-width: var(--touch-target);
+    }
+    /* Маленькие info-iconки получают визуальный hit-area до 44×44.
+     * SVG внутри центрируется flex'ом и остаётся 12×12. */
+    .info-icon {
+        width: var(--touch-target);
+        height: var(--touch-target);
+    }
+    /* Stand-toggle chips тоже становятся пальцем нажимаемыми. */
+    .stand-toggle {
+        min-height: var(--touch-target);
+        padding: 8px 14px;
+    }
+    /* Calc-card actions toolbar — кнопки 28px на desktop расширяются до
+     * touch-target на сенсорных, чтобы tap'ы по «Удалить»/«Дублировать»
+     * не промахивались. Tray-фон при этом сохраняется. */
+    .calc-card-action {
+        min-width: var(--touch-target);
+        min-height: var(--touch-target);
+    }
+}

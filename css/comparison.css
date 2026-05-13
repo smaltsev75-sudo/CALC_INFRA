@@ -1,0 +1,657 @@
+/* ============================================================
+ * comparison.css — вкладка «Сравнение расчётов»
+ * ============================================================ */
+
+.comparison-picker {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 18px;
+    margin-bottom: 16px;
+}
+.comparison-picker-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+.comparison-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.chip-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* Stage 3 финализация: scenario.label под именем calc'а в picker chip.
+   chip-content — column flex, чтобы scenario встал ПОД именем; checkbox
+   остаётся на одной строке слева. Класс .chip-with-scenario добавляется
+   только когда у calc'а ≥2 сценариев (см. activeScenarioLabelForCompare).
+   Для одиночных и legacy — chip остаётся однострочным как раньше. */
+.comparison-chips .chip-content {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 1px;
+    line-height: 1.25;
+}
+.comparison-chips .chip-name {
+    font-size: 0.85rem;
+}
+.comparison-chips .chip-scenario {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-weight: 500;
+}
+.comparison-chips .chip-with-scenario {
+    /* Чуть больше padding, чтобы двухстрочная chip не выглядела сдавленной. */
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+/* Тулбар «Экспорт сравнения CSV» — отступ снизу до таблицы (Этап 12.3.2). */
+.comparison-export-actions {
+    margin-bottom: var(--space-2);
+}
+
+.comparison-h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 18px 0 10px;
+    color: var(--text);
+}
+
+.comparison-table-wrap {
+    /* 12.U31 (Code Review Followup, P1-001): НЕ задавать overflow ≠ visible.
+       По CSS-spec любое не-visible значение на одной оси автоматически делает
+       auto на другой → создаётся scroll-context → 3-ярусный sticky-thead
+       привязывается к wrap, а не к viewport, и при body-scroll уезжает вверх.
+       Та же ловушка, что у .app-main (12.U30 1.4c) и .items-table-wrap (12.U30 1.5e).
+       12.U28 заявлял «h-scroll убран», но overflow-x: auto оставался — фикс. */
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.comparison-table thead {
+    background: var(--bg-card);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.comparison-table th,
+.comparison-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+.comparison-table th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+}
+/* 12.U25: th для числовых столбцов наследует выравнивание от своего класса.
+ * Раньше общий `text-align: left` выше перекрывал `text-align: right` у
+ * `.cmp-value-col` / `.cmp-delta-col` → заголовки «Стоимость / мес», «Δ vs ...»
+ * стояли левее цифр в столбце. */
+.comparison-table th.cmp-value-col,
+.comparison-table th.cmp-delta-col {
+    text-align: right;
+}
+.comparison-table tbody tr:hover {
+    background: var(--bg-table-row-alt);
+}
+
+.cmp-metric-col   { min-width: 180px; }
+.cmp-value-col    { text-align: right; min-width: 140px; white-space: nowrap; }
+.cmp-delta-col    { text-align: right; min-width: 160px; white-space: nowrap; }
+
+.cmp-calc-name {
+    font-weight: 600;
+    color: var(--text);
+    text-transform: none;
+    font-size: 0.92rem;
+    letter-spacing: 0;
+}
+.cmp-calc-currency {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+}
+
+.cmp-row-cat td:first-child,
+.cmp-row-stand td:first-child {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+/* 12.U25-fix: разделитель подгрупп («По категориям» / «По стендам») в Сводке.
+ * Лёгкий приглушённый бэкграунд + uppercase-метка — визуально отделяет два
+ * независимых среза итога (категории vs стенды), которые раньше смешивались
+ * в общем сорте по |Δ|. Не интерактивный, сам не сортируется. */
+.cmp-row-subgroup {
+    background: var(--bg-table-row-alt);
+}
+.cmp-row-subgroup:hover {
+    background: var(--bg-table-row-alt) !important;
+}
+.cmp-subgroup-cell {
+    padding: 8px 12px !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+.cmp-subgroup-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-dim);
+}
+
+.cmp-delta-up   { color: var(--danger); }
+.cmp-delta-down { color: var(--success); }
+.cmp-delta-zero { color: var(--text-dim); }
+
+.cmp-empty { color: var(--text-dim); font-style: italic; }
+
+/* ============================================================
+ * 12.U25 — индикаторы min/yellow/max + click-sort в постатейной таблице
+ * ============================================================ */
+
+/* Кликабельные заголовки числовых столбцов в постатейной таблице. */
+.comparison-table th.cmp-sortable-col {
+    cursor: pointer;
+    user-select: none;
+}
+.comparison-table th.cmp-sortable-col:hover {
+    background: var(--bg-table-row-alt);
+}
+.comparison-table th.cmp-sorted-col {
+    color: var(--accent);
+}
+
+/* Индикатор-точка слева от суммы — компактный кружок 8px. */
+.cmp-ind-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+.cmp-ind-dot-green  { background: #26d49a; box-shadow: 0 0 0 2px rgba(38, 212, 154, 0.18); }
+.cmp-ind-dot-yellow { background: #fcd34d; box-shadow: 0 0 0 2px rgba(252, 211, 77, 0.18); }
+.cmp-ind-dot-red    { background: #f87171; box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.18); }
+
+/* Подкраска ячейки целиком — субтильно, чтобы не мешать чтению цифр. */
+.cmp-ind-green  { color: #26d49a; }
+.cmp-ind-yellow { color: #fcd34d; }
+.cmp-ind-red    { color: #f87171; }
+
+/* Бейдж текущей сортировки слева от кнопок «Сбросить» / «Экспорт CSV». */
+.cmp-sort-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--bg-table-row-alt);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    cursor: help;
+}
+.cmp-sort-direction {
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+}
+.cmp-sort-reset {
+    color: var(--text-dim);
+}
+.cmp-sort-reset:hover {
+    color: var(--text);
+}
+
+/* ============================================================
+ * 12.U28 — Объединённая таблица сравнения
+ *   • Schлопнуты 2 таблицы (Сводка + Постатейная) в одну.
+ *   • Шапка из 3 sticky-рядов: header (calc-name) + Стоимость/мес + Стоимость/год.
+ *   • Tbody = аккордеон по категориям. По умолчанию все свёрнуты.
+ *
+ * Высота одного ряда thead контролируется --cmp-row-h. Все 3 ряда имеют
+ * одинаковую высоту — чтобы расчёт top: var(--cmp-row-h) и
+ * top: calc(var(--cmp-row-h) * 2) был верным.
+ * ============================================================ */
+
+.comparison-table-unified {
+    /* Row-height для sticky-расчёта. Чуть выше системного th-padding потому,
+       что в первом ряду две строки текста (calc-name + ₽-suffix). */
+    --cmp-row-h: 56px;
+}
+
+.comparison-table-unified thead th {
+    /* Базовый фон обязателен — иначе при sticky-mode ячейки прозрачны и под
+       ними просвечивает прокручиваемое тело таблицы. */
+    background: var(--bg-card);
+    /* Тонкая разделительная линия — чтобы при sticky scroll был визуальный
+       край между шапкой и контентом. box-shadow вместо border, потому что
+       border ломается на sticky-cells (visual gap). */
+    box-shadow: inset 0 -1px 0 var(--border);
+    z-index: 3;
+    position: sticky;
+}
+
+/* 12.U30-fix: top смещён на --topbar-height, чтобы все 3 яруса прилипали ПОД
+   sticky `.app-topbar` (z-index 40), а не закрывались им. */
+/* Ярус 1 — header-row: top: --topbar-height. */
+.comparison-table-unified thead th.cmp-th-l1 {
+    top: var(--topbar-height);
+    height: var(--cmp-row-h);
+    z-index: 5;
+}
+
+/* Ярус 2 — totals-row Стоимость/мес: top = topbar + высота 1-го ряда. */
+.comparison-table-unified thead th.cmp-th-l2 {
+    top: calc(var(--topbar-height) + var(--cmp-row-h));
+    z-index: 4;
+    font-size: 0.85rem;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text);
+}
+
+/* Ярус 3 — totals-row Стоимость/год: top = topbar + 2 × ряда. */
+.comparison-table-unified thead th.cmp-th-l3 {
+    top: calc(var(--topbar-height) + var(--cmp-row-h) * 2);
+    z-index: 3;
+    font-size: 0.85rem;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text);
+    /* 12.U30-fix: убрана внешняя shadow (она «съедала» первую tbody-row,
+     * визуально обрезая «АППАРАТНЫЕ РЕСУРСЫ» снизу). Оставлена inset bottom-line. */
+    box-shadow: inset 0 -1px 0 var(--border-light);
+}
+
+/* Totals-rows (мес / год) — фоновая подсветка, чтобы выделялись среди header. */
+.comparison-table-unified .cmp-totals-row {
+    background: var(--bg-elevated);
+}
+
+/* Текстовая ячейка-метка в totals-rows. Жирная, выровнена влево. */
+.comparison-table-unified .cmp-totals-label {
+    font-weight: 600;
+    text-align: left;
+}
+
+/* ----- Категория-row (accordion-toggle) ----- */
+
+.cmp-cat-row {
+    background: var(--bg-elevated);
+    cursor: pointer;
+    user-select: none;
+    /* Легкое разделение секций категорий между собой — толще обычного. */
+    border-top: 1px solid var(--border);
+}
+.cmp-cat-row:hover {
+    background: var(--bg-table-row-alt);
+}
+.cmp-cat-row th,
+.cmp-cat-row td {
+    /* Категория-row выше обычной item-row: большее vertical padding читается как «секция». */
+    padding-top: 14px;
+    padding-bottom: 14px;
+    background: transparent;     /* фон управляется родительской tr — единый при hover. */
+}
+
+.cmp-cat-cell-label {
+    text-align: left;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.92rem;
+    /* Для шеврон-кнопки + dot + name в одной строке без переноса. */
+    white-space: nowrap;
+}
+
+/* Шеврон — отдельная кнопка для keyboard-доступности и a11y. */
+.cmp-cat-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-right: 6px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    vertical-align: middle;
+}
+.cmp-cat-toggle:hover {
+    background: var(--bg-table-row-alt);
+    color: var(--text);
+}
+.cmp-cat-toggle:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(38, 212, 154, 0.3);
+}
+
+.cmp-cat-name {
+    color: var(--text);
+}
+.cmp-cat-count {
+    margin-left: 6px;
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.82rem;
+}
+.cmp-cat-sum {
+    font-weight: 600;
+    color: var(--text);
+}
+
+/* Touch-target ≥44px на сенсорных экранах (WCAG 2.5.5). */
+@media (pointer: coarse), (max-width: 720px) {
+    .cmp-cat-toggle {
+        min-width: var(--touch-target, 44px);
+        min-height: var(--touch-target, 44px);
+    }
+}
+
+/* ----- Item-row внутри раскрытой категории ----- */
+
+.cmp-item-row td {
+    /* Item-rows плотнее — это «детали», должны читаться компактно. */
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+.cmp-item-name {
+    color: var(--text);
+    /* Лёгкий левый отступ — визуально показывает, что item-row вложен в категорию. */
+    padding-left: 30px !important;
+}
+
+/* ============================================================
+ * 12.U30-fix: Δ встроена внутрь value-ячейки подстрокой,
+ * вместо отдельной delta-колонки. Главная сумма крупнее, Δ мельче и
+ * приглушённая (но окрашена up=success / down=danger).
+ * ============================================================ */
+
+.comparison-table-unified .cmp-value-main {
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.comparison-table-unified .cmp-delta-inline {
+    display: block;
+    font-size: 0.72rem;
+    margin-top: 4px;
+    line-height: 1.2;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.comparison-table-unified .cmp-delta-inline.cmp-delta-up   { color: var(--warning); }
+.comparison-table-unified .cmp-delta-inline.cmp-delta-down { color: var(--success); }
+.comparison-table-unified .cmp-delta-inline.cmp-delta-zero { color: var(--text-dim); font-style: italic; }
+
+/* Подстрока «vs Имя_базового» в header-th — мелкая, под именем calc'а. */
+.comparison-table-unified .cmp-calc-baseline {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 3px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* Stage 3: scenario-aware Comparison.
+   Подстрока «сценарий: <label>» под именем calc'а — появляется только когда
+   у calc'а ≥2 сценариев (для одиночных — null, не загружает шапку). Чуть
+   ярче чем cmp-calc-baseline (текст dim, не muted) — это контентная
+   подсказка, а не служебная баseline-метка. cursor:help — визуальный hint
+   что есть tooltip с пояснением, как переключить сценарий. */
+.comparison-table-unified .cmp-calc-scenario {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    cursor: help;
+}
+.comparison-table-unified .cmp-calc-scenario:hover {
+    color: var(--text-muted);
+}
+
+/* Секция «AI-метрики · по расчётам» внизу страницы Сравнения.
+
+   На каждый выбранный расчёт — отдельная мини-таблица 4 метрики × 5 стендов.
+   Помогает увидеть какой вариант дешевле в AI-разрезе (например один кейс
+   с realtime-эмбеддингами 12× против еженедельного 1×).
+
+   Расчёты без AI показываем заглушкой «AI не используется», чтобы пользователь
+   видел что сравнение учло этот факт. */
+.comparison-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.comparison-ai-section {
+    margin-top: 8px;
+    padding: 16px 18px;
+    background: var(--accent-faint);
+    border: 1px solid rgba(38, 212, 154, 0.20);
+    border-radius: var(--radius);
+}
+
+.comparison-ai-section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+.comparison-ai-section-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.comparison-ai-section-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* Сетка блоков (1 на расчёт). До 4 расчётов в сравнении — auto-fit
+   minmax 440px → на широких экранах 2-3 в ряд, на узких — стек.
+   13.U10-fix: подняли с 380 → 440, потому что после AI-агентов (13.U7)
+   per-stand qty стали 5-6-значными (288 207 / 331 438), и ИТОГО типа
+   «827 152 млн токенов / мес» не помещался в 380px — содержимое
+   с white-space:nowrap раздувало трек и вылезало за пределы карточки. */
+.comparison-ai-section-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+    gap: 12px;
+}
+
+.comparison-ai-block {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    /* min-width:0 — grid-items по дефолту имеют min-width:auto и растут
+       по min-content ребёнка (таблицы с nowrap), игнорируя 1fr-аллокацию.
+       Без этого флага карточка растягивается шире своего трека и пролезает
+       в соседнюю карточку. */
+    min-width: 0;
+}
+
+.comparison-ai-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+/* Stage 3: контейнер для имени calc'а + scenario-подстроки. Колонка, чтобы
+   сценарий встал ПОД именем, а modeBadge остался справа на одной строке. */
+.comparison-ai-block-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+.comparison-ai-block-title {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 0.9rem;
+}
+.comparison-ai-block-scenario {
+    font-size: 0.74rem;
+    color: var(--text-dim);
+    font-weight: 500;
+    cursor: help;
+}
+.comparison-ai-block-scenario:hover {
+    color: var(--text-muted);
+}
+
+.comparison-ai-block-empty {
+    background: var(--bg-card);
+    border: 1px dashed var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    text-align: center;
+}
+.comparison-ai-block-empty .comparison-ai-block-title {
+    margin-bottom: 6px;
+}
+.comparison-ai-block-empty-text {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.comparison-ai-block-table-wrap {
+    /* 13.U10-fix: overflow-x:auto как страховка для экстремальных значений
+       (триллионы токенов / трёхзначные миллионы по стенду). Sticky-thead
+       в этой мини-таблице нет (sticky только в `.comparison-table-wrap`,
+       а там overflow намеренно убран — см. 12.U31 A.1), поэтому ловушка
+       «overflow на ancestor sticky-thead» здесь неприменима. */
+    overflow-x: auto;
+}
+
+.comparison-ai-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+.comparison-ai-table thead th {
+    text-align: right;
+    padding: 5px 8px;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+    border-bottom: 1px solid rgba(38, 212, 154, 0.25);
+    white-space: nowrap;
+}
+.comparison-ai-table thead th.comparison-ai-cell-metric {
+    text-align: left;
+}
+.comparison-ai-table tbody td {
+    padding: 5px 8px;
+    color: var(--text);
+    text-align: right;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    white-space: nowrap;
+}
+.comparison-ai-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.comparison-ai-cell-metric {
+    text-align: left !important;
+    font-family: var(--font-sans) !important;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text);
+}
+.comparison-ai-cell-metric-name {
+    flex: 0 0 auto;
+}
+.comparison-ai-cell-metric .info-icon {
+    width: 11px;
+    height: 11px;
+    color: var(--text-muted);
+}
+.comparison-ai-cell-metric .info-icon:hover {
+    color: var(--accent);
+}
+
+.comparison-ai-cell-disabled {
+    opacity: 0.4;     /* Stage 4.2: унифицировано с .stand-card-disabled и .stand-disabled */
+}
+
+.comparison-ai-cell-total {
+    color: var(--accent);
+    font-weight: 700;
+    background: var(--bg-elevated);
+    border-left: 1px solid var(--border);
+    padding-left: 10px;
+}
+
+[data-theme="light"] .comparison-ai-section {
+    border-color: rgba(4, 120, 87, 0.22);
+}
+[data-theme="light"] .comparison-ai-table thead th {
+    border-bottom-color: rgba(4, 120, 87, 0.25);
+}
+[data-theme="light"] .comparison-ai-table tbody td {
+    border-bottom-color: rgba(4, 120, 87, 0.10);
+}
+
+/* Stage VAT-1 Phase 5: маленький VAT-chip под именем каждого calc в шапке
+   таблицы Сравнения + warning-banner над таблицей, если ставки расходятся. */
+.comparison-vat-chip {
+    margin-top: var(--space-1);
+    font-size: var(--font-xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+.comparison-vat-warning {
+    margin-bottom: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(251, 191, 36, 0.30);
+    background: var(--warning-faint);
+    color: var(--warning);
+    font-size: var(--font-sm);
+    line-height: 1.4;
+}
+.comparison-vat-warning-text { color: inherit; }

@@ -1,0 +1,766 @@
+/* ============================================================
+ * tables.css — таблицы детализации и справочников
+ * ============================================================ */
+
+/* 12.U27: убрана горизонтальная прокрутка для деталей. Таблица занимает
+   100% ширины контейнера, длинные названия ЭК обрезаются ellipsis'ом
+   (см. .col-name max-width ниже). Items-таблица сохраняет overflow-x: auto. */
+.details-table-wrap {
+    overflow-x: visible;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.items-table-wrap {
+    /* 12.U30-fix-3: НЕ задавать здесь overflow ≠ visible — по CSS-spec любое
+       не-visible значение на ОДНОЙ оси автоматически делает auto на ДРУГОЙ.
+       Это создаёт scroll-context → sticky-thead привязывается к wrap, а не к
+       viewport, и не подъезжает под app-topbar. Та же ловушка ранее ломала
+       .app-main (12.U30 1.4c). */
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.details-table,
+.items-table,
+.questions-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.86rem;
+}
+
+/* 12.U27: details-table компактнее. 12.U31 (Code Review Followup, P1-002):
+   убран `table-layout: fixed` — он делил ширину контейнера равномерно между
+   всеми 17 колонками (≈58px на 1366px laptop), из-за чего денежные значения
+   («46 465 240 ₽» = ~120px) физически вылезали из ячеек и накладывались на
+   соседние столбцы. Auto-layout даёт каждой колонке ширину по контенту;
+   если суммарная ширина > viewport, таблица расширяется и горизонтальный
+   скролл уходит на body (`.details-table-wrap` остаётся `overflow-x: visible`).
+   Ellipsis на `.col-name`/`.col-vendor` продолжает работать через связку
+   max-width + overflow:hidden + text-overflow:ellipsis + white-space:nowrap
+   (поддерживается всеми браузерами в auto-layout, не требует fixed). */
+.details-table {
+    font-size: 0.78rem;
+}
+
+/* 12.U30-fix: sticky прилипает ПОД `.app-topbar` (z-index 40), не к top:0.
+   Раньше top:0 + z-index:1 → thead скрывался под topbar при скролле.
+   Sticky на <thead> целиком работает в Chrome нестабильно — переносим на
+   каждую <th> (тогда позиционирование надёжное). z-index: 5 — выше item-row
+   и cat-row, чтобы они не перекрывали thead при скролле. */
+.items-table thead,
+.questions-table thead {
+    background: var(--bg-card);
+}
+.items-table thead th,
+.questions-table thead th {
+    position: sticky;
+    top: var(--topbar-height);
+    z-index: 5;
+    background: var(--bg-card);
+    box-shadow: inset 0 -1px 0 var(--border);
+}
+
+/* 12.U27: details-table thead имеет 4 sticky row'а (заголовки + 3 ИТОГО).
+   Каждый <th> позиционируется индивидуально через top + custom property
+   --row-h (высота одной row, ≈36px для headers, ≈40px для totals).
+   Базовый top = 0 на headers; смещение для totals задаётся ниже на классе. */
+.details-table thead {
+    background: var(--bg-card);
+}
+
+/* 12.U30-fix: sticky прилипает ПОД `.app-topbar` (z-index 40), не к top:0.
+   Раньше при скролле thead закрывался topbar. */
+.details-table thead th {
+    background: var(--bg-card);
+    position: sticky;
+    top: var(--topbar-height);
+    z-index: 3;
+    box-shadow: inset 0 -1px 0 var(--border);
+}
+
+.details-table th,
+.items-table th,
+.questions-table th {
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-bottom: 1px solid var(--border);
+    /* Заголовки могут переноситься на 2-3 строки — иначе таблица не помещается. */
+    white-space: normal;
+    word-break: break-word;
+    /* 12.U30-fix-3: middle (не bottom) — иначе при wrap'е одного заголовка
+       («ПОСТА ВЩИК») остальные короткие th прижимаются к нижнему краю row,
+       а ячейки tbody (vertical-align: middle) визуально «отрываются» вниз
+       от шапки. middle на th + middle на td даёт согласованное выравнивание. */
+    vertical-align: middle;
+}
+
+/* Заголовки числовых колонок выравниваются по правому краю — как и значения td.
+   Это селектор повышенной специфичности: перебивает text-align: left выше.
+   13.U10: col-stand тоже right — иначе в Объёме (qty) заголовок «DEV qty»
+   стоит по центру колонки, а число «1,72 ТБ» прижато к правому краю →
+   заголовок и значение визуально не на одной вертикали. */
+.details-table th.col-price,
+.details-table th.col-total,
+.details-table th.col-stand,
+.details-table th.col-share,
+.details-table th.col-risk,
+.details-table th.col-risk-amount {
+    text-align: right;
+}
+
+/* 12.U30-fix-2: 2-line stand-header. Name (DEV/ИФТ/ПСИ/ПРОМ/Нагрузка) — крупно,
+   unit (₽/мес или qty) — мелко, muted, под названием. text-align задан выше
+   (right), здесь только vertical-align и line-height. */
+.details-table th.col-stand {
+    vertical-align: middle;
+    line-height: 1.15;
+}
+.details-table th.col-stand .col-stand-name {
+    font-weight: 600;
+    color: var(--text);
+}
+.details-table th.col-stand .col-stand-unit {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-top: 2px;
+    font-variant-numeric: normal;
+    font-family: inherit;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.details-table td,
+.items-table td,
+.questions-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+/* 12.U27: details-table td компактнее по умолчанию. */
+.details-table td {
+    padding: 6px 8px;
+}
+
+/* Минимальная высота строки ЭК — для удобного клика и единообразия высоты,
+   независимо от того, есть ли в строке двухстрочная ячейка имени. */
+.details-table tr.item-row td { min-height: 36px; }
+
+/* 12.U27: длинные названия ЭК обрезаем ellipsis'ом, full name — в title.
+   Без `table-layout: fixed` это не работало бы — ширина колонки определялась бы
+   контентом. С fixed — col-name получает явный max-width. */
+.details-table .col-name {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.details-table .col-name-main {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.details-table .col-vendor {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* PATCH 2.7.2 hotfix: на auto-layout таблице узкие колонки сжимаются ниже
+   ширины своего короткого заголовка, и при `word-break: break-word`
+   (общий th rule, line 99) однословный кириллический заголовок («Тариф»,
+   «Ед.изм.», «Цена/ед.», «Риск, %») разрезается ПО БУКВЕ на строку
+   (Т/А/Р/И/Ф вертикально). Решение — то же что в `.col-cost-type` (12.U30):
+   `min-width` гарантирует достаточную ширину для размещения заголовка в одну
+   строку, `word-break: keep-all` предотвращает character-break даже если по
+   контенту ячейка временно сжалась.
+
+   Численные колонки (price/risk/risk-amount) — `tabular-nums` уже определены
+   ниже в `.col-price, .col-stand, .col-risk { ... }`, здесь только min-width
+   + word-break-protection. */
+.details-table .col-tariff,
+.details-table .col-unit,
+.details-table .col-price,
+.details-table .col-risk,
+.details-table .col-risk-amount,
+.details-table .col-share {
+    min-width: 60px;
+    max-width: 80px;
+    word-break: keep-all;
+}
+.details-table .col-tariff,
+.details-table .col-unit {
+    max-width: 80px;
+}
+/* col-cost-type: «ТИП РАСХОДА» (CAPEX/OPEX). word-break: break-word на
+   узких 70px ломал «РАСХОДА» на «РАСХОД» + «А» (3 строки шапки) — после
+   этого реальная высота thead превышала зашитые 56px sticky-смещения,
+   и строка ИТОГО (grand) обрезалась сверху. Решение: keep-all не даёт
+   ломать слова посимвольно, min-width 90px гарантирует, что 2-line wrap
+   укладывается («ТИП» / «РАСХОДА» — 2 строки, в 56px влезает). */
+.details-table .col-cost-type {
+    min-width: 90px;
+    text-align: center;
+    word-break: keep-all;
+}
+
+.details-table tbody tr:hover,
+.items-table tbody tr:hover,
+.questions-table tbody tr:hover {
+    background: var(--bg-table-row-alt);
+}
+
+.col-price,
+.col-stand,
+.col-total,
+.col-share,
+.col-risk,
+.col-risk-amount {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* Колонки ИТОГО (мес/год в Бюджете, qty в Объёме) визуально отделены от
+   блока стендов ТОЛЬКО в item-rows — там, где стоит «обычный» расчёт по ЭК.
+   Шапка и строки итогов (.totals-row-grand/capex/opex) НЕ получают свой
+   фон: иначе создаётся противоречие — либо «разорванная колонка» (светлый
+   оттенок только на item-rows + другой на шапке/итогах), либо «вырезанный
+   островок» в полосе итога. Обе крайности уже были и раздражали глаз.
+
+   Решение: выделение «итоговой колонки» = только в zoom item-rows
+   (subtle bg-elevated + border-left + жирный шрифт). Шапка и строки итогов
+   живут на общем фоне var(--bg-card) — у них свой стиль (font-weight: 700,
+   accent-цвет для grand, цветной border-top), его достаточно. */
+.details-table tr.item-row td.col-total {
+    background: var(--bg-elevated);
+    border-left: 1px solid var(--border-light);
+    font-weight: 600;
+    color: var(--text);
+}
+
+/* 12.U27: ИТОГО-строки переехали из tfoot в thead — числовые ячейки тоже
+   tabular-nums (правило применяется и в новой позиции). */
+.details-table .totals-row td.col-stand,
+.details-table .totals-row td.col-total,
+.details-table .totals-row td.col-share,
+.details-table .totals-row td.col-risk,
+.details-table .totals-row td.col-risk-amount {
+    font-variant-numeric: tabular-nums;
+}
+.col-stand-empty { color: var(--text-dim); }
+.col-stand-error { color: var(--danger); }
+.col-risk-amount-empty,
+.col-share-empty,
+.col-risk-empty { color: var(--text-dim); }
+.col-risk-up { color: var(--warning); }
+.col-risk-down { color: var(--success); }
+
+.col-name-main { font-weight: 500; }
+.col-name-sub { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+.cell-qty {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+.cell-cost {
+    font-weight: 500;
+    color: var(--text);
+    margin-top: 2px;
+}
+
+.col-actions {
+    text-align: right;
+    white-space: nowrap;
+    width: 100px;
+}
+.col-actions .btn-icon { margin-left: 4px; }
+
+.col-stands {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+.col-info { width: 40px; text-align: center; }
+
+/* Категории-разделители в детализации.
+   Верхний padding больше нижнего — визуально плашка читается как «начало
+   новой секции», а не как обычная строка. */
+.category-row td {
+    background: var(--bg-elevated);
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.74rem;
+    padding-top: 14px;
+    padding-bottom: 10px;
+}
+
+/* 12.U27: accordion-tr — кликабельная строка-категория. Курсор + hover-подсветка.
+   Шеврон поворачивается через .category-row-expanded на TR. */
+.details-table .category-row-clickable {
+    cursor: pointer;
+    user-select: none;
+}
+.details-table .category-row-clickable:hover td {
+    background: var(--bg-table-row-alt, var(--bg-elevated));
+    color: var(--text);
+}
+.details-table .category-row-clickable:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+.category-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    color: var(--text-muted);
+    vertical-align: middle;
+    transition: color 0.12s ease;
+}
+.details-table .category-row-clickable:hover .category-chevron {
+    color: var(--accent);
+}
+
+.category-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.category-name {
+    color: var(--text);
+    text-transform: uppercase;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+.category-count {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-left: 8px;
+    /* Сбрасываем uppercase из родительского .category-row td — счётчик читается
+       как обычное число «· 5», без капса. */
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.category-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-inverse);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+}
+
+/* 12.U27: ИТОГО-строки переехали в thead и sticky сверху.
+   Каждая row занимает свою «полку» через top: <calculated>. Высоты выбраны
+   эмпирически: header-row ≈36px, totals-row ≈30px (компактнее).
+   Sticky-top работает на <th>/<td>-ячейках, не на <tr> — Chrome не sticky'ит row.
+   Поэтому правила пишем для td каждой totals-row отдельно. */
+.details-table .details-thead-row-totals td {
+    position: sticky;
+    background: var(--bg-card);
+    z-index: 2;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+/* 12.U30-fix-2 / 13.U10-fix: смещения увеличены — header-row реально
+   занимает ~60px из-за 2-line wrap длинных заголовков («ИТОГО / МЕС»,
+   «РИСК, ₽/МЕС», «ТИП РАСХОДА»). Раньше было 36/66/96 → totals-row
+   накладывались на header. Текущие 60/26/22 — с запасом, чтобы при
+   небольшом росте font-size или padding шапки строка ИТОГО не обрезалась
+   сверху (corner-case: «ТИП РАСХОДА» дробился на 3 строки на узкой
+   колонке без min-width — сейчас защищено word-break: keep-all). */
+.details-table .details-thead-row-totals-grand td {
+    top: calc(var(--topbar-height) + 60px);
+    z-index: 2;
+}
+.details-table .details-thead-row-totals-capex td {
+    top: calc(var(--topbar-height) + 60px + 26px);
+    z-index: 2;
+}
+.details-table .details-thead-row-totals-opex td {
+    top: calc(var(--topbar-height) + 60px + 26px + 22px);
+    z-index: 2;
+}
+
+/* 12.U30-fix: ИТОГО строки — компактнее (font 0.72rem), чтобы 7-значные числа
+ * (`58 568 093 ₽`) помещались в одну строку. Раньше font 0.86rem + 0.92rem на
+ * col-total → числа переносились на 2 строки, визуально row рвался.
+ * white-space: nowrap явно фиксирует — даже если width не хватит, ячейка
+ * получит scroll, но не перенесёт цифры на новую строку. */
+.details-table .totals-row-grand td {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text);
+    border-top: 1px solid var(--border-light);
+    box-shadow: inset 0 -1px 0 var(--border);
+    white-space: nowrap;
+    padding: 6px 6px;
+}
+.details-table .totals-row-grand td.col-total {
+    color: var(--accent);
+    font-size: 0.78rem;
+}
+
+/* CAPEX / OPEX подытоги — приглушённые. Подсветка типа расхода — тонкая
+   полоска сверху. */
+.details-table .totals-row-capex td,
+.details-table .totals-row-opex td {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    white-space: nowrap;
+    padding: 5px 6px;
+}
+.details-table .totals-row-capex td {
+    border-top: 1px solid rgba(139, 92, 246, 0.35);
+}
+.details-table .totals-row-opex td {
+    border-top: 1px solid rgba(20, 184, 166, 0.35);
+    box-shadow: inset 0 -1px 0 var(--border);
+}
+
+/* Старые правила .totals-row — fallback для других таблиц (items / questions),
+   где нет sticky-tfoot. Не пересекаются с правилами выше из-за более низкой
+   специфичности (tfoot tr.totals-row td > .totals-row td). */
+.totals-row td {
+    background: var(--bg-card);
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.95rem;
+    border-top: 2px solid var(--accent);
+}
+
+/* === Pill «Тип расхода» в детализации ===
+   Outline-style: тонкая рамка + цветной текст, без заливки. Бейдж не должен
+   спорить с цифрами в строке за внимание — это маркер, а не акцент. */
+.cost-type-pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    background: transparent;
+    border: 1px solid;
+}
+.cost-type-pill-capex {
+    border-color: rgba(167, 139, 250, 0.4);
+    color: #c4b5fd;
+}
+.cost-type-pill-opex {
+    border-color: rgba(20, 184, 166, 0.4);
+    color: #5eead4;
+}
+
+/* Лёгкая фоновая подсветка строк ЭК по типу расхода (по data-cost-type). */
+.item-row[data-cost-type="capex"]:hover { background: rgba(139, 92, 246, 0.06); }
+.item-row[data-cost-type="opex"]:hover  { background: rgba(20, 184, 166, 0.06); }
+
+/* === Заголовки секций «Объём» / «Стоимость» в детализации === */
+.details-section { margin-bottom: 24px; }
+.details-section-title {
+    margin: 12px 0 8px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.details-section-tag {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+/* Поле «Тип расхода» в форме редактирования ЭК. */
+.cost-type-field { display: flex; flex-direction: column; gap: 4px; }
+.cost-type-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
+.item-name { font-weight: 500; }
+.item-description { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+.q-section {
+    margin-bottom: 16px;
+}
+/* 12.U29: q-section-title — clickable <button> с chevron + counter.
+   Раньше был <div>, теперь именно <button> для keyboard-фокуса и aria-expanded. */
+.q-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 0;
+    padding: 12px 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-weight: 600;
+    font-size: inherit;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.q-section-title:hover {
+    background: var(--bg-table-row-alt);
+}
+.q-section-title:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.q-section-expanded .q-section-title {
+    margin-bottom: 8px;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom: 1px solid transparent;
+}
+.q-section-chevron {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-muted);
+    transition: transform 0.15s;
+}
+.q-section-label {
+    flex: 1;
+    color: var(--text);
+}
+.q-section-count {
+    background: var(--accent);
+    color: var(--text-inverse);
+    border-radius: 999px;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    font-weight: 700;
+    min-width: 1.5em;
+    text-align: center;
+}
+.q-id {
+    background: var(--bg-elevated);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    font-size: 0.78rem;
+    color: var(--accent);
+}
+
+/* ============================================================
+ * 12.U29: Accordion категорий во вкладке «Элементы конфигурации»
+ * ============================================================ */
+
+/* 12.U30-fix-3: дублирующее правило для items-thead (затирающее z-index: 5)
+   удалено — оно перебивало корректное правило выше (line 47-54: sticky + z=5)
+   и приводило к тому, что cat-row при скролле ложилась НАД pinned thead. */
+
+/* Строка-заголовок категории (clickable аккордеон). */
+.items-cat-row td {
+    background: var(--bg-elevated);
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.78rem;
+    padding-top: 14px;
+    padding-bottom: 14px;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid var(--border);
+}
+.items-cat-row:hover td {
+    background: var(--bg-table-row-alt);
+}
+.items-cat-row:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+/* Сбрасываем дефолтный hover-фон в .items-table tbody tr:hover для cat-row,
+   чтобы наш hover-стиль выше доминировал (специфичность ровна — порядок
+   правил решает: правило выше уже обрабатывает hover, явно отключаем общий). */
+.items-table tbody tr.items-cat-row:hover {
+    background: transparent;
+}
+.items-cat-chevron {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 8px;
+    color: var(--text-muted);
+    vertical-align: middle;
+}
+.items-cat-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+.items-cat-name {
+    color: var(--text);
+    text-transform: uppercase;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+.items-cat-count {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-left: 8px;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* Сводная панель AI-метрик внизу страницы Детализации.
+
+   Маленькая таблица 4 строки × (1 + 5 стендов + 1 ИТОГО). Появляется только
+   при наличии AI-нагрузки в проекте. Цвет — accent-faint, как у других
+   AI-блоков (sub-block в Hero, inline-strip в Categories), чтобы пользователь
+   сразу понимал «эти данные про AI». */
+.details-ai-summary {
+    margin-top: 16px;
+    padding: 14px 16px;
+    background: var(--accent-faint);
+    border: 1px solid rgba(38, 212, 154, 0.20);
+    border-radius: var(--radius-sm);
+}
+
+.details-ai-summary-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+.details-ai-summary-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+}
+.details-ai-summary-note {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.details-ai-summary-table-wrap {
+    /* Без overflow:auto — это маленькая таблица, помещается. Если у пользователя
+       очень узкий экран и колонки перестанут влезать — wrap по контенту через
+       max-width родителя (которым является .details-ai-summary). */
+}
+.details-ai-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.details-ai-summary-table thead th {
+    text-align: right;
+    padding: 6px 10px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+    border-bottom: 1px solid rgba(38, 212, 154, 0.25);
+}
+.details-ai-summary-table thead th.details-ai-cell-metric {
+    text-align: left;
+}
+.details-ai-summary-table tbody td {
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    text-align: right;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.details-ai-summary-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.details-ai-cell-metric {
+    text-align: left !important;
+    font-family: var(--font-sans) !important;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.details-ai-cell-metric-name {
+    flex: 0 0 auto;
+}
+.details-ai-cell-metric .info-icon {
+    width: 12px;
+    height: 12px;
+    color: var(--text-muted);
+}
+.details-ai-cell-metric .info-icon:hover {
+    color: var(--accent);
+}
+
+.details-ai-cell-stand {
+    color: var(--text);
+}
+.details-ai-cell-disabled {
+    opacity: 0.4;     /* Stage 4.2: унифицировано с .stand-card-disabled и .stand-disabled */
+}
+
+.details-ai-cell-total {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+[data-theme="light"] .details-ai-summary {
+    border-color: rgba(4, 120, 87, 0.22);
+}
+[data-theme="light"] .details-ai-summary-table thead th {
+    border-bottom-color: rgba(4, 120, 87, 0.25);
+}
+[data-theme="light"] .details-ai-summary-table tbody td {
+    border-bottom-color: rgba(4, 120, 87, 0.10);
+}

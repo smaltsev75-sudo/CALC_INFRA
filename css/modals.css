@@ -1,0 +1,1166 @@
+/* ============================================================
+ * modals.css — модальные окна, snackbar
+ * ============================================================ */
+
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(5, 10, 24, 0.78);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 24px;
+    /* 12.U22: анимация появления — ТОЛЬКО на свежих overlay'ях через класс
+     * .modal-overlay-fresh. Без этого filter'а fadeIn перезапускался на КАЖДЫЙ
+     * patchModal (выбор значения в select, ввод в input и т.п.), и пользователь
+     * видел «мерцание» оверлея. Класс ставится в renderModals() в js/ui/index.js
+     * один раз — на тот рендер, в который модалка только-только открылась. */
+}
+/* @supports фолбэк (UI-ревью 2026-05-05): без backdrop-filter (Firefox <103,
+   старые WebView) overlay становится почти прозрачным, фон под ним просвечивает
+   и создаёт визуальный шум. Усиливаем непрозрачность фона до 0.92 — модалка
+   остаётся читаемой даже без размытия. */
+@supports not (backdrop-filter: blur(1px)) {
+    .modal-overlay {
+        background: rgba(5, 10, 24, 0.92);
+    }
+}
+
+.modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-height: calc(100vh - 64px);
+    display: flex;
+    flex-direction: column;
+}
+
+/* 12.U22: анимации появления — только на «свежих» модалках. */
+.modal-overlay-fresh {
+    animation: fadeIn 0.2s ease;
+}
+
+.modal-overlay-fresh .modal {
+    animation: modalIn 0.22s cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+
+@keyframes modalIn {
+    from { transform: translateY(8px) scale(0.985); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.modal-sm { max-width: 440px; }
+.modal-md { max-width: 600px; }
+.modal-lg { max-width: 880px; }
+.modal-xl { max-width: 1100px; }
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.modal-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text);
+}
+.modal-close {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    color: var(--text-muted);
+    font-size: 1.4rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+.modal-close:hover {
+    background: var(--bg-elevated);
+    color: var(--text);
+}
+
+.modal-body {
+    padding: 18px 22px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-footer {
+    padding: 14px 22px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-panel);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    flex-shrink: 0;
+}
+
+.modal-footer-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* === 12.U16: Новый расчёт (выбор шаблона) === */
+.new-calc-modal-body {
+    padding: 4px 2px 0;
+}
+
+/* 12.U32 #3: вместо inline-style { marginTop: 14px } на label шаблона.
+   Часть подготовки к CSP без 'unsafe-inline' для статических стилей. */
+.new-calc-modal-field-template {
+    margin-top: 14px;
+}
+.new-calc-template-summary {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+.new-calc-template-summary-title {
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 6px;
+    font-size: 0.88rem;
+}
+.new-calc-template-summary-text {
+    color: var(--text-muted);
+}
+.new-calc-template-summary-blank {
+    color: var(--text-dim);
+    font-style: italic;
+}
+
+/* === 14.U1 + Stage 4 redesign: Quick Start Wizard ===
+   Полная переработка лейаута 2026-05-08 (запрос пользователя):
+   - 2-колоночная сетка для select-полей (compact)
+   - hint-text заменён на info-tooltip иконку справа от label
+   - ПДн/AI: card-checkbox → компактный toggle-row со switch'ем справа
+   - Soft Alert intro в warm-sand стиле (без зелёного accent-faint)
+   - Прогресс-индикатор: 7 точек в шапке */
+.quickstart-modal-body {
+    padding: 4px 2px 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+/* Прогресс-индикатор — 7 точек + текстовый счётчик. Расположен в самом
+   верху body, сразу после title модалки. */
+.qs-progress {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    flex-wrap: wrap;
+}
+.qs-progress-dots {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+}
+.qs-progress-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    transition: background var(--t-fast), border-color var(--t-fast);
+}
+.qs-progress-dot-on {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+.qs-progress-text {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* Soft Alert intro — warm-sand fill, тонкая рамка слева, БЕЗ зелёного
+   accent-faint. На warm-sand light-теме читается как нейтральная подсказка,
+   не как primary-баннер. */
+.quickstart-intro {
+    margin: 0 0 var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-elevated);
+    border-left: 3px solid var(--warning);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+.quickstart-intro-text {
+    color: var(--text);
+}
+
+/* Stage 4.3: section-divider'ы убраны — секции разделяются gap'ом
+   (.quickstart-modal-body уже имеет gap: var(--space-3)) и семантическими
+   <fieldset>'ами с visually-hidden <legend>. */
+
+/* Sprint 4 Stage 4.3: 3 пресет-карточки сверху модалки. Клик заполняет
+   форму значениями шаблона. Активный пресет (соответствует draft) подсвечен
+   accent-рамкой + лёгким accent-faint фоном. */
+.qs-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+    margin: var(--space-1) 0 var(--space-2);
+}
+@media (max-width: 720px) {
+    .qs-preset-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.qs-preset-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color var(--t-fast), background var(--t-fast),
+                box-shadow var(--t-fast);
+    /* min-height для выравнивания при разной длине sub-строк. */
+    min-height: 64px;
+}
+.qs-preset-card:hover {
+    border-color: var(--border-strong);
+    background: var(--bg-elevated-hover, var(--bg-elevated));
+}
+.qs-preset-card-active {
+    /* Stage 5.2: убран box-shadow ring (был 0 0 0 1px var(--accent)) — он визуально
+       удваивал border и отличал preset-card от других active-элементов
+       (.scenario-tab.is-active, .qs-geo-chip-active) — у тех только 1px border.
+       Унификация: все active tab/preset/chip = 1px var(--accent) border + accent-faint bg. */
+    border-color: var(--accent);
+    background: var(--accent-faint);
+}
+.qs-preset-card-label {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+}
+/* Stage 4.3.3: 3 mini-chips на карточке (AI / География / ПДн) — те параметры,
+   которыми пресеты отличаются друг от друга. Type и Audience не показываются —
+   они есть в форме как поля. flex-wrap на случай узких карточек. */
+.qs-preset-card-chips {
+    display: flex;
+    flex-wrap: wrap;
+    /* Stage 4.15: gap 4px → 8px (var(--space-2)) — единое значение для chip-row
+       по проекту (.calc-card-chips, .qs-geo-chips тоже используют space-2). */
+    gap: var(--space-2);
+    margin-top: 2px;
+}
+.qs-preset-mini-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    line-height: 1.3;
+    white-space: nowrap;
+}
+.qs-preset-card-active .qs-preset-mini-chip {
+    border-color: rgba(38, 212, 154, 0.30);
+    color: var(--text);
+}
+
+/* Stage 6.3.B (PATCH 2.4.24): preview-блок «что изменится при выборе пресета».
+   Скрыт по умолчанию (opacity 0 + max-height 0 для плавного раскрытия), на
+   hover/focus-visible карточки появляется. Прозрачность для accessibility:
+   keyboard-пользователь Tab → focus-visible → preview виден; не нужно
+   дополнительное действие. */
+.qs-preset-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    margin-top: var(--space-2);
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity var(--t-fast), max-height var(--t-base);
+    font-size: var(--font-xs);
+    pointer-events: none;
+}
+.qs-preset-card:hover .qs-preset-preview,
+.qs-preset-card:focus-visible .qs-preset-preview {
+    opacity: 1;
+    max-height: 200px;
+}
+.qs-preset-preview-label {
+    color: var(--text-muted);
+}
+.qs-preset-preview-pill {
+    background: var(--accent-faint);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 2px 8px;
+    border: 1px solid rgba(38, 212, 154, 0.28);
+    white-space: nowrap;
+}
+[data-theme="light"] .qs-preset-preview-pill {
+    border-color: rgba(5, 150, 105, 0.32);
+}
+@media (prefers-reduced-motion: reduce) {
+    .qs-preset-preview { transition: none; }
+}
+
+/* Stage 4.3: <fieldset> — семантический контейнер для группы полей.
+   Без visible бордера/легенды (legend.qs-sr-only). */
+.qs-fieldset {
+    border: none;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
+.qs-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* 2-колоночная сетка для 6 полей (Тип/Индустрия, Размер/Активность,
+   География+Провайдер). На узких экранах схлопывается в 1 col. */
+.quickstart-grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3) var(--space-4);
+}
+@media (max-width: 720px) {
+    .quickstart-grid-2col {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Stage 4.3: чипы географии — замена <select> на 3 кнопки в ряд.
+   Активный чип имеет accent-рамку + accent-faint фон. */
+.qs-geo-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: 4px;
+}
+.qs-geo-chip {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: var(--font-sm);
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color var(--t-fast), background var(--t-fast), color var(--t-fast);
+}
+.qs-geo-chip:hover {
+    border-color: var(--border-strong);
+}
+.qs-geo-chip-active {
+    border-color: var(--accent);
+    background: var(--accent-faint);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* Stage 4.3: пара toggle-row для ПДн + AI в grid 2-col. */
+.qs-toggle-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+@media (max-width: 720px) {
+    .qs-toggle-pair {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Stage 5.3.A: контейнер для toggle-row + tooltipShort, чтобы оба элемента
+   попадали в один grid-item .qs-toggle-pair. Без обёртки field-description
+   уехал бы в следующую grid-колонку и разбил layout. */
+.qs-toggle-cell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+/* Stage 5.5.3: delta-pill ряд между preset-grid и формой. Показывает,
+   чем draft отличается от ближайшего пресета (Стандартный B2B). Принцип
+   progressive disclosure: pill = visible delta, hover «было/стало». */
+.qs-preset-delta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-2) 0;
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-xs);
+    border-left: 2px solid var(--accent);
+}
+.qs-preset-delta-label {
+    color: var(--text-muted);
+}
+.qs-preset-delta-pill {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 8px;
+    color: var(--text);
+    cursor: help;
+    white-space: nowrap;
+}
+
+/* Stage 4.3: flash-анимация подсветки полей при apply preset (300ms accent-fill).
+   Marker-class .qs-flash-target ставится на каждый input/chip/toggle, который
+   должен подсвечиваться. .qs-flash добавляется JS на ~350ms через triggerFlash(). */
+@keyframes qsFlash {
+    0%   { background: var(--accent-faint); }
+    100% { background: var(--bg-elevated); }
+}
+@keyframes qsFlashSelect {
+    0%   { background: var(--accent-faint); border-color: var(--accent); }
+    100% { background: var(--bg-elevated); border-color: var(--border); }
+}
+.qs-flash {
+    animation: qsFlash 0.3s ease-out;
+}
+select.qs-flash,
+.input.qs-flash {
+    animation: qsFlashSelect 0.3s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+    .qs-flash {
+        animation: none;
+    }
+}
+
+/* Info-tooltip иконка справа от label. Hover-only tooltip через title-attr,
+   без click-handler'а (это span, не button — семантически правильно). */
+.field-label-with-info {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+.qs-info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: var(--text-dim);
+    cursor: help;
+    transition: color var(--t-fast);
+}
+.qs-info-icon:hover {
+    color: var(--accent);
+}
+.qs-info-icon svg {
+    display: block;
+}
+
+/* Toggle-row для бинарных параметров (ПДн / AI). Компактная строка вместо
+   больших card-checkbox'ов: label слева, switch справа. Клик по всей строке
+   переключает switch (label обёртка). */
+.qs-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color var(--t-fast), background var(--t-fast);
+}
+.qs-toggle-row:hover {
+    border-color: var(--border-strong);
+}
+.qs-toggle-row-text {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+    min-width: 0;
+}
+.qs-toggle-row-label {
+    font-weight: 600;
+    color: var(--text);
+    font-size: var(--font-sm);
+    line-height: 1.4;
+}
+.qs-toggle-row-info {
+    flex-shrink: 0;
+}
+.qs-toggle-row-switch {
+    flex-shrink: 0;
+}
+
+/* `.field-hint` под полями больше не используется в Quick Start (заменён на
+   info-tooltip). Оставлен для scenarioRenameModal — единственный другой
+   потребитель. После Stage 4 fix dead-code в components.css работает чисто
+   как text-описание. */
+.field-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: var(--font-xs);
+    color: var(--text-dim);
+    line-height: 1.4;
+}
+
+/* === 13.U4: Формат выгрузки ответов опросника (radio-карточки) ===
+ *
+ * Две radio-карточки с CSS-схемой документа + toggle ориентации.
+ * Без кастомных цветов — все из --accent / --bg-elevated / --border / --space-*.
+ */
+
+.print-format-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.print-format-fieldset {
+    border: none;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
+.print-format-legend {
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    padding: 0;
+    margin-bottom: var(--space-2);
+}
+
+.print-format-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+
+.print-format-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--bg-elevated);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: border-color var(--t-fast),
+                background var(--t-fast),
+                box-shadow var(--t-fast),
+                transform var(--t-fast);
+}
+.print-format-card:hover {
+    border-color: var(--border-light);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+.print-format-card.is-selected {
+    border-color: var(--accent);
+    background: var(--accent-faint);
+}
+
+/* Скрываем нативный radio, оставляя его доступным для скринридеров и focus-trap. */
+.print-format-card-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+}
+
+/* Keyboard-фокус: ring через focus-within на всю карточку (WCAG 2.4.7). */
+.print-format-card:focus-within {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-faint);
+}
+
+/* CSS-схема документа: header-line + 5 строк ячеек.
+   Цвета — через --text/--text-muted с opacity, чтобы автоматически
+   адаптироваться под обе темы (dark + light). */
+.print-format-card-mockup {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 100px;
+    transition: border-color var(--t-fast);
+}
+.print-format-card.is-selected .print-format-card-mockup {
+    border-color: var(--accent);
+}
+
+.pf-doc-header-line {
+    height: 7px;
+    border-radius: 3.5px;
+    background: var(--text);
+    opacity: 0.55;
+    width: 60%;
+    margin-bottom: 4px;
+}
+
+.pf-doc-row {
+    display: grid;
+    gap: 4px;
+}
+.pf-doc-row-2 { grid-template-columns: 3fr 2fr; }
+.pf-doc-row-3 { grid-template-columns: 2fr 2fr 5fr; }
+
+.pf-doc-cell {
+    height: 5px;
+    border-radius: 2.5px;
+    background: var(--text-muted);
+}
+.pf-doc-cell-q { opacity: 0.55; }
+.pf-doc-cell-a { opacity: 0.40; }
+.pf-doc-cell-x { opacity: 0.28; }
+
+.print-format-card.is-selected .pf-doc-header-line { background: var(--accent); opacity: 0.8; }
+.print-format-card.is-selected .pf-doc-cell-q     { background: var(--accent); opacity: 0.65; }
+.print-format-card.is-selected .pf-doc-cell-a     { background: var(--accent); opacity: 0.45; }
+.print-format-card.is-selected .pf-doc-cell-x     { background: var(--accent); opacity: 0.30; }
+
+.print-format-card-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.print-format-card-title {
+    color: var(--text);
+    font-size: var(--font-base);
+    font-weight: 600;
+}
+.print-format-card-subtitle {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    line-height: 1.4;
+}
+
+/* Toggle ориентации: чекбокс + двухстрочный контент (заголовок + динамический хинт). */
+.print-format-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background var(--t-fast), border-color var(--t-fast);
+}
+.print-format-toggle:hover {
+    background: var(--bg-card);
+    border-color: var(--border-light);
+}
+.print-format-toggle:focus-within {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-faint);
+}
+.print-format-toggle-input {
+    margin-top: 2px;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.print-format-toggle-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.print-format-toggle-title {
+    color: var(--text);
+    font-size: var(--font-sm);
+    font-weight: 600;
+}
+.print-format-toggle-hint {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    line-height: 1.4;
+}
+
+/* Узкий экран — карточки в один столбец. */
+@media (max-width: 540px) {
+    .print-format-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* === Сообщение / Подтверждение === */
+
+.message-body,
+.confirm-body {
+    font-size: 0.95rem;
+    color: var(--text);
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+/* 14.U5: Re-apply profile confirm dialog. */
+.reapply-confirm-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    color: var(--text);
+    font-size: 0.94rem;
+    line-height: 1.5;
+}
+.reapply-intro {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0;
+}
+.reapply-icon {
+    flex-shrink: 0;
+    color: var(--warning, #fbbf24);
+    margin-top: 2px;
+}
+.reapply-info-list {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--text-muted);
+    font-size: 0.86rem;
+    line-height: 1.5;
+}
+.reapply-info-list li + li {
+    margin-top: 4px;
+}
+.reapply-footer {
+    flex-wrap: wrap;
+}
+@media (max-width: 720px) {
+    .reapply-footer {
+        gap: 6px;
+    }
+    .reapply-footer .btn {
+        flex: 1 1 100%;
+        min-height: var(--touch-target);
+    }
+}
+
+/* === Сброс === */
+
+.reset-body { font-size: 0.95rem; }
+.reset-lead { font-weight: 600; margin-top: 0; }
+.reset-list {
+    margin: 0 0 16px;
+    padding-left: 22px;
+    color: var(--text-muted);
+}
+.reset-list li { margin: 4px 0; }
+.reset-warning {
+    background: rgba(251, 191, 36, 0.1);
+    border-left: 3px solid var(--warning);
+    color: var(--warning);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    margin-bottom: 12px;
+}
+.reset-export-hint {
+    margin-top: 8px;
+}
+
+/* === Формула === */
+
+.formula-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.formula-summary {
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+}
+.formula-system,
+.formula-stand,
+.formula-help {
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+}
+.formula-system-title,
+.formula-stand-title,
+.formula-help-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.formula-stand-na {
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+.formula-code {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin: 0 0 8px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Подсветка токенов формулы */
+.tok-q     { color: var(--accent); }
+.tok-s     { color: var(--accent-2); }
+.tok-stand { color: var(--success); font-weight: 600; }
+.tok-fn    { color: #ffb648; }
+.tok-bool  { color: #ff9eaf; }
+.tok-num   { color: #c5e8ff; }
+
+.formula-empty {
+    color: var(--text-muted);
+    font-style: italic;
+}
+.formula-error {
+    color: var(--danger);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+
+.formula-refs {
+    width: 100%;
+    margin-top: 8px;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.formula-refs th, .formula-refs td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+}
+.formula-refs th {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.formula-refs code {
+    background: var(--bg-input);
+    padding: 1px 6px;
+    border-radius: 3px;
+}
+
+.formula-stand-note,
+.formula-result {
+    margin-top: 8px;
+    padding: 6px 12px;
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+.formula-result {
+    color: var(--accent);
+    font-weight: 600;
+    border-left: 3px solid var(--accent);
+}
+
+.formula-help-content {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text);
+}
+.formula-help-content h1,
+.formula-help-content h2,
+.formula-help-content h3,
+.formula-help-content h4 {
+    margin: 12px 0 6px;
+    color: var(--text);
+}
+.formula-help-content p { margin: 6px 0; }
+.formula-help-content ul,
+.formula-help-content ol { margin: 6px 0; padding-left: 22px; }
+.formula-help-content code {
+    background: var(--bg-input);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+}
+.formula-help-content table {
+    border-collapse: collapse;
+    margin: 8px 0;
+    width: 100%;
+}
+.formula-help-content th,
+.formula-help-content td {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+}
+
+.formula-reference {
+    margin-top: 8px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+}
+.formula-reference summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+.formula-reference summary:hover { color: var(--text); }
+.formula-reference-content {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: var(--text);
+}
+.formula-reference-content code {
+    background: var(--bg-input);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--accent);
+}
+
+/* Предупреждения линтера формул */
+.lint-warnings {
+    background: var(--warning-faint);
+    border: 1px solid var(--warning);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+}
+.lint-warnings-title {
+    font-weight: 600;
+    color: var(--warning);
+    margin-bottom: 6px;
+}
+.lint-warnings ul {
+    margin: 0;
+    padding-left: 22px;
+    font-size: 0.88rem;
+    color: var(--text);
+}
+.lint-warnings code {
+    background: var(--bg-input);
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: var(--warning);
+    font-family: var(--font-mono);
+}
+
+/* === Snackbar === */
+
+/* Stage 18.1.2: snackbar в bottom-right (а не bottom-center). На desktop
+   bottom-center физически касался footer'а открытых модалок — кнопка
+   «Применить изменения» в Cost Optimization Planner перекрывалась первые
+   ~4 секунды после открытия модалки (баг F1 из BROWSER_SMOKE). На mobile
+   возвращаемся к bottom-center — там модалки fullscreen и места справа нет. */
+.snackbar-stack {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    left: auto;
+    transform: none;
+    display: flex;
+    flex-direction: column-reverse;  /* новые сверху */
+    align-items: flex-end;
+    gap: 8px;
+    z-index: 200;
+    pointer-events: none;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+}
+
+.snackbar {
+    background: var(--bg-card);
+    color: var(--text);
+    padding: 12px 18px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 280px;
+    opacity: 0;
+    transform: translateY(20px);
+    pointer-events: none;
+    transition: transform var(--t-base), opacity var(--t-base);
+}
+.snackbar.show {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+.snackbar-success { border-left: 3px solid var(--success); }
+.snackbar-error   { border-left: 3px solid var(--danger); }
+.snackbar-warning { border-left: 3px solid var(--warning); }
+.snackbar-info    { border-left: 3px solid var(--accent); }
+.snackbar-progress { border-left: 3px solid var(--accent); min-width: 360px; }
+
+.snackbar-text { flex: 1; font-size: 0.9rem; }
+
+/* Stage 10.1: progress-bar внутри snackbar для bulk-операций. */
+.snackbar-progress-bar {
+    flex: 0 0 120px;
+    height: 6px;
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.08));
+    border-radius: 999px;
+    overflow: hidden;
+}
+.snackbar-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width 200ms linear;
+}
+.snackbar-progress-counter {
+    flex: 0 0 auto;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    min-width: 36px;
+    text-align: right;
+}
+.snackbar-action {
+    color: var(--accent);
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+}
+.snackbar-action:hover { background: var(--accent-faint); }
+.snackbar-close {
+    color: var(--text-muted);
+    font-size: 1.3rem;
+    line-height: 1;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.snackbar-close:hover { color: var(--text); }
+
+/* Stage 18.1.2: на узких viewport'ах модалки разворачиваются на ~весь экран,
+   и места справа для bottom-right snackbar'а уже нет. Возвращаем bottom-center
+   как было до фикса. Порог 720px согласован с другими mobile-media в файле. */
+@media (max-width: 720px) {
+    .snackbar-stack {
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
+        align-items: center;
+    }
+}
+
+/* Блокировка скролла под модалкой */
+body.has-modal { overflow: hidden; }
+
+/* === Help modal content (Markdown) === */
+
+.help-content {
+    line-height: 1.7;
+}
+.help-content h1, .help-content h2, .help-content h3, .help-content h4 {
+    color: var(--text);
+    margin: 18px 0 8px;
+}
+.help-content h1 { font-size: 1.6rem; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.help-content h2 { font-size: 1.3rem; }
+.help-content h3 { font-size: 1.1rem; color: var(--accent); }
+.help-content p { margin: 8px 0; }
+.help-content ul, .help-content ol { margin: 8px 0; padding-left: 24px; }
+.help-content code {
+    background: var(--bg-input);
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+}
+.help-content pre {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+}
+.help-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+}
+.help-content th, .help-content td {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    text-align: left;
+}
+.help-content th { background: var(--bg-elevated); }
+.help-content hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 24px 0;
+}
+
+/* ============================================================
+ * WCAG 2.5.5 — touch-targets ≥44×44 для модальных кнопок
+ * ============================================================ */
+@media (pointer: coarse), (max-width: 720px) {
+    .modal-close {
+        width: var(--touch-target);
+        height: var(--touch-target);
+    }
+    /* 13.U4: toggle ориентации в модалке формата — растягиваем по высоте
+       и увеличиваем чекбокс, чтобы попадать пальцем без промаха. */
+    .print-format-toggle {
+        min-height: var(--touch-target);
+    }
+    .print-format-toggle-input {
+        width: 20px;
+        height: 20px;
+    }
+}

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Демо-скриншот · Дэшборд</title>
+    <meta name="theme-color" content="#0a0f1a">
+
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/sidebar.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/tables.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/forms.css">
+    <link rel="stylesheet" href="css/modals.css">
+    <link rel="stylesheet" href="css/comparison.css">
+</head>
+<body>
+    <div id="app">
+        <p style="color:#9aa6bd;padding:24px;">Готовим демо-данные…</p>
+    </div>
+    <div id="app-modals"></div>
+
+    <script type="module">
+        import * as calcList from './js/controllers/calcListController.js';
+        import { store } from './js/state/store.js';
+        import { mountUi, renderApp } from './js/ui/index.js';
+
+        // Init storage (fresh — у headless chrome localStorage пустой)
+        calcList.initFromStorage();
+
+        // Создать демо-расчёт, если ещё нет активного
+        let active = store.getState().activeCalc;
+        if (!active) {
+            active = calcList.createCalc('Демо: B2B SaaS платформа');
+        }
+
+        // URL-параметры ?tab=... и ?period=daily|monthly|annual — для скриншотов разных состояний.
+        const params = new URLSearchParams(location.search);
+        store.setActiveTab(params.get('tab') || 'dashboard');
+        const period = params.get('period');
+        if (period && ['daily','monthly','annual'].includes(period)) {
+            store.setUi({ dashboardPeriod: period });
+        }
+        if (params.get('risks') === 'off') {
+            const cur = store.getState().activeCalc;
+            if (cur) {
+                store.updateActiveCalc({ settings: { ...cur.settings, applyRiskFactors: false } });
+            }
+        }
+
+        // Минимальный ctx — для скриншота не нужны полные обработчики;
+        // главное чтобы рендер не падал на отсутствующих функциях.
+        const ctx = new Proxy({}, { get: (_, key) => () => {} });
+
+        mountUi();
+        renderApp(store.getState(), ctx);
+
+        // На случай поздней загрузки шрифтов / стилей — релендер через rAF.
+        requestAnimationFrame(() => renderApp(store.getState(), ctx));
+    </script>
+</body>
+</html>

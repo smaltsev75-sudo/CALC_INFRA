@@ -1,0 +1,552 @@
+/* ============================================================
+ * print.css — стили только для печати (Ctrl+Alt+P / window.print())
+ * ============================================================ */
+
+@media print {
+    body {
+        background: white !important;
+        color: black !important;
+        background-image: none !important;
+    }
+
+    .app-shell {
+        max-width: none !important;
+        padding: 0 !important;
+    }
+
+    /* Скрыть навигацию, кнопки, иконки.
+     * 12.U26-fix: добавлены .app-sidebar и .app-topbar (новый layout 9.6) — иначе
+     * левая панель и шапка попадают в PDF. Также skip-link и aria-only элементы. */
+    .app-header,
+    .app-sidebar,
+    .app-topbar,
+    .tabs,
+    .tab-toolbar-actions,
+    .info-icon,
+    .btn,
+    .btn-icon,
+    .col-actions,
+    .col-info,
+    .questionnaire-footer,
+    .modal-overlay,
+    .snackbar,
+    .skip-link,
+    #app-modals {
+        display: none !important;
+    }
+
+    /* main-area — раскрываем на всю страницу: padding и margin от sidebar/topbar
+     * становятся неуместны в печати. */
+    .app-main,
+    main {
+        margin: 0 !important;
+        padding: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+    }
+
+    /* Stage 18.x — Scenario badge должен быть читаем в PDF на dark-теме
+       (фон форсится белым). pair pattern: background + foreground reset. */
+    .tab-title-group {
+        display: inline-flex !important;
+        align-items: baseline !important;
+        gap: 10px !important;
+    }
+    .scenario-name-badge {
+        background: white !important;
+        color: black !important;
+        border: 1px solid #999 !important;
+    }
+    .scenario-name-badge-prefix,
+    .scenario-name-badge-text {
+        color: black !important;
+    }
+
+    /* Заголовок страницы */
+    .tab-title {
+        font-size: 1.4rem;
+        margin: 0 0 12px;
+        border-bottom: 2px solid #333;
+        padding-bottom: 6px;
+        color: black !important;
+    }
+
+    /* Карточки */
+    .stand-card,
+    .calc-card,
+    .questionnaire-section,
+    .settings-panel {
+        background: white !important;
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+        color: black !important;
+    }
+
+    .stand-card-summary {
+        border-color: #333 !important;
+    }
+
+    .stand-card-total-value,
+    .summary-number-value,
+    .summary-donut-value {
+        color: black !important;
+        background: none !important;
+        -webkit-text-fill-color: black !important;
+    }
+
+    /* 12.U26-fix: убрать accent-зелёный для крупных чисел дашборда — на белом
+     * фоне неон-зелёный нечитаем. Также убираем неон-glow, gradient и
+     * -webkit-text-fill-color (gradient-clip), которые могут оставлять текст
+     * прозрачным после смены background. */
+    .dash-hero-value-amount,
+    .dash-hero-value-unit,
+    .dash-hero-alt-value,
+    .dash-stand-card-total-value,
+    .dash-stand-card-total-unit,
+    .dash-stand-card-total,
+    .dash-card-eyebrow,
+    .dash-card-eyebrow-tag,
+    .dash-risk-surplus,
+    .dash-risk-surplus-amount,
+    .dash-category-row-value,
+    .dash-category-row-pct,
+    .dash-risk-row-amount,
+    .dash-risk-row-value,
+    /* PATCH 2.4.37: hardware-метрики и AI-метрики — qty + unit. Раньше эти
+       селекторы отсутствовали в print-overrides; на dark-теме их color = var(--text)
+       (светлый), при @media print background форсится на white, а foreground
+       остаётся var(--text) → значения «1 016 шт.», «267 015 млн токенов / мес»
+       на белом фоне невидимы. Юзер-feedback (PATCH 2.4.37): «не видны значения
+       блоков ОБЪЁМЫ РЕСУРСОВ и ОБЪЁМЫ AI-НАГРУЗКИ при выгрузке в PDF». */
+    .dash-resource-row-value,
+    .dash-resource-row-qty,
+    .dash-resource-row-unit,
+    .dash-resource-row-label,
+    .dash-ai-metric-row-value,
+    .dash-ai-metric-row-qty,
+    .dash-ai-metric-row-unit,
+    .dash-ai-metric-row-label,
+    .calc-card-metric-hero,
+    .calc-card-metric-sub {
+        color: black !important;
+        background: none !important;
+        background-image: none !important;
+        -webkit-text-fill-color: black !important;
+        text-shadow: none !important;
+    }
+    .vat-badge, .vat-badge-on, .vat-badge-off,
+    .dash-stand-card-badge, .dash-resources-badge,
+    .calc-card-chip,
+    .pill, .pill-success, .pill-warn, .pill-danger, .pill-info,
+    .cost-type-pill, .cost-type-pill-capex, .cost-type-pill-opex {
+        background: white !important;
+        color: black !important;
+        border-color: #888 !important;
+        box-shadow: none !important;
+    }
+
+    .text-muted, .field-label, .stand-card-subtitle, .stand-card-total-label,
+    .calc-card-label, .col-name-sub, .field-description,
+    .dash-stand-card-subtitle, .dash-card-eyebrow-sub,
+    .dash-category-row-label, .dash-risk-row-label,
+    .vat-breakdown, .risk-breakdown {
+        color: #333 !important;
+    }
+
+    /* Прогресс-бары в категории/риск-карточках — на печати ничего не значат
+     * (визуальная подсказка длины), убираем фон. Числа справа сами по себе
+     * передают информацию. */
+    .dash-category-row-bar,
+    .dash-category-row-bar-fill,
+    .dash-risk-row-bar,
+    .dash-risk-row-bar-fill,
+    .dash-hero-cost-types-bar,
+    .dash-hero-cost-types-bar-capex,
+    .dash-hero-cost-types-bar-opex {
+        background: #ddd !important;
+    }
+
+    /* Таблицы */
+    table { page-break-inside: auto; }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+    .details-table-wrap, .items-table-wrap { border: none !important; }
+    .details-table th, .details-table td,
+    .items-table th, .items-table td,
+    .questions-table th, .questions-table td {
+        background: white !important;
+        color: black !important;
+        border-color: #ccc !important;
+    }
+    .category-row td, .totals-row td {
+        background: #f0f0f0 !important;
+        color: black !important;
+    }
+
+    /* Вложенные узлы внутри th/td имеют собственные `color: var(--text*)` правила
+       (например, `.col-stand-name { color: var(--text) }` в tables.css). CSS
+       `!important` на родительском th/td НЕ каскадируется на детей со своим
+       color — они остаются slate-100/-muted, на белой бумаге невидимы.
+       Принудительно ставим черный цвет на вложенных узлах:
+        - 2-line stand headers (Детализация qty/cost): col-stand-name, col-stand-unit;
+        - category-rows (Детализация): category-name, category-count, category-chevron;
+        - category-rows (Элементы конфигурации): items-cat-name/count/chevron;
+        - category-rows (Сравнение): cmp-cat-name, cmp-cat-count.
+       Также убираем background у category-count (rgba-полупрозрачный фон на белом
+       бумаге читается как тёмная плашка вокруг числа). */
+    .details-table th .col-stand-name,
+    .details-table th .col-stand-unit,
+    .category-name, .category-count, .category-chevron,
+    .items-cat-name, .items-cat-count, .items-cat-chevron,
+    .cmp-cat-name, .cmp-cat-count {
+        color: black !important;
+        background: transparent !important;
+    }
+
+    /* Чарты */
+    .chart-stacked-bar, .chart-donut { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+
+    /* Дэшборд: стек по вертикали для лучшего печатного вида */
+    .dashboard-grid {
+        display: block !important;
+    }
+    .stand-card-summary { grid-row: auto !important; grid-column: auto !important; }
+    .stand-card { margin-bottom: 12px; }
+
+    @page {
+        margin: 16mm 12mm;
+        size: A4;
+    }
+
+    /* Детализация — широкая таблица (12+ колонок), печатаем в landscape.
+       margin ужат до 8мм: usable-ширина 297-16 = 281мм (было 273мм) — критично
+       для размещения всех колонок без обрезки справа. */
+    @page landscape {
+        size: A4 landscape;
+        margin: 8mm;
+    }
+    .details-table-wrap {
+        page: landscape;
+    }
+    .details-table {
+        /* PATCH 2.4.38: font-size 7pt (PATCH 2.4.37 reduce от 8pt) был
+           недостаточен — крайний правый столбец «ИТОГО / ГОД» всё равно
+           обрезался. Теперь font-size: 6.5pt + scale-down padding до 1-2px
+           + СКРЫТИЕ малоинформативных колонок (доля %, риск %, риск ₽).
+           17 колонок → 14 видимых на печати → суммарная ширина гарантированно
+           укладывается в A4 landscape (281mm). Доля/риск как % — производные
+           от ИТОГО/ВЫПЛАТА и не нужны для бумажной отчётности (читатель видит
+           суммы и стенды). */
+        font-size: 6.5pt;
+        table-layout: auto;
+        width: 100%;
+    }
+    .details-table th,
+    .details-table td {
+        padding: 2px 3px !important;
+    }
+    /* На печати скрываем 3 малоинформативные колонки:
+        col-share — «Доля, %» (легко вычислить мысленно)
+        col-risk — «Риск, %»
+        col-risk-amount — «Риск, ₽/мес» (входит в ИТОГО)
+       Высвобождает ~25-30% горизонтальной ширины. Без этого 17 колонок
+       не умещаются на A4 landscape даже при 6pt. */
+    .details-table .col-share,
+    .details-table .col-risk,
+    .details-table .col-risk-amount,
+    .details-table th.col-share,
+    .details-table th.col-risk,
+    .details-table th.col-risk-amount {
+        display: none !important;
+    }
+    .details-table .col-stand,
+    .details-table .col-total,
+    .details-table .col-price {
+        white-space: nowrap;
+    }
+
+    /* PATCH 2.4.39: Sticky-thead на ПЕЧАТИ ломает рендеринг — Chrome
+       не режит позицию обратно в static, и thead'ы оказываются вне
+       видимого page area (либо overlay'ятся sticky-привязкой к viewport
+       которого на printer media нет). Симптом — пользователь видит на
+       PDF дашборда детализации тёмный пустой прямоугольник вместо
+       заголовков «Элемент / Поставщик / DEV / ... / Итого / Год».
+       Принудительно превращаем все sticky-thead элементы в static и
+       форсим белый фон — это базовая страховка для всех таблиц на печати. */
+    .details-table thead,
+    .details-table thead tr,
+    .details-table thead th,
+    .details-table thead td,
+    .details-table .details-thead-row-totals td,
+    .details-table .details-thead-row-totals-grand td,
+    .details-table .details-thead-row-totals-capex td,
+    .details-table .details-thead-row-totals-opex td,
+    .items-table thead th,
+    .questions-table thead th {
+        position: static !important;
+        top: auto !important;
+        background: white !important;
+        color: black !important;
+        z-index: auto !important;
+    }
+    /* Внутренние divs шапки стендов (col-stand-name / col-stand-unit) — текст
+       тоже на белый фон, иначе на dark-теме они остаются slate-500 и едва
+       читаемы при печати. */
+    .details-table thead th .col-stand-name,
+    .details-table thead th .col-stand-unit {
+        color: black !important;
+        background: transparent !important;
+    }
+
+    /* Этап 13.U2 PDF-fit: единица измерения внутри qty-ячеек дублирует колонку
+       «Ед.изм.» — на печати скрываем единицу из ячеек, освобождая ~30-40% ширины
+       числовых колонок. Текст «1,28 ТБ» в каждой ячейке × 6 stand × 34 ЭК = много
+       лишних мм, которые и приводили к обрезке правых колонок на A4 landscape. */
+    .qty-unit { display: none !important; }
+
+    /* Длинные имена ЭК («Объектное хранилище (S3-совместимое)») в экранном режиме
+       обрезаются ellipsis для компактности. На печати читать обрезку нельзя —
+       снимаем ограничение ширины и разрешаем перенос строки. */
+    .details-table .col-name {
+        max-width: none !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+    }
+    .details-table .col-name-main {
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+    }
+    .details-table .col-vendor {
+        max-width: none !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+    }
+
+    /* PATCH 2.4.32 (Stage 7.4): Dashboard PDF dark-theme fix. На dark-теме все
+       .dash-* containers имеют var(--bg-card) (тёмно-синий) или rgba (полу-
+       прозрачный тёмный). Print-сбросы color на text (выше line 85-124) не
+       помогают — текст #333 на тёмном bg нечитаем. Force white-bg + #ccc
+       borders консистентно с .stand-card / .questionnaire-section выше. */
+    .dashboard-empty,
+    .profile-banner,
+    .dash-card,
+    .dash-stand-card,
+    .dash-resources,
+    .dash-ai-metrics {
+        background: white !important;
+        border-color: #ccc !important;
+        box-shadow: none !important;
+        color: black !important;
+    }
+    /* Sub-rows внутри cards с rgba-backgrounds. */
+    .dash-resource-row,
+    .dash-ai-metric-row,
+    .dash-stand-card-numbers,
+    .dash-stand-card-share-badge,
+    .dash-stand-card-link,
+    .dash-risk-row {
+        background: transparent !important;
+        border-color: #ccc !important;
+    }
+    /* Section-headers и titles внутри dashboard cards. */
+    .dash-section-title,
+    .dash-resources-title,
+    .dash-resources-header,
+    .dash-ai-metrics-title,
+    .dash-ai-metrics-header,
+    .dash-stand-card-title,
+    .dash-stand-card-subtitle {
+        color: black !important;
+        background: transparent !important;
+    }
+    /* Badges на дашборде с rgba-backgrounds. */
+    .dash-resources-badge,
+    .dash-resources-badge-risk,
+    .dash-resources-badge-base,
+    .risk-breakdown-pct-actual,
+    .risk-breakdown-pct-potential,
+    .risk-breakdown-pct-hot {
+        background: white !important;
+        color: black !important;
+        border: 1px solid #888 !important;
+    }
+
+    /* PATCH 2.4.28 (Stage 7.1): Settings panel при native Ctrl+P (printPdf
+       на Опроснике маршрутизирует в printAnswers — Settings там не печатается;
+       сюда попадаем только через ручной Ctrl+P браузера). На A4 portrait
+       usable ~793px глобальный 2.4.27 minmax(380px, 1fr) даёт 2 cols по ~388px,
+       а .field-percent inner требует минимум 444px (180+~100+140+24) → overflow
+       56px вправо. Принудительно 1 col на print гарантирует fit любого
+       inline-row .field-percent на A4 portrait и landscape без overflow. */
+    .settings-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .field-percent {
+        min-width: 0 !important;
+    }
+    .field-percent > .field-label,
+    .field-percent > .field-description {
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+    }
+    /* Defensive: ни input, ни slider не должны вылезать за cell на любой
+       бумажной ширине (защита от inline-style override'ов браузер-расширений). */
+    .percent-input .input,
+    .percent-slider {
+        max-width: 100% !important;
+    }
+}
+
+/* ============================================================
+ * Режим «печать ответов опросника» — body.printing-answers
+ * ============================================================
+ * Активируется методом printAnswers() в js/ui/printAnswers.js.
+ * Идея: спрятать всё кроме секции #print-answers-area, в которую
+ * print-рендер собрал чистую разметку «вопрос → ответ» по разделам.
+ */
+
+body.printing-answers > *:not(#print-answers-area) {
+    display: none !important;
+}
+body.printing-answers #print-answers-area {
+    display: block !important;
+    background: white;
+    color: black;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 11pt;
+    line-height: 1.45;
+    padding: 16px 20px;
+    /* Этап 13.U3: страницы опросника всегда landscape — раскрываем max-width
+       до полной usable-ширины A4 landscape (~270мм). Старое 800px было
+       рассчитано на portrait. */
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+/* Extended-режим: третья колонка «Пояснение». Переопределяем ширины колонок
+   и делаем cell-padding плотнее, чтобы поместить description на той же
+   landscape-странице. */
+body.printing-answers-extended #print-answers-area .pa-th-q  { width: 28%; }
+body.printing-answers-extended #print-answers-area .pa-th-a  { width: 18%; }
+body.printing-answers-extended #print-answers-area .pa-th-x  { width: 54%; }
+
+#print-answers-area { display: none; }
+
+/* Шапка */
+#print-answers-area .pa-header { border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 16px; }
+#print-answers-area .pa-title { font-size: 18pt; margin: 0 0 6px; color: #111; }
+#print-answers-area .pa-meta { font-size: 10pt; color: #444; }
+#print-answers-area .pa-meta > div { margin: 2px 0; }
+
+/* 12.U26-fix: табличный формат вместо разделов-списков. Одна таблица «Вопрос →
+   Ответ», группы по типу вопроса (boolean/number/...) — заголовок group-row
+   через colspan. Без рекомендаций и пояснений (явный запрос пользователя). */
+#print-answers-area .pa-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 10pt;
+    color: #000;
+}
+#print-answers-area .pa-table thead th {
+    text-align: left;
+    background: #eee;
+    color: #111;
+    font-size: 10pt;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-bottom: 1px solid #888;
+}
+#print-answers-area .pa-th-q { width: 60%; }
+#print-answers-area .pa-th-a { width: 40%; }
+#print-answers-area .pa-group-row td.pa-group-label {
+    background: #f6f6f6;
+    color: #222;
+    font-weight: 600;
+    font-size: 9.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 4px 8px;
+    border-top: 1px solid #aaa;
+    border-bottom: 1px solid #ccc;
+}
+#print-answers-area .pa-row {
+    page-break-inside: avoid;
+}
+#print-answers-area .pa-row td {
+    padding: 3px 8px;
+    border-bottom: 1px dotted #ccc;
+    vertical-align: top;
+}
+#print-answers-area .pa-q-cell { color: #222; }
+#print-answers-area .pa-a-cell { color: #000; font-weight: 600; }
+/* Колонка пояснений в extended-режиме — мельче и без bold, чтобы отделить
+   справочный текст от ответа пользователя. white-space: pre-line даёт
+   переносы строк по \n из composeExplanation(). */
+#print-answers-area .pa-x-cell {
+    color: #444;
+    font-size: 8pt;
+    line-height: 1.35;
+    white-space: pre-line;
+}
+
+/* Параметры расчёта — отдельная таблица с собственным заголовком */
+#print-answers-area .pa-settings-table { margin-top: 18px; }
+#print-answers-area .pa-settings-title {
+    background: #ddd !important;
+    color: #111 !important;
+    font-size: 11pt;
+    text-align: left;
+    padding: 5px 8px;
+    border-bottom: 1px solid #666;
+}
+
+/* Подвал */
+#print-answers-area .pa-footer {
+    margin-top: 24px;
+    padding-top: 8px;
+    border-top: 1px solid #ccc;
+    font-size: 9pt;
+    color: #888;
+    text-align: center;
+    font-style: italic;
+}
+
+@media print {
+    body.printing-answers {
+        background: white !important;
+    }
+    #print-answers-area { padding: 0; max-width: none; }
+    /* Этап 13.U4: ориентация выбирается в модалке. Используем именованные
+       страницы — landscape по умолчанию, portrait при body.printing-answers-portrait.
+       Это не затрагивает безымянный @page для обычных print-сценариев (Дашборд,
+       Сравнение и т.п.) выше в файле. */
+    @page paLandscape { size: A4 landscape; margin: 12mm 14mm; }
+    @page paPortrait  { size: A4 portrait;  margin: 14mm 12mm; }
+    body.printing-answers           #print-answers-area { page: paLandscape; }
+    body.printing-answers-portrait  #print-answers-area { page: paPortrait; }
+
+    /* Stage VAT-1 Phase 5: на PDF выводим режим/ставку текстом (бейдж читаемый),
+       но скрываем интерактивные кнопки — на бумаге они бессмысленны. Фон/цвет —
+       чёрно-белые для контраста (правила PATCH 2.4.32: background + foreground
+       pair'ом для каждого widget'а). */
+    .vat-mode-actions { display: none !important; }
+    .vat-mode-badge {
+        background: white !important;
+        color: black !important;
+        border-color: black !important;
+    }
+    .vat-multiperiod-warning,
+    .comparison-vat-warning {
+        background: white !important;
+        color: black !important;
+        border: 1px solid black !important;
+    }
+    .comparison-vat-chip {
+        color: black !important;
+    }
+}
+

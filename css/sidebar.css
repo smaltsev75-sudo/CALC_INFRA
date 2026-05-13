@@ -1,0 +1,262 @@
+/* ============================================================
+ * sidebar.css — левая навигационная панель
+ * ============================================================ */
+
+.app-sidebar {
+    position: sticky;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: var(--sidebar-width, 220px);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 18px 12px 14px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    z-index: 50;
+    overflow-y: auto;
+}
+
+/* ===== Бренд ===== */
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 10px 18px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.sidebar-brand-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    box-shadow: 0 0 18px var(--accent-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-inverse);
+    flex-shrink: 0;
+}
+.sidebar-brand-logo .icon { color: var(--text-inverse); }
+
+.sidebar-brand-text {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+}
+.sidebar-brand-title {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.18;
+    letter-spacing: 0.1px;
+    /* На полной ширине sidebar (220px) название переносится на 2 строки;
+       в свёрнутом режиме (≤1100px) текст скрывается целиком — см. medіа ниже. */
+    word-break: normal;
+    overflow-wrap: break-word;
+}
+.sidebar-brand-version {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    margin-top: 1px;
+}
+
+/* ===== Навигация ===== */
+
+.sidebar-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.sidebar-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sidebar-section-title {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-dim);
+    padding: 0 12px 6px;
+    font-weight: 600;
+}
+
+.sidebar-nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    font-weight: 500;
+    text-align: left;
+    transition: background var(--t-fast), color var(--t-fast);
+    user-select: none;
+}
+
+.sidebar-nav-item:hover:not(:disabled):not(.sidebar-nav-item-active) {
+    background: var(--bg-elevated);
+    color: var(--text);
+}
+
+.sidebar-nav-item:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.sidebar-nav-item-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: inherit;
+    flex-shrink: 0;
+}
+
+.sidebar-nav-item-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ===== Активный пункт ===== */
+
+.sidebar-nav-item-active {
+    background: linear-gradient(90deg, var(--accent-faint) 0%, transparent 90%);
+    color: var(--accent);
+    box-shadow: inset 0 0 0 1px rgba(38, 212, 154, 0.18);
+}
+
+.sidebar-nav-item-active::before {
+    content: '';
+    position: absolute;
+    left: -12px;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.sidebar-nav-item-active .sidebar-nav-item-icon {
+    color: var(--accent);
+}
+
+/* ===== Disabled ===== */
+
+.sidebar-nav-item-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.sidebar-nav-item-disabled:hover {
+    background: transparent !important;
+    color: var(--text-muted) !important;
+}
+
+/* ===== Footer ===== */
+
+.sidebar-footer {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.sidebar-footer-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    font-weight: 500;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+.sidebar-footer-btn:hover {
+    background: var(--bg-elevated);
+    color: var(--text);
+}
+
+/* Stage 17.2 Phase 3c: toggle «Расширенные настройки» в footer.
+   Включённое состояние (advanced=on) — accent-полоса слева + accent-цвет
+   иконки + полужирный label, чтобы было видно с любой вкладки. */
+.sidebar-advanced-toggle {
+    position: relative;
+}
+.sidebar-advanced-toggle-on {
+    color: var(--text);
+    background: var(--bg-elevated);
+}
+.sidebar-advanced-toggle-on .sidebar-nav-item-icon {
+    color: var(--accent);
+}
+.sidebar-advanced-toggle-on .sidebar-nav-item-label {
+    font-weight: 600;
+}
+.sidebar-advanced-toggle-on::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: -16px;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--accent);
+}
+
+/* ===== Collapsible: компактный режим на узких экранах ===== */
+
+@media (max-width: 1100px) {
+    :root { --sidebar-width: 64px; }
+    .sidebar-brand-text,
+    .sidebar-section-title,
+    .sidebar-nav-item-label,
+    .sidebar-footer-btn .sidebar-nav-item-label {
+        display: none;
+    }
+    .sidebar-brand {
+        justify-content: center;
+        padding: 4px 0 18px;
+    }
+    .sidebar-nav-item,
+    .sidebar-footer-btn {
+        justify-content: center;
+        padding: 10px;
+    }
+    .sidebar-nav-item-active::before {
+        left: -8px;
+    }
+}
+
+@media (max-width: 720px) {
+    :root { --sidebar-width: 56px; }
+    .app-sidebar { padding: 12px 6px; }
+}
+
+/* ============================================================
+ * WCAG 2.5.5 — touch-targets ≥44×44 для пунктов навигации
+ * Палец должен попадать в каждый sidebar-item без промаха.
+ * ============================================================ */
+@media (pointer: coarse), (max-width: 720px) {
+    .sidebar-nav-item,
+    .sidebar-footer-btn {
+        min-height: var(--touch-target);
+    }
+}

@@ -1,0 +1,421 @@
+/* ============================================================
+ * layout.css — глобальная компоновка: sidebar + main column
+ * ============================================================ */
+
+:root {
+    --sidebar-width: 220px;
+}
+
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+    align-items: stretch;
+}
+
+.app-main-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    /* PATCH 2.4.35: убран min-width: 0. Раньше он позволял .app-main-col
+       сжиматься НИЖЕ min-content children — Details-таблица с 16-17 колонками
+       и nowrap-цифрами имела min-content ≈ 1700px, но min-width:0 разрешал
+       .app-main-col оставаться на ширине viewport-220, и таблица
+       клипалась изнутри (правые столбцы «РИСК ₽», «ИТОГО / ГОД» обрезались
+       без возможности доскроллить, body не получал overflow). PATCH 2.4.31
+       снял overflow-x:hidden с body, но без снятия min-width:0 это было
+       half-fix. Теперь .app-main-col растёт под content: на Details body
+       шире viewport → html-scrollbar внизу viewport → все колонки доступны.
+       Sticky-thead продолжает работать (body — не scroll-container, прилипает
+       к viewport). На Dashboard/Forms grid auto-fit сам сжимается — родитель
+       не «распирается» (grid-items min-width: 0 default). */
+    max-width: 100%;
+}
+
+/* ===== TopBar (сверху main column) ===== */
+
+.app-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 24px;
+    background: linear-gradient(180deg, var(--bg-main) 0%, rgba(10, 15, 26, 0.92) 90%, transparent 100%);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+}
+/* @supports фолбэк (UI-ревью 2026-05-05): без backdrop-filter блюр прозрачной
+   нижней границы topbar'а пропадает, через transparent просвечивает контент.
+   Делаем фон полностью непрозрачным — sticky-topbar остаётся читаемым на любом
+   фоне. Светлая тема перебивается через [data-theme="light"] .app-topbar. */
+@supports not (backdrop-filter: blur(1px)) {
+    .app-topbar {
+        background: var(--bg-panel);
+    }
+}
+
+.app-topbar-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-topbar-title-muted {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.app-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* ===== Persist-indicator (компактный) ===== */
+
+.persist-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+    user-select: none;
+}
+.persist-indicator .icon { color: inherit; }
+.persist-indicator.persist-idle    { color: var(--text-muted); }
+.persist-indicator.persist-pending { color: var(--accent); border-color: var(--accent); }
+.persist-indicator.persist-pending .icon { animation: spin 0.8s linear infinite; }
+.persist-indicator.persist-saved   { color: var(--success); border-color: var(--success); }
+.persist-indicator.persist-error   { color: var(--danger); border-color: var(--danger); background: var(--danger-faint); cursor: help; }
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ===== Основной контейнер ===== */
+
+.app-main {
+    flex: 1;
+    padding: 18px 24px 32px;
+    /* 12.U30-fix: НЕ задавать здесь overflow ≠ visible — по CSS-spec любое
+     * не-visible значение на одной оси автоматически делает auto на другой,
+     * что создаёт scroll-context и ломает sticky-thead в больших таблицах
+     * (sticky прилипает к app-main, а не к viewport, и при body-скролле
+     * уезжает вместе с контентом). Защита от h-расползания содержимого —
+     * на уровне самих widget'ов (table-layout: fixed, min-width: 0). */
+}
+
+.tab-pane {
+    /* Изолируем layout/style вычисления вкладки, чтобы re-render корня
+       не вызывал глобального reflow и видимого мигания на boolean-переключателях. */
+    contain: layout style;
+}
+.tab-pane-fresh {
+    animation: fadeIn 0.18s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Toolbar внутри вкладки (под topbar) ===== */
+
+.tab-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 0 18px;
+    flex-wrap: wrap;
+}
+
+.tab-title {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.2px;
+}
+
+.tab-toolbar-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.tab-toolbar-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+/* Stage 18.x — Scenario badge рядом с h2.tab-title (Dashboard / Details /
+   Опросник). Лёгкий маркер для ориентировки: пользователь видит активный
+   сценарий, не глядя в полосу вкладок TopBar'а. На PDF тоже видим — print.css
+   делает background-reset (см. ".scenario-name-badge" в @media print). */
+.tab-title-group {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.scenario-name-badge {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: var(--text);
+    max-width: 280px;
+    cursor: help;
+}
+
+.scenario-name-badge-prefix {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.scenario-name-badge-text {
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+}
+
+/* ===== Sprint 3.0 Stage 2: tab-switcher для сценариев ===== */
+
+.scenario-tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 1 auto;
+    min-width: 0;
+    /* На узких экранах полоса горизонтально-прокручиваемая. На desktop —
+       помещается между title и persist-indicator. Прокрутка тач-friendly. */
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    /* Скрываем scrollbar — табы должны выглядеть как навигация, а не таблица. */
+    scrollbar-width: none;
+}
+.scenario-tabs::-webkit-scrollbar { display: none; }
+
+.scenario-tab {
+    display: inline-flex;
+    align-items: stretch;
+    flex: 0 0 auto;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    transition: border-color var(--t-fast, 120ms), background-color var(--t-fast, 120ms);
+    scroll-snap-align: start;
+}
+.scenario-tab:hover {
+    border-color: var(--accent-muted, var(--text-muted));
+}
+.scenario-tab.is-active {
+    background: var(--bg-card);
+    border-color: var(--accent);
+}
+
+.scenario-tab-body {
+    background: transparent;
+    border: 0;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 5px 10px;
+    cursor: pointer;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.scenario-tab-body:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+.scenario-tab.is-active .scenario-tab-body {
+    color: var(--text);
+    font-weight: 600;
+}
+
+/* Stage 4.5: индикатор-точка для сценариев с ручными правками. Появляется
+   рядом с label (внутри scenario-tab-body, после .scenario-tab-label). Имеет
+   собственный title-tooltip «N правок вручную» — на hover точки без перекрытия
+   с tooltip'ом самой кнопки таба. */
+.scenario-tab-override-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-left: 6px;
+    vertical-align: middle;
+    cursor: help;
+    flex-shrink: 0;
+}
+/* Чтобы text-overflow:ellipsis не съедал точку — обёртка label + dot должна
+   правильно расположиться. .scenario-tab-body — flex-row, label с overflow. */
+.scenario-tab-body {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+}
+.scenario-tab-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.scenario-tab-menu {
+    background: transparent;
+    border: 0;
+    border-left: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    transition: color var(--t-fast, 120ms), background-color var(--t-fast, 120ms);
+}
+.scenario-tab-menu:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, .04);
+}
+.scenario-tab-menu:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+.scenario-tabs-add {
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.82rem;
+    padding: 5px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    transition: border-color var(--t-fast, 120ms), color var(--t-fast, 120ms);
+}
+.scenario-tabs-add:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.scenario-tabs-add:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.scenario-tabs-add-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* На (pointer: coarse) — увеличиваем touch-target до 44px (WCAG 2.5.5). */
+@media (pointer: coarse), (max-width: 720px) {
+    .scenario-tab-body, .scenario-tab-menu, .scenario-tabs-add {
+        min-height: var(--touch-target);
+    }
+    .scenario-tab-body { max-width: 140px; }
+}
+
+/* Меню действий для одной вкладки — список вертикальных кнопок, как в обычном popup. */
+.scenario-menu-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 0;
+}
+.scenario-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    padding: 10px 12px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: background-color var(--t-fast, 120ms);
+}
+.scenario-menu-item:hover {
+    background: var(--bg-elevated);
+}
+.scenario-menu-item:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+.scenario-menu-item-danger {
+    color: var(--danger);
+}
+.scenario-menu-item-danger:hover {
+    background: var(--danger-faint);
+}
+.scenario-menu-item.is-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.scenario-menu-item.is-disabled:hover {
+    background: transparent;
+}
+.scenario-menu-item-label {
+    flex: 1;
+}
+
+.scenario-rename-body {
+    padding: 4px 0;
+}
+.scenario-rename-body .field-hint-text {
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+/* Reduced-motion — отключаем transitions. */
+@media (prefers-reduced-motion: reduce) {
+    .scenario-tab,
+    .scenario-tab-menu,
+    .scenario-tabs-add,
+    .scenario-menu-item {
+        transition: none;
+    }
+}
+
+/* ===== Адаптация ===== */
+
+@media (max-width: 720px) {
+    .app-topbar { padding: 12px 16px; }
+    .app-main   { padding: 14px 16px 24px; }
+}

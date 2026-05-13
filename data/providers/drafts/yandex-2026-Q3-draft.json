@@ -1,0 +1,89 @@
+{
+    "schemaVersion": 1,
+    "providerId": "yandex",
+    "version": "2026-Q3-draft",
+    "timestamp": "2026-05-09T18:00:00.000Z",
+    "source": "Yandex Cloud price-list (1 мая 2026, регион RU, RUB) — full text dump прайса от пользователя 2026-05-09 (yandex.cloud/ru/prices, валидирован против скриншота Compute Cloud). Canonical platforms: Intel Ice Lake regular VM (general compute), AMD EPYC + A100 (GPU/AI). НДС: цены /ru/prices показаны с НДС (стандарт Yandex). 16 ЭК с реальными числами. WAF — пакетный тариф Start взят с docs-страницы yandex.cloud/ru/docs/smartwebsecurity/pricing; в price-list дампе видна альтернативная pay-per-request таблица (27 450 ₽/M req 0.01-1M; 3 843 ₽/M req 1-10M; ниже tiered).",
+    "prices": {
+        "cpu-vcpu-shared": {
+            "pricePerUnit": 905,
+            "vendor": "Yandex Cloud (Compute Cloud, Intel Ice Lake regular VM)",
+            "priceSource": "yandex.cloud/ru/prices (1 мая 2026, скриншот калькулятора): «Вычислительные ресурсы обычной ВМ, Intel Ice Lake, 100% vCPU» = 1.24 ₽/vCPU·час × 730 ч ≈ 905. Ice Lake — current default Intel platform, non-Compute-Optimized для general workload."
+        },
+        "cpu-vcpu-dedicated": {
+            "pricePerUnit": 1022,
+            "vendor": "Yandex Cloud (Compute Cloud, Intel Ice Lake dedicated host intel-6338)",
+            "priceSource": "yandex.cloud/ru/prices (1 мая 2026): «Вычислительные ресурсы выделенных хостов, Intel Ice Lake intel-6338-c108-m704-n3200x6, 100% vCPU» = 1.4 ₽/vCPU·час × 730 ч ≈ 1022. Premium-вариант — 100% vCPU на dedicated физическом хосте (=cpu-vcpu-shared, но с гарантированной изоляцией)."
+        },
+        "cpu-vcpu-gpu": {
+            "pricePerUnit": 12315,
+            "vendor": "Yandex Cloud (Compute Cloud GPU, AMD EPYC + 1 GPU NVIDIA A100)",
+            "priceSource": "yandex.cloud/ru/prices (1 мая 2026, Compute Cloud — GPU): A100 на AMD EPYC — GPU 408,12 ₽/GPU·час, vCPU 0,9882 ₽/час, RAM 0,3074 ₽/ГБ·час. Эталонная shape per Yandex docs gpu-platform-v3 (g2.standard): 28 vCPU + 119 ГБ RAM на 1 GPU A100. Полная нода: (408,12 + 0,9882×28 + 0,3074×119) × 730 ≈ 344 830 ₽/мес ÷ 28 vCPU ≈ 12 315 ₽/(GPU-vCPU)/мес. Методология «full-node ÷ vCPU count» как у Cloud.ru reference 14 400 (A100 287k за 20 vCPU). Альтернативы из CSV: V100 (Cascade Lake) ~9 700 ₽/(GPU-vCPU)/мес, T4 ~2 800 ₽/(GPU-vCPU)/мес — для inference small/medium моделей."
+        },
+        "ram-gb": {
+            "pricePerUnit": 241,
+            "vendor": "Yandex Cloud (Compute Cloud, Intel Ice Lake regular VM)",
+            "priceSource": "yandex.cloud/ru/prices (1 мая 2026): «Вычислительные ресурсы обычной ВМ, Intel Ice Lake, RAM» = 0.33 ₽/ГБ·час × 730 ч ≈ 241. CVoS-1-год дешевле (0.28 → 204 ₽/мес), но baseline = on-demand."
+        },
+        "storage-ssd-tb": {
+            "pricePerUnit": 14878,
+            "vendor": "Yandex Cloud (Compute Cloud, Network SSD)",
+            "priceSource": "yandex.cloud/ru/prices (1 мая 2026): «Быстрый диск (SSD)» network-attached = 0.0199 ₽/ГБ·час × 730 ч × 1024 ГБ/ТБ ≈ 14 878. Альтернативы из price-list: «Быстрая файловая система (SSD)» 0.0229 → 17 121; «Сверхбыстрое сетевое хранилище с тремя репликами (SSD)» 0.0332 → 24 824 (3-AZ replicated); локальный SSD на dedicated host 0.0134 → 10 020 (привязан к dedicated host); нереплицируемый SSD 0.0147 → 10 992."
+        },
+        "storage-hdd-tb": {
+            "pricePerUnit": 3588,
+            "vendor": "Yandex Cloud (Compute Cloud, Network HDD)",
+            "priceSource": "yandex.cloud/ru/prices (1 мая 2026): «Стандартный диск (HDD)» network-attached = 0.0048 ₽/ГБ·час × 730 ч × 1024 ГБ/ТБ ≈ 3 588. Альтернатива: «Стандартная файловая система (HDD)» 0.0055 → 4 113 ₽/ТБ·мес. Подтверждено CSV-дампом полного прайса 2026-05-09."
+        },
+        "storage-object-tb": {
+            "pricePerUnit": 2467,
+            "vendor": "Yandex Cloud (Object Storage Standard)",
+            "priceSource": "yandex.cloud/ru/prices (1 мая 2026): «Object Storage. Размещение данных в стандартном хранилище, от 720 единиц тарификации в месяц» = 0.0033 ₽/ГБ·час × 730 ч × 1024 ГБ/ТБ ≈ 2 467. До 720 ГБ·мес — free tier. Альтернативы: холодное 0.00176 → 1 316 ₽/ТБ·мес, ледяное 0.00088 → 658 ₽/ТБ·мес (последнее — глубокий archive с штрафом за досрочное удаление < 12 мес)."
+        },
+        "network-lb-l7": {
+            "pricePerUnit": 1920,
+            "vendor": "Yandex Cloud (Application Load Balancer)",
+            "priceSource": "yandex.cloud/ru/docs/application-load-balancer/pricing — Resource Unit 2.63 ₽/час с НДС × 730 ч ≈ 1920. Один resource unit обрабатывает до 1000 RPS, 4000 connections, 22 MB/s. Трафик отдельно НЕ тарифицируется (включён в resource unit)."
+        },
+        "network-waf": {
+            "pricePerUnit": 40667,
+            "vendor": "Yandex Cloud (Smart Web Security WAF Start subscription)",
+            "priceSource": "yandex.cloud/ru/docs/smartwebsecurity/pricing — WAF Start package 40 667 ₽/мес с НДС, до 100M requests/мес. WAF Pro: 76 250 ₽/мес (500M req). WAF Business: 152 500 ₽/мес (1B req). Pay-per-request alternative: 0..153.72 ₽/M requests."
+        },
+        "service-email-per-1k": {
+            "pricePerUnit": 40,
+            "vendor": "Yandex Cloud (Postbox, tier 100-250 единиц/мес)",
+            "priceSource": "yandex.cloud/ru/prices (1 мая 2026, Yandex Cloud Postbox): «Исходящее электронное письмо, от 100 до 250 единиц тарификации в месяц» = 39,65 ₽ за 1 тыс. писем ≈ 40. Tiered: 0-2 free, 2-10 → 80, 10-50 → 70, 50-100 → 60, 100-250 → 40 (canonical tier для seed-примера 100k писем/мес = 100 ед.), 250-500 → 29, 500-1k → 14, 1k-5k → 11, 5k-10k → 9, 10k-50k → 8, ≥50k → 6 ₽/тыс."
+        },
+        "traffic-egress-tb": {
+            "pricePerUnit": 1454,
+            "vendor": "Yandex Cloud (Virtual Private Cloud egress, tier ≥100 ГБ/мес)",
+            "priceSource": "yandex.cloud/ru/prices (1 мая 2026): «VPC. Исходящий трафик, от 100 единиц тарификации в месяц» = 1,42 ₽/ГБ × 1024 ≈ 1 454. До 100 ГБ — free tier. Альтернативы: Object Storage egress (1024-51200 ГБ/мес) 1,40544 ₽/ГБ → 1 439; CDN egress 1,054 ₽/ГБ → 1 079 (если приложение работает через Yandex CDN)."
+        },
+        "traffic-ingress-tb": {
+            "pricePerUnit": 0,
+            "vendor": "Yandex Cloud (Virtual Private Cloud ingress)",
+            "priceSource": "yandex.cloud/ru/prices (1 мая 2026): входящий публичный трафик в VPC не тарифицируется (нет SKU в price-list). Тарифицируется только обработка фильтрации NLB (0,0559 ₽/ГБ) и фильтрация на публичный IP с защитой от DDoS (2,26 ₽/ГБ) — отдельные SKU защиты, не базовый ingress."
+        },
+        "llm-tokens-input-1m": {
+            "pricePerUnit": 800,
+            "vendor": "Yandex Cloud (AI Studio, YandexGPT Pro 5.1 sync)",
+            "priceSource": "yandex.cloud/ru/prices (3 марта 2026): «AI Studio. Генерация текста, модель YandexGPT Pro 5.1, входящие токены, синхронный режим» = 0,8 ₽ за 1 тыс. токенов × 1000 = 800 ₽/М. Async-режим: 0,41 ₽/1k → 410 ₽/М (50% скидка за латентность). Альтернативы: YandexGPT Lite 5 sync 0,2/1k → 200 ₽/М, YandexGPT Pro 5 (предыдущая версия) sync 1,2/1k → 1 200 ₽/М."
+        },
+        "llm-tokens-output-1m": {
+            "pricePerUnit": 800,
+            "vendor": "Yandex Cloud (AI Studio, YandexGPT Pro 5.1 sync)",
+            "priceSource": "yandex.cloud/ru/prices (3 марта 2026): «AI Studio. Генерация текста, модель YandexGPT Pro 5.1, исходящие токены, синхронный режим» = 0,8 ₽ за 1 тыс. токенов × 1000 = 800 ₽/М. У YandexGPT Pro 5.1 цена output = цена input (нет дифференциации), как и у GigaChat 2 Pro. Async-режим: 410 ₽/М."
+        },
+        "rag-embeddings-1m": {
+            "pricePerUnit": 10,
+            "vendor": "Yandex Cloud (AI Studio, Эмбеддинг текста)",
+            "priceSource": "yandex.cloud/ru/prices (1 мая 2026): «AI Studio. Эмбеддинг текста» = 0,0101 ₽ за 1 тыс. юнитов × 1000 ≈ 10 ₽/М. Практически совпадает с GigaChat Embeddings (0,01 ₽/1k = 10 ₽/М)."
+        },
+        "rag-vector-db-gb": {
+            "pricePerUnit": 16,
+            "vendor": "Yandex Cloud (Managed Service for OpenSearch, network SSD)",
+            "priceSource": "yandex.cloud/ru/prices (1 мая 2026): «Managed Service for OpenSearch. Хранилище на сетевых SSD-дисках» = 0,0218 ₽/ГБ·час × 730 ч ≈ 16. SEED-default = 12 (оценка); реальный price-list даёт 16. Альтернативы: HDD 0,0052 → 4 (медленнее, для холодных индексов), local SSD 0,0198 → 14, нереплицируемый SSD 0,0147 → 11, 3-replica SSD 0,0365 → 27 (для production-репликации)."
+        }
+    }
+}

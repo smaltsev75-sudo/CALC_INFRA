@@ -1,0 +1,119 @@
+{
+    "schemaVersion": 2,
+    "providerId": "sbercloud",
+    "version": "2026-Q3",
+    "timestamp": "2026-05-09T19:30:00.000Z",
+    "source": "Cloud.ru Evolution договорные тарифы (приложения к Договору версия 260316 = 2026-03-16, EVO.11.2 версия 260430; НДС 22% — РФ с 2026 г.). 15 ЭК. 12 SKU извлечены напрямую из 19 PDF-приложений (EVO.1, EVO.1G, EVO.2, EVO.3, EVO.4, EVO.6, EVO.10, EVO.11.1/11.2, EVO.16, EVO.19, EVO.20, EVO.22). Платформа — Evolution (current commercial line). Где Evolution PDF не содержит SKU (HDD/SAS storage, L7-LB, WAF) — оставлен Advanced reference с явной маркировкой «Evolution PDF не содержит SKU». ПРОВЕНАНС: данные верифицированы против официальных договорных приложений 2026-03-16, не carry-forward из SEED-defaults. NB: traffic-ingress-tb (входящий VPC) не включён в overlay — SEED уже имеет 0 как нативный дефолт (Cloud.ru ingress не тарифицирует).",
+    "vatPolicy": {
+        "pricesIncludeVat": true,
+        "vatRateIncluded": 0.22,
+        "confidence": "verified"
+    },
+    "prices": {
+        "cpu-vcpu-shared": {
+            "pricePerUnitGross": 712,
+            "pricePerUnitNet": 583.61,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Evolution Compute, regular VM)",
+            "priceSource": "ПРИЛОЖЕНИЕ №7.EVO.1 версия 260316 (2026-03-16): Evolution Compute. Linear-fit на bundle-ценах с фиксированным RAM/vCPU=2 (4×8GB=5,9414; 8×16GB=11,8828; 16×32GB=23,7656 ₽/час с НДС 22%): vCPU = 0,975 ₽/vCPU·час с НДС × 730 ч ≈ 712. RAM-slope = 0,255 ₽/ГБ·час (см. ram-gb). Аналитически точная декомпозиция: verified против 4×16GB (0,975×4 + 0,255×16 = 7,98 vs 7,9788 ✓), 4×32GB (12,06 vs 12,0414 ✓), 1×2GB (1,485 vs 1,48535 ✓)."
+        },
+        "cpu-vcpu-gpu": {
+            "pricePerUnitGross": 11578,
+            "pricePerUnitNet": 9490.16,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Evolution Compute GPU, NVIDIA A100 PCI без NVLink)",
+            "priceSource": "ПРИЛОЖЕНИЕ №7.EVO.1G версия 260316 (2026-03-16): Evolution Compute. GPU. ВМ 20vCPU/125GB/1 A100 PCI без NVLink = 317,20 ₽/час с НДС 22% × 730 ÷ 20 vCPU = 11 578. Линейная пропорция подтверждена на 4 точках: 40vCPU/250GB/2 A100 = 634,40 (÷40 = 11 578); 80vCPU/500GB/4 A100 = 1 268,80 (÷80 = 11 578); 160vCPU/900GB/8 A100 = 2 537,60 (÷160 = 11 578). Альтернативы из этого PDF: H100 PCI (20vCPU/110GB) → 20 039 ₽/(GPU-vCPU)/мес (newer/faster), A100 NVLink (через EVO.11.1 ML Inference) → 12 914, A100 40GB PCI (24vCPU shape) → 7 793, V100 (4vCPU/64GB) → 9 125, H100 NVLink → 25 550."
+        },
+        "ram-gb": {
+            "pricePerUnitGross": 186,
+            "pricePerUnitNet": 152.46,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Evolution Compute, regular VM)",
+            "priceSource": "ПРИЛОЖЕНИЕ №7.EVO.1 версия 260316 (2026-03-16): RAM-slope из linear-fit (см. cpu-vcpu-shared methodology) — 0,255 ₽/ГБ·час с НДС 22% × 730 ч ≈ 186. Verified против всех bundle-точек: 4×16GB = 7,9788 (0,975×4+0,255×16 = 7,98 ✓), 4×32GB = 12,0414 (12,06 ✓), 4×64GB = 20,1788 (20,22 ✓). Точная аналитическая декомпозиция договорных bundle-цен."
+        },
+        "storage-ssd-tb": {
+            "pricePerUnitGross": 11858,
+            "pricePerUnitNet": 9719.67,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Evolution Compute, Диск SSD NVMe)",
+            "priceSource": "ПРИЛОЖЕНИЕ №7.EVO.1 п.56 версия 260316 (2026-03-16): «Диск SSD NVMe» = 0,01586 ₽/ГБ·час с НДС 22% × 730 × 1024 = 11 858 ₽/ТБ/мес. Та же ставка для Managed Kubernetes (EVO.2 п.38) — единая SSD-NVMe ставка по платформе Evolution. Альтернатива для Managed-БД: «Хранилище на сетевых SSD дисках» в Managed Redis/PostgreSQL (EVO.4, EVO.16) = 0,016836 ₽/ГБ·час → 12 585 ₽/ТБ/мес (немного дороже, network-attached vs local NVMe)."
+        },
+        "storage-hdd-tb": {
+            "pricePerUnitGross": 5018,
+            "pricePerUnitNet": 4113.11,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Advanced Elastic Volume High I/O SAS) — Evolution PDF не содержит HDD/SAS SKU",
+            "priceSource": "cloud.ru/documents/tariffs/advanced/services/elastic-volume — High I/O (SAS): 0,00671 ₽/GB·час с НДС 22% × 730 ч × 1024 GB/TB = 5 018. Это ближайший к 'HDD' тип (SAS-диск); классических SATA HDD на платформе нет. NB: 19 Evolution-приложений договора версии 260316 (предоставлены пользователем) содержат только SSD NVMe / network SSD; для cold/archive storage используется Object Storage Холодное (1 003 ₽/ТБ) или Ледяное (501 ₽/ТБ)."
+        },
+        "storage-object-tb": {
+            "pricePerUnitGross": 1162,
+            "pricePerUnitNet": 952.46,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Evolution Object Storage S3 Однозонное)",
+            "priceSource": "ПРИЛОЖЕНИЕ №7.EVO.3 п.1 версия 260316 (2026-03-16): «Объектное хранилище S3 Однозонное» = 1,1346 ₽/ГБ/мес с НДС 22% × 1024 ≈ 1 162. Альтернативы из того же PDF: Стандартное от 15 ГБ = 1,83915 → 1 883 ₽/ТБ; Холодное = 0,97905 → 1 003 ₽/ТБ; Ледяное = 0,489525 → 501 ₽/ТБ. Egress от 10 000 ГБ — 1,1712 ₽/ГБ → 1 199 ₽/ТБ. Operations: GET/HEAD = 0,03294 ₽/тыс, LIST/POST/PUT = 0,1098 ₽/тыс."
+        },
+        "network-lb-l7": {
+            "pricePerUnitGross": 1691,
+            "pricePerUnitNet": 1386.07,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Advanced Elastic Load Balancer L7, 1AZ) — Evolution PDF содержит только L4",
+            "priceSource": "cloud.ru/documents/tariffs/advanced/services/elastic-load-balance, на 2026-01-01: L7 (1AZ) 2,318 ₽/час × 730 ч ≈ 1 691. Evolution PDF EVO.19 версия 260316 содержит ТОЛЬКО Network Load Balancer L4 («Ресурсная единица балансировщика L4» 0,80317 ₽/час × 730 = 586 ₽/мес — для TCP/UDP-балансировки без HTTP-маршрутизации/TLS). Для L7 (Application LB с поддержкой HTTP/HTTPS, SNI, WAF-интеграцией) Evolution-договор в shared-PDF не предоставляет — оставлен reference Advanced platform."
+        },
+        "network-waf": {
+            "pricePerUnitGross": 5000,
+            "pricePerUnitNet": 4098.36,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Advanced WAF, типовая конфигурация) — Evolution PDF не содержит WAF SKU",
+            "priceSource": "cloud.ru/documents/tariffs/advanced/services/web-app-firewall, на 2026-01-01: ОЦЕНКА для типовой конфигурации (2-3 домена + 1М запросов + 5 правил) ≈ 5 000 ₽/мес. WAF тарифицируется комплексно (домены + запросы + правила); реальная цена зависит от конфигурации. 19 Evolution-приложений договора версии 260316 (EVO.1..EVO.28, предоставленные пользователем) WAF-SKU не содержат — для Web Application Firewall на платформе Evolution требуется отдельный коммерческий запрос."
+        },
+        "traffic-egress-tb": {
+            "pricePerUnitGross": 3838,
+            "pricePerUnitNet": 3145.9,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Evolution Compute, Публичный IP исходящий трафик)",
+            "priceSource": "ПРИЛОЖЕНИЕ №7.EVO.1 п.58 версия 260316 (2026-03-16): «Публичный IP адрес. Исходящий трафик» = 0,00366 ₽/МБ с НДС 22% × 1024 МБ × 1024 ГБ/ТБ ≈ 3 838 ₽/ТБ/мес. Альтернативы для приложений с другим origin'ом: Object Storage egress (от 10 ТБ) = 1,1712 ₽/ГБ → 1 199 ₽/ТБ (EVO.3 п.7); Artifact Registry egress (от 100 ГБ) = 1,39995 ₽/ГБ → 1 434 ₽/ТБ (EVO.6 п.1); CDN egress (Cloud Video / Cloud CDN) — нет в shared Evolution PDF, требуется отдельный SKU."
+        },
+        "llm-tokens-input-1m": {
+            "pricePerUnitGross": 569,
+            "pricePerUnitNet": 466.39,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Evolution Foundation Models, GigaChat-2-Max sync)",
+            "priceSource": "ПРИЛОЖЕНИЕ №7.EVO.11.2 п.2 версия 260430 (2026-04-30): «БЯМ GigaChat-2-Max входные токены» = 569,3374 ₽ за 1 млн токенов с НДС 22% ≈ 569. Альтернативы из того же PDF (флагман vs варианты): GigaChat3-10B-A1.8B (small distilled) = 12,20; gpt-oss-120b (Cloud.ru-hosted open) = 15,86; Anthropic Claude Sonnet 4.6 (партнёр) = 589,26; OpenAI GPT-5 = 245,53; OpenAI GPT-5 Mini = 49,11; Anthropic Claude Opus 4.6 = 982,10; DeepSeek V3.2 = 113,92; Qwen3 235B A22B = 89,37. Цена-ориентир для Pro-tier flagship LLM."
+        },
+        "llm-tokens-output-1m": {
+            "pricePerUnitGross": 569,
+            "pricePerUnitNet": 466.39,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Evolution Foundation Models, GigaChat-2-Max sync)",
+            "priceSource": "ПРИЛОЖЕНИЕ №7.EVO.11.2 п.3 версия 260430 (2026-04-30): «БЯМ GigaChat-2-Max генерируемые токены» = 569,3374 ₽ за 1 млн токенов с НДС 22% ≈ 569. У GigaChat-2-Max output = input (нет дифференциации). У ряда партнёрских моделей output дороже в 3-6× input: Anthropic Claude Sonnet 4.6 = 2 946,30 (5× input); OpenAI GPT-5 = 1 964,20 (8×); Claude Opus 4.6 = 4 910,50 (5×). При смене модели на партнёрскую — обновить."
+        },
+        "rag-embeddings-1m": {
+            "pricePerUnitGross": 1,
+            "pricePerUnitNet": 0.82,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Evolution Foundation Models, Модель-эмбеддер bge-m3)",
+            "priceSource": "ПРИЛОЖЕНИЕ №7.EVO.11.2 п.11 версия 260430 (2026-04-30): «Модель-эмбеддер bge-m3 входные токены» = 0,61 ₽ за 1 млн токенов с НДС 22% ≈ 1. Альтернативы Cloud.ru-нативные: Qwen3-Embedding-0.6B = 0,854 ₽/М, Qwen3-VL-Embedding-2B (multimodal) = 73,20 ₽/М, Qwen3-VL-Embedding-8B = 85,40 ₽/М. Партнёрские embedders дороже на 1-2 порядка: OpenAI Text Embedding 3 Large = 25,53 ₽/М, Google Gemini Embedding 001 = 29,46 ₽/М. SEED-default 10 ₽/М (GigaChat Embeddings) уточнён до фактической Cloud.ru-цены 0,61 ₽/М."
+        },
+        "rag-vector-db-gb": {
+            "pricePerUnitGross": 12,
+            "pricePerUnitNet": 9.84,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Evolution Managed Redis® / Managed PostgreSQL®, network SSD storage)",
+            "priceSource": "ПРИЛОЖЕНИЕ №7.EVO.16 п.3 (Managed Redis) и №7.EVO.4 п.5 (Managed PostgreSQL) версия 260316 (2026-03-16): «Хранилище на сетевых SSD дисках» = 0,016836 ₽/ГБ·час с НДС 22% × 730 ≈ 12 (точное 12,29 ₽/ГБ/мес). Используется как vector storage backend (Redis/RediSearch или Postgres + pgvector). Альтернатива all-in-one: Evolution Managed RAG (EVO.20 п.2) «Хранение преобразованных текстовых данных в базе знаний» = 1,3664 ₽/ГБ·час × 730 ≈ 998 ₽/ГБ/мес — содержит embeddings + index + search-API в одном тарифе (× ~80 от raw storage). Также EVO.20 п.1: «Обработка запросов к API базы знаний» = 0,0976 ₽/тыс шт·час."
+        },
+        "ai-agent-sandbox-vcpu": {
+            "pricePerUnitGross": 1425,
+            "pricePerUnitNet": 1168.03,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Evolution AI Agents, Динамический ресурс)",
+            "priceSource": "ПРИЛОЖЕНИЕ №7.EVO.22 п.3 версия 260316 (2026-03-16): «Динамический ресурс 1 vCPU» = 1,952 ₽/час с НДС 22% × 730 ≈ 1 425. Динамический выбран как default для sandbox tool-execution (бурсты, неравномерная нагрузка от user-driven запросов). Альтернатива: «Выделенный ресурс 1 vCPU» (п.1) = 1,5616 ₽/час × 730 ≈ 1 140 ₽/мес — если агент-пул работает стабильно 24/7 (24% дешевле). Общий cpu-vcpu-shared (712 ₽) — НЕ применять для агент-tool-execute: это специализированный SKU AI Agents платформы со встроенной изоляцией и runtime."
+        },
+        "ai-agent-memory-storage-tb": {
+            "pricePerUnitGross": 12000,
+            "pricePerUnitNet": 9836.07,
+            "vatRate": 0.22,
+            "vendor": "Cloud.ru (Evolution Managed Redis® / Managed PostgreSQL®, network SSD storage)",
+            "priceSource": "ПРИЛОЖЕНИЕ №7.EVO.16 п.3 версия 260316 (2026-03-16): «Хранилище на сетевых SSD дисках» Managed Redis = 0,016836 ₽/ГБ·час с НДС 22% × 730 × 1024 = 12 585 ≈ 12 000 ₽/ТБ/мес. Та же ставка что rag-vector-db-gb — agent memory обычно хранится в Redis или Postgres рядом с RAG-индексом. NB: Evolution AI Agents «Динамический ресурс 1 ГБ RAM» (EVO.22 п.4) = 0,488 ₽/ГБ·час → 356 ₽/ГБ/мес = ~365 000 ₽/ТБ/мес — это RAM working set активного агента, НЕ persistent storage; «Выделенный ресурс 1 ГБ RAM» (п.2) = 0,3904 → 285 ₽/ГБ/мес = ~292 000 ₽/ТБ/мес. Для долговременной памяти (trajectory, история действий) нужен именно SSD storage."
+        }
+    }
+}
