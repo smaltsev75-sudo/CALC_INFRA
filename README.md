@@ -4,7 +4,7 @@
 
 Работает полностью **offline**, без runtime-зависимостей. Все цены в **рублях**.
 
-**Версия 2.10.3** (Stage 17.3 — Dashboard CTA dedup).
+Текущая версия — в [package.json](package.json) (поле `version`). Журнал ключевых решений по этапам — в [DECISIONS.md](DECISIONS.md).
 
 ---
 
@@ -99,13 +99,17 @@ docker run -p 8000:80 -v "$PWD":/usr/share/nginx/html nginx:alpine
 
 ### Recommended Content Security Policy
 
-Приложение полностью статическое — никаких inline-скриптов, `eval`, `new Function` или внешних CDN. Работает на самой строгой CSP. При публикации за reverse-proxy:
+Приложение не делает сетевых запросов наружу, не использует `eval` / `new Function`, не подключает CDN, не открывает inline `<script>`. При этом ему нужны: динамические inline-стили (`width: ${pct}%` у прогресс-баров, `background: CATEGORY_COLORS[cat]` у категорийных пилюль, `gridTemplateColumns: repeat(${cols}, ...)` у подгрупп опросника), favicon как `data:`-URI и локальный `fetch` пользовательских markdown-справочников.
+
+Реальная CSP в `index.html`:
 
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'
 ```
 
-Подробные примеры конфигурации Nginx / Apache / Caddy — в `HOW_TO_START.md`.
+При публикации за reverse-proxy (Nginx / Apache / Caddy / Cloudflare) дублируйте эту же политику HTTP-заголовком — иначе часть UI не отрисуется (`style-src 'self'` без `'unsafe-inline'` сломает прогресс-бары и категорийные цвета, отсутствие `data:` в `img-src` уберёт favicon). Защита от user-input в `style:` обеспечивается архитектурным линтером [tests/unit/architecture/style-no-user-input.test.js](tests/unit/architecture/style-no-user-input.test.js), а не самой CSP.
+
+Подробные примеры конфигурации Nginx / Apache / Caddy / Netlify / Vercel — в [HOW_TO_START.md](HOW_TO_START.md#рекомендуемая-csp).
 
 ---
 
@@ -113,7 +117,7 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none
 
 ### Лицензия проекта
 
-`package.json` содержит `"license": "UNLICENSED"` — внутреннее ПО, явных условий распространения не задано. При публикации за пределы организации проконсультируйтесь с владельцем репозитория.
+[MIT License](LICENSE). Полный текст — в файле `LICENSE`. Использование, модификация, дистрибуция и встраивание в коммерческие продукты разрешены при сохранении copyright-notice; гарантий нет.
 
 ### Runtime-зависимости
 

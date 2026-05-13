@@ -42,27 +42,42 @@
 </head>
 <body>
     <!--
-        Корневой контейнер.
-        Содержимое по умолчанию — сообщение «запустите через HTTP-сервер».
-        Если открыть страницу через `file://`, ES-модуль `js/app.js` не загрузится
-        (политика CORS), и пользователь увидит инструкцию ниже.
-        При запуске через локальный HTTP-сервер `mountUi()` заменит этот блок
-        на интерфейс приложения.
+        JS отключён — отдельная ветка fallback'а. Не зависит от ES-модулей,
+        видна сразу, независимо от происхождения страницы (file:// / GitHub Pages /
+        self-hosting за reverse-proxy).
+    -->
+    <noscript>
+        <div class="boot-fallback">
+            <h1 class="boot-fallback-title">JavaScript отключён</h1>
+            <p>Калькулятор инфраструктуры — single-page-приложение на ES-модулях. Без JavaScript интерфейс не будет загружен.</p>
+            <p>Включите JavaScript в настройках браузера и перезагрузите страницу (<strong>Ctrl+Shift+R</strong> на Windows/Linux, <strong>Cmd+Shift+R</strong> на macOS).</p>
+        </div>
+    </noscript>
+
+    <!--
+        Корневой контейнер. Содержимое — нейтральное «Загрузка…» с подсказками
+        для типичных причин зависшего boot'а:
+        — file:// (CORS-блокировка ES-модулей);
+        — ошибка JS на любой хост-площадке (GitHub Pages / self-hosting);
+        — устаревший кэш браузера.
+        Если js/app.js загружается успешно, `mountUi()` заменит этот блок
+        на интерфейс приложения ещё до первого frame'а.
     -->
     <div id="app">
         <div class="boot-fallback">
-            <h1 class="boot-fallback-title">Запустите через локальный HTTP-сервер</h1>
-            <p>Приложение использует ES-модули, которые не работают через <code>file://</code>.</p>
-            <p>Запустите один из скриптов:</p>
-            <ul>
-                <li><strong>Windows:</strong> двойной клик по <code>start-server.bat</code></li>
-                <li><strong>Linux / macOS:</strong> <code>bash start-server.sh</code></li>
-            </ul>
-            <p>Или вручную:</p>
-            <pre><code>python -m http.server 8000
-# или
-npx http-server -p 8000</code></pre>
-            <p>Затем откройте <a href="http://localhost:8000">http://localhost:8000</a>.</p>
+            <h1 class="boot-fallback-title">Загрузка калькулятора…</h1>
+            <p>Если это сообщение остаётся дольше нескольких секунд, попробуйте по очереди:</p>
+            <ol>
+                <li><strong>Жёсткий reload</strong>: <strong>Ctrl+Shift+R</strong> (Windows/Linux) или <strong>Cmd+Shift+R</strong> (macOS) — браузер агрессивно кэширует ES-модули, обычный F5 может подгрузить старую версию.</li>
+                <li><strong>Открыть DevTools</strong> (F12) → вкладка <em>Console</em>. Ошибки загрузки модулей покажут точную причину.</li>
+                <li>Если адрес начинается с <code>file://</code> — ES-модули заблокированы политикой CORS. Запустите локальный HTTP-сервер:
+                    <ul>
+                        <li><strong>Windows:</strong> двойной клик по <code>start-server.bat</code></li>
+                        <li><strong>Linux / macOS:</strong> <code>bash start-server.sh</code></li>
+                        <li>Вручную: <code>python -m http.server 8000</code> или <code>npx http-server -p 8000</code>, затем <a href="http://localhost:8000">http://localhost:8000</a>.</li>
+                    </ul>
+                </li>
+            </ol>
             <p class="boot-fallback-hint">Подробнее — в файле <code>HOW_TO_START.md</code>.</p>
         </div>
     </div>

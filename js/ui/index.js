@@ -61,8 +61,31 @@ let _untrap = null;
  * мерцает при любом изменении внутри модалки). */
 let _prevOpenModals = new Set();
 
-/** Список модалок в порядке отображения (последняя в списке — самая «верхняя»). */
-const MODAL_ORDER = ['message', 'confirm', 'duplicateImport', 'input', 'reset', 'help', 'assumptions', 'assumptionsRegister', 'calculationHealth', 'sensitivity', 'budgetGuardrails', 'decisionMemo', 'costOptimizationPlanner', 'formula', 'itemEdit', 'questionEdit', 'reapplyConfirm', 'scenarioMenu', 'scenarioRename', 'scenarioDuplicate', 'deltaHistory', 'providerAnalytics', 'scenarioComparison', 'vatPolicyChoice'];
+/**
+ * Список модалок в порядке z-приоритета: последняя в списке = самая «верхняя».
+ * Используется `topOpenModalName()` для решения, чьему overlay'у отдать focus-trap
+ * и первичный фокус, если открыто несколько модалок.
+ *
+ * ВАЖНО: множество имён здесь обязано совпадать с множеством в MODAL_RENDERERS.
+ * Если модалка рендерится, но её нет в MODAL_ORDER, `topOpenModalName()` её не
+ * увидит → focus не попадёт внутрь, Tab будет уходить за overlay (нарушение WCAG).
+ * Линтер `tests/unit/architecture/modal-order-sync.test.js` ловит расхождение.
+ *
+ * Порядок здесь смысловой (z-приоритет), а в MODAL_RENDERERS — порядок DOM
+ * (для фиксированных оверлеев не критичен). Поэтому два списка содержат
+ * одинаковый набор, но не обязаны быть в одинаковом порядке.
+ */
+const MODAL_ORDER = [
+    'message', 'confirm', 'duplicateImport', 'input', 'quickStart',
+    'reset', 'help', 'printAnswersOptions',
+    'assumptions', 'assumptionsRegister', 'calculationHealth',
+    'sensitivity', 'budgetGuardrails', 'decisionMemo',
+    'costOptimizationPlanner', 'guidedCompletion',
+    'formula', 'itemEdit', 'questionEdit',
+    'reapplyConfirm', 'scenarioMenu', 'scenarioRename', 'scenarioDuplicate',
+    'deltaHistory', 'providerAnalytics', 'priceImportMapping',
+    'scenarioComparison', 'vatPolicyChoice'
+];
 
 export function mountUi() {
     _root = document.getElementById('app');

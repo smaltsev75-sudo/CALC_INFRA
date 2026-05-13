@@ -1,7 +1,7 @@
 # Запуск приложения
 
 
-Приложение — статический web (ES-модули). **Требуется HTTP-сервер** (file:// блокирует модули). [hirehi](https://hirehi.ru/blog/rabota-s-griaznymi-dannymi-kak-chistit-normalizovat-i-ne-poteriat-vazhnuiu-informatsiiu)
+Приложение — статический web (ES-модули). **Требуется HTTP-сервер** (file:// блокирует модули).
 
 ## Быстрый запуск
 
@@ -10,7 +10,7 @@
 | Windows | `start-server.bat` (двойной клик) |
 | Linux/macOS | `bash start-server.sh` |
 
-Авто: Python3 → Node → PHP. Порт 8000, браузер откроется: **http://localhost:8000**. Браузеры: Chrome/Yandex/Safari (мажорные). [hirehi](https://hirehi.ru/blog/rabota-s-griaznymi-dannymi-kak-chistit-normalizovat-i-ne-poteriat-vazhnuiu-informatsiiu)
+Авто: Python3 → Node → PHP. Порт 8000, браузер откроется: **http://localhost:8000**. Браузеры: Chrome/Yandex/Safari (мажорные).
 
 ## Вручную
 
@@ -27,7 +27,7 @@ php -S localhost:8000            # PHP
 1. IP: `ipconfig` (Win) / `ip addr` (Linux) / `ifconfig` (macOS).
 2. `python3 -m http.server 8000 --bind 0.0.0.0`.
 3. `http://<IP>:8000` на устройстве.
-4. Firewall: `sudo ufw allow 8000` (Linux); netsh (Win). ⚠️ 0.0.0.0 публичный. [qna.habr](https://qna.habr.com/q/423586)
+4. Firewall: `sudo ufw allow 8000` (Linux); netsh (Win). ⚠️ 0.0.0.0 публичный — не используйте в недоверенных сетях.
 
 ## IDE/Docker/PWA
 
@@ -47,7 +47,7 @@ php -S localhost:8000            # PHP
 ```
 `sudo systemctl enable --now calc.service`.
 
-**macOS launchd** (`~/Library/LaunchAgents/com.user.calc.plist`): XML с `ProgramArguments` python3 -m http.server 8000. `launchctl load`. [cors](https://cors.su/eto-interesno/dokumentatsiya-na-it-proektah-kak-sokratit-kolichestvo-oshibok-na-proekte/)
+**macOS launchd** (`~/Library/LaunchAgents/com.user.calc.plist`): XML с `ProgramArguments` python3 -m http.server 8000. `launchctl load`.
 
 ## Проблемы
 
@@ -70,25 +70,33 @@ php -S localhost:8000            # PHP
 
 ## Рекомендуемая CSP
 
-Приложение полностью статическое: один `index.html` + ES-модули из `js/` + CSS из `css/`. Никаких внешних CDN, inline-скриптов, eval/new Function — поэтому работает на самой строгой Content Security Policy. При публикации за reverse-proxy/Nginx или в self-hosting добавляйте заголовок:
+Приложение полностью статическое: один `index.html` + ES-модули из `js/` + CSS из `css/`. Никаких внешних CDN, inline-скриптов, eval/new Function. При этом для рендера UI ему нужны: динамические inline-стили (`width: ${pct}%` у прогресс-баров, категорийные цвета `background: ...`, grid-разметка подгрупп опросника), favicon как `data:`-URI и локальный `fetch` markdown-справочников.
+
+Реальная политика в `index.html` (продублируйте её HTTP-заголовком, если ставите reverse-proxy):
 
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'
 ```
 
 Расшифровка директив:
 
 - `default-src 'self'` — любые ресурсы (XHR, fetch, шрифты, изображения) только с того же origin.
 - `script-src 'self'` — JS только из локальных файлов; inline `<script>` и `eval` запрещены. Калькулятор использует свой DSL-парсер вместо `eval` (`js/domain/formula/`).
+- `style-src 'self' 'unsafe-inline'` — стили из локальных файлов плюс динамические inline-стили (прогресс-бары, категорийные цвета, grid-разметка). `'unsafe-inline'` — осознанный архитектурный компромисс на статической HTML-странице без серверного nonce; защита от user-input в `style:` обеспечивается архитектурным линтером `tests/unit/architecture/style-no-user-input.test.js`.
+- `img-src 'self' data:` — изображения с того же origin плюс favicon, встроенный как `data:image/svg+xml`.
+- `connect-src 'self'` — `fetch()` только на тот же origin (запрос `UserManual.md` для in-app help).
 - `object-src 'none'` — отключает legacy-плагины (`<object>`, `<embed>`, Flash).
 - `base-uri 'self'` — запрещает менять базовый URL страницы инъекцией `<base>`.
+- `form-action 'none'` — приложение не использует `<form action="...">`.
+
+**Не убирайте `'unsafe-inline'` из `style-src` и `data:` из `img-src` без отдельной правки кода** — иначе сломаются прогресс-бары, категорийные цвета, grid-разметка опросника и favicon.
 
 ### Примеры настройки
 
 **Nginx** (`/etc/nginx/sites-enabled/calc.conf` → `server { ... }`):
 
 ```nginx
-add_header Content-Security-Policy "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'" always;
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy "no-referrer" always;
 ```
@@ -96,7 +104,7 @@ add_header Referrer-Policy "no-referrer" always;
 **Apache** (`.htaccess` рядом с `index.html`):
 
 ```apache
-Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'"
+Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'"
 Header always set X-Content-Type-Options "nosniff"
 ```
 
@@ -106,7 +114,7 @@ Header always set X-Content-Type-Options "nosniff"
 calc.example.com {
     root * /srv/calc
     file_server
-    header Content-Security-Policy "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'"
+    header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'"
     header X-Content-Type-Options "nosniff"
 }
 ```
