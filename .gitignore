@@ -15,7 +15,9 @@ tests/
 scripts/
 
 # Provider price sources (maintainer-only; runtime uses js/data/providers-bundled.generated.js)
-data/
+# IMPORTANT: leading slash anchors to repo root — without it, the pattern would
+# also match js/data/, which holds the runtime providers bundle.
+/data/
 
 # Workshop / temp artifacts
 _demo-screenshot.html

@@ -2412,6 +2412,38 @@ export const SEED_QUESTIONS = [
         assumptionRisk: 'high'
     },
     {
+        id: 'rag_managed_used',
+        section: 'ai_llm',
+        subgroup: 'RAG (поиск по базе знаний)',
+        order: 305,
+        title: 'Использовать Managed RAG (готовая база знаний провайдера)',
+        type: 'boolean',
+        defaultValue: false,
+        dependsOn: ['ai_llm_used', 'rag_needed'],
+        description:
+            'Если «Да» — стоимость хранения корпуса считается по тарифу Managed RAG провайдера (готовая «база знаний»: embeddings + index + search-API в одном тарифе, например Cloud.ru Evolution Managed RAG, EVO.20 ≈ 997 ₽/ГБ/мес с НДС).\n\n' +
+            'Если «Нет» (по умолчанию) — считается self-hosted: pgvector поверх Managed PostgreSQL или RediSearch поверх Managed Redis, ~12 ₽/ГБ/мес. В ~80 раз дешевле, но требует своего DevOps на vector-DB.\n\n' +
+            'Имеет смысл только при включённом RAG.',
+        recommendation:
+            '«Да» когда:\n' +
+            '• Команда без сильного DevOps на векторные БД (pgvector / RediSearch / Qdrant / Weaviate).\n' +
+            '• Нужен быстрый старт без подбора параметров индекса и собственного embedding-pipeline.\n' +
+            '• Бюджет позволяет, важна предсказуемость SLA провайдера.\n' +
+            '«Нет» когда:\n' +
+            '• Есть инженеры, умеющие поднимать и тюнить vector DB (pgvector, Qdrant, Milvus).\n' +
+            '• Нужна гибкость — кастомные embedding-модели, гибридный поиск, on-prem deployment.\n' +
+            '• Большой корпус (100+ ГБ) — экономия в 80× становится критичной.\n' +
+            'По типам бизнеса:\n' +
+            '• Стартап / MVP с маленьким корпусом — Да (быстрее запуск).\n' +
+            '• B2B SaaS с растущим корпусом — Нет (self-hosted выгоднее на масштабе).\n' +
+            '• Enterprise с собственной IaaS-командой — Нет.\n' +
+            '• Корпоративный проект под жёсткие SLA — Да (если провайдер предоставляет нужные гарантии).',
+        impact: 'Переключает источник цены хранения корпуса RAG между rag-vector-db-gb (self-hosted, ~12 ₽/ГБ/мес) и rag-managed-knowledge-base-gb (Managed, ~997 ₽/ГБ/мес).',
+        allowUnknown: true,
+        defaultIfUnknown: false,
+        assumptionRisk: 'high'
+    },
+    {
         id: 'rag_corpus_size_gb',
         section: 'ai_llm',
         subgroup: 'RAG (поиск по базе знаний)',
@@ -3327,9 +3359,9 @@ export const SEED_ITEMS = [
     },
     {
         id: 'rag-vector-db-gb',
-        name: 'Векторная БД для RAG (ГБ)',
+        name: 'Хранилище vector-DB для RAG (self-hosted, ГБ)',
         unit: 'ГБ',
-        pricePerUnit: 12,  // Yandex Managed OpenSearch SSD storage, оценка ~12 ₽/ГБ/мес (точная цена по калькулятору). ОЦЕНКА. Источник: yandex.cloud/docs/managed-opensearch/pricing, 2026-05-02.
+        pricePerUnit: 12,  // Cloud.ru Managed Redis® / Managed PostgreSQL® network SSD storage: 0,016836 ₽/ГБ·ч с НДС 22% × 730 ≈ 12 ₽/ГБ/мес (EVO.16 п.3 / EVO.4 п.5 версия 260316). Альтернатива (Managed RAG, готовая база знаний провайдера) — см. rag-managed-knowledge-base-gb.
         billingInterval: 'monthly',
         vendor: '',
         category: 'AI',
@@ -3338,23 +3370,52 @@ export const SEED_ITEMS = [
         dashboardAiMetric: 'RAG_VECTORS',
         applicableStands: ['DEV','IFT','PSI','PROD','LOAD'],
         description:
-            'Хранилище векторов и метаданных RAG (≈ 4 КБ на эмбеддинг).\n' +
-            'При Q.rag_needed.\n' +
-            'Единица измерения: 1 ГБ векторной БД в месяц.\n' +
+            'Self-hosted vector DB: pgvector поверх Managed PostgreSQL или RediSearch поверх Managed Redis. ' +
+            'Тариф — только за raw SSD storage; embeddings/index/search-API строит сама команда.\n' +
+            'При Q.rag_needed И НЕ Q.rag_managed_used (если выбран Managed RAG провайдера — используется rag-managed-knowledge-base-gb).\n' +
+            'Единица измерения: 1 ГБ хранения в месяц (≈ 4 КБ на эмбеддинг).\n' +
             'Пример: 1 млн эмбеддингов × 4 КБ ≈ 4 ГБ.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
-            'Источник: yandex.cloud/docs/managed-opensearch/pricing — Yandex Managed OpenSearch SSD storage, на 2026-05-02. Это ОЦЕНКА (точная цена по калькулятору).\n' +
-            'Расчёт: ~12 ₽/ГБ/мес.\n' +
-            'В контракте уточняйте у провайдера.',
+            'Источник: ПРИЛОЖЕНИЕ №7.EVO.16 п.3 (Managed Redis) / №7.EVO.4 п.5 (Managed PostgreSQL) версия 260316 (2026-03-16): «Хранилище на сетевых SSD дисках» = 0,016836 ₽/ГБ·ч с НДС 22% × 730 ≈ 12 ₽/ГБ/мес.\n' +
+            'Когда выбирать: команда может админить vector DB сама, важна гибкость / экономия. Альтернатива — готовый Managed RAG-сервис провайдера (rag-managed-knowledge-base-gb), но дороже в ~80 раз (готовые embeddings + index + search-API в одном тарифе).',
         qtyFormulas: {
-            DEV:  'if(Q.rag_needed, max(1, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.DEV)), 0)',
-            IFT:  'if(Q.rag_needed, max(1, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.IFT)), 0)',
-            PSI:  'if(Q.rag_needed, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.PSI), 0)',
-            PROD: 'if(Q.rag_needed, ceil(Q.rag_embeddings_million * 4), 0)',
-            LOAD: 'if(Q.rag_needed, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.LOAD), 0)'
+            DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.DEV))), 0)',
+            IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.IFT))), 0)',
+            PSI:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.PSI)), 0)',
+            PROD: 'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(Q.rag_embeddings_million * 4)), 0)',
+            LOAD: 'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.LOAD)), 0)'
         },
-        formulaHelp: 'GB векторной БД = embeddings_million × 4 КБ/эмбеддинг × коэф. стенда.'
+        formulaHelp: 'GB self-hosted vector DB = embeddings_million × 4 КБ/эмбеддинг × коэф. стенда. Активно при RAG включён И НЕ выбран Managed RAG-сервис провайдера.'
+    },
+    {
+        id: 'rag-managed-knowledge-base-gb',
+        name: 'Managed RAG: база знаний (ГБ)',
+        unit: 'ГБ',
+        pricePerUnit: 997,  // Cloud.ru Evolution Managed RAG, EVO.20 п.2: 1,12 ₽/ГБ·ч без НДС / 1,3664 ₽/ГБ·ч с НДС 22% × 730 ≈ 997 ₽/ГБ/мес.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'AI',
+        resourceClass: 'AI_LLM',
+        dashboardAiMetric: 'RAG_VECTORS',
+        applicableStands: ['DEV','IFT','PSI','PROD','LOAD'],
+        description:
+            'Готовая «база знаний» провайдера (Cloud.ru Evolution Managed RAG и аналоги): хранение преобразованных текстовых данных + встроенные embeddings + index + search-API в одном тарифе.\n' +
+            'При Q.rag_needed И Q.rag_managed_used. Если RAG включён, но Managed-сервис не выбран — используется self-hosted (rag-vector-db-gb), который ~в 80 раз дешевле, но требует своего DevOps.\n' +
+            'Единица измерения: 1 ГБ хранения в месяц (≈ 4 КБ на эмбеддинг).\n' +
+            'Пример: 1 млн эмбеддингов × 4 КБ ≈ 4 ГБ.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: ПРИЛОЖЕНИЕ №7.EVO.20 п.2 версия 260316 (2026-03-16): «Хранение преобразованных текстовых данных в базе знаний» = 1,12 ₽/ГБ·ч без НДС / 1,3664 ₽/ГБ·ч с НДС 22% × 730 ≈ 997 ₽/ГБ/мес.\n' +
+            'Когда выбирать: ограниченные DevOps-ресурсы, нужен быстрый старт, готовы платить за full-managed. Если важна экономия — оставьте rag-vector-db-gb (self-hosted).',
+        qtyFormulas: {
+            DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, max(1, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.DEV)), 0), 0)',
+            IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, max(1, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.IFT)), 0), 0)',
+            PSI:  'if(Q.rag_needed, if(Q.rag_managed_used, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.PSI), 0), 0)',
+            PROD: 'if(Q.rag_needed, if(Q.rag_managed_used, ceil(Q.rag_embeddings_million * 4), 0), 0)',
+            LOAD: 'if(Q.rag_needed, if(Q.rag_managed_used, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.LOAD), 0), 0)'
+        },
+        formulaHelp: 'GB Managed RAG = embeddings_million × 4 КБ/эмбеддинг × коэф. стенда. Активно при RAG включён И выбран Managed RAG-сервис провайдера.'
     },
 
     /* ===== AI agent infrastructure (Этап 13) ===== */
@@ -3799,15 +3860,24 @@ export function defaultAnswersFrom(questions) {
 const _AGENT_QUESTION_IDS = [
     'ai_agent_mode', 'ai_agent_type', 'agent_complexity',
     'agent_parallel_specialists', 'agent_tool_use_share', 'agent_tool_avg_seconds',
-    'agent_memory_used', 'agent_memory_size_gb'
+    'agent_memory_used', 'agent_memory_size_gb',
+    // Stage RAG-split: дискриминатор «self-hosted vs managed» для хранения корпуса RAG.
+    'rag_managed_used'
 ];
-const _AGENT_ITEM_IDS = ['ai-agent-sandbox-vcpu', 'ai-agent-memory-storage-tb'];
+const _AGENT_ITEM_IDS = [
+    'ai-agent-sandbox-vcpu', 'ai-agent-memory-storage-tb',
+    // Stage RAG-split: новый ЭК для Managed RAG-сервиса (Cloud.ru Evolution Managed RAG и аналоги).
+    'rag-managed-knowledge-base-gb'
+];
 /* Этап 13.U10: rag-embeddings-1m добавлен — у него тоже изменились qtyFormulas
-   и applicableStands (появился DEV для разработческого AI-traffic'а). */
+   и applicableStands (появился DEV для разработческого AI-traffic'а).
+   Stage RAG-split: rag-vector-db-gb получил nested-if с дискриминатором
+   Q.rag_managed_used — legacy расчёты должны подхватить новую формулу. */
 const _AGENT_FORMULA_REFRESH_IDS = [
     'llm-tokens-input-1m',
     'llm-tokens-output-1m',
-    'rag-embeddings-1m'
+    'rag-embeddings-1m',
+    'rag-vector-db-gb'
 ];
 
 export function enrichLegacyDictionaryWithAgentSeed(calc) {
