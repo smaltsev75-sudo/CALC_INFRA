@@ -1,0 +1,37 @@
+# Maintainer / developer docs (not needed for end users)
+CLAUDE.md
+DECISIONS.md
+WIZARD_PROFILES.md
+UI_PRODUCTION_PATTERNS.md
+BROWSER_SMOKE.md
+SANITY_REPORT.md
+Architecture.md
+MAINTAINER_GUIDE.md
+skill.md
+ТЗ.md
+
+# Dev-only: tests and tooling
+tests/
+scripts/
+
+# Provider price sources (maintainer-only; runtime uses js/data/providers-bundled.generated.js)
+data/
+
+# Workshop / temp artifacts
+_demo-screenshot.html
+.playwright-mcp/
+.claude/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.bak
+*.old
+*.tmp
+*.swp
+
+# Node
+node_modules/
+npm-debug.log*

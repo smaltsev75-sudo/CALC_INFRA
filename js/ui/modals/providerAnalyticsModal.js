@@ -1,0 +1,220 @@
+/**
+ * Прайс-бенчмарк (read-only сравнение цен провайдеров).
+ *
+ * Источник данных:
+ *   - ctx.aggregateProviderPrices(providerIds, effectiveByProvider) → таблица
+ *     (вызывает domain/providerAnalytics + сам собирает effective prices).
+ *
+ * UX:
+ *   - 4–5 столбцов: CPU / RAM / STORAGE / NETWORK / LICENSE (representative-key-item per category).
+ *   - Каждая строка: название провайдера, цены по категориям, итог.
+ *   - Бейдж delta-pill (Stage 9.1) если effective != frozen.
+ *   - Click на th-категорию → сортировка по этой колонке (asc/desc toggle).
+ *   - Фильтр видимых категорий через pill-toggle (Stage 14.1).
+ *
+ * Read-only: модалка не обновляет прайсы. Единственный путь обновления —
+ * «Импорт прайса JSON» в Опроснике.
+ */
+
+import { el } from '../dom.js';
+import { icon } from '../icons.js';
+import { modalShell } from './baseModal.js';
+import { CATEGORY_UNITS, CATEGORY_DESCRIPTIONS_FOR_UI } from '../../domain/providerAnalytics.js';
+
+const fmtRub = (n) => Number(n).toLocaleString('ru-RU').replace(/,/g, ' ');
+
+const fmtPct = (pct) => {
+    if (!Number.isFinite(pct) || pct === 0) return null;
+    const abs = Math.abs(pct);
+    const rounded = abs >= 10 ? abs.toFixed(0) : abs.toFixed(1);
+    return (pct > 0 ? '+' : '−') + rounded + '%';
+};
+
+export function renderProviderAnalyticsModal(state, ctx) {
+    const m = state.modals.providerAnalytics;
+    if (!m?.open) return null;
+
+    const close = () => ctx.closeModal('providerAnalytics');
+
+    /* state.modals.providerAnalytics:
+       - sortBy:      'total' | 'CPU' | 'RAM' | 'STORAGE' | 'NETWORK' | 'LICENSE'
+       - sortDir:     'asc' | 'desc'             (default 'asc')
+       - visibleCategories: string[] | null      (default — все 5 категорий) — Stage 14.1 */
+    const allActiveIds = ['sbercloud', 'yandex', 'vk'];
+    const sortBy = m.sortBy || 'total';
+    const sortDir = m.sortDir || 'asc';
+
+    /* Загружаем effective цены для всех active providers (controller сам читает
+       из localStorage). UI не ходит в services напрямую. */
+    const effectiveByProvider = {};
+    if (ctx.getEffectivePricesForProvider) {
+        for (const id of allActiveIds) {
+            effectiveByProvider[id] = ctx.getEffectivePricesForProvider(id);
+        }
+    }
+
+    const data = ctx.aggregateProviderPrices
+        ? ctx.aggregateProviderPrices(allActiveIds, effectiveByProvider)
+        : { providers: [], categories: ['CPU', 'RAM', 'STORAGE', 'NETWORK', 'LICENSE'] };
+
+    /* Stage 14.1: фильтр видимых категорий. Дефолт — все. Persist через
+       ctx.setProviderAnalyticsVisibleCategories (controller → localStorage). */
+    const visibleCategories = Array.isArray(m.visibleCategories)
+        ? m.visibleCategories.filter(c => data.categories.includes(c))
+        : [...data.categories];
+    const visibleSet = new Set(visibleCategories);
+
+    /* Если выбранный sortBy относится к скрытой категории — fallback на 'total'. */
+    const effectiveSortBy = (sortBy === 'total' || visibleSet.has(sortBy)) ? sortBy : 'total';
+
+    /* Сортировка по выбранной колонке. Итог пересчитывается с учётом visibleCategories. */
+    const computeRowTotal = (p) => {
+        let sum = 0;
+        for (const cat of visibleCategories) {
+            const eff = p.byCategory[cat]?.effective;
+            if (Number.isFinite(eff)) sum += eff;
+        }
+        return sum;
+    };
+    const sortedProviders = [...data.providers].sort((a, b) => {
+        const va = effectiveSortBy === 'total' ? computeRowTotal(a) : (a.byCategory[effectiveSortBy]?.effective ?? 0);
+        const vb = effectiveSortBy === 'total' ? computeRowTotal(b) : (b.byCategory[effectiveSortBy]?.effective ?? 0);
+        return sortDir === 'asc' ? va - vb : vb - va;
+    });
+
+    const handleSort = (col) => {
+        const nextDir = (effectiveSortBy === col && sortDir === 'asc') ? 'desc' : 'asc';
+        ctx.patchModal('providerAnalytics', { sortBy: col, sortDir: nextDir });
+    };
+
+    const toggleCategory = (cat) => {
+        const next = visibleSet.has(cat)
+            ? visibleCategories.filter(c => c !== cat)
+            : [...visibleCategories, cat];
+        ctx.patchModal('providerAnalytics', { visibleCategories: next });
+        if (ctx.setProviderAnalyticsVisibleCategories) {
+            ctx.setProviderAnalyticsVisibleCategories(next);
+        }
+    };
+
+    /* Header строка с sort-икoнками. */
+    const sortIcon = (col) => effectiveSortBy === col
+        ? icon(sortDir === 'asc' ? 'chevron-up' : 'chevron-down', { size: 12 })
+        : null;
+
+    /* PATCH 2.7.3: каждая колонка имеет 2-line header «КАТЕГОРИЯ + ед.изм.»
+       (тот же паттерн что .col-stand в details-table). Tooltip содержит
+       «что именно за число в этой колонке» (например, «Цена 1 vCPU shared
+       в месяц»). «Итого» тут — это сумма представительных цен для скоринга
+       провайдеров, не математически корректный total (единицы разные). */
+    const thead = el('thead', null,
+        el('tr', null,
+            el('th', { class: 'analytics-th-provider', text: 'Провайдер' }),
+            ...visibleCategories.map(cat => el('th', {
+                class: ['analytics-th-cat', effectiveSortBy === cat && 'is-sorted'],
+                attrs: { type: 'button',
+                    title: `${CATEGORY_DESCRIPTIONS_FOR_UI[cat] || cat}. Click — сортировка по этой колонке.` },
+                onClick: () => handleSort(cat)
+            },
+                el('span', null,
+                    el('span', { class: 'analytics-th-cat-name', text: cat }),
+                    el('span', { class: 'analytics-th-cat-unit',
+                        text: CATEGORY_UNITS[cat] || '' })
+                ),
+                sortIcon(cat)
+            )),
+            el('th', {
+                class: ['analytics-th-total', effectiveSortBy === 'total' && 'is-sorted'],
+                onClick: () => handleSort('total'),
+                attrs: { title: 'Сумма представительных цен видимых категорий — индикатор для ранжирования. Единицы измерения категорий различаются (₽/vCPU, ₽/ГБ, ₽/ТБ, ₽/узел/год); сумма не является корректной денежной величиной, только относительной оценкой.' }
+            },
+                el('span', null,
+                    el('span', { class: 'analytics-th-cat-name', text: 'Сумма' }),
+                    el('span', { class: 'analytics-th-cat-unit', text: 'для ранжирования' })
+                ),
+                sortIcon('total')
+            )
+        )
+    );
+
+    const renderCell = (cell) => {
+        if (!cell || cell.effective === null) {
+            return el('td', { class: 'analytics-td-cat',
+                text: '—' });
+        }
+        const pillText = fmtPct(cell.deltaPct);
+        return el('td', { class: 'analytics-td-cat' },
+            el('span', { class: 'analytics-td-cat-num', text: fmtRub(cell.effective) }),
+            pillText
+                ? el('span', {
+                    class: ['delta-pill',
+                            (cell.deltaPct > 0) ? 'delta-pill--up' : 'delta-pill--down'],
+                    /* Stage 14.2: hover-tooltip унифицирован «Старая X → Новая Y (Δ%)». */
+                    title: `Старая ${fmtRub(cell.frozen)} ₽ → Новая ${fmtRub(cell.effective)} ₽ (${pillText})`,
+                    text: pillText
+                })
+                : null
+        );
+    };
+
+    const tbody = el('tbody', null,
+        ...sortedProviders.map(p => {
+            const rowTotal = computeRowTotal(p);
+            return el('tr', { class: 'analytics-row' },
+                el('td', { class: 'analytics-td-provider', text: p.label }),
+                ...visibleCategories.map(cat => renderCell(p.byCategory[cat])),
+                el('td', { class: 'analytics-td-total',
+                    text: fmtRub(rowTotal) })
+            );
+        })
+    );
+
+    const table = el('table', { class: 'analytics-table' }, thead, tbody);
+
+    /* Stage 14.1: панель фильтра по категориям. Каждая кнопка — toggle on/off
+       с aria-pressed; визуально — pill (.analytics-cat-toggle). При клике
+       persist через ctx + patchModal. */
+    const filterBar = el('div', { class: 'analytics-cat-filter',
+        attrs: { role: 'group', 'aria-label': 'Фильтр категорий' } },
+        el('span', { class: 'analytics-cat-filter-label', text: 'Категории:' }),
+        ...data.categories.map(cat => {
+            const active = visibleSet.has(cat);
+            return el('button', {
+                class: ['analytics-cat-toggle', active && 'is-active'],
+                attrs: {
+                    type: 'button',
+                    'aria-pressed': active ? 'true' : 'false',
+                    title: active
+                        ? `Скрыть колонку ${cat}`
+                        : `Показать колонку ${cat}`
+                },
+                onClick: () => toggleCategory(cat)
+            }, cat);
+        })
+    );
+
+    const noProviders = data.providers.length === 0
+        ? el('div', { class: 'analytics-empty',
+            text: 'Активных провайдеров нет.' })
+        : null;
+    const noCategories = visibleCategories.length === 0
+        ? el('div', { class: 'analytics-empty',
+            text: 'Все категории скрыты — отметьте хотя бы одну для отображения цен.' })
+        : null;
+
+    return modalShell({
+        title: 'Прайс-бенчмарк',
+        size: 'lg',
+        onClose: close,
+        children: el('div', { class: 'analytics-body' },
+            el('p', { class: 'analytics-hint',
+                text: 'Представительные цены 5 категорий ресурсов: CPU = 1 vCPU shared (₽/мес), RAM = 1 ГБ (₽/мес), STORAGE = 1 ТБ SSD (₽/мес), NETWORK = 1 балансировщик L7 (₽/мес), LICENSE = ОС-лицензия (₽/узел/год). Колонка «Сумма» — индикатор для ранжирования провайдеров (единицы разные, сумма не является денежной величиной). Pill-кнопки — скрыть/показать колонку.' }),
+            filterBar,
+            noProviders || noCategories || null,
+            !noCategories ? table : null
+        ),
+        footer: el('div', { class: 'modal-footer-actions' },
+            el('button', { class: 'btn btn-ghost', onClick: close }, 'Закрыть')
+        )
+    });
+}
