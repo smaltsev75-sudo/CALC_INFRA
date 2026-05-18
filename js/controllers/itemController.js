@@ -97,18 +97,34 @@ export function deleteItem(itemId) {
 }
 
 /**
- * Дублирует ЭК. Возвращает новый id.
+ * Дублирует ЭК. Возвращает `{ ok: true, id }` при успехе, `{ ok: false, reason, message? }`
+ * при отказе (нет активного расчёта, source ЭК не найден, persist-fail).
+ *
+ * Внешний аудит #8 (2026-05-18, P1-2): раньше функция возвращала просто id
+ * (или null), игнорируя результат `saveItem`. При quota saveItem возвращает
+ * `{ok:false}`, ничего не сохраняется, но caller получал copy.id и показывал
+ * «Элемент дублирован». storeCount=1, persistedCount=1, дубль не создан.
+ * Теперь возвращаем структурированный результат, caller (app.js) показывает
+ * error-snackbar при `ok:false`.
  */
 export function duplicateItem(itemId) {
     const calc = store.getState().activeCalc;
-    if (!calc) return null;
+    if (!calc) return { ok: false, reason: 'noActiveCalc' };
     const src = calc.dictionaries.items.find(x => x.id === itemId);
-    if (!src) return null;
+    if (!src) return { ok: false, reason: 'notFound' };
     const copy = JSON.parse(JSON.stringify(src));
     copy.id = uuid();
     copy.name = `${src.name} (копия)`;
-    saveItem(copy);
-    return copy.id;
+    const r = saveItem(copy);
+    if (!r || r.ok === false) {
+        return {
+            ok: false,
+            reason: 'persist',
+            message: r?.errors?.[0]?.message
+                || 'Не удалось сохранить дубликат: превышен лимит хранилища (quota?).'
+        };
+    }
+    return { ok: true, id: copy.id };
 }
 
 /* ---------- Импорт/экспорт справочника ЭК ---------- */
@@ -230,11 +246,18 @@ export async function importItemPrices(opts = {}) {
         if (approved === true) {
             const r = applyPriceUpdates(anomalies);
             if (r && r.ok === false) {
+                /* Внешний аудит #8 (2026-05-18, P2-2): НЕ доверяем `r.message ||`
+                 * — он generic «Цены не применены...», что лжёт пользователю
+                 * (безопасные уже сохранены ранее). Конкретное сообщение
+                 * формируем здесь с учётом того, что safeUpdates успешно
+                 * сохранены ${safeUpdates.length}. */
+                const safeSavedNote = safeUpdates.length > 0
+                    ? ` Безопасные изменения (${safeUpdates.length}) уже сохранены ранее.`
+                    : '';
                 return {
                     ok: false,
                     reason: 'persist',
-                    message: r.message
-                        || 'Аномальные цены не применены: превышен лимит хранилища (quota?). Безопасные изменения уже сохранены.',
+                    message: `Аномальные цены не применены: превышен лимит хранилища (quota?).${safeSavedNote}`,
                     updatesCount: safeUpdates.length,
                     safeUpdatesCount: safeUpdates.length,
                     anomaliesApplied: 0,

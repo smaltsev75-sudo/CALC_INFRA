@@ -58,21 +58,30 @@ function getStorage() {
 /**
  * Storage для ЧТЕНИЯ. Никакого probe-setItem — иначе при quota мы бы
  * молча уходили в пустой memory fallback и пользователь видел "пропали все
- * расчёты", хотя данные на месте. Если же localStorage недоступен как
- * объект (приватный режим, отозванный пермишн) — getStorage() уже
- * закэширует _probedOk=false и getReadStorage отдаст тот же memory fallback.
+ * расчёты", хотя данные на месте.
+ *
+ * Внешний аудит #8 (2026-05-18, P1-1): дополнительно НЕ доверяем `_probedOk=false`
+ * для отказа от чтения. Этот флаг ставится в `getStorage()` при write-probe
+ * fail — а write-probe fail может означать либо Safari Private (тогда и read
+ * упадёт), либо квоту (read работает!). Если поверить флагу и сразу вернуть
+ * memory fallback — при квоте получим «все расчёты пропали», хотя getItem
+ * работает. Поэтому всегда пробуем реальный localStorage, и только если
+ * getItem сам бросит (Safari Private) — fallback. catch НЕ мутирует _probedOk:
+ * write-state — отдельная плоскость от read-state, прежний фикс P2-3
+ * (getReadRemoveStorage) шёл тем же путём.
  */
 function getReadStorage() {
-    if (_probedOk === false) return _memoryStorage();
     try {
+        if (typeof localStorage === 'undefined' || localStorage === null) {
+            return _memoryStorage();
+        }
         /* Лёгкая проверка: getItem на несуществующий ключ. В private-режиме
          * Safari это бросает в самый первый раз — тогда переключаемся в
-         * memory как и getStorage(). В обычном режиме всегда возвращает null
-         * и НЕ требует свободного места. */
+         * memory. В обычном режиме (включая полную квоту) всегда возвращает
+         * null и НЕ требует свободного места. */
         localStorage.getItem('__read_probe__');
         return localStorage;
     } catch {
-        _probedOk = false;
         return _memoryStorage();
     }
 }

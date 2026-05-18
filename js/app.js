@@ -1198,17 +1198,29 @@ const ctx = {
         const result = priceImportCtl.applyPriceImport();
         if (result.ok) {
             const s = result.summary;
-            /* Внешний аудит #7 (2026-05-18, P3): refresh-фаза могла оставить
-             * partial-state (overlay сохранён, но часть calc'ов не обновлены —
-             * quota / cross-tab). Показываем warning с числом не обновлённых
-             * расчётов, а не success как раньше. */
+            /* Внешний аудит #7 (2026-05-18, P3) + #8 (P2-1): refresh-фаза
+             * могла оставить partial-state — либо per-calc quota (refreshErrors),
+             * либо full refresh-failure (refreshReason='locked-by-other-tab' /
+             * 'no-override'). Показываем warning с конкретной причиной. */
             if (s.partial) {
-                const failed = s.refreshErrors.length;
-                snackbar.warning(
-                    `Прайс ${s.providerId} применён (${s.priceCount} тарифов), ` +
-                    `но ${failed} расчёт(ов) не обновлено — освободите место и повторите ` +
-                    `«Пересчитать на новый прайс».`
-                );
+                if (s.refreshReason === 'locked-by-other-tab') {
+                    snackbar.warning(
+                        `Прайс ${s.providerId} сохранён (${s.priceCount} тарифов), ` +
+                        `но расчёты не обновлены: ${s.refreshMessage || 'обновляются в другой вкладке'}. ` +
+                        `Закройте параллельную вкладку и повторите «Пересчитать на новый прайс».`
+                    );
+                } else if (s.refreshErrors.length > 0) {
+                    snackbar.warning(
+                        `Прайс ${s.providerId} применён (${s.priceCount} тарифов), ` +
+                        `но ${s.refreshErrors.length} расчёт(ов) не обновлено — освободите место и повторите ` +
+                        `«Пересчитать на новый прайс».`
+                    );
+                } else {
+                    snackbar.warning(
+                        `Прайс ${s.providerId} сохранён (${s.priceCount} тарифов), ` +
+                        `но расчёты не обновлены: ${s.refreshMessage || s.refreshReason || 'неизвестная причина'}.`
+                    );
+                }
             } else {
                 snackbar.success(`Прайс применён: ${s.priceCount} тарифов для ${s.providerId}.`);
             }
@@ -1295,8 +1307,18 @@ const ctx = {
         }
     },
     duplicateItem(id) {
-        const newId = itemCtl.duplicateItem(id);
-        if (newId) snackbar.success('Элемент дублирован');
+        /* Внешний аудит #8 (2026-05-18, P1-2): duplicateItem теперь возвращает
+         * {ok, id?, reason?, message?}. Раньше при quota caller получал
+         * copy.id и лживо рапортовал «Элемент дублирован», хотя ничего не
+         * сохранилось ни в store, ни в storage. */
+        const res = itemCtl.duplicateItem(id);
+        if (res && res.ok === true) {
+            snackbar.success('Элемент дублирован');
+        } else if (res && res.reason === 'persist') {
+            snackbar.error(res.message || 'Не удалось дублировать элемент (quota?)');
+        }
+        /* reason='noActiveCalc'/'notFound' — пользователь видит, что ничего
+         * не произошло (кнопка должна была быть disabled, race). Молча. */
     },
     exportItems(triggerEvent) {
         return withLoadingButton(triggerEvent, async () => {
@@ -1432,13 +1454,22 @@ const ctx = {
                     if (backupAnswer !== undefined) {
                         const cur = store.getState().activeCalc;
                         if (cur) {
-                            store.updateActiveCalc({
+                            /* Внешний аудит #8 (2026-05-18, P3-1): inverse
+                             * pattern — построить newCalc, commit ПЕРВЫМ,
+                             * только при ok мутировать store. Раньше:
+                             * store.updateActiveCalc → потом commit. При quota
+                             * UI показывал backupAnswer, в storage оставался
+                             * default-answer от saveQuestion(backup) — F5
+                             * терял прежний ответ без visible warning. */
+                            const restored = {
+                                ...cur,
                                 answers: { ...cur.answers, [id]: backupAnswer }
-                            });
-                            if (!commitActiveCalc(store.getState().activeCalc)) {
+                            };
+                            if (!commitActiveCalc(restored)) {
                                 snackbar.error('Вопрос восстановлен, но прежний ответ не сохранён в хранилище (quota?).');
                                 return;
                             }
+                            store.setActiveCalc(restored);
                         }
                     }
                     snackbar.success('Восстановлено');
@@ -1467,8 +1498,13 @@ const ctx = {
         });
     },
     duplicateQuestion(id) {
-        const newId = questionCtl.duplicateQuestion(id);
-        if (newId) snackbar.success('Вопрос дублирован');
+        /* Внешний аудит #8 (2026-05-18, P1-2): см. duplicateItem. */
+        const res = questionCtl.duplicateQuestion(id);
+        if (res && res.ok === true) {
+            snackbar.success('Вопрос дублирован');
+        } else if (res && res.reason === 'persist') {
+            snackbar.error(res.message || 'Не удалось дублировать вопрос (quota?)');
+        }
     },
     exportQuestions(triggerEvent) {
         return withLoadingButton(triggerEvent, async () => {

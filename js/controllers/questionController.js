@@ -79,18 +79,30 @@ export function deleteQuestion(qid) {
 }
 
 /**
- * Дублирует вопрос с новым id.
+ * Дублирует вопрос с новым id. Возвращает `{ok:true, id}` либо
+ * `{ok:false, reason, message?}` — см. parallel-фикс в itemController.duplicateItem.
+ *
+ * Внешний аудит #8 (2026-05-18, P1-2): раньше игнорировал результат
+ * saveQuestion — при quota врал об успехе.
  */
 export function duplicateQuestion(qid) {
     const calc = store.getState().activeCalc;
-    if (!calc) return null;
+    if (!calc) return { ok: false, reason: 'noActiveCalc' };
     const src = calc.dictionaries.questions.find(q => q.id === qid);
-    if (!src) return null;
+    if (!src) return { ok: false, reason: 'notFound' };
     const copy = JSON.parse(JSON.stringify(src));
     copy.id = `${src.id}_copy_${uuid().slice(0, 4)}`;
     copy.title = `${src.title} (копия)`;
-    saveQuestion(copy);
-    return copy.id;
+    const r = saveQuestion(copy);
+    if (!r || r.ok === false) {
+        return {
+            ok: false,
+            reason: 'persist',
+            message: r?.errors?.[0]?.message
+                || 'Не удалось сохранить дубликат вопроса: превышен лимит хранилища (quota?).'
+        };
+    }
+    return { ok: true, id: copy.id };
 }
 
 /* ---------- Импорт/экспорт ---------- */

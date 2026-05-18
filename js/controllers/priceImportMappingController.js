@@ -359,7 +359,16 @@ export function applyPriceImport() {
     /* Внешний аудит #7 (2026-05-18, P3): refresh-фаза может вернуть errors
      * (per-calc quota / cross-tab conflict) — раньше summary.errors не было,
      * UI рапортовал ok без warning. Теперь явно пробрасываем. */
+    /* Внешний аудит #8 (2026-05-18, P2-1): дополнительно проверяем
+     * `calcsResult.ok === false`. Раньше смотрели только на errors[], но
+     * applyOverrideToAllCalcsForProvider может вернуть FULL-failure ДО входа
+     * в loop (например `{ok:false, reason:'locked-by-other-tab'}` или
+     * `{ok:false, reason:'no-override'}`) — массива errors там нет.
+     * UI получал partial:false и показывал success, хотя ни один calc не
+     * обновлён. Теперь partial=true при ok:false тоже, и refreshReason
+     * передаётся в UI для конкретного сообщения. */
     const refreshErrors = Array.isArray(calcsResult?.errors) ? calcsResult.errors : [];
+    const refreshOk = calcsResult ? calcsResult.ok !== false : true;
     const summary = {
         priceCount: Object.keys(validated.data.prices).length,
         version: validated.data.version,
@@ -367,7 +376,9 @@ export function applyPriceImport() {
         appliedToCalcs: calcsResult?.applied ?? 0,
         alreadyFresh: calcsResult?.alreadyFresh ?? 0,
         refreshErrors,
-        partial: refreshErrors.length > 0
+        refreshReason: !refreshOk ? (calcsResult?.reason || null) : null,
+        refreshMessage: !refreshOk ? (calcsResult?.message || null) : null,
+        partial: refreshErrors.length > 0 || !refreshOk
     };
 
     const result = { ok: true, applied: validated.data, snapshot, summary };
