@@ -20,7 +20,7 @@
  * mapping assistant.
  */
 
-import { VALIDATION } from '../utils/constants.js';
+import { VALIDATION, PROVIDER_PRICE_SCHEMA_VERSION } from '../utils/constants.js';
 
 /** YYYY-MM-DD из Date через явные геттеры (без toISOString().slice — запрещено линтером). */
 function isoDateOnly(d = new Date()) {
@@ -165,7 +165,12 @@ function parseNum(value) {
 export function detectShape(parsed) {
     if (!parsed || typeof parsed !== 'object') return 'unknown';
     if (Array.isArray(parsed)) return parsed.length > 0 ? 'json-array' : 'unknown';
-    if (parsed.schemaVersion === 1 && typeof parsed.providerId === 'string'
+    /* Audit P2-1: detectShape должен принимать оба schemaVersion'а — иначе
+     * v2 provider-JSON попадает в 'unknown' и UI mapping-flow начинает
+     * предлагать пользователю ручное сопоставление полей для уже
+     * структурированного прайса. Парный фикс с priceImportParser.js. */
+    if ((parsed.schemaVersion === 1 || parsed.schemaVersion === PROVIDER_PRICE_SCHEMA_VERSION)
+            && typeof parsed.providerId === 'string'
             && parsed.prices && typeof parsed.prices === 'object') {
         return 'provider-json';
     }

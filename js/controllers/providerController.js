@@ -588,12 +588,21 @@ export function applyOverrideToAllCalcsForProvider(providerId) {
             };
 
             if (activeCalc && activeCalc.id === meta.id) {
-                /* Update через store + commit (триггерит ре-рендер). */
+                /* Update через store + commit (триггерит ре-рендер).
+                 * Внешний аудит 2026-05-18 (P2-2): раньше результат
+                 * commitActiveCalc игнорировался, и при сбое записи (quota)
+                 * applied++ всё равно срабатывал → пользователь видел
+                 * "обновлено N", хотя active calc после F5 оставался
+                 * прежним. Контракт inactive-ветки (false → error+continue)
+                 * теперь распространён и на active. */
                 store.updateActiveCalc({
                     dictionaries: updated.dictionaries,
                     providerVersion
                 });
-                commitActiveCalc(store.getState().activeCalc);
+                if (!commitActiveCalc(store.getState().activeCalc)) {
+                    errors.push({ calcId: meta.id, name: meta.name, message: 'Не удалось сохранить (quota?)' });
+                    continue;
+                }
             } else {
                 /* Inactive calc — пишем напрямую. saveCalc возвращает false при quota. */
                 if (!persist.saveCalc(updated)) {

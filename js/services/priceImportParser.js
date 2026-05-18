@@ -17,7 +17,11 @@
  * validateProviderPriceJson → save.
  */
 
-import { CSV_IMPORT_MAX_BYTES, JSON_IMPORT_MAX_BYTES } from '../utils/constants.js';
+import {
+    CSV_IMPORT_MAX_BYTES,
+    JSON_IMPORT_MAX_BYTES,
+    PROVIDER_PRICE_SCHEMA_VERSION
+} from '../utils/constants.js';
 import { parseCsv } from './csvImport.js';
 
 /** Максимум строк для preview/mapping — защита от случайного загрузки 10MB-CSV. */
@@ -104,9 +108,15 @@ function parseJsonContent(text, fileName) {
         };
     }
 
-    // Provider-JSON shape: { schemaVersion: 1, providerId, prices, ... }
+    /* Provider-JSON shape: schemaVersion=1 (legacy) ИЛИ
+     * PROVIDER_PRICE_SCHEMA_VERSION (текущая, =2 после Stage VAT-2 Phase 1).
+     * Внешний аудит 2026-05-18 (P2-1): раньше принимался только ===1, и
+     * актуальный v2-прайс (например, сгенерированный provider-bundled-pipeline)
+     * через этот импорт отвергался как 'shape'. validateProviderPriceJson
+     * принимает оба schemaVersion'а, parser обязан быть консистентен. */
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-            && parsed.schemaVersion === 1 && typeof parsed.providerId === 'string'
+            && (parsed.schemaVersion === 1 || parsed.schemaVersion === PROVIDER_PRICE_SCHEMA_VERSION)
+            && typeof parsed.providerId === 'string'
             && parsed.prices && typeof parsed.prices === 'object') {
         return { ok: true, kind: 'provider-json', data: parsed, fileName };
     }
@@ -136,7 +146,7 @@ function parseJsonContent(text, fileName) {
 
     return {
         ok: false, reason: 'shape',
-        message: 'JSON должен быть массивом объектов или provider-JSON со schemaVersion=1.'
+        message: `JSON должен быть массивом объектов или provider-JSON со schemaVersion=1 либо ${PROVIDER_PRICE_SCHEMA_VERSION}.`
     };
 }
 

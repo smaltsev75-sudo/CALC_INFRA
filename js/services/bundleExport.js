@@ -269,25 +269,40 @@ export function applyStateBundle(data) {
         // 4. Очистить текущие расчёты (миграция выше прошла успешно).
         for (const m of backup.list) persist.removeCalc(m.id);
 
-        // 5. Записать новые расчёты + список
-        for (const c of migrated) persist.saveCalc(c);
+        // 5. Записать новые расчёты + список. Внешний аудит 2026-05-18 (P1-2):
+        //    раньше return-значения persist.save* игнорировались, и quota во
+        //    время apply-фазы выдавала ok=true с реально несохранёнными
+        //    расчётами (после rm на шаге 4 список расчётов уходил в null).
+        //    Теперь любой false из persist.save* бросает Error, который ловит
+        //    catch ниже и запускает rollback на backup.
+        for (const c of migrated) {
+            if (!persist.saveCalc(c)) {
+                throw new Error(`persist.saveCalc failed for ${c.id} (likely quota)`);
+            }
+        }
         const newList = migrated.map(c => ({
             id: c.id,
             name: c.name,
             updatedAt: c.updatedAt
         }));
-        persist.saveCalcList(newList);
+        if (!persist.saveCalcList(newList)) {
+            throw new Error('persist.saveCalcList failed (likely quota)');
+        }
 
         // 6. Глобальный справочник
         if (data.defaultDictionary) {
-            persist.saveDefaultDictionary(data.defaultDictionary);
+            if (!persist.saveDefaultDictionary(data.defaultDictionary)) {
+                throw new Error('persist.saveDefaultDictionary failed (likely quota)');
+            }
         }
 
         // 7. Активный расчёт
         const validActiveId = data.activeCalcId && migrated.some(c => c.id === data.activeCalcId)
             ? data.activeCalcId
             : (migrated[0]?.id || null);
-        persist.saveActiveCalcId(validActiveId);
+        if (!persist.saveActiveCalcId(validActiveId)) {
+            throw new Error('persist.saveActiveCalcId failed (likely quota)');
+        }
 
         return {
             ok: true,

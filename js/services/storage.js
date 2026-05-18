@@ -6,27 +6,79 @@
 import { STORAGE_KEYS } from '../utils/constants.js';
 
 let _memoryFallback = null;
+/* Результат probe-проверки кэшируется на жизнь модуля:
+ *   null   — probe ещё не делался;
+ *   true   — реальный localStorage пригоден и для чтения, и для записи;
+ *   false  — приватный режим / нет API / пермишн отозван → memory fallback.
+ *
+ * Внешний аудит 2026-05-18 (P1-1): раньше getStorage() делал probe-setItem
+ * на КАЖДЫЙ вызов, в том числе из readJson. При исчерпанной квоте
+ * QuotaExceededError из setItem('__test__', ...) переключал getStorage на
+ * пустой in-memory fallback, и readJson возвращал fallback-значение, хотя
+ * данные в реальном localStorage оставались доступны для чтения. Чинится
+ * двумя путями: (а) probe только один раз при первом обращении (cache);
+ * (б) для чтения вообще не нужен probe — localStorage может быть в quota,
+ * но getItem от этого не страдает. Поэтому writeJson/removeKey ходят через
+ * getStorage() с probe, а readJson — через getReadStorage() без probe.
+ */
+let _probedOk = null;
 
+function _memoryStorage() {
+    if (!_memoryFallback) _memoryFallback = new Map();
+    return {
+        getItem: k => _memoryFallback.has(k) ? _memoryFallback.get(k) : null,
+        setItem: (k, v) => _memoryFallback.set(k, String(v)),
+        removeItem: k => _memoryFallback.delete(k),
+        key: i => Array.from(_memoryFallback.keys())[i] ?? null,
+        get length() { return _memoryFallback.size; }
+    };
+}
+
+/**
+ * Storage для ЗАПИСИ. Если ни разу не probed — пробует записать '__test__'
+ * единожды и кэширует результат. Quota во время реальных setItem'ов после
+ * успешного probe не переключает на memory — отдельный try/catch в writeJson
+ * вернёт false и UI поднимет persistStatus='error' (контракт 10.1.5).
+ */
 function getStorage() {
+    if (_probedOk === true) return localStorage;
+    if (_probedOk === false) return _memoryStorage();
     try {
         const t = '__test__';
         localStorage.setItem(t, t);
         localStorage.removeItem(t);
+        _probedOk = true;
         return localStorage;
     } catch {
-        if (!_memoryFallback) _memoryFallback = new Map();
-        return {
-            getItem: k => _memoryFallback.has(k) ? _memoryFallback.get(k) : null,
-            setItem: (k, v) => _memoryFallback.set(k, String(v)),
-            removeItem: k => _memoryFallback.delete(k),
-            key: i => Array.from(_memoryFallback.keys())[i] ?? null,
-            get length() { return _memoryFallback.size; }
-        };
+        _probedOk = false;
+        return _memoryStorage();
+    }
+}
+
+/**
+ * Storage для ЧТЕНИЯ. Никакого probe-setItem — иначе при quota мы бы
+ * молча уходили в пустой memory fallback и пользователь видел "пропали все
+ * расчёты", хотя данные на месте. Если же localStorage недоступен как
+ * объект (приватный режим, отозванный пермишн) — getStorage() уже
+ * закэширует _probedOk=false и getReadStorage отдаст тот же memory fallback.
+ */
+function getReadStorage() {
+    if (_probedOk === false) return _memoryStorage();
+    try {
+        /* Лёгкая проверка: getItem на несуществующий ключ. В private-режиме
+         * Safari это бросает в самый первый раз — тогда переключаемся в
+         * memory как и getStorage(). В обычном режиме всегда возвращает null
+         * и НЕ требует свободного места. */
+        localStorage.getItem('__read_probe__');
+        return localStorage;
+    } catch {
+        _probedOk = false;
+        return _memoryStorage();
     }
 }
 
 export function readJson(key, fallback = null) {
-    const s = getStorage();
+    const s = getReadStorage();
     const raw = s.getItem(key);
     if (raw === null || raw === undefined) return fallback;
     try { return JSON.parse(raw); }

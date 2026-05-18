@@ -178,9 +178,27 @@ export function proceedToMappingStep() {
     const cur = ui();
     if (!cur) return;
     if (cur.kind === 'provider-json') {
-        // Validate the provider JSON immediately.
-        const validated = validateProviderPriceJson(cur.providerJsonData, cur.providerId);
+        /* Внешний аудит 2026-05-18 (P1-3): user-import path обязан проходить
+         * через VAT-policy gate так же, как providerController.updateProviderPricesFromFile.
+         * Иначе v1-прайс без vatPolicy molча сохраняется как raw pricePerUnit
+         * (трактуется calculator'ом как net) и НДС применяется поверх ещё раз
+         * → double-VAT. requireVatPolicy: true возвращает reason='vat-policy-required'
+         * → открываем vatPolicyChoice модалку (3 кнопки net/gross-20/gross-22).
+         * Текущая модалка mapping остаётся открытой; после выбора пользователя
+         * applyPriceImport() ниже повторит validate уже с userVatPolicy. */
+        const validated = validateProviderPriceJson(cur.providerJsonData, cur.providerId, { requireVatPolicy: true });
         if (!validated.ok) {
+            if (validated.reason === 'vat-policy-required') {
+                store.openModal('vatPolicyChoice', {
+                    providerId: cur.providerId,
+                    preloaded: cur.providerJsonData
+                });
+                /* Шаг не меняем — пользователь вернётся к этой же модалке после
+                 * выбора политики. validationResult сбрасываем, чтобы при
+                 * повторной попытке UI не показывал stale-ошибку. */
+                setUi({ validationResult: null });
+                return;
+            }
             setUi({
                 step: 'validate',
                 validationResult: {
@@ -223,8 +241,17 @@ export function validatePriceImport() {
     const knownItems = calc?.dictionaries?.items || [];
 
     if (cur.kind === 'provider-json') {
-        const v = validateProviderPriceJson(cur.providerJsonData, cur.providerId);
+        /* Audit P1-3: тот же VAT-policy gate, что и в proceedToMappingStep. */
+        const v = validateProviderPriceJson(cur.providerJsonData, cur.providerId, { requireVatPolicy: true });
         if (!v.ok) {
+            if (v.reason === 'vat-policy-required') {
+                store.openModal('vatPolicyChoice', {
+                    providerId: cur.providerId,
+                    preloaded: cur.providerJsonData
+                });
+                setUi({ validationResult: null });
+                return;
+            }
             setUi({
                 step: 'validate',
                 validationResult: {
@@ -275,8 +302,21 @@ export function applyPriceImport() {
         data = built.data;
     }
 
-    const validated = validateProviderPriceJson(data, providerId);
+    /* Audit P1-3: тот же gate в финальной точке save. data здесь может быть:
+     * (а) исходный provider-JSON (когда kind='provider-json'),
+     * (б) собранный buildProviderPriceJson v1 (CSV/JSON-array путь) — он тоже
+     * не несёт vatPolicy и подпадает под user-import path. requireVatPolicy:true
+     * ловит оба случая и переводит в модалку выбора политики НДС. После выбора
+     * пользователя дальнейший save идёт через applyProviderPricesWithVatPolicy
+     * в providerController. */
+    const validated = validateProviderPriceJson(data, providerId, { requireVatPolicy: true });
     if (!validated.ok) {
+        if (validated.reason === 'vat-policy-required') {
+            store.openModal('vatPolicyChoice', { providerId, preloaded: data });
+            const result = { ok: false, reason: 'vat-policy-required', awaitingChoice: true };
+            setUi({ applyResult: result });
+            return result;
+        }
         setUi({ applyResult: validated });
         return validated;
     }
