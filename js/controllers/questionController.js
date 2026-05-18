@@ -62,15 +62,19 @@ export function saveQuestion(q) {
 
 export function deleteQuestion(qid) {
     const calc = store.getState().activeCalc;
-    if (!calc) return;
+    if (!calc) return { ok: false, reason: 'noActiveCalc' };
     const questions = removeById(calc.dictionaries.questions, qid);
     const answers = { ...calc.answers };
     delete answers[qid];
     store.updateActiveCalc({ dictionaries: { ...calc.dictionaries, questions }, answers });
-    /* best-effort: commitActiveCalc → persistStatus='error' через ядро. */
-    commitActiveCalc(store.getState().activeCalc);
-
+    /* Внешний аудит #5 (2026-05-18, P2): см. itemController.deleteItem. */
+    if (!commitActiveCalc(store.getState().activeCalc)) {
+        return { ok: false, reason: 'persist',
+            message: 'Не удалось удалить вопрос: превышен лимит хранилища (quota?). ' +
+                     'Освободите место и повторите.' };
+    }
     syncDefaultDictionary({ questions: removeById(currentDefaultQuestions(), qid) });
+    return { ok: true };
 }
 
 /**
@@ -115,11 +119,16 @@ export async function importQuestions({ replace = false } = {}) {
                     dictionaries: { ...calc.dictionaries, questions: merged },
                     answers
                 });
-                /* best-effort: commitActiveCalc → persistStatus='error' через ядро. */
-                commitActiveCalc(store.getState().activeCalc);
+                /* Внешний аудит #5 (2026-05-18, P2): commit-fail пробрасываем
+                 * как persist-reason — см. itemController.importItems. */
+                if (!commitActiveCalc(store.getState().activeCalc)) {
+                    return { ok: false, reason: 'persist',
+                        message: 'Импорт не сохранён в хранилище (quota?).' };
+                }
             }
             const defBase = replace ? [] : currentDefaultQuestions();
             syncDefaultDictionary({ questions: mergeById(defBase, accepted) });
+            return { ok: true };
         }
     });
 }

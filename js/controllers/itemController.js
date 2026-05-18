@@ -77,13 +77,20 @@ export function saveItem(item) {
 
 export function deleteItem(itemId) {
     const calc = store.getState().activeCalc;
-    if (!calc) return;
+    if (!calc) return { ok: false, reason: 'noActiveCalc' };
     const items = removeById(calc.dictionaries.items, itemId);
     store.updateActiveCalc({ dictionaries: { ...calc.dictionaries, items } });
-    /* best-effort: см. saveItem выше — persistStatus='error' через commit-ядро. */
-    commitActiveCalc(store.getState().activeCalc);
-
+    /* Внешний аудит #5 (2026-05-18, P2): раньше commit-fail замалчивался,
+     * UI показывал «Элемент удалён» с UNDO, но F5 возвращал элемент —
+     * data-resurrection. Теперь возвращаем {ok:false,reason:'persist'},
+     * caller (app.js.deleteItem) показывает error-snackbar без UNDO. */
+    if (!commitActiveCalc(store.getState().activeCalc)) {
+        return { ok: false, reason: 'persist',
+            message: 'Не удалось удалить элемент: превышен лимит хранилища (quota?). ' +
+                     'Освободите место и повторите.' };
+    }
     syncDefaultDictionary({ items: removeById(currentDefaultItems(), itemId) });
+    return { ok: true };
 }
 
 /**
@@ -121,11 +128,17 @@ export async function importItems({ replace = false } = {}) {
                 const baseItems = replace ? [] : [...calc.dictionaries.items];
                 const merged = mergeById(baseItems, accepted);
                 store.updateActiveCalc({ dictionaries: { ...calc.dictionaries, items: merged } });
-                /* best-effort: commitActiveCalc → persistStatus='error' через ядро. */
-                commitActiveCalc(store.getState().activeCalc);
+                /* Внешний аудит #5 (2026-05-18, P2): commit-fail
+                 * пробрасываем как persist-reason — UI покажет error-snackbar
+                 * вместо лживого «Импортировано N». */
+                if (!commitActiveCalc(store.getState().activeCalc)) {
+                    return { ok: false, reason: 'persist',
+                        message: 'Импорт не сохранён в хранилище (quota?).' };
+                }
             }
             const defBase = replace ? [] : currentDefaultItems();
             syncDefaultDictionary({ items: mergeById(defBase, accepted) });
+            return { ok: true };
         }
     });
 }
@@ -182,8 +195,14 @@ export async function importItemPrices(opts = {}) {
     const anomalies = diff.anomalies || [];
 
     // Применяем безопасные обновления сразу.
+    // Внешний аудит #5 (2026-05-18, P2): applyPriceUpdates теперь возвращает
+    // {ok, reason} — при quota обновления в store применены, но persist
+    // провален → возвращаем {ok:false} до начала аномалий, чтобы UI показал
+    // правильный summary (что НЕ сохранено).
+    let persistFail = null;
     if (safeUpdates.length > 0) {
-        applyPriceUpdates(safeUpdates);
+        const r = applyPriceUpdates(safeUpdates);
+        if (r && r.ok === false) persistFail = r;
     }
 
     // Аномалии — только после явного подтверждения пользователем.
@@ -191,9 +210,29 @@ export async function importItemPrices(opts = {}) {
     if (anomalies.length > 0 && typeof opts.confirmAnomalies === 'function') {
         const approved = await opts.confirmAnomalies(anomalies);
         if (approved === true) {
-            applyPriceUpdates(anomalies);
+            const r = applyPriceUpdates(anomalies);
+            if (r && r.ok === false) persistFail = persistFail || r;
             anomaliesApplied = anomalies.length;
         }
+    }
+
+    if (persistFail) {
+        return {
+            ok: false,
+            reason: 'persist',
+            message: persistFail.message
+                || 'Цены применены в текущей сессии, но не сохранены в хранилище (quota?). После перезагрузки страницы изменения исчезнут.',
+            updatesCount: safeUpdates.length + anomaliesApplied,
+            safeUpdatesCount: safeUpdates.length,
+            anomaliesApplied,
+            unchanged: diff.unchanged,
+            rejected: diff.rejected,
+            anomalies,
+            costTypeChanges: diff.costTypeChanges || 0,
+            costTypeRejected: diff.costTypeRejected || [],
+            safeUpdates,
+            fileName: result.fileName
+        };
     }
 
     return {
@@ -219,9 +258,9 @@ export async function importItemPrices(opts = {}) {
  * Внутренняя функция; не экспортируется наружу.
  */
 function applyPriceUpdates(updates) {
-    if (!Array.isArray(updates) || updates.length === 0) return;
+    if (!Array.isArray(updates) || updates.length === 0) return { ok: true };
     const calc = store.getState().activeCalc;
-    if (!calc) return;
+    if (!calc) return { ok: false, reason: 'noActiveCalc' };
 
     const now = new Date().toISOString();
     const byId = new Map(updates.map(u => [u.id, u]));
@@ -241,13 +280,19 @@ function applyPriceUpdates(updates) {
     const newItems = calc.dictionaries.items.map(it => byId.has(it.id) ? stamp(it) : it);
 
     store.updateActiveCalc({ dictionaries: { ...calc.dictionaries, items: newItems } });
-    /* best-effort: commitActiveCalc → persistStatus='error' через ядро. */
-    commitActiveCalc(store.getState().activeCalc);
+    /* Внешний аудит #5 (2026-05-18, P2): commit-fail возвращается caller'у. */
+    const persisted = commitActiveCalc(store.getState().activeCalc);
 
     // Синхронизируем default-словарь — чтобы новые расчёты видели обновлённые цены.
     const defItems = currentDefaultItems();
     const defNew = defItems.map(it => byId.has(it.id) ? stamp(it) : it);
     syncDefaultDictionary({ items: defNew });
+
+    if (!persisted) {
+        return { ok: false, reason: 'persist',
+            message: 'Цены применены в текущей сессии, но не сохранены (quota?).' };
+    }
+    return { ok: true };
 }
 
 /* ---------- Открыть форму ---------- */

@@ -84,11 +84,42 @@ function _atomicCalcAndListWrite(calc, listBuilder) {
 
     // Helper: rollback calc.<id> к backup-снапшоту (или удалить, если был новым).
     // Внешний аудит #4 P1-1: раньше пропускалось → orphan calc.<id> в storage.
+    // Внешний аудит #5 P1-1 (2026-05-18): persist.saveCalc/removeCalc возвращают
+    // boolean (НЕ throws) при quota → false-return мы раньше игнорировали в
+    // try/catch (catch ловит только throw). Теперь возвращаем явный boolean
+    // result, чтобы caller мог сигнализировать о partial state.
+    //
+    // Возвращает true только если rollback РЕАЛЬНО применён: либо
+    // saveCalc(backup) удалось, либо removeCalc(id) удалось. false = partial
+    // state (calc.<id> остался с новыми данными / orphan'ом).
     const _rollbackCalc = () => {
         if (backupCalcSnapshot) {
-            try { persist.saveCalc(backupCalcSnapshot); } catch (e) { /* best-effort */ }
+            try { return persist.saveCalc(backupCalcSnapshot) === true; }
+            catch (e) { return false; }
+        }
+        try { persist.removeCalc(calc.id); return true; }
+        catch (e) { return false; }
+    };
+
+    // Helper: rollback list. Возвращает true если backup записан или backup
+    // отсутствовал (нечего откатывать). false = partial state.
+    const _rollbackList = () => {
+        if (!backupList) return true;
+        try { return persist.saveCalcList(backupList) === true; }
+        catch (e) { return false; }
+    };
+
+    // Helper: сообщение для persistStatus, дифференцированное по типу сбоя.
+    // При двойном сбое (основной save + rollback) — partial state, пользователь
+    // обязан перезагрузить страницу: state в памяти не совпадает с storage.
+    const _signalError = (rollbackOk) => {
+        if (rollbackOk) {
+            store.setPersistStatus('error', QUOTA_ERROR_MSG);
         } else {
-            try { persist.removeCalc(calc.id); } catch (e) { /* best-effort */ }
+            store.setPersistStatus('error',
+                'Не удалось сохранить и не удалось откатить (quota?). ' +
+                'Состояние в памяти и хранилище расходятся — перезагрузите страницу. ' +
+                'Если расчёт исчезнет — восстановите вручную из JSON-экспорта.');
         }
     };
 
@@ -97,11 +128,11 @@ function _atomicCalcAndListWrite(calc, listBuilder) {
     try {
         updatedList = listBuilder(persist.loadCalcList());
     } catch (e) {
-        if (backupList) {
-            try { persist.saveCalcList(backupList); } catch (e2) { /* откат list упал */ }
-        }
-        _rollbackCalc();
-        store.setPersistStatus('error', QUOTA_ERROR_MSG);
+        /* ВАЖНО: вызвать ОБА rollback'а независимо (без && short-circuit),
+         * чтобы при сбое одного — другой всё равно отработал. */
+        const listOk = _rollbackList();
+        const calcOk = _rollbackCalc();
+        _signalError(listOk && calcOk);
         return false;
     }
 
@@ -113,11 +144,9 @@ function _atomicCalcAndListWrite(calc, listBuilder) {
         okList = false;
     }
     if (!okList) {
-        if (backupList) {
-            try { persist.saveCalcList(backupList); } catch (e2) { /* откат list не удался */ }
-        }
-        _rollbackCalc();
-        store.setPersistStatus('error', QUOTA_ERROR_MSG);
+        const listOk = _rollbackList();
+        const calcOk = _rollbackCalc();
+        _signalError(listOk && calcOk);
         return false;
     }
 

@@ -28,7 +28,8 @@ import {
     loadProviderOverrides,
     pushProviderOverrideHistory,
     loadProviderOverrideHistory,
-    setProviderOverrideHistory
+    setProviderOverrideHistory,
+    clearProviderOverride
 } from '../state/persistence.js';
 import { pickFile, readJsonFile } from '../services/json.js';
 import { getEffectivePricesForProvider } from '../services/providerPriceResolver.js';
@@ -473,11 +474,13 @@ export function restoreProviderOverrideFromHistory(providerId, idx) {
      * При сбое — откатываем current к backup, чтобы НЕ оставлять partial state. */
     const remaining = history.slice(idx + 1);
     if (!setProviderOverrideHistory(providerId, remaining)) {
-        /* Откат current. Если backup отсутствовал — нечего откатывать. */
-        let rollbackOk = true;
-        if (backupCurrent) {
-            rollbackOk = saveProviderOverride(providerId, backupCurrent);
-        }
+        /* Откат current. Внешний аудит #5 (2026-05-18, P3-1): раньше
+         * if (backupCurrent) {...} else НИЧЕГО, и target оставался записан
+         * как новый current. Если current до операции отсутствовал —
+         * clearProviderOverride() удаляет ключ; иначе восстанавливаем backup. */
+        const rollbackOk = backupCurrent
+            ? saveProviderOverride(providerId, backupCurrent)
+            : clearProviderOverride(providerId);
         if (rollbackOk) {
             return { ok: false, reason: 'persist',
                 message: 'Не удалось обновить историю (quota?). ' +

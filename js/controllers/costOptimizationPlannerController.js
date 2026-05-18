@@ -279,8 +279,12 @@ export function rollbackOptimizationApply() {
         answersMeta: restored.answersMeta
     });
     const persisted = store.getState().activeCalc;
-    /* best-effort: commitActiveCalc → persistStatus='error' через ядро. */
-    if (persisted) commitActiveCalc(persisted);
+    /* Внешний аудит #5 (2026-05-18, P3-2): раньше commitActiveCalc-возврат
+     * игнорировался + lastApplySnapshot обнулялся безусловно. При quota:
+     * (a) store-rollback виден, (b) storage не откатан, (c) snapshot потерян
+     * → пользователь не может retry, F5 возвращает apply'нутые правки. Теперь
+     * при persist-fail сохраняем snapshot для retry и возвращаем ok:false. */
+    const persistOk = persisted ? commitActiveCalc(persisted) === true : true;
 
     /* Пересоздаём свежий draft на восстановленном calc (baseSnapshot должен
        отражать актуальное состояние). Сохраняем level и touched-constraints —
@@ -292,6 +296,16 @@ export function rollbackOptimizationApply() {
         constraintsOverride: prevDraft?.constraints || null,
         touchedConstraints: prevDraft?.touchedConstraints || {}
     });
+
+    if (!persistOk) {
+        /* lastApplySnapshot НЕ обнуляем — пользователь должен иметь шанс retry.
+         * confirming тоже не трогаем (его рулит inline-flow apply, не rollback). */
+        store.patchModal(MODAL_NAME, { draft: newDraft });
+        return { ok: false, reason: 'persist',
+            message: 'Откат отображён в текущей сессии, но не сохранён в хранилище ' +
+                     '(quota?). После перезагрузки страницы применённые правки вернутся — ' +
+                     'освободите место и повторите отмену.' };
+    }
 
     store.patchModal(MODAL_NAME, {
         draft: newDraft,

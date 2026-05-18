@@ -27,6 +27,7 @@
 
 import { store } from '../state/store.js';
 import { setAnswer } from './calcController.js';
+import { commitActiveCalc } from '../services/calcPersistence.js';
 import { evaluateCalculationHealth } from '../domain/calculationHealth.js';
 import { recordHealthScoreSnapshot } from './healthScoreTrendController.js';
 import {
@@ -180,15 +181,27 @@ export function finishGuidedCompletion() {
 
 /**
  * Откат всего мастера: восстанавливает answers/answersMeta/settings из
- * snapshot, очищает transient state, закрывает модалку. Восстановление
- * идёт ОДНИМ updateActiveCalc — autosave запишет финальное состояние.
+ * snapshot, очищает transient state, закрывает модалку.
+ *
+ * Внешний аудит #5 (2026-05-18, P2): раньше rollback писал в store, ставил
+ * setPersistStatus('pending') и полагался на autosave subscriber в app.js.
+ * Но subscriber на activeCalc-revision вызывает `calcController.commit`
+ * только если событие пришло из setAnswer/setSetting путей — голый
+ * updateActiveCalc может не триггерить debounce (зависит от того, какие
+ * пути подписаны на rev++). При quota пользователь видел «Мастер отменён»,
+ * но F5 возвращал применённые ответы из storage → rollback ни на что не повлиял.
+ *
+ * Теперь — явный commitActiveCalc(persisted) + проверка return. При false
+ * persistStatus='error' сигнализирует пользователю; модалка всё равно
+ * закрывается (in-memory rollback уже выполнен).
  */
 export function rollbackGuidedCompletion() {
     const ui = store.getState().ui?.guidedCompletion;
     if (!ui?.active || !ui.snapshot) {
         store.closeModal('guidedCompletion');
-        return;
+        return { ok: true };
     }
+    let persistOk = true;
     const calc = store.getState().activeCalc;
     if (calc) {
         store.updateActiveCalc({
@@ -196,32 +209,20 @@ export function rollbackGuidedCompletion() {
             answersMeta: deepClone(ui.snapshot.answersMeta),
             settings: deepClone(ui.snapshot.settings)
         });
-        // Triggering commit — то же поведение, что setAnswer, но без cascade
-        // (snapshot уже консистентный, ничего восстанавливать не нужно).
-        // Используем тот же путь, что и calcController.commit: setPersistStatus
-        // pending + debounced commitActiveCalc. Контроллер мастера не должен
-        // импортировать commit() напрямую (private). Проще: синтетический
-        // setAnswer на NO-OP не подходит. Вместо этого полагаемся на subscriber
-        // в app.js — после updateActiveCalc revision++ и autosave запустится
-        // через persist-flow контроллера, в который встроен subscriber на
-        // changes activeCalc. Если такого subscriber'а нет — вызываем
-        // setAnswer на любое поле snapshot'а с тем же значением (no-op в
-        // плане данных, но триггерит commit).
-        // Реализация ниже: дополнительно к updateActiveCalc, чтобы persist
-        // точно произошёл, дёргаем persist через store.setPersistStatus
-        // (calcController._persistDebounced следит сам). Уточнение:
-        // calcController.commit() — module-private, не экспортируется.
-        // Альтернатива: явно публикуем flushPendingCommit + триггерим setAnswer
-        // на snapshot'ный ответ, что вызовет commit. Но snapshot мог быть пустой.
-        // Простейшее решение: положиться на ручной save через setPersistStatus
-        // и ожидать, что следующий commit при любом действии запишет восстановленное
-        // состояние. До этого момента localStorage может быть рассинхронизирован
-        // в течение долей секунды. Это ок: rollback — крайний случай, snapshot
-        // живёт в памяти.
-        store.setPersistStatus('pending');
+        const persisted = store.getState().activeCalc;
+        if (persisted) {
+            persistOk = commitActiveCalc(persisted) === true;
+            if (!persistOk) {
+                store.setPersistStatus('error',
+                    'Откат мастера выполнен в текущей сессии, но не сохранён в хранилище ' +
+                    '(quota?). После перезагрузки страницы применённые ответы вернутся — ' +
+                    'если это нежелательно, освободите место и повторите отмену.');
+            }
+        }
     }
     setUiPatch(null);
     store.closeModal('guidedCompletion');
+    return persistOk ? { ok: true } : { ok: false, reason: 'persist' };
 }
 
 /**

@@ -1078,6 +1078,10 @@ const ctx = {
             snackbar.info('Изменения плана оптимизации отменены.');
         } else if (r?.reason === 'no_snapshot') {
             snackbar.warning('Нет применённых изменений для отката.');
+        } else if (r?.reason === 'persist') {
+            /* Внешний аудит #5 (2026-05-18, P3-2): persist-fail. Snapshot
+             * не обнулён — пользователь может retry. */
+            snackbar.error(r.message || 'Откат не сохранён в хранилище (quota?)');
         }
     },
     // Stage 15.3 (PATCH 2.8.2): сохраняет фильтры модалки анализа чувствительности.
@@ -1135,7 +1139,12 @@ const ctx = {
         guidedCompletionCtl.finishGuidedCompletion();
     },
     rollbackGuidedCompletion() {
-        guidedCompletionCtl.rollbackGuidedCompletion();
+        const r = guidedCompletionCtl.rollbackGuidedCompletion();
+        /* Внешний аудит #5 (2026-05-18, P2): persist-fail при rollback — UI
+         * откатан, в storage остались правки мастера. F5 их вернёт. */
+        if (r && r.ok === false && r.reason === 'persist') {
+            snackbar.error('Откат мастера не сохранён в хранилище (quota?). После перезагрузки правки мастера вернутся.');
+        }
     },
     // Stage 16.2 (PATCH 2.9.1): импорт прайса с mapping assistant.
     // Все методы — тонкие обёртки над priceImportMappingController.
@@ -1210,7 +1219,14 @@ const ctx = {
     deleteItem(id) {
         const calc = store.getState().activeCalc;
         const backup = calc?.dictionaries?.items?.find(i => i.id === id);
-        itemCtl.deleteItem(id);
+        const res = itemCtl.deleteItem(id);
+        /* Внешний аудит #5 (2026-05-18, P2): при persist-fail НЕ показываем
+         * undo-snackbar — он лжёт, что элемент сохранён в хранилище. Показываем
+         * error-snackbar и НЕ закрываем правку (она в store, но F5 вернёт). */
+        if (res && res.ok === false) {
+            snackbar.error(res.message || 'Не удалось удалить элемент');
+            return;
+        }
         if (backup) {
             snackbar.showUndoableSnackbar(
                 `Элемент «${backup.name}» удалён`,
@@ -1287,6 +1303,9 @@ const ctx = {
                 if (res?.reason === 'noActiveCalc') { snackbar.warning(res.message); return; }
                 if (res?.reason === 'invalid')     { snackbar.error('Файл не подходит: ' + res.message); return; }
                 if (res?.reason === 'parse')       { snackbar.error('Не удалось разобрать CSV: ' + res.message); return; }
+                /* Внешний аудит #5 (2026-05-18, P2): persist-fail в applyPriceUpdates —
+                 * цены применены в store, но не сохранены. UI должен сообщить честно. */
+                if (res?.reason === 'persist')     { snackbar.error(res.message || 'Цены не сохранены в хранилище (quota?)'); return; }
                 snackbar.error('Импорт не выполнен');
                 return;
             }
@@ -1347,7 +1366,13 @@ const ctx = {
         const usages = findQuestionUsages(id, calc.dictionaries.items);
 
         const proceed = () => {
-            questionCtl.deleteQuestion(id);
+            const res = questionCtl.deleteQuestion(id);
+            /* Внешний аудит #5 (2026-05-18, P2): persist-fail — error-snackbar
+             * без undo (см. deleteItem). */
+            if (res && res.ok === false) {
+                snackbar.error(res.message || 'Не удалось удалить вопрос');
+                return;
+            }
             snackbar.showUndoableSnackbar(
                 `Вопрос «${backup.title}» удалён`,
                 () => {

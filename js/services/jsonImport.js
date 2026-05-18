@@ -60,6 +60,24 @@ export async function importJsonCollection({
         return { ok: false, reason: 'validation', errors };
     }
 
-    onAccepted(accepted);
+    /* Внешний аудит #5 (2026-05-18, P2): onAccepted применяет элементы и
+     * persist'ит через commitActiveCalc. Раньше его возврат игнорировался —
+     * при quota импорт возвращал {ok:true, accepted: N}, UI показывал
+     * «Импортировано N», но persist падал silent → F5 = всё пропало.
+     * Теперь onAccepted может бросить с сообщением — мы пробрасываем как
+     * {ok:false, reason:'persist'}. Backward-compatible: если onAccepted
+     * вернул void — поведение прежнее. */
+    try {
+        const r = onAccepted(accepted);
+        if (r && r.ok === false) {
+            return { ok: false, reason: r.reason || 'persist',
+                message: r.message || 'Не удалось сохранить импортированные данные.',
+                errors };
+        }
+    } catch (e) {
+        return { ok: false, reason: 'persist',
+            message: e?.message || 'Не удалось сохранить импортированные данные (quota?).',
+            errors };
+    }
     return { ok: true, accepted: accepted.length, errors };
 }
