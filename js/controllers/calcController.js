@@ -120,7 +120,7 @@ function validateDauShare(value) {
     /* Soft anomaly: предупреждение, но значение принимаем как есть.
        < 1%: «спящая» база, типично для зарегистрировались-ради-купона.
        > 50%: уровень мессенджеров/соцсетей (TikTok, WhatsApp, VK).
-       > 80%: практически невозможно — DAU/MAU = 80% считается top-tier engagement даже у Telegram. */
+       > 80%: практически невозможно — 80% активных в день от зарегистрированных = top-tier engagement даже у Telegram. */
     if (num > 80) return { clamped: num, anomaly: { level: 'warn',
         message: `Доля DAU = ${num.toFixed(1)}% — нереалистично высокая. Даже у Telegram/WhatsApp ≈ 50%. Проверьте: возможно, путаете DAU с total registered.` } };
     if (num > 50) return { clamped: num, anomaly: { level: 'info',

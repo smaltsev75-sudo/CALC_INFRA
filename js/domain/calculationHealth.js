@@ -132,9 +132,9 @@ function checkRegisteredGtActive(calc) {
             title: 'Соотношение зарегистрированных к активным больше 100',
             message: `registered=${reg} > users_total × 100 = ${active * 100}. ` +
                 `Похоже на ошибку в одном из значений или на крайне низкую ` +
-                `активность пользователей (<1 % DAU/MAU).`,
+                `активность пользователей (<1 % активных в день от зарегистрированных).`,
             fieldIds: ['registered_users_total', 'users_total'],
-            suggestedAction: 'Проверьте оба значения; типовой DAU/MAU = 5-30 %.'
+            suggestedAction: 'Проверьте оба значения; типовая доля активных в день от зарегистрированных = 5-30 %.'
         });
     }
     return null;

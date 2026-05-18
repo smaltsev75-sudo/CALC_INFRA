@@ -224,37 +224,30 @@ function formatDeltaValue(key, val) {
 }
 
 /**
- * Stage 6.3.B (PATCH 2.4.24): посчитать, что изменится при применении
- * конкретного пресета относительно текущего draft.
+ * PATCH 2.18.1: вернуть АБСОЛЮТНЫЕ параметры пресета — стабильный список,
+ * который не зависит от текущего draft и не меняется при кликах.
  *
- * Используется для hover-preview: при наведении на preset-карточку
- * пользователь видит mini-pill'ы того, что станет. Возвращает null
- * для empty-preset (его «применение» не меняет ничего видимого) и
- * для пресета, точно совпадающего с draft (нечего показывать).
+ * Раньше (Stage 6.3.B / PATCH 2.4.24) использовалась computeChangesForPreset,
+ * которая считала diff пресета против draft. Это работало под hover (Stage 6.3.B
+ * прятал preview под opacity:0 + max-height:0), но после MINOR 2.18.0
+ * preview стал виден всегда → проявилась динамика: при клике по карточке X
+ * у неё preview становится null (она = draft, нечего показывать) и блок
+ * «Изменится: …» ИСЧЕЗАЕТ; на соседних карточках diff пересчитывается
+ * против новой draft → параметры «перепрыгивают». Пользователь жалуется на
+ * «бред какой-то».
  *
- * Возвращаемый формат: array of { key, label, now } или null.
- * `was` не передаётся — preview показывает «куда», а не «откуда»
- * (для «откуда» есть delta-pill между preset-grid и формой).
+ * Решение: показывать абсолютные параметры пресета. Список одинаков на
+ * каждой карточке всегда, не меняется при кликах между карточками, не
+ * исчезает у активной карточки. Возвращает array of { key, label, value },
+ * длина = DELTA_FIELD_LABELS.length (7 полей для непустых пресетов).
  */
-export function computeChangesForPreset(preset, draft) {
-    if (!preset || !draft) return null;
-    const ref = preset.draft;
-    if (!ref) return null;
-    const diffs = [];
-    for (const field of DELTA_FIELD_LABELS) {
-        const refVal = ref[field.key];
-        const draftVal = draft[field.key];
-        const same = typeof refVal === 'boolean'
-            ? !!draftVal === refVal
-            : draftVal === refVal;
-        if (same) continue;
-        diffs.push({
-            key: field.key,
-            label: field.label,
-            now: formatDeltaValue(field.key, refVal)
-        });
-    }
-    return diffs.length > 0 ? diffs : null;
+export function formatPresetParams(preset) {
+    if (!preset || !preset.draft) return [];
+    return DELTA_FIELD_LABELS.map(field => ({
+        key: field.key,
+        label: field.label,
+        value: formatDeltaValue(field.key, preset.draft[field.key])
+    }));
 }
 
 /**
@@ -589,45 +582,37 @@ function renderPresetDelta(draft) {
 function renderPresetGrid(activeId, applyPreset, draft) {
     return el('div', { class: 'qs-preset-grid', attrs: { role: 'group', 'aria-label': 'Шаблоны быстрого старта' } },
         ...PRESETS.map(p => {
-            /* Stage 6.3.B (PATCH 2.4.24): preview того, что изменится при клике.
-               Показывается только при hover/focus-visible (CSS), не дублирует
-               chips. Для empty-preset и для preset, точно совпадающего с draft,
-               null → preview не рендерится (нечего показывать). */
-            const previewDiffs = computeChangesForPreset(p, draft);
+            /* PATCH 2.18.1: абсолютные параметры пресета — стабильный список,
+               не меняется при кликах между карточками, не исчезает у активной.
+               Раньше (Stage 6.3.B / PATCH 2.4.24) использовался diff против
+               draft под hover; после MINOR 2.18.0 (preview всегда виден)
+               динамика дала «параметры перепрыгивают с карточки на карточку
+               и исчезают на активной». */
+            const presetParams = formatPresetParams(p);
             return el('button', {
                 class: ['qs-preset-card',
                         p.id === activeId && 'qs-preset-card-active'],
                 attrs: { type: 'button', 'aria-pressed': p.id === activeId ? 'true' : 'false' },
-                // Native title-attr с \n даёт многострочный tooltip — пользователь
-                // на hover видит 5 параметров (Индустрия / Активность / География /
-                // ПДн / AI) — БЕЗ Type и Размер (они в самой форме).
-                // Для empty-карточки tooltip объясняет, что это «без пресета».
                 title: formatPresetTooltip(p),
                 onClick: () => applyPreset(p)
             },
                 el('span', { class: 'qs-preset-card-label', text: p.label }),
-                // Stage 4.3.3: 3 mini-chips вместо sub-строки. Показывают ТОЛЬКО
-                // те параметры, которыми пресет отличается от других — AI / Геогр /
-                // ПДн. Type и Audience не дублируются. Для empty-карточки chips
-                // объясняют поведение (заполнить вручную / опросник пуст).
+                // 3 mini-chips: AI / География / ПДн — самые отличающиеся
+                // параметры. Type/Audience/Scale в самой форме под карточками.
                 el('div', { class: 'qs-preset-card-chips' },
                     ...p.chips.map(text => el('span', { class: 'qs-preset-mini-chip', text }))
                 ),
-                /* Stage 6.3.B: hover/focus-preview блок «что изменится». Скрыт
-                   по умолчанию через CSS opacity 0, показывается на hover/
-                   focus-visible. role="status" + aria-label обеспечивают
-                   доступность keyboard-пользователям (screen-reader озвучит). */
-                previewDiffs ? el('span', {
+                presetParams.length > 0 ? el('span', {
                     class: 'qs-preset-preview',
                     attrs: {
-                        role: 'status',
-                        'aria-label': `Изменится при выборе: ${previewDiffs.map(d => `${d.label}: ${d.now}`).join(', ')}`
+                        role: 'note',
+                        'aria-label': `Параметры пресета: ${presetParams.map(d => `${d.label}: ${d.value}`).join(', ')}`
                     }
                 },
-                    el('span', { class: 'qs-preset-preview-label', text: 'Изменится: ' }),
-                    ...previewDiffs.map(d => el('span', {
+                    el('span', { class: 'qs-preset-preview-label', text: 'Параметры: ' }),
+                    ...presetParams.map(d => el('span', {
                         class: 'qs-preset-preview-pill',
-                        text: `${d.label}: ${d.now}`
+                        text: `${d.label}: ${d.value}`
                     }))
                 ) : null
             );
