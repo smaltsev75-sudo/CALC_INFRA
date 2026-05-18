@@ -356,12 +356,18 @@ export function applyPriceImport() {
         console.error('[priceImport] applyOverrideToAllCalcsForProvider threw:', e);
     }
 
+    /* Внешний аудит #7 (2026-05-18, P3): refresh-фаза может вернуть errors
+     * (per-calc quota / cross-tab conflict) — раньше summary.errors не было,
+     * UI рапортовал ok без warning. Теперь явно пробрасываем. */
+    const refreshErrors = Array.isArray(calcsResult?.errors) ? calcsResult.errors : [];
     const summary = {
         priceCount: Object.keys(validated.data.prices).length,
         version: validated.data.version,
         providerId,
         appliedToCalcs: calcsResult?.applied ?? 0,
-        alreadyFresh: calcsResult?.alreadyFresh ?? 0
+        alreadyFresh: calcsResult?.alreadyFresh ?? 0,
+        refreshErrors,
+        partial: refreshErrors.length > 0
     };
 
     const result = { ok: true, applied: validated.data, snapshot, summary };

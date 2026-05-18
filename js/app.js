@@ -1198,7 +1198,20 @@ const ctx = {
         const result = priceImportCtl.applyPriceImport();
         if (result.ok) {
             const s = result.summary;
-            snackbar.success(`Прайс применён: ${s.priceCount} тарифов для ${s.providerId}.`);
+            /* Внешний аудит #7 (2026-05-18, P3): refresh-фаза могла оставить
+             * partial-state (overlay сохранён, но часть calc'ов не обновлены —
+             * quota / cross-tab). Показываем warning с числом не обновлённых
+             * расчётов, а не success как раньше. */
+            if (s.partial) {
+                const failed = s.refreshErrors.length;
+                snackbar.warning(
+                    `Прайс ${s.providerId} применён (${s.priceCount} тарифов), ` +
+                    `но ${failed} расчёт(ов) не обновлено — освободите место и повторите ` +
+                    `«Пересчитать на новый прайс».`
+                );
+            } else {
+                snackbar.success(`Прайс применён: ${s.priceCount} тарифов для ${s.providerId}.`);
+            }
         } else {
             snackbar.error('Apply не удался: ' + (result.message || result.reason));
         }

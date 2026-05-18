@@ -562,19 +562,20 @@ export function applyOverrideToActiveCalc() {
 
     const providerVersion = makeProviderVersionFromOverride(override);
 
-    store.updateActiveCalc({
+    /* Внешний аудит #7 (2026-05-18, P1): inverse pattern — commit ПЕРВЫМ.
+     * Раньше store.updateActiveCalc выполнялся до commit'а; при quota пользователь
+     * получал {ok:false, reason:'persist'}, но в store уже были новые цены —
+     * UI рапортовал «applied», F5 откатывал. Аудит #2 P1-3 закрыл «не лгать
+     * на ok», но не сам order. */
+    const newCalc = {
+        ...calc,
         dictionaries: { ...calc.dictionaries, items: newItems },
         providerVersion
-    });
-    /* Внешний аудит #2 (2026-05-18, P1-3): соседняя функция
-     * applyOverrideToAllCalcsForProvider:590 уже проверяет результат
-     * commitActiveCalc после фикса первого аудита. Здесь — тот же класс:
-     * при quota store обновлён (UI показывает новые цены), а storage остался
-     * старым, F5 откатит изменения, при этом UI рапортует ok:true. Теперь
-     * симметрично — false → reason='persist'. */
-    if (!commitActiveCalc(store.getState().activeCalc)) {
+    };
+    if (!commitActiveCalc(newCalc)) {
         return { ok: false, reason: 'persist', message: 'Не удалось сохранить (quota?)' };
     }
+    store.setActiveCalc(newCalc);
     return { ok: true, deltas, version: override.version };
 }
 
@@ -641,21 +642,16 @@ export function applyOverrideToAllCalcsForProvider(providerId) {
             };
 
             if (activeCalc && activeCalc.id === meta.id) {
-                /* Update через store + commit (триггерит ре-рендер).
-                 * Внешний аудит 2026-05-18 (P2-2): раньше результат
-                 * commitActiveCalc игнорировался, и при сбое записи (quota)
-                 * applied++ всё равно срабатывал → пользователь видел
-                 * "обновлено N", хотя active calc после F5 оставался
-                 * прежним. Контракт inactive-ветки (false → error+continue)
-                 * теперь распространён и на active. */
-                store.updateActiveCalc({
-                    dictionaries: updated.dictionaries,
-                    providerVersion
-                });
-                if (!commitActiveCalc(store.getState().activeCalc)) {
+                /* Внешний аудит #7 (2026-05-18, P1): inverse pattern — commit
+                 * ПЕРВЫМ, только при ok мутировать store. Раньше при quota
+                 * store содержал updated.items, а storage — старые, и
+                 * applied++ корректно не срабатывал (errors++), но UI всё равно
+                 * показывал новые цены до F5. */
+                if (!commitActiveCalc(updated)) {
                     errors.push({ calcId: meta.id, name: meta.name, message: 'Не удалось сохранить (quota?)' });
                     continue;
                 }
+                store.setActiveCalc(updated);
             } else {
                 /* Inactive calc — пишем напрямую. saveCalc возвращает false при quota. */
                 if (!persist.saveCalc(updated)) {

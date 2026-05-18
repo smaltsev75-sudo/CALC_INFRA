@@ -58,19 +58,20 @@ export function saveItem(item) {
         : item;
 
     const items = upsertById(calc.dictionaries.items, itemToSave);
-    const dictionaries = { ...calc.dictionaries, items };
-    store.updateActiveCalc({ dictionaries });
-    /* Внешний аудит #4 (2026-05-18, P1-2): раньше commitActiveCalc возврат
-     * игнорировался + saveItem всегда возвращал {ok:true} → модалка
-     * закрывалась как при успехе, при quota правка в storage не сохранялась,
-     * после F5 терялась. Persist-banner недостаточен — пользователь его
-     * мог не заметить, а закрытая форма с потерянной правкой = data loss. */
-    if (!commitActiveCalc(store.getState().activeCalc)) {
+    const newCalc = { ...calc, dictionaries: { ...calc.dictionaries, items } };
+    /* Внешний аудит #7 (2026-05-18, P1): inverse pattern — commit ПЕРВЫМ.
+     * Раньше store.updateActiveCalc выполнялся ДО commit'а; при quota пользователь
+     * получал {ok:false, errors}, форма оставалась открытой, но в store
+     * новый ЭК уже был — UI таблицы Items показывал его как сохранённый, F5
+     * терял. Аудит #4 P1-2 закрыл «модалка не врёт», но не сам order. Теперь
+     * при persist-fail состояние НЕ меняется ни в store, ни в storage, ни в
+     * defaultDictionary. */
+    if (!commitActiveCalc(newCalc)) {
         return { ok: false, errors: [{ message:
             'Не удалось сохранить элемент: превышен лимит хранилища (quota?). ' +
             'Освободите место (экспорт JSON + удаление старых расчётов) и повторите.' }] };
     }
-
+    store.setActiveCalc(newCalc);
     syncDefaultDictionary({ items: upsertById(currentDefaultItems(), itemToSave) });
     return { ok: true };
 }
@@ -129,14 +130,13 @@ export async function importItems({ replace = false } = {}) {
             if (calc) {
                 const baseItems = replace ? [] : [...calc.dictionaries.items];
                 const merged = mergeById(baseItems, accepted);
-                store.updateActiveCalc({ dictionaries: { ...calc.dictionaries, items: merged } });
-                /* Внешний аудит #5 (2026-05-18, P2): commit-fail
-                 * пробрасываем как persist-reason — UI покажет error-snackbar
-                 * вместо лживого «Импортировано N». */
-                if (!commitActiveCalc(store.getState().activeCalc)) {
+                const newCalc = { ...calc, dictionaries: { ...calc.dictionaries, items: merged } };
+                /* Внешний аудит #7 (2026-05-18, P1): inverse pattern. */
+                if (!commitActiveCalc(newCalc)) {
                     return { ok: false, reason: 'persist',
                         message: 'Импорт не сохранён в хранилище (quota?).' };
                 }
+                store.setActiveCalc(newCalc);
             }
             const defBase = replace ? [] : currentDefaultItems();
             syncDefaultDictionary({ items: mergeById(defBase, accepted) });
@@ -196,15 +196,31 @@ export async function importItemPrices(opts = {}) {
     const safeUpdates = diff.safeUpdates || [];
     const anomalies = diff.anomalies || [];
 
-    // Применяем безопасные обновления сразу.
-    // Внешний аудит #5 (2026-05-18, P2): applyPriceUpdates теперь возвращает
-    // {ok, reason} — при quota обновления в store применены, но persist
-    // провален → возвращаем {ok:false} до начала аномалий, чтобы UI показал
-    // правильный summary (что НЕ сохранено).
-    let persistFail = null;
+    /* Внешний аудит #7 (2026-05-18, P1): после inverse-pattern фикса
+     * applyPriceUpdates при persist-fail НИЧЕГО не применяет (ни store, ни
+     * default). Поэтому пропускаем спрашивание аномалий — повторный
+     * applyPriceUpdates тоже упадёт (та же quota). UI получит честный
+     * {ok:false, reason:'persist'}. */
     if (safeUpdates.length > 0) {
         const r = applyPriceUpdates(safeUpdates);
-        if (r && r.ok === false) persistFail = r;
+        if (r && r.ok === false) {
+            return {
+                ok: false,
+                reason: 'persist',
+                message: r.message
+                    || 'Цены не применены: превышен лимит хранилища (quota?).',
+                updatesCount: 0,
+                safeUpdatesCount: 0,
+                anomaliesApplied: 0,
+                unchanged: diff.unchanged,
+                rejected: diff.rejected,
+                anomalies,
+                costTypeChanges: diff.costTypeChanges || 0,
+                costTypeRejected: diff.costTypeRejected || [],
+                safeUpdates,
+                fileName: result.fileName
+            };
+        }
     }
 
     // Аномалии — только после явного подтверждения пользователем.
@@ -213,28 +229,26 @@ export async function importItemPrices(opts = {}) {
         const approved = await opts.confirmAnomalies(anomalies);
         if (approved === true) {
             const r = applyPriceUpdates(anomalies);
-            if (r && r.ok === false) persistFail = persistFail || r;
+            if (r && r.ok === false) {
+                return {
+                    ok: false,
+                    reason: 'persist',
+                    message: r.message
+                        || 'Аномальные цены не применены: превышен лимит хранилища (quota?). Безопасные изменения уже сохранены.',
+                    updatesCount: safeUpdates.length,
+                    safeUpdatesCount: safeUpdates.length,
+                    anomaliesApplied: 0,
+                    unchanged: diff.unchanged,
+                    rejected: diff.rejected,
+                    anomalies,
+                    costTypeChanges: diff.costTypeChanges || 0,
+                    costTypeRejected: diff.costTypeRejected || [],
+                    safeUpdates,
+                    fileName: result.fileName
+                };
+            }
             anomaliesApplied = anomalies.length;
         }
-    }
-
-    if (persistFail) {
-        return {
-            ok: false,
-            reason: 'persist',
-            message: persistFail.message
-                || 'Цены применены в текущей сессии, но не сохранены в хранилище (quota?). После перезагрузки страницы изменения исчезнут.',
-            updatesCount: safeUpdates.length + anomaliesApplied,
-            safeUpdatesCount: safeUpdates.length,
-            anomaliesApplied,
-            unchanged: diff.unchanged,
-            rejected: diff.rejected,
-            anomalies,
-            costTypeChanges: diff.costTypeChanges || 0,
-            costTypeRejected: diff.costTypeRejected || [],
-            safeUpdates,
-            fileName: result.fileName
-        };
     }
 
     return {
@@ -281,19 +295,23 @@ function applyPriceUpdates(updates) {
     };
     const newItems = calc.dictionaries.items.map(it => byId.has(it.id) ? stamp(it) : it);
 
-    store.updateActiveCalc({ dictionaries: { ...calc.dictionaries, items: newItems } });
-    /* Внешний аудит #5 (2026-05-18, P2): commit-fail возвращается caller'у. */
-    const persisted = commitActiveCalc(store.getState().activeCalc);
+    /* Внешний аудит #7 (2026-05-18, P1): inverse pattern + НЕ синхронизировать
+     * defaultDictionary при persist-fail. Раньше: store обновлялся первым,
+     * затем syncDefaultDictionary всегда срабатывал, и при quota активный
+     * calc оставался несохранённым, но defaultDictionary уже получал новые
+     * цены — рассинхрон global vs current. */
+    const newCalc = { ...calc, dictionaries: { ...calc.dictionaries, items: newItems } };
+    if (!commitActiveCalc(newCalc)) {
+        return { ok: false, reason: 'persist',
+            message: 'Цены не применены: превышен лимит хранилища (quota?). Освободите место и повторите.' };
+    }
+    store.setActiveCalc(newCalc);
 
-    // Синхронизируем default-словарь — чтобы новые расчёты видели обновлённые цены.
+    // Только после успешного persist active calc — синхронизируем defaultDictionary.
     const defItems = currentDefaultItems();
     const defNew = defItems.map(it => byId.has(it.id) ? stamp(it) : it);
     syncDefaultDictionary({ items: defNew });
 
-    if (!persisted) {
-        return { ok: false, reason: 'persist',
-            message: 'Цены применены в текущей сессии, но не сохранены (quota?).' };
-    }
     return { ok: true };
 }
 

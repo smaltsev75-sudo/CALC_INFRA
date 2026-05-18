@@ -231,8 +231,24 @@ export function openCalc(id) {
     // 11.1.1: пишем через commitMigratedCalc — calc + list атомарно,
     // вместо прямого persist.saveCalc, чтобы list[i].updatedAt согласовался.
     const storedVersion = Number.isFinite(stored.schemaVersion) ? stored.schemaVersion : 0;
-    /* best-effort: commitMigratedCalc на сбое quota → persistStatus='error' через ядро. */
-    if (calc.schemaVersion !== storedVersion || vatChanged) commitMigratedCalc(calc);
+    /* Внешний аудит #7 (2026-05-18, P2): commitMigratedCalc проверяется.
+     * При quota раньше store получал мигрированный calc, а storage оставался
+     * legacy — на F5 миграция повторялась (идемпотентно), но в текущей
+     * сессии любая правка через обычный commit тоже падала бы, что вводило
+     * пользователя в заблуждение «calc открыт». Теперь при persist-fail
+     * миграции — calc НЕ открывается, явный error-banner с инструкцией. */
+    if (calc.schemaVersion !== storedVersion || vatChanged) {
+        if (!commitMigratedCalc(calc)) {
+            const name = stored.name || id;
+            store.setPersistStatus('error',
+                `Не удалось сохранить мигрированный расчёт «${name}» (quota?). ` +
+                `Освободите место (экспорт JSON + удаление старых расчётов) и повторите открытие.`);
+            return null;
+        }
+    }
+    /* best-effort: saveActiveCalcId на сбое quota → activeId не записан, но
+     * сам calc уже сохранён (commitMigratedCalc выше); на следующем boot
+     * откроется первый из списка. */
     persist.saveActiveCalcId(id);
     store.setActiveCalc(calc);
     return calc;
@@ -657,8 +673,21 @@ export function initFromStorage() {
             // всегда возвращает deep clone, поэтому сравнение ссылок бессмысленно.
             // 11.1.1: атомарно через commitMigratedCalc (calc + list одновременно).
             const storedVersion = Number.isFinite(calc.schemaVersion) ? calc.schemaVersion : 0;
-            /* best-effort: commitMigratedCalc → persistStatus='error' через ядро. */
-            if (migrated.schemaVersion !== storedVersion) commitMigratedCalc(migrated);
+            /* Внешний аудит #7 (2026-05-18, P2): commitMigratedCalc проверяется
+             * (см. openCalc). При quota НЕ ставим migrated активным —
+             * сбрасываем activeCalcId, boot завершается без активного calc'а,
+             * пользователь видит persist-error-banner с инструкцией. */
+            if (migrated.schemaVersion !== storedVersion) {
+                if (!commitMigratedCalc(migrated)) {
+                    const name = calc.name || activeId;
+                    store.setPersistStatus('error',
+                        `Не удалось сохранить мигрированный расчёт «${name}» (quota?). ` +
+                        `Освободите место (экспорт JSON + удаление старых расчётов) и перезагрузите страницу.`);
+                    /* best-effort: saveActiveCalcId на сбое — следующий boot заново попробует. */
+                    persist.saveActiveCalcId(null);
+                    return;
+                }
+            }
             store.setActiveCalc(migrated);
             // При перезагрузке (F5) восстанавливаем сохранённую вкладку.
             // Если её нет — fallback на «Опросник» как стартовый таб для нового пользователя.

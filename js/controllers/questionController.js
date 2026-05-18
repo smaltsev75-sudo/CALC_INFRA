@@ -42,20 +42,19 @@ export function saveQuestion(q) {
     if (!calc) return { ok: false, errors: [{ message: 'Нет активного расчёта' }] };
 
     const questions = upsertById(calc.dictionaries.questions, q);
-
     // Если вопрос новый — добавим дефолтный ответ.
     const answers = { ...calc.answers };
     if (!(q.id in answers)) answers[q.id] = defaultAnswerFor(q);
 
-    const dictionaries = { ...calc.dictionaries, questions };
-    store.updateActiveCalc({ dictionaries, answers });
-    /* Внешний аудит #4 (2026-05-18, P1-2): см. parallel-фикс в itemController. */
-    if (!commitActiveCalc(store.getState().activeCalc)) {
+    const newCalc = { ...calc, dictionaries: { ...calc.dictionaries, questions }, answers };
+    /* Внешний аудит #7 (2026-05-18, P1): inverse pattern — commit ПЕРВЫМ.
+     * См. parallel-фикс в itemController.saveItem. */
+    if (!commitActiveCalc(newCalc)) {
         return { ok: false, errors: [{ message:
             'Не удалось сохранить вопрос: превышен лимит хранилища (quota?). ' +
             'Освободите место (экспорт JSON + удаление старых расчётов) и повторите.' }] };
     }
-
+    store.setActiveCalc(newCalc);
     syncDefaultDictionary({ questions: upsertById(currentDefaultQuestions(), q) });
     return { ok: true };
 }
@@ -117,16 +116,17 @@ export async function importQuestions({ replace = false } = {}) {
                 for (const q of accepted) {
                     if (!(q.id in answers)) answers[q.id] = defaultAnswerFor(q);
                 }
-                store.updateActiveCalc({
+                const newCalc = {
+                    ...calc,
                     dictionaries: { ...calc.dictionaries, questions: merged },
                     answers
-                });
-                /* Внешний аудит #5 (2026-05-18, P2): commit-fail пробрасываем
-                 * как persist-reason — см. itemController.importItems. */
-                if (!commitActiveCalc(store.getState().activeCalc)) {
+                };
+                /* Внешний аудит #7 (2026-05-18, P1): inverse pattern. */
+                if (!commitActiveCalc(newCalc)) {
                     return { ok: false, reason: 'persist',
                         message: 'Импорт не сохранён в хранилище (quota?).' };
                 }
+                store.setActiveCalc(newCalc);
             }
             const defBase = replace ? [] : currentDefaultQuestions();
             syncDefaultDictionary({ questions: mergeById(defBase, accepted) });
