@@ -42,7 +42,19 @@ export function applyOverrideToItems(items, effectivePrices) {
     return items.map(item => {
         const override = effectivePrices[item.id];
         if (!override) return { ...item };
-        return { ...item, ...override };
+        /* Внешний аудит #3 (2026-05-18, P1): сырой priceSource из overlay
+         * (`cloud.ru/2026-Q3-test`, `yandex.cloud/pricing` и т.п.) — это
+         * vendor-specific marker документа, валидатор его не пропускает
+         * (whitelist: manual | csv | seed | provider). Нормализуем к 'provider'
+         * для контракта валидатора; оригинальный label кладём в priceSourceRef
+         * (опциональное поле для UI tooltip'а). */
+        const { priceSource: overlayRef, ...overrideRest } = override;
+        return {
+            ...item,
+            ...overrideRest,
+            priceSource: 'provider',
+            ...(overlayRef ? { priceSourceRef: String(overlayRef) } : {})
+        };
     });
 }
 

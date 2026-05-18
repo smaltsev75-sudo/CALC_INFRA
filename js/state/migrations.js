@@ -539,6 +539,31 @@ export const MIGRATIONS = [
                 s.vatEffectiveDate = null;
             }
         }
+    },
+    {
+        from: 17, to: 18,
+        description: 'Внешний аудит #3 (2026-05-18): нормализовать item.priceSource ' +
+                     'к whitelist [manual | csv | seed | provider]. Раньше applyOverrideToItems ' +
+                     'переносил сырой vendor-specific ref (например, «cloud.ru/2026-Q3-test») ' +
+                     'из provider overlay в item.priceSource — это значение не проходило ' +
+                     'validateItem и приводило к 19 ошибкам при re-import bundle (item.priceSource ' +
+                     'не из whitelist). Миграция: priceSource не в whitelist → "provider"; ' +
+                     'оригинальное значение копируем в priceSourceRef (для UI tooltip).',
+        run(calc) {
+            const items = calc?.dictionaries?.items;
+            if (!Array.isArray(items)) return;
+            const ALLOWED = new Set(['manual', 'csv', 'seed', 'provider']);
+            for (const item of items) {
+                if (!item || typeof item !== 'object') continue;
+                const src = item.priceSource;
+                if (src === undefined || src === null) continue;
+                if (typeof src !== 'string') continue;
+                if (ALLOWED.has(src)) continue;
+                /* Сохраняем оригинальный label для UI tooltip; затем нормализуем. */
+                if (!item.priceSourceRef) item.priceSourceRef = src;
+                item.priceSource = 'provider';
+            }
+        }
     }
 ];
 

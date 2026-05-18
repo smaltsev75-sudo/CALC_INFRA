@@ -20,11 +20,19 @@
         - object-src 'none'          — запрет <object>/<embed>.
         - base-uri 'self'            — фикс <base>.
         - form-action 'none'         — приложение не использует <form action="...">.
-        - frame-ancestors 'none'     — защита от clickjacking (внешний аудит #2 2026-05-18, P3-4):
-                                       приложение не должно встраиваться в iframe сторонних сайтов.
-                                       Эквивалент X-Frame-Options: DENY, но через CSP (универсальнее).
+
+        Внешний аудит #3 (2026-05-18, P3): `frame-ancestors` ИЗ <meta> УБРАН.
+        По CSP-spec эта директива работает ТОЛЬКО как HTTP-заголовок CSP, в
+        <meta http-equiv> она игнорируется браузерами. Декларация здесь
+        создавала ложную уверенность (тесты «строка присутствует» проходили,
+        но фактической защиты от iframe-embedding не было).
+
+        Для веб-публикации настройте HTTP-заголовок CSP на сервере:
+            Content-Security-Policy: frame-ancestors 'none';
+        Эквивалент X-Frame-Options: DENY. См. HOW_TO_START.md «Веб-публикация»
+        для примеров (nginx, Caddy, GitHub Pages).
     -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Калькулятор инфраструктуры и стоимости</title>
     <meta name="description" content="Локальный калькулятор инфраструктуры и стоимости программных продуктов по 5 стендам (DEV, ИФТ, ПСИ, ПРОМ, Нагрузка). Работает offline.">

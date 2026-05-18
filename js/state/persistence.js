@@ -365,6 +365,18 @@ export function peekProviderOverrideHistory(providerId) {
  * Удалить и вернуть top-of-stack snapshot. Используется при rollback —
  * snapshot становится current override, а из истории удаляется.
  */
+/**
+ * Удалить и вернуть top-of-stack snapshot.
+ *
+ * Внешний аудит #3 (2026-05-18, P2): если writeJson не смог сохранить
+ * truncated map (quota), функция возвращала snapshot — но storage остался
+ * со старым стеком. Caller (rollback) поверил, что history сдвинулась и
+ * не предупредил пользователя.
+ *
+ * Новый контракт: возвращает `{ snapshot, persisted }` либо `null` если
+ * стек пуст или providerId невалиден. Caller обязан проверить `persisted`,
+ * чтобы понять, действительно ли стек сдвинулся.
+ */
 export function popProviderOverrideHistory(providerId) {
     if (!providerId || typeof providerId !== 'string') return null;
     const map = readJson(STORAGE_KEYS.PROVIDER_OVERRIDE_HISTORY, null);
@@ -373,8 +385,8 @@ export function popProviderOverrideHistory(providerId) {
     if (current.length === 0) return null;
     const [first, ...rest] = current;
     map[providerId] = rest;
-    writeJson(STORAGE_KEYS.PROVIDER_OVERRIDE_HISTORY, map);
-    return first;
+    const persisted = writeJson(STORAGE_KEYS.PROVIDER_OVERRIDE_HISTORY, map);
+    return { snapshot: first, persisted };
 }
 
 /**

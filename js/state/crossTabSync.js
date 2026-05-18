@@ -116,7 +116,14 @@ export function acquireProviderLock(providerId) {
         return { ok: false, reason: 'locked-by-other', lockedByTab: existing.tabId };
     }
     map[providerId] = { tabId: myTabId, startedAt: new Date().toISOString() };
-    writeJson(STORAGE_KEYS.PROVIDER_TAB_LOCKS, map);
+    /* Внешний аудит #3 (2026-05-18, P3): если writeJson провалился (quota),
+     * lock физически не записан в storage. Другая вкладка прочитает старое
+     * состояние и тоже захватит lock → race condition при параллельной
+     * правке прайсов. Раньше: возвращали ok:true в любом случае. */
+    if (!writeJson(STORAGE_KEYS.PROVIDER_TAB_LOCKS, map)) {
+        return { ok: false, reason: 'persist',
+            message: 'Не удалось записать lock в localStorage (quota?). Защита от параллельной правки в других вкладках не активна — операция отменена.' };
+    }
     return { ok: true };
 }
 

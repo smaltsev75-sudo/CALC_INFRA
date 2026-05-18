@@ -496,8 +496,12 @@ export function rollbackProviderPriceOverride(providerId) {
         return { ok: false, reason: 'invalid-provider', message: 'Не указан providerId.' };
     }
 
-    const previous = popProviderOverrideHistory(providerId);
-    if (!previous) {
+    /* Внешний аудит #3 (2026-05-18, P2): popProviderOverrideHistory теперь
+     * возвращает { snapshot, persisted } | null. Если persisted=false —
+     * стек физически не сдвинулся (quota); продолжать rollback опасно
+     * (получим расхождение memory↔storage). */
+    const popped = popProviderOverrideHistory(providerId);
+    if (!popped) {
         /* Истории нет — откат означает «убрать current override совсем». */
         const current = loadProviderOverrides();
         if (!current || !current[providerId]) {
@@ -507,12 +511,21 @@ export function rollbackProviderPriceOverride(providerId) {
         if (!cleared) return { ok: false, reason: 'persist', message: 'Не удалось очистить overlay.' };
         return { ok: true, restored: null, hasMoreHistory: false };
     }
+    if (!popped.persisted) {
+        return { ok: false, reason: 'persist',
+            message: 'Не удалось обновить историю отката (quota?). Rollback отменён.' };
+    }
+    const previous = popped.snapshot;
 
     /* Восстанавливаем prior override как current. */
     const saved = saveProviderOverride(providerId, previous.appliedJSON);
     if (!saved) {
-        /* Откат провалился — попробовать вернуть snapshot обратно в историю. */
-        pushProviderOverrideHistory(providerId, previous);
+        /* Откат провалился — попробовать вернуть snapshot обратно в историю.
+         * Аудит #3: если push тоже упал — состояние раздвоилось, явный signal. */
+        if (!pushProviderOverrideHistory(providerId, previous)) {
+            return { ok: false, reason: 'persist',
+                message: 'Не удалось применить prior overlay И не удалось вернуть snapshot в историю (quota).' };
+        }
         return { ok: false, reason: 'persist', message: 'Не удалось применить prior overlay.' };
     }
 

@@ -301,6 +301,12 @@ const ctx = {
         if (_lastCreateAt && (now - _lastCreateAt) < 500) return null;
         _lastCreateAt = now;
         const c = calcList.createCalc(name, templateId);
+        /* Внешний аудит #3 (2026-05-18, P2): null = quota-fail в commitNewCalc,
+         * показываем error вместо лживого success. */
+        if (!c) {
+            snackbar.error('Не удалось создать расчёт. Возможно, переполнено локальное хранилище браузера. Скачайте JSON-снимок и удалите старые расчёты.');
+            return null;
+        }
         store.setActiveTab('questionnaire');
         snackbar.success(templateId
             ? 'Расчёт создан из шаблона'
@@ -393,6 +399,11 @@ const ctx = {
         if (_lastCreateAt && (now - _lastCreateAt) < 500) return null;
         _lastCreateAt = now;
         const c = calcList.createCalcFromWizard(name, wizardInput);
+        /* Внешний аудит #3 (2026-05-18, P2): null = quota-fail. */
+        if (!c) {
+            snackbar.error('Не удалось создать расчёт. Возможно, переполнено локальное хранилище. Скачайте JSON-снимок и удалите старые расчёты.');
+            return null;
+        }
         store.setActiveTab('dashboard');
         return c;
     },
@@ -407,7 +418,12 @@ const ctx = {
         if (_lastDuplicateAt && (now - _lastDuplicateAt) < 500) return;
         _lastDuplicateAt = now;
         const c = calcList.duplicateCalc(id);
-        if (c) snackbar.success('Расчёт скопирован');
+        /* Внешний аудит #3 (2026-05-18, P2): null = quota-fail в commitNewCalc. */
+        if (!c) {
+            snackbar.error('Не удалось скопировать расчёт. Возможно, переполнено локальное хранилище.');
+            return;
+        }
+        snackbar.success('Расчёт скопирован');
     },
     renameCalc(id, currentName) {
         ctx.input({

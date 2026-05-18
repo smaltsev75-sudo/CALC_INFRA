@@ -253,20 +253,29 @@ function _saveValidatedOverride(providerId, validatedData) {
         return result;
     }
 
-    /* Stage 9.5: после успешного save — push предыдущий override в history. */
+    /* Stage 9.5 + внешний аудит #3 (2026-05-18, P2): push-history failure не
+     * должен скрываться. Основной save уже прошёл успешно, но без записи в
+     * history пользователь потом не сможет откатить — это потеря отметки. */
+    let historyDegraded = false;
     if (snapshot) {
-        pushProviderOverrideHistory(providerId, {
+        if (!pushProviderOverrideHistory(providerId, {
             appliedJSON: snapshot,
             appliedAt: new Date().toISOString()
-        });
+        })) {
+            historyDegraded = true;
+            store.setPersistStatus('error',
+                'Прайс обновлён, но не удалось сохранить отметку в истории отката (quota?).');
+        }
     }
 
     setUpdateStatus(providerId, {
         status: 'success',
         version: validatedData.version,
-        message: `Прайс обновлён до ${validatedData.version}.`
+        message: historyDegraded
+            ? `Прайс обновлён до ${validatedData.version}. Отметка в истории отката не сохранена (quota).`
+            : `Прайс обновлён до ${validatedData.version}.`
     });
-    return { ok: true, applied: validatedData, snapshot };
+    return { ok: true, applied: validatedData, snapshot, historyDegraded };
 }
 
 /* ---------- Stage 8.3: применение override к активному расчёту ---------- */
@@ -453,9 +462,16 @@ export function restoreProviderOverrideFromHistory(providerId, idx) {
     if (!saveProviderOverride(providerId, targetJson)) {
         return { ok: false, reason: 'persist', message: 'Не удалось сохранить.' };
     }
-    /* Truncate history: оставляем только записи СТАРШЕ target (idx+1..). */
+    /* Truncate history: оставляем только записи СТАРШЕ target (idx+1..).
+     * Внешний аудит #3 (2026-05-18, P2): раньше setProviderOverrideHistory
+     * false тихо игнорировался — current уже подменён, но history содержит
+     * «удалённые» snapshot'ы, которые пользователь увидит снова. */
     const remaining = history.slice(idx + 1);
-    setProviderOverrideHistory(providerId, remaining);
+    if (!setProviderOverrideHistory(providerId, remaining)) {
+        return { ok: false, reason: 'persist',
+            message: 'Snapshot восстановлен, но не удалось обновить историю (quota?). ' +
+                     'После F5 история может содержать более новые snapshot\'ы, чем восстановленный.' };
+    }
 
     return {
         ok: true,

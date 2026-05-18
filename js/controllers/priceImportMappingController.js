@@ -335,12 +335,17 @@ export function applyPriceImport() {
         return result;
     }
 
-    // Push prior to history (best-effort)
+    /* Push prior to history. Внешний аудит #3 (2026-05-18, P2): сигналим
+     * persistStatus='error' при сбое (без блокировки основного потока —
+     * override уже сохранён, потеря только маркера отката). */
     if (snapshot) {
-        pushProviderOverrideHistory(providerId, {
+        if (!pushProviderOverrideHistory(providerId, {
             appliedJSON: snapshot,
             appliedAt: new Date().toISOString()
-        });
+        })) {
+            store.setPersistStatus('error',
+                'Прайс обновлён, но не удалось сохранить отметку в истории отката (quota?).');
+        }
     }
 
     // Refresh open calcs (best-effort)

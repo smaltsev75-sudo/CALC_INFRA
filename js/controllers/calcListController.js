@@ -119,9 +119,11 @@ export function createCalcFromWizard(name, wizardInput) {
        и при первом switchScenario root перезатёрся бы пустыми ответами. */
     const synced = syncActiveScenarioFromRoot(calc);
     calc.scenarios = synced.scenarios;
-    /* best-effort: см. createCalc — commitNewCalc сигналит quota через persistStatus. */
-    commitNewCalc(calc, { id: calc.id, name: calc.name, updatedAt: calc.updatedAt });
-    persist.saveActiveCalcId(calc.id);
+    /* Внешний аудит #3 (2026-05-18, P2): см. createCalc — explicit check. */
+    if (!commitNewCalc(calc, { id: calc.id, name: calc.name, updatedAt: calc.updatedAt })) {
+        return null;
+    }
+    persist.saveActiveCalcId(calc.id); // best-effort
     store.setActiveCalc(calc);
     refreshCalcList();
     return calc;
@@ -184,11 +186,14 @@ export function refreshCalcList() {
 
 export function createCalc(name, templateId = null) {
     const calc = makeNewCalculation(name, templateId);
-    /* best-effort: 11.1.1 commitNewCalc на сбое quota поднимает persistStatus='error'
-     * через _atomicCalcAndListWrite → UI banner. Возвращаем calc для backwards-compat
-     * контракта createCalc — caller получает объект, но видит ошибку через persist-indicator. */
-    commitNewCalc(calc, { id: calc.id, name: calc.name, updatedAt: calc.updatedAt });
-    persist.saveActiveCalcId(calc.id);
+    /* Внешний аудит #3 (2026-05-18, P2): commitNewCalc false означает quota —
+     * раньше я помечал «best-effort через banner», но calc ставился в store
+     * и возвращался → UI показывал success-snackbar для несохранённого calc'а.
+     * Теперь — return null, caller обязан проверить и показать error-toast. */
+    if (!commitNewCalc(calc, { id: calc.id, name: calc.name, updatedAt: calc.updatedAt })) {
+        return null;
+    }
+    persist.saveActiveCalcId(calc.id); // best-effort: id восстановится из first-of-list
     store.setActiveCalc(calc);
     refreshCalcList();
     return calc;
@@ -255,28 +260,37 @@ export function duplicateCalc(id) {
     copy.createdAt = new Date().toISOString();
     copy.updatedAt = copy.createdAt;
     // 11.1.1: атомарная запись calc + calc.list через единое ядро.
-    /* best-effort: commitNewCalc → persistStatus='error' через ядро. */
-    commitNewCalc(copy, { id: copy.id, name: copy.name, updatedAt: copy.updatedAt });
+    /* Внешний аудит #3 (2026-05-18, P2): explicit check для silent-loss защиты. */
+    if (!commitNewCalc(copy, { id: copy.id, name: copy.name, updatedAt: copy.updatedAt })) {
+        return null;
+    }
     refreshCalcList();
     return copy;
 }
 
 export function deleteCalc(id) {
-    /* Внешний аудит #2 (2026-05-18, P2-2a): раньше saveCalcList игнорировал
-     * false-возврат → при quota calc.<id> удалён, calc.list всё ещё указывает
-     * на него (dangling id), store.calcList тоже остаётся со старой записью
-     * (refreshCalcList перечитывает list, но без сигнала об ошибке). Теперь
-     * сигналим persistStatus='error' на любой сбой persist'а. */
-    persist.removeCalc(id);
+    /* Внешний аудит #3 (2026-05-18, P2): РЕАЛЬНАЯ атомарность через инверсию
+     * порядка. Раньше: removeCalc(id) → saveCalcList(...). При сбое второго
+     * шага calc.<id> был удалён, но list указывал на него → dangling карточка.
+     * Аудит #2 я закрыл только persistStatus='error'-сигналом, не починив
+     * сам order — это и есть «опять то же».
+     *
+     * Теперь: сначала saveCalcList(updated). Если упало — calc.<id> ещё
+     * физически есть, состояние согласованно (старый снимок). Если прошло —
+     * только тогда removeCalc(id); даже если removeCalc упадёт (что в нашем
+     * write-only-Storage интерфейсе нереально — он не возвращает результата
+     * и для квоты removeItem не бросает), пользователь видит правильный list. */
     const list = persist.loadCalcList().filter(m => m.id !== id);
     if (!persist.saveCalcList(list)) {
-        store.setPersistStatus('error', 'Не удалось обновить список расчётов (quota?)');
+        store.setPersistStatus('error', 'Не удалось обновить список расчётов (quota?). Расчёт не удалён.');
+        return;
     }
+    persist.removeCalc(id);
     const state = store.getState();
     if (state.activeCalc?.id === id) {
         store.setActiveCalc(null);
         if (!persist.saveActiveCalcId(null)) {
-            store.setPersistStatus('error', 'Не удалось сбросить активный расчёт (quota?)');
+            store.setPersistStatus('error', 'Расчёт удалён, но не удалось сбросить активный id (quota?). После F5 откроется первый из списка.');
         }
     }
     refreshCalcList();
@@ -293,13 +307,16 @@ export function snapshotCalc(id) {
  * Восстановить расчёт из снимка.
  */
 export function restoreCalc(calc) {
-    if (!calc?.id) return;
+    if (!calc?.id) return false;
     // 11.1.1: атомарная запись calc + calc.list через единое ядро.
     // commitNewCalc сам обрабатывает случай, когда запись уже есть в списке
     // (тогда она обновляется, а не дублируется).
-    /* best-effort: commitNewCalc → persistStatus='error' через ядро. */
-    commitNewCalc(calc, { id: calc.id, name: calc.name, updatedAt: calc.updatedAt });
+    /* Внешний аудит #3 (2026-05-18, P2): explicit check — caller увидит false при quota. */
+    if (!commitNewCalc(calc, { id: calc.id, name: calc.name, updatedAt: calc.updatedAt })) {
+        return false;
+    }
     refreshCalcList();
+    return true;
 }
 
 /* ---------- Импорт/экспорт ---------- */
@@ -485,24 +502,36 @@ export async function importStateBundleFromFile() {
  * Удаляет все расчёты, перезаписывает справочник seed-данными.
  */
 export function resetToDefaults() {
-    /* Внешний аудит #2 (2026-05-18, P2-2b): тот же класс что P2-2a — все 3
-     * persist.save* возвращают false при quota, store очищается заранее,
-     * пользователь видит «всё чисто», после F5 calc.list со старыми id. */
-    const failures = [];
-
-    // Удалить все расчёты
+    /* Внешний аудит #3 (2026-05-18, P2): РЕАЛЬНАЯ атомарность. Раньше:
+     * removeCalc'ы → saveCalcList([]) — при сбое второго все calc.<id>
+     * удалены, list указывает на них (dangling). Аудит #2 я закрыл
+     * persistStatus='error'-сигналом без починки order — повтор.
+     *
+     * Теперь: СНАЧАЛА пишем пустой list + дефолтный dict. Если упало —
+     * НИЧЕГО не удаляем, состояние остаётся прежним. Только при успехе
+     * пишем activeId=null и зачищаем сами calc.<id>. */
     const list = persist.loadCalcList();
-    for (const m of list) persist.removeCalc(m.id);
-    if (!persist.saveCalcList([])) failures.push('saveCalcList');
-    if (!persist.saveActiveCalcId(null)) failures.push('saveActiveCalcId');
-
-    // Перезаписать глобальный справочник
     const seed = buildSeedDictionaries();
-    if (!persist.saveDefaultDictionary(seed)) failures.push('saveDefaultDictionary');
 
-    if (failures.length > 0) {
+    if (!persist.saveCalcList([])) {
         store.setPersistStatus('error',
-            `Сброс выполнен частично — не удалось сохранить: ${failures.join(', ')} (quota?)`);
+            'Сброс не выполнен: не удалось обновить список расчётов (quota?). Состояние не изменено.');
+        return;
+    }
+    if (!persist.saveDefaultDictionary(seed)) {
+        /* dict-fail после успешного saveCalcList — list пустой, dict старый.
+         * Попытка отката: вернуть список (best-effort, может тоже упасть). */
+        persist.saveCalcList(list); // best-effort rollback
+        store.setPersistStatus('error',
+            'Сброс не выполнен: не удалось обновить справочник (quota?). Состояние восстановлено.');
+        return;
+    }
+    /* Оба критических ключа записаны — теперь зачищаем calc.<id>. removeItem
+     * на квоте не бросает, это безопасно. */
+    for (const m of list) persist.removeCalc(m.id);
+    if (!persist.saveActiveCalcId(null)) {
+        store.setPersistStatus('error',
+            'Сброс выполнен, но не удалось сбросить активный id (quota?).');
     }
 
     // Сбросить версию схемы и активный расчёт

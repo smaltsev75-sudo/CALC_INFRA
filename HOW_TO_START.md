@@ -75,8 +75,10 @@ php -S localhost:8000            # PHP
 Реальная политика в `index.html` (продублируйте её HTTP-заголовком, если ставите reverse-proxy):
 
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
 ```
+
+**Обязательно добавьте `frame-ancestors 'none'` именно как HTTP-заголовок.** Эта директива защищает от clickjacking, не давая встроить страницу в `<iframe>` стороннего сайта (эквивалент `X-Frame-Options: DENY`). По CSP-spec `frame-ancestors` **игнорируется в `<meta http-equiv>`**, поэтому в `index.html` её нет — только в заголовках ниже.
 
 Расшифровка директив:
 
@@ -96,16 +98,18 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'
 **Nginx** (`/etc/nginx/sites-enabled/calc.conf` → `server { ... }`):
 
 ```nginx
-add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'" always;
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'" always;
 add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
 add_header Referrer-Policy "no-referrer" always;
 ```
 
 **Apache** (`.htaccess` рядом с `index.html`):
 
 ```apache
-Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'"
+Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
 Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "DENY"
 ```
 
 **Caddy** (`Caddyfile`):
@@ -114,8 +118,9 @@ Header always set X-Content-Type-Options "nosniff"
 calc.example.com {
     root * /srv/calc
     file_server
-    header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'"
+    header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
     header X-Content-Type-Options "nosniff"
+    header X-Frame-Options "DENY"
 }
 ```
 

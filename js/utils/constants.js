@@ -19,7 +19,7 @@
  *                   новая вкладка, новый блок дашборда, AI-агенты, светлая тема.
  *   PATCH (1.1.X) — багфиксы, рефакторинг, мелкие UX-правки, hardening,
  *                   обновления прайсов без новых фич. */
-export const APP_VERSION = '2.17.4';
+export const APP_VERSION = '2.17.5';
 export const APP_NAME = 'Калькулятор инфраструктуры';
 
 /* ============================================================
@@ -907,7 +907,12 @@ export const VALIDATION = Object.freeze({
      * 1500 символов ~ полстраницы текста, всё ещё защищает localStorage от abuse. */
     DESC_MAX:        1500,
     UNIT_MAX:        40,
-    VENDOR_MAX:      80,
+    /* Внешний аудит #3 (2026-05-18, P1 acceptance): 80 — слишком жёсткий
+     * лимит для vendor-строк. Реальные provider-overlay vendors иногда
+     * содержат полные labels («Cloud.ru (бывший SberCloud)» + категория) —
+     * после applyOverride bundle перестаёт проходить validateBundle.
+     * Поднимаем до 200 (с запасом, не security-критично). */
+    VENDOR_MAX:      200,
     HELP_MAX:        4000,
     FORMULA_MAX:     1000,
     QUESTION_TITLE_MAX: 200,

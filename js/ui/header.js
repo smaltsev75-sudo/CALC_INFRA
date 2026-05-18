@@ -12,17 +12,17 @@ import { renderScenarioTabs } from './scenarioTabs.js';
 
 export function renderHeader(state, ctx) {
     const calc = state.activeCalc;
-    const titleText = calc ? calc.name : 'Калькулятор инфраструктуры';
 
     return el('header', { class: 'app-topbar' },
-        el('div', { class: 'app-topbar-title' },
-            /* Subtitle выводится только при активном расчёте — без него titleText
-             * сам несёт всю информацию («Калькулятор инфраструктуры»). Раньше
-             * на пустом state стояла подсказка «Создайте или откройте расчёт во
-             * вкладке «Расчёты»», но она дублировала пустой dashboard CTA и
-             * перегружала шапку (запрос пользователя 2026-05-18). */
-            calc && el('span', { class: 'app-topbar-title-muted', text: 'Текущий расчёт · ' }),
-            titleText
+        /* 2026-05-18 (повтор): topbar-title ВЕСЬ блок выводится только при
+         * активном расчёте. Раньше при !calc показывали «Калькулятор
+         * инфраструктуры» — это полный дубль с logo в sidebar (там уже есть
+         * «Калькулятор инфраструктуры v2.x.x»). Дубль раздражал пользователя
+         * («сколько раз тебе повторять»). Теперь шапка слева чистая, только
+         * actions справа. */
+        calc && el('div', { class: 'app-topbar-title' },
+            el('span', { class: 'app-topbar-title-muted', text: 'Текущий расчёт · ' }),
+            calc.name
         ),
 
         // Sprint 3.0 Stage 2: tab-switcher для сценариев — между title и persist-indicator.

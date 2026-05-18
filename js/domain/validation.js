@@ -66,12 +66,12 @@ export function validateItem(item, errors = [], path = '') {
             err(errors, `${path}.priceUpdatedAt`, 'priceUpdatedAt должно быть распарсимой ISO-датой');
     }
     if (item.priceSource !== undefined && item.priceSource !== null) {
-        // 'auto' (Этап 10.4.5) убран: значение зарезервировано в DECISIONS.md
-        // под будущий backend-парсинг цен, но в текущем коде нигде не
-        // присваивается. Принимаем только реально используемые значения,
-        // чтобы валидатор ловил опечатки и не пропускал «auto» в данных.
-        if (!['manual', 'csv', 'seed'].includes(item.priceSource))
-            err(errors, `${path}.priceSource`, 'priceSource: manual | csv | seed');
+        /* Внешний аудит #3 (2026-05-18, P1): добавлено 'provider' —
+         * applyOverrideToItems нормализует priceSource из provider overlay
+         * к этому значению. Раньше переносил сырой `cloud.ru/2026-Q3` и
+         * validateBundle падал на 19 ошибок при re-import. */
+        if (!['manual', 'csv', 'seed', 'provider'].includes(item.priceSource))
+            err(errors, `${path}.priceSource`, 'priceSource: manual | csv | seed | provider');
     }
     // Тип расхода (CAPEX/OPEX) — опционально; если задан, должен быть из COST_TYPE_IDS.
     // Отсутствие значения = автоопределение по billingInterval (см. domain/costType.js).
