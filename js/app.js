@@ -14,6 +14,7 @@ import { loadPdfHintShown, markPdfHintShown } from './services/storage.js';
 import * as calcList from './controllers/calcListController.js';
 import * as calc from './controllers/calcController.js';
 import { flushPendingCommit } from './controllers/calcController.js';
+import { commitActiveCalc } from './services/calcPersistence.js';
 import * as itemCtl from './controllers/itemController.js';
 import * as questionCtl from './controllers/questionController.js';
 import * as providerCtl from './controllers/providerController.js';
@@ -434,7 +435,14 @@ const ctx = {
             confirmLabel: 'Сохранить',
             onConfirm: next => {
                 const trimmed = (next || '').trim();
-                if (trimmed) calcList.renameCalc(id, trimmed);
+                if (trimmed) {
+                    /* Внешний аудит #6 (2026-05-18, P2-2): persist-fail → имя
+                     * не изменено (storage и in-memory consistent), snackbar.error. */
+                    const r = calcList.renameCalc(id, trimmed);
+                    if (r && r.ok === false) {
+                        snackbar.error(r.message || 'Не удалось переименовать расчёт');
+                    }
+                }
             }
         });
     },
@@ -447,11 +455,27 @@ const ctx = {
             onConfirm: () => {
                 // Backup перед удалением — для undo
                 const backup = calcList.snapshotCalc(id);
-                calcList.deleteCalc(id);
+                /* Внешний аудит #6 (2026-05-18, P3-1): deleteCalc возвращает
+                 * {ok, reason}. При persist-fail НЕ показываем undo-snackbar
+                 * (расчёт не удалён) — показываем error. */
+                const r = calcList.deleteCalc(id);
+                if (r && r.ok === false) {
+                    snackbar.error(r.message || 'Не удалось удалить расчёт');
+                    return;
+                }
                 if (backup) {
                     snackbar.showUndoableSnackbar(
                         `Расчёт «${name}» удалён`,
-                        () => { calcList.restoreCalc(backup); snackbar.success('Расчёт восстановлен'); }
+                        () => {
+                            /* Внешний аудит #6 (2026-05-18, P2-3): restoreCalc
+                             * возвращает boolean — игнорировался, лживо
+                             * показывали «Расчёт восстановлен» при quota. */
+                            if (calcList.restoreCalc(backup)) {
+                                snackbar.success('Расчёт восстановлен');
+                            } else {
+                                snackbar.error('Не удалось восстановить расчёт (quota?). Откройте JSON-экспорт и импортируйте вручную.');
+                            }
+                        }
                     );
                 }
             }
@@ -1231,7 +1255,14 @@ const ctx = {
             snackbar.showUndoableSnackbar(
                 `Элемент «${backup.name}» удалён`,
                 () => {
-                    itemCtl.saveItem(backup);
+                    /* Внешний аудит #6 (2026-05-18, P2-3): saveItem возвращает
+                     * {ok, errors} — игнорировалось, лживо «Восстановлено» при
+                     * persist-fail. */
+                    const r = itemCtl.saveItem(backup);
+                    if (r && r.ok === false) {
+                        snackbar.error(r.errors?.[0]?.message || 'Не удалось восстановить элемент');
+                        return;
+                    }
                     // После undo проверим, не осталось ли висящих ссылок Q.<id>:
                     // справочник вопросов мог измениться за время snackbar'а.
                     const cur = store.getState().activeCalc;
@@ -1376,12 +1407,26 @@ const ctx = {
             snackbar.showUndoableSnackbar(
                 `Вопрос «${backup.title}» удалён`,
                 () => {
-                    questionCtl.saveQuestion(backup);
+                    /* Внешний аудит #6 (2026-05-18, P1): saveQuestion persist'ит
+                     * вопрос с default answer; восстановление прежнего ответа
+                     * требует ОТДЕЛЬНОГО commit'а — без него store покажет
+                     * backupAnswer, но F5 вернёт default. */
+                    const r = questionCtl.saveQuestion(backup);
+                    if (r && r.ok === false) {
+                        snackbar.error(r.errors?.[0]?.message || 'Восстановление не сохранено');
+                        return;
+                    }
                     if (backupAnswer !== undefined) {
                         const cur = store.getState().activeCalc;
-                        if (cur) store.updateActiveCalc({
-                            answers: { ...cur.answers, [id]: backupAnswer }
-                        });
+                        if (cur) {
+                            store.updateActiveCalc({
+                                answers: { ...cur.answers, [id]: backupAnswer }
+                            });
+                            if (!commitActiveCalc(store.getState().activeCalc)) {
+                                snackbar.error('Вопрос восстановлен, но прежний ответ не сохранён в хранилище (quota?).');
+                                return;
+                            }
+                        }
                     }
                     snackbar.success('Восстановлено');
                 }

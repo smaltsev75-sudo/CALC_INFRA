@@ -78,17 +78,19 @@ export function saveItem(item) {
 export function deleteItem(itemId) {
     const calc = store.getState().activeCalc;
     if (!calc) return { ok: false, reason: 'noActiveCalc' };
+    /* Внешний аудит #6 (2026-05-18, P2-1): inverse pattern — попробовать
+     * persist ПЕРВЫМ, только при ok мутировать store. Раньше: store сначала
+     * обновлялся, потом commit; при quota пользователь получал {ok:false},
+     * но элемент уже исчез в UI до F5. Теперь при persist-fail UI остаётся
+     * нетронутым. Аудит #5 P2 закрыл «UNDO лжёт», но не сам порядок. */
     const items = removeById(calc.dictionaries.items, itemId);
-    store.updateActiveCalc({ dictionaries: { ...calc.dictionaries, items } });
-    /* Внешний аудит #5 (2026-05-18, P2): раньше commit-fail замалчивался,
-     * UI показывал «Элемент удалён» с UNDO, но F5 возвращал элемент —
-     * data-resurrection. Теперь возвращаем {ok:false,reason:'persist'},
-     * caller (app.js.deleteItem) показывает error-snackbar без UNDO. */
-    if (!commitActiveCalc(store.getState().activeCalc)) {
+    const newCalc = { ...calc, dictionaries: { ...calc.dictionaries, items } };
+    if (!commitActiveCalc(newCalc)) {
         return { ok: false, reason: 'persist',
             message: 'Не удалось удалить элемент: превышен лимит хранилища (quota?). ' +
                      'Освободите место и повторите.' };
     }
+    store.setActiveCalc(newCalc);
     syncDefaultDictionary({ items: removeById(currentDefaultItems(), itemId) });
     return { ok: true };
 }

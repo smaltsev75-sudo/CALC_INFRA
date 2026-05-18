@@ -87,10 +87,22 @@ function _enterUpdate(providerId) {
             message: 'Этот провайдер уже обновляется в другой вкладке. Подождите завершения.'
         };
     }
-    /* Try to acquire cross-tab lock. Если не удалось (race в момент проверки)
-       — тоже считаем in-progress. */
+    /* Try to acquire cross-tab lock. Если не удалось — два разных случая:
+     * (a) race в момент проверки → 'locked-by-other-tab';
+     * (b) Внешний аудит #6 (2026-05-18, P3-2): persist-fail при writeJson
+     *     (quota) → раньше маскировался под «другая вкладка», теперь честный
+     *     reason:'persist' с сообщением про quota. */
     const lock = acquireProviderLock(providerId);
     if (!lock.ok) {
+        if (lock.reason === 'persist') {
+            return {
+                ok: false,
+                reason: 'persist',
+                message: lock.message ||
+                    'Не удалось записать lock в хранилище (quota?). ' +
+                    'Защита от параллельной правки в других вкладках не активирована — операция отменена.'
+            };
+        }
         return {
             ok: false,
             reason: 'locked-by-other-tab',

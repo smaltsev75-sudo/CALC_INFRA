@@ -240,15 +240,20 @@ export function openCalc(id) {
 
 export function renameCalc(id, newName) {
     const calc = persist.loadCalc(id);
-    if (!calc) return;
+    if (!calc) return { ok: false, reason: 'not-found' };
     calc.name = String(newName || '').slice(0, 120);
     calc.updatedAt = new Date().toISOString();
-    // 11.1.1: атомарная пара (calc, calc.list) — обновляем name/updatedAt
-    // в существующей записи списка через единое ядро.
-    /* best-effort: commitCalcRename → persistStatus='error' через ядро. */
-    commitCalcRename(calc);
+    /* Внешний аудит #6 (2026-05-18, P2-2): commitCalcRename результат
+     * раньше игнорировался + store.setActiveCalc(calc) → при persist-fail
+     * activeCalc становился с новым именем, в storage — старое (F5 откатит).
+     * Теперь inverse pattern: persist первым, store только при ok. */
+    if (!commitCalcRename(calc)) {
+        return { ok: false, reason: 'persist',
+            message: 'Не удалось переименовать (quota?). Имя не изменено.' };
+    }
     if (store.getState().activeCalc?.id === id) store.setActiveCalc(calc);
     refreshCalcList();
+    return { ok: true };
 }
 
 export function duplicateCalc(id) {
@@ -272,18 +277,19 @@ export function deleteCalc(id) {
     /* Внешний аудит #3 (2026-05-18, P2): РЕАЛЬНАЯ атомарность через инверсию
      * порядка. Раньше: removeCalc(id) → saveCalcList(...). При сбое второго
      * шага calc.<id> был удалён, но list указывал на него → dangling карточка.
-     * Аудит #2 я закрыл только persistStatus='error'-сигналом, не починив
-     * сам order — это и есть «опять то же».
      *
      * Теперь: сначала saveCalcList(updated). Если упало — calc.<id> ещё
      * физически есть, состояние согласованно (старый снимок). Если прошло —
-     * только тогда removeCalc(id); даже если removeCalc упадёт (что в нашем
-     * write-only-Storage интерфейсе нереально — он не возвращает результата
-     * и для квоты removeItem не бросает), пользователь видит правильный list. */
+     * только тогда removeCalc(id).
+     *
+     * Внешний аудит #6 (2026-05-18, P3-1): функция теперь возвращает
+     * {ok, reason?, message?} — иначе caller (app.js) не знает о persist-fail
+     * и показывает undo-snackbar для несуществующего удаления. */
     const list = persist.loadCalcList().filter(m => m.id !== id);
     if (!persist.saveCalcList(list)) {
         store.setPersistStatus('error', 'Не удалось обновить список расчётов (quota?). Расчёт не удалён.');
-        return;
+        return { ok: false, reason: 'persist',
+            message: 'Не удалось обновить список расчётов (quota?). Расчёт не удалён.' };
     }
     persist.removeCalc(id);
     const state = store.getState();
@@ -294,6 +300,7 @@ export function deleteCalc(id) {
         }
     }
     refreshCalcList();
+    return { ok: true };
 }
 
 /**

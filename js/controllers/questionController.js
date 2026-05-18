@@ -63,16 +63,18 @@ export function saveQuestion(q) {
 export function deleteQuestion(qid) {
     const calc = store.getState().activeCalc;
     if (!calc) return { ok: false, reason: 'noActiveCalc' };
+    /* Внешний аудит #6 (2026-05-18, P2-1): inverse pattern — persist первым,
+     * store вторым (см. itemController.deleteItem). */
     const questions = removeById(calc.dictionaries.questions, qid);
     const answers = { ...calc.answers };
     delete answers[qid];
-    store.updateActiveCalc({ dictionaries: { ...calc.dictionaries, questions }, answers });
-    /* Внешний аудит #5 (2026-05-18, P2): см. itemController.deleteItem. */
-    if (!commitActiveCalc(store.getState().activeCalc)) {
+    const newCalc = { ...calc, dictionaries: { ...calc.dictionaries, questions }, answers };
+    if (!commitActiveCalc(newCalc)) {
         return { ok: false, reason: 'persist',
             message: 'Не удалось удалить вопрос: превышен лимит хранилища (quota?). ' +
                      'Освободите место и повторите.' };
     }
+    store.setActiveCalc(newCalc);
     syncDefaultDictionary({ questions: removeById(currentDefaultQuestions(), qid) });
     return { ok: true };
 }
