@@ -22,6 +22,8 @@ import { getVatRateForDate, isoDateOf, todayIso } from '../domain/vatRateTable.j
 
 const _persistDebounced = debounce(() => {
     const calc = store.getState().activeCalc;
+    /* best-effort: debounced autosave — следующий тик повторит запись;
+     * commitActiveCalc на сбое поднимает persistStatus='error' через ядро. */
     if (calc) commitActiveCalc(calc);
 }, RECALC_DEBOUNCE_MS);
 

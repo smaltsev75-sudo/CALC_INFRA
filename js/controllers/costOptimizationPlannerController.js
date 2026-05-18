@@ -279,6 +279,7 @@ export function rollbackOptimizationApply() {
         answersMeta: restored.answersMeta
     });
     const persisted = store.getState().activeCalc;
+    /* best-effort: commitActiveCalc → persistStatus='error' через ядро. */
     if (persisted) commitActiveCalc(persisted);
 
     /* Пересоздаём свежий draft на восстановленном calc (baseSnapshot должен

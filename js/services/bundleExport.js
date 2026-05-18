@@ -319,7 +319,13 @@ export function applyStateBundle(data) {
         // того же setItem), пользователь видел только первую ошибку, а
         // хранилище оставалось в полу-неопределённом виде. Теперь
         // накапливаем сообщение и отдаём в result.rollbackError (10.2.4).
+        /* Внешний аудит #2 (2026-05-18, P1-2): раньше rollback вызывал
+         * persist.save* без проверки false-возврата → при quota во время
+         * rollback пользователь видел ok:false без rollbackError, а calc.list
+         * всё ещё указывал на удалённый calc.<id>. Теперь любой false
+         * накапливается как rollbackError — точно так же, как throw. */
         let rollbackError = null;
+        const rollbackFailures = [];
         try {
             // Удаляем то, что успели записать
             for (const c of data.calculations || []) {
@@ -327,15 +333,27 @@ export function applyStateBundle(data) {
             }
             // Возвращаем backup
             for (const id of Object.keys(backup.calcs)) {
-                persist.saveCalc(backup.calcs[id]);
+                if (!persist.saveCalc(backup.calcs[id])) {
+                    rollbackFailures.push(`saveCalc(${id})`);
+                }
             }
-            persist.saveCalcList(backup.list);
-            if (backup.defaultDict) persist.saveDefaultDictionary(backup.defaultDict);
-            persist.saveActiveCalcId(backup.activeId);
+            if (!persist.saveCalcList(backup.list)) {
+                rollbackFailures.push('saveCalcList');
+            }
+            if (backup.defaultDict && !persist.saveDefaultDictionary(backup.defaultDict)) {
+                rollbackFailures.push('saveDefaultDictionary');
+            }
+            if (!persist.saveActiveCalcId(backup.activeId)) {
+                rollbackFailures.push('saveActiveCalcId');
+            }
         } catch (rollbackErr) {
             rollbackError = rollbackErr && rollbackErr.message
                 ? rollbackErr.message
                 : String(rollbackErr);
+        }
+        if (rollbackFailures.length > 0) {
+            const failMsg = `rollback failed: ${rollbackFailures.join(', ')}`;
+            rollbackError = rollbackError ? `${rollbackError}; ${failMsg}` : failMsg;
         }
         const result = { ok: false, reason: 'apply', error: e.message };
         if (rollbackError !== null) result.rollbackError = rollbackError;

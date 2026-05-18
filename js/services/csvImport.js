@@ -131,13 +131,22 @@ function tokenize(text, delimiter) {
 /**
  * Распарсить число из строки, толерантно к RU-локали (запятая) и пробелам.
  * Возвращает число или NaN.
+ *
+ * Внешний аудит #2 (2026-05-18, P3-2): раньше использовался `parseFloat`,
+ * который принимает «100abc» → 100, «12O» (буква О, не цифра 0) → 12 и т.п.
+ * Для прайсов это опасно: опечатка в CSV-цене проходит как валидное число
+ * без сигнала пользователю. Теперь — strict-regex после нормализации:
+ * допускаются только цифры с одним опциональным знаком и опциональной
+ * десятичной частью. Любой «хвост» из букв/символов → NaN.
  */
 export function parseNumber(value) {
     if (value === null || value === undefined) return NaN;
-    if (typeof value === 'number') return value;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
     const cleaned = String(value).replace(/\s+/g, '').replace(',', '.');
     if (cleaned === '') return NaN;
-    const n = parseFloat(cleaned);
+    /* Strict: знак + цифры + опциональная десятичная часть, и ничего больше. */
+    if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return NaN;
+    const n = Number(cleaned);
     return Number.isFinite(n) ? n : NaN;
 }
 

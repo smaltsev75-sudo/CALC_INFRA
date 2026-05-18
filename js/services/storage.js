@@ -87,6 +87,15 @@ export function readJson(key, fallback = null) {
 
 export function writeJson(key, value) {
     const s = getStorage();
+    /* Внешний аудит #2 (2026-05-18, P1-1): если probe фейлится (Safari Private,
+     * полная quota), getStorage переключает на memory fallback. Записи в Map
+     * НЕ бросают, и раньше writeJson возвращал true → persistStatus='saved'
+     * → пользователь видит «сохранено», после F5 теряет данные (memory
+     * session-only). Теперь явный false: пусть persistStatus='error' покажет
+     * пользователю проблему с хранилищем. Read-операции через getReadStorage
+     * продолжают работать (sessions может читать что положено в этой сессии). */
+    if (_probedOk === false) return false;
+
     /* 12.U31 (E.3): JSON.stringify ловим ОТДЕЛЬНО от setItem — раньше throw из
        JSON.stringify (циклическая ссылка / кастомный toJSON-throw) выходил
        НЕперехваченным наружу с raw stack-trace. Внешний контракт writeJson —
@@ -106,6 +115,16 @@ export function writeJson(key, value) {
         // (см. services/calcPersistence.js) и видим пользователю.
         return false;
     }
+}
+
+/**
+ * Только для тестов: сброс probe-кэша. Производственный код не должен звать.
+ * Нужен в спай-тестах, которые подменяют localStorage между describe-блоками
+ * и хотят, чтобы следующий getStorage() сделал свежий probe с новым spy.
+ */
+export function __resetStorageMode() {
+    _probedOk = null;
+    _memoryFallback = null;
 }
 
 export function removeKey(key) {

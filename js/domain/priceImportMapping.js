@@ -142,13 +142,15 @@ function jaccard(a, b) {
     return union === 0 ? 0 : inter / union;
 }
 
-/** Парсер числа с RU-локалью (запятая) и пробелами-разделителями. */
+/** Парсер числа с RU-локалью (запятая) и пробелами-разделителями.
+ *  Внешний аудит #2 (2026-05-18, P3-2): strict-regex против «100abc» → 100. */
 function parseNum(value) {
     if (value === null || value === undefined) return NaN;
-    if (typeof value === 'number') return value;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
     const cleaned = String(value).replace(/\s+/g, '').replace(',', '.');
     if (cleaned === '') return NaN;
-    const n = parseFloat(cleaned);
+    if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return NaN;
+    const n = Number(cleaned);
     return Number.isFinite(n) ? n : NaN;
 }
 

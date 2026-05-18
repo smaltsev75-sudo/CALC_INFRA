@@ -49,6 +49,7 @@ export function saveQuestion(q) {
 
     const dictionaries = { ...calc.dictionaries, questions };
     store.updateActiveCalc({ dictionaries, answers });
+    /* best-effort: commitActiveCalc → persistStatus='error' через ядро. */
     commitActiveCalc(store.getState().activeCalc);
 
     syncDefaultDictionary({ questions: upsertById(currentDefaultQuestions(), q) });
@@ -62,6 +63,7 @@ export function deleteQuestion(qid) {
     const answers = { ...calc.answers };
     delete answers[qid];
     store.updateActiveCalc({ dictionaries: { ...calc.dictionaries, questions }, answers });
+    /* best-effort: commitActiveCalc → persistStatus='error' через ядро. */
     commitActiveCalc(store.getState().activeCalc);
 
     syncDefaultDictionary({ questions: removeById(currentDefaultQuestions(), qid) });
@@ -109,6 +111,7 @@ export async function importQuestions({ replace = false } = {}) {
                     dictionaries: { ...calc.dictionaries, questions: merged },
                     answers
                 });
+                /* best-effort: commitActiveCalc → persistStatus='error' через ядро. */
                 commitActiveCalc(store.getState().activeCalc);
             }
             const defBase = replace ? [] : currentDefaultQuestions();
@@ -149,6 +152,9 @@ function syncDefaultDictionary({ items, questions }) {
         ...(items !== undefined ? { items } : {}),
         ...(questions !== undefined ? { questions } : {})
     };
-    persist.saveDefaultDictionary(next);
+    /* Внешний аудит #2 (2026-05-18, P3-1): тот же класс, что в itemController. */
+    if (!persist.saveDefaultDictionary(next)) {
+        store.setPersistStatus('error', 'Не удалось сохранить справочник вопросов (quota?)');
+    }
     store.setDefaultDictionary(next);
 }

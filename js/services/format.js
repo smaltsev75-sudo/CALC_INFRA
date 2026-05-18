@@ -129,13 +129,17 @@ export function percent(value) {
 /**
  * Парсинг ввода с запятой/точкой/пробелами.
  * Возвращает число или NaN.
+ *
+ * Внешний аудит #2 (2026-05-18, P3-2): strict-regex против parseFloat-ловушки
+ * («100abc» → 100). Хвост из букв → NaN; ввод обязан быть только числом.
  */
 export function parseNumberInput(value) {
-    if (typeof value === 'number') return value;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
     if (value === null || value === undefined) return NaN;
     const cleaned = String(value).replace(/\s+/g, '').replace(',', '.');
     if (cleaned === '') return NaN;
-    const n = parseFloat(cleaned);
+    if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return NaN;
+    const n = Number(cleaned);
     return Number.isFinite(n) ? n : NaN;
 }
 

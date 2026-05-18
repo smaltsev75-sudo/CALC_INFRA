@@ -520,8 +520,15 @@ export function applyOverrideToActiveCalc() {
         dictionaries: { ...calc.dictionaries, items: newItems },
         providerVersion
     });
-    commitActiveCalc(store.getState().activeCalc);
-
+    /* Внешний аудит #2 (2026-05-18, P1-3): соседняя функция
+     * applyOverrideToAllCalcsForProvider:590 уже проверяет результат
+     * commitActiveCalc после фикса первого аудита. Здесь — тот же класс:
+     * при quota store обновлён (UI показывает новые цены), а storage остался
+     * старым, F5 откатит изменения, при этом UI рапортует ok:true. Теперь
+     * симметрично — false → reason='persist'. */
+    if (!commitActiveCalc(store.getState().activeCalc)) {
+        return { ok: false, reason: 'persist', message: 'Не удалось сохранить (quota?)' };
+    }
     return { ok: true, deltas, version: override.version };
 }
 

@@ -119,6 +119,7 @@ export function createCalcFromWizard(name, wizardInput) {
        и при первом switchScenario root перезатёрся бы пустыми ответами. */
     const synced = syncActiveScenarioFromRoot(calc);
     calc.scenarios = synced.scenarios;
+    /* best-effort: см. createCalc — commitNewCalc сигналит quota через persistStatus. */
     commitNewCalc(calc, { id: calc.id, name: calc.name, updatedAt: calc.updatedAt });
     persist.saveActiveCalcId(calc.id);
     store.setActiveCalc(calc);
@@ -183,10 +184,9 @@ export function refreshCalcList() {
 
 export function createCalc(name, templateId = null) {
     const calc = makeNewCalculation(name, templateId);
-    // 11.1.1: атомарная запись calc + calc.list через единое ядро.
-    // На сбое (quota) persistStatus → 'error', list откатывается к backup,
-    // активный расчёт всё равно ставится в store — пользователь видит
-    // ошибку и может сохранить JSON.
+    /* best-effort: 11.1.1 commitNewCalc на сбое quota поднимает persistStatus='error'
+     * через _atomicCalcAndListWrite → UI banner. Возвращаем calc для backwards-compat
+     * контракта createCalc — caller получает объект, но видит ошибку через persist-indicator. */
     commitNewCalc(calc, { id: calc.id, name: calc.name, updatedAt: calc.updatedAt });
     persist.saveActiveCalcId(calc.id);
     store.setActiveCalc(calc);
@@ -226,6 +226,7 @@ export function openCalc(id) {
     // 11.1.1: пишем через commitMigratedCalc — calc + list атомарно,
     // вместо прямого persist.saveCalc, чтобы list[i].updatedAt согласовался.
     const storedVersion = Number.isFinite(stored.schemaVersion) ? stored.schemaVersion : 0;
+    /* best-effort: commitMigratedCalc на сбое quota → persistStatus='error' через ядро. */
     if (calc.schemaVersion !== storedVersion || vatChanged) commitMigratedCalc(calc);
     persist.saveActiveCalcId(id);
     store.setActiveCalc(calc);
@@ -239,6 +240,7 @@ export function renameCalc(id, newName) {
     calc.updatedAt = new Date().toISOString();
     // 11.1.1: атомарная пара (calc, calc.list) — обновляем name/updatedAt
     // в существующей записи списка через единое ядро.
+    /* best-effort: commitCalcRename → persistStatus='error' через ядро. */
     commitCalcRename(calc);
     if (store.getState().activeCalc?.id === id) store.setActiveCalc(calc);
     refreshCalcList();
@@ -253,19 +255,29 @@ export function duplicateCalc(id) {
     copy.createdAt = new Date().toISOString();
     copy.updatedAt = copy.createdAt;
     // 11.1.1: атомарная запись calc + calc.list через единое ядро.
+    /* best-effort: commitNewCalc → persistStatus='error' через ядро. */
     commitNewCalc(copy, { id: copy.id, name: copy.name, updatedAt: copy.updatedAt });
     refreshCalcList();
     return copy;
 }
 
 export function deleteCalc(id) {
+    /* Внешний аудит #2 (2026-05-18, P2-2a): раньше saveCalcList игнорировал
+     * false-возврат → при quota calc.<id> удалён, calc.list всё ещё указывает
+     * на него (dangling id), store.calcList тоже остаётся со старой записью
+     * (refreshCalcList перечитывает list, но без сигнала об ошибке). Теперь
+     * сигналим persistStatus='error' на любой сбой persist'а. */
     persist.removeCalc(id);
     const list = persist.loadCalcList().filter(m => m.id !== id);
-    persist.saveCalcList(list);
+    if (!persist.saveCalcList(list)) {
+        store.setPersistStatus('error', 'Не удалось обновить список расчётов (quota?)');
+    }
     const state = store.getState();
     if (state.activeCalc?.id === id) {
         store.setActiveCalc(null);
-        persist.saveActiveCalcId(null);
+        if (!persist.saveActiveCalcId(null)) {
+            store.setPersistStatus('error', 'Не удалось сбросить активный расчёт (quota?)');
+        }
     }
     refreshCalcList();
 }
@@ -285,6 +297,7 @@ export function restoreCalc(calc) {
     // 11.1.1: атомарная запись calc + calc.list через единое ядро.
     // commitNewCalc сам обрабатывает случай, когда запись уже есть в списке
     // (тогда она обновляется, а не дублируется).
+    /* best-effort: commitNewCalc → persistStatus='error' через ядро. */
     commitNewCalc(calc, { id: calc.id, name: calc.name, updatedAt: calc.updatedAt });
     refreshCalcList();
 }
@@ -315,6 +328,9 @@ export function exportActiveCalc() {
  */
 export async function importCalcFromFile(opts = {}) {
     const onDuplicate = opts.onDuplicate || 'ask';
+    /* DI для тестов: подмена picker'а и читалки. Прод-вызов передаёт пустые opts. */
+    const pickFn = opts._pickFile || pickFile;
+    const readFn = opts._readJsonFile || readJsonFile;
 
     let data;
     if (opts.preloaded && typeof opts.preloaded === 'object') {
@@ -323,9 +339,9 @@ export async function importCalcFromFile(opts = {}) {
         // выполниться заново на свежей deep-copy, чтобы не зависеть от мутаций.
         data = JSON.parse(JSON.stringify(opts.preloaded));
     } else {
-        const file = await pickFile('.json,application/json');
+        const file = await pickFn('.json,application/json');
         if (!file) return { ok: false, reason: 'cancelled' };
-        try { ({ data } = await readJsonFile(file)); }
+        try { ({ data } = await readFn(file)); }
         catch (e) { return { ok: false, reason: 'parse', message: e.message }; }
     }
 
@@ -391,8 +407,17 @@ export async function importCalcFromFile(opts = {}) {
     }
 
     // 11.1.1: атомарная запись calc + calc.list через единое ядро.
-    commitNewCalc(data, { id: data.id, name: data.name, updatedAt: data.updatedAt });
-    persist.saveActiveCalcId(data.id);
+    /* Внешний аудит #2 (2026-05-18, P2-1): раньше commitNewCalc return игнорировался,
+     * далее saveActiveCalcId и store.setActiveCalc(data) — UI показывал «Расчёт
+     * загружен», после F5 calc.<id> отсутствовал, activeCalcId указывал в пустоту. */
+    if (!commitNewCalc(data, { id: data.id, name: data.name, updatedAt: data.updatedAt })) {
+        return { ok: false, reason: 'persist', message: 'Не удалось сохранить расчёт (quota?)' };
+    }
+    if (!persist.saveActiveCalcId(data.id)) {
+        /* commit прошёл, но activeId не сохранился — не критично (после F5
+         * выберется первый из списка), однако сигналим persistStatus=error. */
+        store.setPersistStatus('error', 'Не удалось обновить активный расчёт (quota?)');
+    }
     clearCalculationCache();
     store.setActiveCalc(data);
     refreshCalcList();
@@ -460,15 +485,25 @@ export async function importStateBundleFromFile() {
  * Удаляет все расчёты, перезаписывает справочник seed-данными.
  */
 export function resetToDefaults() {
+    /* Внешний аудит #2 (2026-05-18, P2-2b): тот же класс что P2-2a — все 3
+     * persist.save* возвращают false при quota, store очищается заранее,
+     * пользователь видит «всё чисто», после F5 calc.list со старыми id. */
+    const failures = [];
+
     // Удалить все расчёты
     const list = persist.loadCalcList();
     for (const m of list) persist.removeCalc(m.id);
-    persist.saveCalcList([]);
-    persist.saveActiveCalcId(null);
+    if (!persist.saveCalcList([])) failures.push('saveCalcList');
+    if (!persist.saveActiveCalcId(null)) failures.push('saveActiveCalcId');
 
     // Перезаписать глобальный справочник
     const seed = buildSeedDictionaries();
-    persist.saveDefaultDictionary(seed);
+    if (!persist.saveDefaultDictionary(seed)) failures.push('saveDefaultDictionary');
+
+    if (failures.length > 0) {
+        store.setPersistStatus('error',
+            `Сброс выполнен частично — не удалось сохранить: ${failures.join(', ')} (quota?)`);
+    }
 
     // Сбросить версию схемы и активный расчёт
     persist.setSchemaVersion(CURRENT_SCHEMA_VERSION);
@@ -492,6 +527,8 @@ export function initFromStorage() {
     let dict = persist.loadDefaultDictionary();
     if (!dict || !dict.items || !dict.questions) {
         dict = buildSeedDictionaries();
+        /* best-effort: seed-dictionary write на boot — на сбое следующий boot
+         * снова попытается; in-memory dict уже установлен через store.set ниже. */
         persist.saveDefaultDictionary(dict);
     }
     store.setDefaultDictionary(dict);
@@ -564,6 +601,7 @@ export function initFromStorage() {
                 const name = calc?.name || activeId;
                 const reason = e instanceof MigrationError ? e.message : (e?.message || String(e));
                 store.setPersistStatus('error', `Не удалось мигрировать расчёт «${name}»: ${reason}`);
+                /* best-effort: уже выставили error выше; сбросить activeId — повторить на следующем boot. */
                 persist.saveActiveCalcId(null);
                 return;
             }
@@ -573,6 +611,7 @@ export function initFromStorage() {
             // всегда возвращает deep clone, поэтому сравнение ссылок бессмысленно.
             // 11.1.1: атомарно через commitMigratedCalc (calc + list одновременно).
             const storedVersion = Number.isFinite(calc.schemaVersion) ? calc.schemaVersion : 0;
+            /* best-effort: commitMigratedCalc → persistStatus='error' через ядро. */
             if (migrated.schemaVersion !== storedVersion) commitMigratedCalc(migrated);
             store.setActiveCalc(migrated);
             // При перезагрузке (F5) восстанавливаем сохранённую вкладку.
@@ -580,6 +619,7 @@ export function initFromStorage() {
             const savedTab = persist.loadActiveTab();
             store.setActiveTab(savedTab || 'questionnaire');
         } else {
+            /* best-effort: реактивная очистка activeCalcId — на сбое следующий boot повторит. */
             persist.saveActiveCalcId(null);
         }
     }

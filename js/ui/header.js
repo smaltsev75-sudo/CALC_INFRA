@@ -13,11 +13,15 @@ import { renderScenarioTabs } from './scenarioTabs.js';
 export function renderHeader(state, ctx) {
     const calc = state.activeCalc;
     const titleText = calc ? calc.name : 'Калькулятор инфраструктуры';
-    const subtitleText = calc ? 'Текущий расчёт' : 'Создайте или откройте расчёт во вкладке «Расчёты»';
 
     return el('header', { class: 'app-topbar' },
         el('div', { class: 'app-topbar-title' },
-            el('span', { class: 'app-topbar-title-muted', text: subtitleText + ' · ' }),
+            /* Subtitle выводится только при активном расчёте — без него titleText
+             * сам несёт всю информацию («Калькулятор инфраструктуры»). Раньше
+             * на пустом state стояла подсказка «Создайте или откройте расчёт во
+             * вкладке «Расчёты»», но она дублировала пустой dashboard CTA и
+             * перегружала шапку (запрос пользователя 2026-05-18). */
+            calc && el('span', { class: 'app-topbar-title-muted', text: 'Текущий расчёт · ' }),
             titleText
         ),
 

@@ -692,6 +692,8 @@ const ctx = {
             ? (current.includes(providerId) ? current : [...current, providerId])
             : current.filter(id => id !== providerId);
         store.patchModal('deltaHistory', { expandedIds: next });
+        /* best-effort: UI-state persist (accordion state). На сбое следующий
+         * клик повторит запись; дефолт после reboot — приемлемый fallback. */
         persist.saveDeltaHistoryExpandedProviders(next);
     },
     /* Открыть модалку «Прайс-бенчмарк» (read-only сравнение цен провайдеров).
@@ -708,6 +710,7 @@ const ctx = {
     /* Stage 14.1: persist фильтра категорий в localStorage. Вызывается из UI
        при каждом toggle, чтобы F5 не сбрасывал выбор. */
     setProviderAnalyticsVisibleCategories(categories) {
+        /* best-effort: UI-state filter persist. */
         persist.saveProviderAnalyticsVisibleCategories(categories);
     },
     /* Stage 14.5 (PATCH 2.7.3): cross-provider scenario сравнение — модалка
@@ -726,6 +729,7 @@ const ctx = {
         });
     },
     setScenarioComparisonSelectedProviders(providerIds) {
+        /* best-effort: UI-state filter persist. */
         persist.saveScenarioComparisonSelectedProviders(providerIds);
     },
     /* Список active провайдеров для UI чекбоксов. */
@@ -1653,51 +1657,56 @@ function boot() {
             lastQOpenSections = qOpen;
         }
         const qSettings = state.ui.questionnaireSettingsOpen;
+        /* best-effort group (ниже): все persist.save* UI-state subscriber'ов.
+         * Это не критические данные расчёта — на сбое quota: следующий tick
+         * subscriber повторит запись (state не меняется ↔ lastX не равно
+         * текущему), а после reboot UI возьмёт дефолты. persistStatus='error'
+         * сигнализируется через CRUD-вызовы calc'ов (commitActiveCalc и др.). */
         if (qSettings !== lastQSettingsOpen && typeof qSettings === 'boolean') {
-            persist.saveQuestionnaireSettingsOpen(qSettings);
+            persist.saveQuestionnaireSettingsOpen(qSettings); // best-effort
             lastQSettingsOpen = qSettings;
         }
         // Stage 6.2.B (PATCH 2.4.23): persist свёрнутых подгрупп.
         const qCollapsedSubs = state.ui.questionnaireCollapsedSubgroups;
         if (qCollapsedSubs !== lastQCollapsedSubs
             && qCollapsedSubs && typeof qCollapsedSubs === 'object') {
-            persist.saveQuestionnaireCollapsedSubgroups(qCollapsedSubs);
+            persist.saveQuestionnaireCollapsedSubgroups(qCollapsedSubs); // best-effort
             lastQCollapsedSubs = qCollapsedSubs;
         }
         // Persist сортировки сравнения (12.U25) — переживает F5.
         const cmpSort = state.ui.comparisonSort;
         if (cmpSort !== lastComparisonSort) {
-            persist.saveComparisonSort(cmpSort);
+            persist.saveComparisonSort(cmpSort); // best-effort
             lastComparisonSort = cmpSort;
         }
         // Persist раскрытых «По категориям» в стенд-карточках (12.U25-fix-17).
         const standCats = state.ui.standCardsCatsExpanded;
         if (standCats !== lastStandCats && Array.isArray(standCats)) {
-            persist.saveStandCardsCatsExpanded(standCats);
+            persist.saveStandCardsCatsExpanded(standCats); // best-effort
             lastStandCats = standCats;
         }
         // Persist свёрнутых категорий «Детализации» (12.U27).
         const detailsCats = state.ui.detailsCollapsedCats;
         if (detailsCats !== lastDetailsCats && Array.isArray(detailsCats)) {
-            persist.saveDetailsCollapsedCats(detailsCats);
+            persist.saveDetailsCollapsedCats(detailsCats); // best-effort
             lastDetailsCats = detailsCats;
         }
         // Persist свёрнутых категорий объединённой таблицы «Сравнение» (12.U28).
         const cmpCats = state.ui.comparisonCollapsedCats;
         if (cmpCats !== lastCmpCollapsedCats && Array.isArray(cmpCats)) {
-            persist.saveComparisonCollapsedCats(cmpCats);
+            persist.saveComparisonCollapsedCats(cmpCats); // best-effort
             lastCmpCollapsedCats = cmpCats;
         }
         // Persist свёрнутых категорий вкладки «Элементы конфигурации» (12.U29).
         const itemsCats = state.ui.itemsCollapsedCats;
         if (itemsCats !== lastItemsCats && Array.isArray(itemsCats)) {
-            persist.saveItemsCollapsedCats(itemsCats);
+            persist.saveItemsCollapsedCats(itemsCats); // best-effort
             lastItemsCats = itemsCats;
         }
         // Persist свёрнутых секций вкладки «Вопросы» (12.U29).
         const questionsSecs = state.ui.questionsCollapsedSecs;
         if (questionsSecs !== lastQuestionsSecs && Array.isArray(questionsSecs)) {
-            persist.saveQuestionsCollapsedSecs(questionsSecs);
+            persist.saveQuestionsCollapsedSecs(questionsSecs); // best-effort
             lastQuestionsSecs = questionsSecs;
         }
         // 12.U33: тема — применяем атрибут на <html> и сохраняем в storage.
@@ -1705,14 +1714,14 @@ function boot() {
         const theme = state.ui.theme;
         if (theme !== lastTheme) {
             applyThemeAttribute(theme);
-            persist.saveTheme(theme);
+            persist.saveTheme(theme); // best-effort
             lastTheme = theme;
         }
         // 14.U9: persist раскрытости сводки тарифов overlay в Опроснике.
         const providerOverlayExpanded = state.ui.providerOverlayExpanded;
         if (providerOverlayExpanded !== lastProviderOverlayExpanded
             && typeof providerOverlayExpanded === 'boolean') {
-            persist.saveProviderOverlayExpanded(providerOverlayExpanded);
+            persist.saveProviderOverlayExpanded(providerOverlayExpanded); // best-effort
             lastProviderOverlayExpanded = providerOverlayExpanded;
         }
         // Stage 15.1: persist последней открытой вкладки severity в модалке Health.

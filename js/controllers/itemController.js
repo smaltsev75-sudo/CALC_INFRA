@@ -60,6 +60,10 @@ export function saveItem(item) {
     const items = upsertById(calc.dictionaries.items, itemToSave);
     const dictionaries = { ...calc.dictionaries, items };
     store.updateActiveCalc({ dictionaries });
+    /* best-effort: commitActiveCalc сам поднимает persistStatus='error' с
+     * QUOTA_ERROR_MSG через _atomicCalcAndListWrite — UI banner покажет
+     * проблему. Здесь {ok:true} остаётся для контракта вызывающего, но
+     * пользователь увидит ошибку через persist-indicator. */
     commitActiveCalc(store.getState().activeCalc);
 
     syncDefaultDictionary({ items: upsertById(currentDefaultItems(), itemToSave) });
@@ -71,6 +75,7 @@ export function deleteItem(itemId) {
     if (!calc) return;
     const items = removeById(calc.dictionaries.items, itemId);
     store.updateActiveCalc({ dictionaries: { ...calc.dictionaries, items } });
+    /* best-effort: см. saveItem выше — persistStatus='error' через commit-ядро. */
     commitActiveCalc(store.getState().activeCalc);
 
     syncDefaultDictionary({ items: removeById(currentDefaultItems(), itemId) });
@@ -111,6 +116,7 @@ export async function importItems({ replace = false } = {}) {
                 const baseItems = replace ? [] : [...calc.dictionaries.items];
                 const merged = mergeById(baseItems, accepted);
                 store.updateActiveCalc({ dictionaries: { ...calc.dictionaries, items: merged } });
+                /* best-effort: commitActiveCalc → persistStatus='error' через ядро. */
                 commitActiveCalc(store.getState().activeCalc);
             }
             const defBase = replace ? [] : currentDefaultItems();
@@ -230,6 +236,7 @@ function applyPriceUpdates(updates) {
     const newItems = calc.dictionaries.items.map(it => byId.has(it.id) ? stamp(it) : it);
 
     store.updateActiveCalc({ dictionaries: { ...calc.dictionaries, items: newItems } });
+    /* best-effort: commitActiveCalc → persistStatus='error' через ядро. */
     commitActiveCalc(store.getState().activeCalc);
 
     // Синхронизируем default-словарь — чтобы новые расчёты видели обновлённые цены.
@@ -264,6 +271,12 @@ function syncDefaultDictionary({ items, questions }) {
         ...(items !== undefined ? { items } : {}),
         ...(questions !== undefined ? { questions } : {})
     };
-    persist.saveDefaultDictionary(next);
+    /* Внешний аудит #2 (2026-05-18, P3-1): раньше saveDefaultDictionary false
+     * игнорировался → store обновлялся (UI показывает новую цену), а calc.defaultDictionary
+     * в storage оставался старым → F5 = откат изменений без банера. Теперь
+     * persistStatus='error' поднимается явно. */
+    if (!persist.saveDefaultDictionary(next)) {
+        store.setPersistStatus('error', 'Не удалось сохранить справочник ЭК (quota?)');
+    }
     store.setDefaultDictionary(next);
 }
