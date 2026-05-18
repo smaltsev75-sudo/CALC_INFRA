@@ -170,24 +170,57 @@ export function markPdfHintShown() {
 }
 
 /**
+ * Storage для READ/REMOVE-операций, обходящих `_probedOk=false` ловушку.
+ * Внешний аудит #4 (2026-05-18, P2-3): когда storage полностью заполнен,
+ * probe-setItem в `getStorage()` бросает QuotaExceededError → `_probedOk=false`
+ * → memory fallback. После этого `resetAll`/`listKeys` через `getStorage()`
+ * читают пустую in-memory Map, хотя в реальном localStorage остаются данные
+ * (включая большие calc.<id>), которые можно зачистить через removeItem
+ * (он НЕ требует свободного места). Этот helper возвращает реальный
+ * localStorage если он вообще существует и доступен для чтения; только если
+ * сам объект недоступен (Safari Private Mode без API) — отдаёт memory.
+ */
+function getReadRemoveStorage() {
+    try {
+        /* Проверка: localStorage существует и хотя бы getItem не бросает.
+         * В обычном квота-режиме это всегда true; в Safari Private — может
+         * упасть на первом getItem. */
+        if (typeof localStorage === 'undefined' || localStorage === null) {
+            return _memoryStorage();
+        }
+        localStorage.getItem('__read_probe__');
+        return localStorage;
+    } catch {
+        return _memoryStorage();
+    }
+}
+
+/**
  * Полная очистка ключей приложения. Затрагивает только те ключи, что
  * принадлежат калькулятору (префикс STORAGE_KEYS.CALC_PREFIX и whitelist STORAGE_KEYS).
+ *
+ * Внешний аудит #4 (2026-05-18, P2-3): идёт через `getReadRemoveStorage()`,
+ * а не `getStorage()` — иначе при полной quota пользователь не мог зачистить
+ * собственные данные (probe-fail → memory fallback → реальные calc.* невидимы).
  */
 export function resetAll() {
-    const s = getStorage();
+    const s = getReadRemoveStorage();
     const toRemove = [];
     for (let i = 0; i < s.length; i++) {
         const k = s.key(i);
         if (isAppKey(k)) toRemove.push(k);
     }
-    for (const k of toRemove) s.removeItem(k);
+    for (const k of toRemove) {
+        try { s.removeItem(k); } catch { /* removeItem обычно не бросает; best-effort */ }
+    }
 }
 
 /**
  * Получить все ключи приложения (для отладки/диагностики).
+ * См. resetAll: тоже идёт через getReadRemoveStorage из-за P2-3.
  */
 export function listKeys() {
-    const s = getStorage();
+    const s = getReadRemoveStorage();
     const keys = [];
     for (let i = 0; i < s.length; i++) {
         const k = s.key(i);

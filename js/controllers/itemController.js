@@ -60,11 +60,16 @@ export function saveItem(item) {
     const items = upsertById(calc.dictionaries.items, itemToSave);
     const dictionaries = { ...calc.dictionaries, items };
     store.updateActiveCalc({ dictionaries });
-    /* best-effort: commitActiveCalc сам поднимает persistStatus='error' с
-     * QUOTA_ERROR_MSG через _atomicCalcAndListWrite — UI banner покажет
-     * проблему. Здесь {ok:true} остаётся для контракта вызывающего, но
-     * пользователь увидит ошибку через persist-indicator. */
-    commitActiveCalc(store.getState().activeCalc);
+    /* Внешний аудит #4 (2026-05-18, P1-2): раньше commitActiveCalc возврат
+     * игнорировался + saveItem всегда возвращал {ok:true} → модалка
+     * закрывалась как при успехе, при quota правка в storage не сохранялась,
+     * после F5 терялась. Persist-banner недостаточен — пользователь его
+     * мог не заметить, а закрытая форма с потерянной правкой = data loss. */
+    if (!commitActiveCalc(store.getState().activeCalc)) {
+        return { ok: false, errors: [{ message:
+            'Не удалось сохранить элемент: превышен лимит хранилища (quota?). ' +
+            'Освободите место (экспорт JSON + удаление старых расчётов) и повторите.' }] };
+    }
 
     syncDefaultDictionary({ items: upsertById(currentDefaultItems(), itemToSave) });
     return { ok: true };

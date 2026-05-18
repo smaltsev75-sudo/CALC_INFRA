@@ -520,10 +520,20 @@ export function resetToDefaults() {
     }
     if (!persist.saveDefaultDictionary(seed)) {
         /* dict-fail после успешного saveCalcList — list пустой, dict старый.
-         * Попытка отката: вернуть список (best-effort, может тоже упасть). */
-        persist.saveCalcList(list); // best-effort rollback
-        store.setPersistStatus('error',
-            'Сброс не выполнен: не удалось обновить справочник (quota?). Состояние восстановлено.');
+         * Внешний аудит #4 (2026-05-18, P2-1): раньше rollback-возврат
+         * игнорировался + сообщение всегда говорило «Состояние восстановлено».
+         * Если rollback тоже упал — состояние partial (list пуст, dict старый,
+         * calc.<id> живы) — это data inconsistency, сообщение обязано
+         * сигнализировать пользователю требование ручной reconciliation. */
+        const rollbackOk = persist.saveCalcList(list);
+        if (rollbackOk) {
+            store.setPersistStatus('error',
+                'Сброс не выполнен: не удалось обновить справочник (quota?). Состояние восстановлено.');
+        } else {
+            store.setPersistStatus('error',
+                'Сброс не выполнен И откат не удался: список расчётов противоречит хранилищу. ' +
+                'Перезагрузите страницу; если расчёты не появятся — восстановите вручную из JSON-экспорта.');
+        }
         return;
     }
     /* Оба критических ключа записаны — теперь зачищаем calc.<id>. removeItem

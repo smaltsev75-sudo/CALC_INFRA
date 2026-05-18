@@ -5,22 +5,27 @@
  * Управляет статусом сохранения в store: pending → saved | error.
  * Используется контроллерами CRUD и автосохранением.
  *
- * Атомарность (Этап 10.1.5):
- *   - Перед записью снимается backupList = loadCalcList().
- *   - Сначала пишется сам расчёт; если saveCalc вернул false — список НЕ
- *     трогаем (старая запись в списке указывала на старый name/updatedAt,
- *     но самой записи calc.<id> ещё может не быть либо она прежняя — в
- *     любом случае состояние согласовано относительно прежнего снапшота).
- *   - Затем пишется список; если saveCalcList упал — пытаемся откатить
- *     список к backupList. Это лучшая попытка консистентности по двум
- *     ключам localStorage: после сбоя пользователь видит persistStatus=error
- *     и список соответствует тому состоянию, что было до commit.
+ * Атомарность (Этап 10.1.5 + Внешний аудит #4 2026-05-18 P1-1):
+ *   - Перед записью снимаются BACKUP'ы по ОБА ключам:
+ *     · backupCalcSnapshot = loadCalc(calc.id)   — null если calc.<id> ещё не было.
+ *     · backupList         = loadCalcList()      — список ДО изменений.
+ *   - Шаг 1: пишется сам расчёт (calc.<id>). На сбое — состояние не изменено,
+ *     persistStatus='error', return false.
+ *   - Шаг 2: пересборка списка через listBuilder.
+ *   - Шаг 3: пишется список. На сбое — best-effort откатываем ОБА ключа:
+ *     · saveCalcList(backupList).
+ *     · Если backupCalcSnapshot !== null → saveCalc(backupCalcSnapshot).
+ *       Иначе (calc был НОВЫЙ) → removeCalc(calc.id).
+ *   - До аудита #4 откатывался только список, calc.<id> с новым/гнилым
+ *     снапшотом оставался в storage (orphan для create/duplicate, dirty-rename
+ *     для commitActiveCalc). После аудита #4 — оба ключа возвращаются к
+ *     согласованному backup-снапшоту.
  *
  * Этап 11.1.1: единое атомарное ядро `_atomicCalcAndListWrite` используется
  * всеми CRUD-операциями (create / rename / duplicate / migrated / import).
  * Контроллеры больше не вызывают `persist.saveCalc + persist.saveCalcList`
  * напрямую — это гарантирует, что любой сбой одного из шагов запускает
- * откат списка и переводит persistStatus в 'error'.
+ * откат ОБА ключей и переводит persistStatus в 'error'.
  */
 
 import * as persist from '../state/persistence.js';
@@ -61,14 +66,14 @@ function _atomicCalcAndListWrite(calc, listBuilder) {
     if (!calc) return false;
     store.setPersistStatus('pending');
 
-    // Снимаем backup до любой записи. Если loadCalcList бросает (повреждённый
-    // storage) — backup = null, откат недоступен, но логика записи продолжается.
+    // Backup ОБА ключей ДО записи. loadCalc/loadCalcList не пишут, при
+    // повреждённом JSON readJson возвращает fallback — никаких throw.
+    // backupCalcSnapshot === null означает «calc.<id> ещё не существовал» —
+    // при сбое list-write нужно будет removeCalc(id), а не saveCalc(backup).
+    let backupCalcSnapshot = null;
     let backupList = null;
-    try {
-        backupList = persist.loadCalcList();
-    } catch (e) {
-        backupList = null;
-    }
+    try { backupCalcSnapshot = persist.loadCalc(calc.id); } catch (e) { backupCalcSnapshot = null; }
+    try { backupList = persist.loadCalcList(); } catch (e) { backupList = null; }
 
     // Шаг 1: запись самого расчёта. На сбое — список не трогаем.
     const okSelf = persist.saveCalc(calc);
@@ -77,14 +82,25 @@ function _atomicCalcAndListWrite(calc, listBuilder) {
         return false;
     }
 
-    // Шаг 2: пересборка списка через listBuilder. На исключении — откатываем.
+    // Helper: rollback calc.<id> к backup-снапшоту (или удалить, если был новым).
+    // Внешний аудит #4 P1-1: раньше пропускалось → orphan calc.<id> в storage.
+    const _rollbackCalc = () => {
+        if (backupCalcSnapshot) {
+            try { persist.saveCalc(backupCalcSnapshot); } catch (e) { /* best-effort */ }
+        } else {
+            try { persist.removeCalc(calc.id); } catch (e) { /* best-effort */ }
+        }
+    };
+
+    // Шаг 2: пересборка списка через listBuilder. На исключении — откатываем оба ключа.
     let updatedList;
     try {
         updatedList = listBuilder(persist.loadCalcList());
     } catch (e) {
         if (backupList) {
-            try { persist.saveCalcList(backupList); } catch (e2) { /* откат тоже упал */ }
+            try { persist.saveCalcList(backupList); } catch (e2) { /* откат list упал */ }
         }
+        _rollbackCalc();
         store.setPersistStatus('error', QUOTA_ERROR_MSG);
         return false;
     }
@@ -98,8 +114,9 @@ function _atomicCalcAndListWrite(calc, listBuilder) {
     }
     if (!okList) {
         if (backupList) {
-            try { persist.saveCalcList(backupList); } catch (e2) { /* откат не удался */ }
+            try { persist.saveCalcList(backupList); } catch (e2) { /* откат list не удался */ }
         }
+        _rollbackCalc();
         store.setPersistStatus('error', QUOTA_ERROR_MSG);
         return false;
     }

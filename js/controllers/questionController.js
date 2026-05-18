@@ -49,8 +49,12 @@ export function saveQuestion(q) {
 
     const dictionaries = { ...calc.dictionaries, questions };
     store.updateActiveCalc({ dictionaries, answers });
-    /* best-effort: commitActiveCalc → persistStatus='error' через ядро. */
-    commitActiveCalc(store.getState().activeCalc);
+    /* Внешний аудит #4 (2026-05-18, P1-2): см. parallel-фикс в itemController. */
+    if (!commitActiveCalc(store.getState().activeCalc)) {
+        return { ok: false, errors: [{ message:
+            'Не удалось сохранить вопрос: превышен лимит хранилища (quota?). ' +
+            'Освободите место (экспорт JSON + удаление старых расчётов) и повторите.' }] };
+    }
 
     syncDefaultDictionary({ questions: upsertById(currentDefaultQuestions(), q) });
     return { ok: true };

@@ -180,8 +180,11 @@ export function appendHealthScoreTrendSnapshot(calcId, snapshot) {
     if (!_shouldAppend(before, snapshot)) return false;
     const after = _appendSnapshot(before, snapshot, { force: true });
     trend[calcId] = after;
-    saveHealthScoreTrend(trend);
-    return true;
+    /* Внешний аудит #4 (2026-05-18, P3-2): раньше saveHealthScoreTrend
+     * результат игнорировался + return true. При quota пользователь получал
+     * {ok:true, written:true}, но после F5 история пустая. Теперь честный
+     * return: true только если save реально прошёл. Симметрично clearHealthScoreTrend. */
+    return saveHealthScoreTrend(trend);
 }
 
 /** Очистить историю одного calcId. Прочих calcId не трогает. */

@@ -40,12 +40,41 @@ function inline(escaped) {
 /**
  * Главная функция. Возвращает HTML-строку.
  */
+/**
+ * Slugify для id-атрибутов heading'ов. Поддерживает кириллицу
+ * (`\p{L}` — любая буква, `\p{N}` — любая цифра). Используется в `[](#anchor)`
+ * ссылках TOC внутри `UserManual.md`. Контракт sanitization: возвращает строку,
+ * содержащую только `[a-zа-яё0-9_-]` lowercase → safe для подстановки в HTML
+ * id-атрибут без дополнительного escape.
+ */
+function slugifyHeadingId(text) {
+    return String(text)
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s_-]/gu, '')   // оставить только буквы / цифры / пробелы / _ / -
+        .trim()
+        .replace(/\s+/g, '-')                  // пробелы → один дефис
+        .replace(/-+/g, '-');                  // схлопнуть последовательные дефисы
+}
+
 export function renderMarkdown(text) {
     if (!text || typeof text !== 'string') return '';
 
     const lines = text.replace(/\r\n/g, '\n').split('\n');
     const out = [];
     let i = 0;
+
+    /* Счётчик id для уникальности при дубликатах заголовков (например, в
+     * UserManual.md «### Decision Memo» появляется дважды). Второе вхождение
+     * получает `-1` суффикс, как в GitHub. Карта живёт ОДИН прогон renderMarkdown
+     * (не module-level) — иначе повторные вызовы накапливали бы счётчики. */
+    const headingIdCounts = new Map();
+    function makeHeadingId(headingText) {
+        const base = slugifyHeadingId(headingText);
+        if (!base) return '';
+        const n = headingIdCounts.get(base) || 0;
+        headingIdCounts.set(base, n + 1);
+        return n === 0 ? base : `${base}-${n}`;
+    }
 
     let listType = null; // 'ul' | 'ol' | null
     const closeList = () => { if (listType) { out.push(`</${listType}>`); listType = null; } };
@@ -141,7 +170,10 @@ export function renderMarkdown(text) {
         if (h) {
             closeList();
             const level = h[1].length;
-            out.push(`<h${level}>${inline(escapeHtml(h[2]))}</h${level}>`);
+            const headingText = h[2];
+            const id = makeHeadingId(headingText);
+            const idAttr = id ? ` id="${id}"` : '';
+            out.push(`<h${level}${idAttr}>${inline(escapeHtml(headingText))}</h${level}>`);
             i++;
             continue;
         }

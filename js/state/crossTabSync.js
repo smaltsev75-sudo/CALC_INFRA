@@ -129,15 +129,36 @@ export function acquireProviderLock(providerId) {
 
 /**
  * Снять lock текущей вкладки. Чужие locks не трогаем.
+ *
+ * Внешний аудит #4 (2026-05-18, P3-1): раньше removeItem без проверки writeJson
+ * → при сбое (quota) lock оставался в storage до TTL 60s, блокируя другие
+ * вкладки. Теперь возвращает {ok, reason}: caller (в finally cleanup-фазе)
+ * может проигнорировать `ok:false`, но факт сбоя записан в persist-status
+ * для диагностики.
+ *
+ * @param {string} providerId
+ * @returns {{ ok: true } | { ok: false, reason: string, message?: string }}
+ *   - `invalid-provider` — пустой/невалидный providerId.
+ *   - `not-owner`        — lock принадлежит другой вкладке (no-op).
+ *   - `persist`          — write провалился (quota/Safari Private).
  */
 export function releaseProviderLock(providerId) {
-    if (!providerId || typeof providerId !== 'string') return;
+    if (!providerId || typeof providerId !== 'string') {
+        return { ok: false, reason: 'invalid-provider' };
+    }
     const map = _readLockMap();
     const myTabId = getTabId();
-    if (map[providerId]?.tabId === myTabId) {
-        delete map[providerId];
-        writeJson(STORAGE_KEYS.PROVIDER_TAB_LOCKS, map);
+    if (map[providerId]?.tabId !== myTabId) {
+        /* Lock не наш — нечего снимать. Это не ошибка, no-op-success. */
+        return { ok: true };
     }
+    delete map[providerId];
+    if (!writeJson(STORAGE_KEYS.PROVIDER_TAB_LOCKS, map)) {
+        return { ok: false, reason: 'persist',
+            message: 'Не удалось снять lock в localStorage (quota?). ' +
+                     'Другие вкладки увидят stale lock до истечения TTL.' };
+    }
+    return { ok: true };
 }
 
 /**

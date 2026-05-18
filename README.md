@@ -101,13 +101,15 @@ docker run -p 8000:80 -v "$PWD":/usr/share/nginx/html nginx:alpine
 
 Приложение не делает сетевых запросов наружу, не использует `eval` / `new Function`, не подключает CDN, не открывает inline `<script>`. При этом ему нужны: динамические inline-стили (`width: ${pct}%` у прогресс-баров, `background: CATEGORY_COLORS[cat]` у категорийных пилюль, `gridTemplateColumns: repeat(${cols}, ...)` у подгрупп опросника), favicon как `data:`-URI и локальный `fetch` пользовательских markdown-справочников.
 
-Реальная CSP в `index.html`:
+Полная рекомендуемая политика (для HTTP-заголовка при веб-публикации):
 
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
 ```
 
-При публикации за reverse-proxy (Nginx / Apache / Caddy / Cloudflare) дублируйте эту же политику HTTP-заголовком — иначе часть UI не отрисуется (`style-src 'self'` без `'unsafe-inline'` сломает прогресс-бары и категорийные цвета, отсутствие `data:` в `img-src` уберёт favicon). Защита от user-input в `style:` обеспечивается архитектурным линтером [tests/unit/architecture/style-no-user-input.test.js](tests/unit/architecture/style-no-user-input.test.js), а не самой CSP.
+`frame-ancestors 'none'` защищает от clickjacking (эквивалент `X-Frame-Options: DENY`). По CSP-spec эта директива **игнорируется в `<meta http-equiv>`** и работает ТОЛЬКО как HTTP-заголовок — поэтому в `index.html` её нет, и при публикации за reverse-proxy (Nginx / Apache / Caddy / Cloudflare) её необходимо явно добавить.
+
+При публикации за reverse-proxy дублируйте всю политику HTTP-заголовком — иначе часть UI не отрисуется (`style-src 'self'` без `'unsafe-inline'` сломает прогресс-бары и категорийные цвета, отсутствие `data:` в `img-src` уберёт favicon). Защита от user-input в `style:` обеспечивается архитектурным линтером [tests/unit/architecture/style-no-user-input.test.js](tests/unit/architecture/style-no-user-input.test.js), а не самой CSP.
 
 Подробные примеры конфигурации Nginx / Apache / Caddy / Netlify / Vercel — в [HOW_TO_START.md](HOW_TO_START.md#рекомендуемая-csp).
 

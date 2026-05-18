@@ -458,19 +458,34 @@ export function restoreProviderOverrideFromHistory(providerId, idx) {
         return { ok: false, reason: 'invalid-snapshot', message: 'Снимок повреждён.' };
     }
 
+    /* Внешний аудит #4 (2026-05-18, P2-2): backup current ДО подмены, чтобы
+     * при сбое history-write откатить current к нему. Раньше: current уже
+     * подменён, history не обрезана → partial state, пользователь видит
+     * новый snapshot, а в истории — те самые «удалённые» точки. */
+    const currentOverridesBefore = loadProviderOverrides() || {};
+    const backupCurrent = currentOverridesBefore[providerId] || null;
+
     /* Сохраняем target как current. */
     if (!saveProviderOverride(providerId, targetJson)) {
         return { ok: false, reason: 'persist', message: 'Не удалось сохранить.' };
     }
     /* Truncate history: оставляем только записи СТАРШЕ target (idx+1..).
-     * Внешний аудит #3 (2026-05-18, P2): раньше setProviderOverrideHistory
-     * false тихо игнорировался — current уже подменён, но history содержит
-     * «удалённые» snapshot'ы, которые пользователь увидит снова. */
+     * При сбое — откатываем current к backup, чтобы НЕ оставлять partial state. */
     const remaining = history.slice(idx + 1);
     if (!setProviderOverrideHistory(providerId, remaining)) {
+        /* Откат current. Если backup отсутствовал — нечего откатывать. */
+        let rollbackOk = true;
+        if (backupCurrent) {
+            rollbackOk = saveProviderOverride(providerId, backupCurrent);
+        }
+        if (rollbackOk) {
+            return { ok: false, reason: 'persist',
+                message: 'Не удалось обновить историю (quota?). ' +
+                         'Текущий snapshot откатан к прежнему значению — повторите операцию.' };
+        }
         return { ok: false, reason: 'persist',
-            message: 'Snapshot восстановлен, но не удалось обновить историю (quota?). ' +
-                     'После F5 история может содержать более новые snapshot\'ы, чем восстановленный.' };
+            message: 'Не удалось обновить историю И откат current тоже не удался: ' +
+                     'состояние провайдера противоречиво. Перезагрузите страницу.' };
     }
 
     return {
