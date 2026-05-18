@@ -564,6 +564,25 @@ export const MIGRATIONS = [
                 item.priceSource = 'provider';
             }
         }
+    },
+    {
+        from: 18, to: 19,
+        description: 'MINOR 2.18.0 (2026-05-19): удаление dead-вопроса mau_growth_rate_percent. ' +
+                     'Был добавлен как perspective-input для будущей фичи «прогноз бюджета на ' +
+                     'год N+1» (см. миграцию 12.U19 v4→v5, где симметрично удалён mau_target). ' +
+                     'За 12+ месяцев фича прогноза не появилась; поле продолжало занимать место ' +
+                     'в Опроснике, в Quick Start и в templates без влияния на расчёт текущего ' +
+                     'OPEX — и сам description прямо предупреждал об этом пользователя, что ' +
+                     'разрушительно для доверия к инструменту. Удаляем поле из answers и из ' +
+                     'snapshot dictionaries.questions (симметрично 12.U19).',
+        run(calc) {
+            const a = calc.answers || (calc.answers = {});
+            delete a.mau_growth_rate_percent;
+            const dict = calc.dictionaries;
+            if (dict && Array.isArray(dict.questions)) {
+                dict.questions = dict.questions.filter(q => q.id !== 'mau_growth_rate_percent');
+            }
+        }
     }
 ];
 

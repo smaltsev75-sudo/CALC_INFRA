@@ -287,27 +287,18 @@
 }
 
 /* Stage 6.3.B (PATCH 2.4.24): preview-блок «что изменится при выборе пресета».
-   Скрыт по умолчанию (opacity 0 + max-height 0 для плавного раскрытия), на
-   hover/focus-visible карточки появляется. Прозрачность для accessibility:
-   keyboard-пользователь Tab → focus-visible → preview виден; не нужно
-   дополнительное действие. */
+   Раньше скрывался по умолчанию (opacity 0 + max-height 0) и раскрывался при
+   :hover/:focus-visible — это давало «мелькание»: в grid 3×1 высота карточки
+   прыгала на 40-60px, соседи смещались, курсор случайно цеплял другую карточку,
+   та разворачивалась, исходная съёживалась. Теперь preview виден всегда —
+   карточки имеют стабильную высоту, никакого скакания. */
 .qs-preset-preview {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
     align-items: center;
     margin-top: var(--space-2);
-    opacity: 0;
-    max-height: 0;
-    overflow: hidden;
-    transition: opacity var(--t-fast), max-height var(--t-base);
     font-size: var(--font-xs);
-    pointer-events: none;
-}
-.qs-preset-card:hover .qs-preset-preview,
-.qs-preset-card:focus-visible .qs-preset-preview {
-    opacity: 1;
-    max-height: 200px;
 }
 .qs-preset-preview-label {
     color: var(--text-muted);
@@ -322,9 +313,6 @@
 }
 [data-theme="light"] .qs-preset-preview-pill {
     border-color: rgba(5, 150, 105, 0.32);
-}
-@media (prefers-reduced-motion: reduce) {
-    .qs-preset-preview { transition: none; }
 }
 
 /* Stage 4.3: <fieldset> — семантический контейнер для группы полей.

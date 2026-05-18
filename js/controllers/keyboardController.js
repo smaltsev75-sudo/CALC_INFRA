@@ -104,8 +104,23 @@ function dispatch(actionId) {
         }
         case 'closeModal': {
             const state = store.getState();
-            // Закрываем верхнюю открытую модалку
-            for (const name of ['itemEdit', 'questionEdit', 'formula', 'help', 'confirm', 'message', 'input', 'reset']) {
+            // Закрываем верхнюю открытую модалку. Список модалок берём ДИНАМИЧЕСКИ
+            // из Object.keys(state.modals) — раньше был hardcoded whitelist из 8 имён,
+            // и каждая новая модалка (quickStart, costOptimizationPlanner,
+            // vatPolicyChoice, calculationHealth и т.д.) тихо «забывалась» и не
+            // закрывалась по Esc.
+            //
+            // SECONDARY_FIRST — это модалки, которые могут открываться ПОВЕРХ
+            // основной (подтверждение, сообщение, ввод, выбор политики). Esc должен
+            // закрывать сначала их, потом основную.
+            const SECONDARY_FIRST = ['confirm', 'message', 'input', 'reset',
+                                     'duplicateImport', 'reapplyConfirm', 'vatPolicyChoice'];
+            const allModalNames = Object.keys(state.modals);
+            const ordered = [
+                ...SECONDARY_FIRST.filter(n => allModalNames.includes(n)),
+                ...allModalNames.filter(n => !SECONDARY_FIRST.includes(n))
+            ];
+            for (const name of ordered) {
                 if (state.modals[name]?.open) { store.closeModal(name); return; }
             }
             break;

@@ -43,7 +43,6 @@ export const TEMPLATES = [
         answers: {
             users_total: 5000,
             registered_users_total: 5000,
-            mau_growth_rate_percent: 80,        // быстрый рост — стартап
             dau_share_of_registered_percent: 10, // активная база MVP — 10% от 5k = 500 DAU
             pcu_target: 50,
             peak_rps: 20,
@@ -93,7 +92,6 @@ export const TEMPLATES = [
         answers: {
             users_total: 50000,
             registered_users_total: 50000,
-            mau_growth_rate_percent: 50,
             dau_share_of_registered_percent: 20, // 20% активность B2B SaaS = 10k DAU
             pcu_target: 1000,
             peak_rps: 200,
@@ -143,7 +141,6 @@ export const TEMPLATES = [
         answers: {
             users_total: 100000,
             registered_users_total: 100000,
-            mau_growth_rate_percent: 30,
             dau_share_of_registered_percent: 25, // 25% активность среднего SaaS = 25k DAU
             pcu_target: 2500,
             peak_rps: 400,
@@ -193,7 +190,6 @@ export const TEMPLATES = [
         answers: {
             users_total: 500000,
             registered_users_total: 500000,
-            mau_growth_rate_percent: 25,
             dau_share_of_registered_percent: 20, // 20% активность зрелого SaaS = 100k DAU
             pcu_target: 10000,
             peak_rps: 1000,
@@ -246,7 +242,6 @@ export const TEMPLATES = [
         answers: {
             users_total: 2000000,
             registered_users_total: 2000000,
-            mau_growth_rate_percent: 15,
             dau_share_of_registered_percent: 20, // 20% массового продукта = 400k DAU
             pcu_target: 40000,
             peak_rps: 5000,

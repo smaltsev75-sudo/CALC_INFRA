@@ -103,7 +103,6 @@ export const SCALE_RULES = Object.freeze({
         external_api_calls_per_month: 10000,
         traffic_egress_tb_month: 0.1,
         traffic_ingress_tb_month: 0.05,
-        mau_growth_rate_percent: 30,
         avg_request_size_kb: 4,
         avg_response_size_kb: 16
     }),
@@ -124,7 +123,6 @@ export const SCALE_RULES = Object.freeze({
         external_api_calls_per_month: 100000,
         traffic_egress_tb_month: 1,
         traffic_ingress_tb_month: 0.5,
-        mau_growth_rate_percent: 30,
         avg_request_size_kb: 4,
         avg_response_size_kb: 16
     }),
@@ -145,7 +143,6 @@ export const SCALE_RULES = Object.freeze({
         external_api_calls_per_month: 1000000,
         traffic_egress_tb_month: 5,
         traffic_ingress_tb_month: 2,
-        mau_growth_rate_percent: 15,
         avg_request_size_kb: 4,
         avg_response_size_kb: 16
     }),
@@ -166,7 +163,6 @@ export const SCALE_RULES = Object.freeze({
         external_api_calls_per_month: 10000000,
         traffic_egress_tb_month: 30,
         traffic_ingress_tb_month: 10,
-        mau_growth_rate_percent: 15,
         avg_request_size_kb: 4,
         avg_response_size_kb: 16
     }),
@@ -187,7 +183,6 @@ export const SCALE_RULES = Object.freeze({
         external_api_calls_per_month: 50000000,
         traffic_egress_tb_month: 150,
         traffic_ingress_tb_month: 50,
-        mau_growth_rate_percent: 5,
         avg_request_size_kb: 4,
         avg_response_size_kb: 16
     })
