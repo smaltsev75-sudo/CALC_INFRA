@@ -4,6 +4,7 @@
 
 import { STORAGE_KEYS, CURRENT_SCHEMA_VERSION, PROVIDER_OVERRIDE_HISTORY_LIMIT } from '../utils/constants.js';
 import { readJson, writeJson, removeKey } from '../services/storage.js';
+import { sanitizeDefaultDictionary } from '../domain/deprecatedQuestions.js';
 
 /* ---------- Список расчётов ---------- */
 
@@ -504,7 +505,12 @@ export function loadDefaultDictionary() {
 }
 
 export function saveDefaultDictionary(dict) {
-    return writeJson(STORAGE_KEYS.DEFAULT_DICTIONARY, dict);
+    /* Внешний аудит #12 (2026-05-19, PATCH 2.18.5, P2#4): write-side
+     * cleanup. Любой stale deprecated id (например, от старой версии
+     * приложения, передавшей dict без миграции, или от ручного восстановления
+     * через applyStateBundle с raw bundle.defaultDictionary) удаляется ДО
+     * записи в storage. Идемпотентно: clean dict → тот же reference. */
+    return writeJson(STORAGE_KEYS.DEFAULT_DICTIONARY, sanitizeDefaultDictionary(dict));
 }
 
 /* ---------- Stage 15.3 (PATCH 2.8.2): Анализ чувствительности — фильтры ---------- */

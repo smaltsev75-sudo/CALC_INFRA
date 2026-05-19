@@ -25,11 +25,8 @@ import { validateCalculation, validateItem, validateQuestion } from '../domain/v
 import { migrateCalculation, MigrationError } from '../state/migrations.js';
 import { APP_VERSION } from '../utils/constants.js';
 import { dateForFilename } from './format.js';
-import {
-    sanitizeDeprecatedQuestions,
-    sanitizeDefaultDictionary
-} from '../domain/deprecatedQuestions.js';
-import { applyVatResolver } from '../domain/vatResolver.js';
+import { sanitizeDefaultDictionary } from '../domain/deprecatedQuestions.js';
+import { prepareLoadedCalc } from './loadedCalc.js';
 
 export const BUNDLE_VERSION = 'bundle-3.0';
 
@@ -67,16 +64,30 @@ function parseBundleVersion(version) {
  */
 export function buildStateBundle() {
     const list = persist.loadCalcList();
-    /* Внешний аудит #9 (2026-05-19, P1#2-родственный): экспорт ВСЕГДА
-     * проходит через sanitize. Storage мог содержать stale deprecated id
-     * на LATEST schemaVersion (миграция-удаление пропущена для snapshot'ов
-     * уже на актуальной версии). Без sanitize stale утекал в backup —
-     * пользователь, восстанавливая bundle, получал обратно удалённые
-     * вопросы. Идемпотентно: clean → тот же объект. */
+    /* Внешний аудит #12 (2026-05-19, PATCH 2.18.5): экспорт прогоняет
+     * каждый calc через ПОЛНЫЙ pipeline (migrate → enrich → applyVatResolver),
+     * не только sanitize. Прежняя версия делала `sanitizeDeprecatedQuestions`
+     * напрямую — это удаляло `dau_target` ИЗ legacy schemaVersion=3 calc'а
+     * ДО того, как миграция 3→4 успевала его прочитать и пересчитать в
+     * `dau_share_of_registered_percent`. Результат — миграция падала в
+     * дефолт 5% вместо реального share. ТИХАЯ ПОРЧА ДАННЫХ.
+     *
+     * Через prepareLoadedCalc порядок гарантирован: migrate работает на raw
+     * stored (видит dau_target), внутри migrate сам зовёт
+     * sanitizeDeprecatedQuestions в конце (defense-in-depth) — stale id уже
+     * не нужны после конверсии. Игнорируем needsPersist: экспорт side-effect-
+     * free, persist делает не buildStateBundle. */
     const calcs = list
         .map(meta => persist.loadCalc(meta.id))
         .filter(Boolean)
-        .map(c => sanitizeDeprecatedQuestions(c));
+        .map(c => {
+            const { calc, error } = prepareLoadedCalc(c);
+            /* MigrationError на конкретном calc — пропускаем; export
+             * остальных. Согласовано с refreshCalcList: один битый calc
+             * не должен ронять весь bundle. */
+            return error ? null : calc;
+        })
+        .filter(Boolean);
     const rawDict = persist.loadDefaultDictionary() || { items: [], questions: [] };
     return {
         version: BUNDLE_VERSION,
@@ -242,21 +253,26 @@ export function applyStateBundle(data) {
         backup.calcs[m.id] = persist.loadCalc(m.id);
     }
 
-    // 3. Прогон каждого расчёта через миграцию (legacy-совместимость) ДО любых
-    //    записей в localStorage. Это даёт настоящую атомарность: если хоть один
-    //    расчёт не мигрирует — мы возвращаем ошибку, а текущее состояние
-    //    хранилища остаётся нетронутым (backup даже не пришлось задействовать).
-    /* Внешний аудит #9 (2026-05-19, P1#1-родственный): добавлен applyVatResolver
-     * после migrate — симметрично с openCalc и importCalcFromFile. Bundle от
-     * старой версии приложения (до VAT-resolver fix) с auto-by-date calc'ом
-     * раньше восстанавливал stale ставку, теперь пересчитывается. */
+    // 3. Прогон каждого расчёта через ПОЛНЫЙ pipeline (migrate → enrich →
+    //    applyVatResolver) ДО любых записей в localStorage. Это даёт настоящую
+    //    атомарность: если хоть один расчёт не мигрирует — мы возвращаем
+    //    ошибку, а текущее состояние хранилища остаётся нетронутым.
+    /* Внешний аудит #12 (2026-05-19, PATCH 2.18.5, P1#2): добавлен
+     * enrichLegacyDictionaryWithAgentSeed через prepareLoadedCalc. Bundle от
+     * старой версии приложения (до Этапа 13) без agent-вопросов/ЭК раньше
+     * восстанавливался без них — пользователь после restore не видел
+     * AI-агентов до первого open'а calc'а. Теперь enrich применяется при
+     * apply ко всем calc'ам, storage сразу содержит agent-данные. */
     let migrated;
     try {
         migrated = data.calculations.map(c => {
-            const m = applyVatResolver(migrateCalculation(c));
-            if (!m.view || typeof m.view !== 'object') m.view = { disabledStands: [] };
-            else if (!Array.isArray(m.view.disabledStands)) m.view.disabledStands = [];
-            return m;
+            const { calc, error } = prepareLoadedCalc(c);
+            /* prepareLoadedCalc возвращает error для MigrationError —
+             * пробрасываем как throw, ловится в общем catch ниже. */
+            if (error) throw error;
+            if (!calc.view || typeof calc.view !== 'object') calc.view = { disabledStands: [] };
+            else if (!Array.isArray(calc.view.disabledStands)) calc.view.disabledStands = [];
+            return calc;
         });
     } catch (e) {
         if (e instanceof MigrationError) {
@@ -308,9 +324,12 @@ export function applyStateBundle(data) {
             throw new Error('persist.saveCalcList failed (likely quota)');
         }
 
-        // 6. Глобальный справочник
+        // 6. Глобальный справочник (audit #12, P2#4: sanitize ПЕРЕД save —
+        //    bundle от старой версии с stale deprecated id в dict не уносит
+        //    их в storage).
         if (data.defaultDictionary) {
-            if (!persist.saveDefaultDictionary(data.defaultDictionary)) {
+            const cleanDict = sanitizeDefaultDictionary(data.defaultDictionary);
+            if (!persist.saveDefaultDictionary(cleanDict)) {
                 throw new Error('persist.saveDefaultDictionary failed (likely quota)');
             }
         }

@@ -20,58 +20,13 @@ import { buildScenarioFromRoot, syncActiveScenarioFromRoot } from '../domain/sce
 import { applyVatResolver } from '../domain/vatResolver.js';
 import { hasDeprecatedQuestions, sanitizeDefaultDictionary } from '../domain/deprecatedQuestions.js';
 import { getVatRateForDate, isoDateOf, getCurrentVatRate } from '../domain/vatRateTable.js';
+import { prepareLoadedCalc } from '../services/loadedCalc.js';
 
-/**
- * Единый pipeline загрузки calc из storage: migrate → enrich → applyVatResolver.
- *
- * Внешний аудит #9 (2026-05-19): три load-path (openCalc / initFromStorage
- * boot / importCalcFromFile) делали части pipeline вручную и разошлись:
- *   - openCalc: migrate + enrich + applyVatResolver + hasDeprecated check;
- *   - initFromStorage: migrate + enrich (БЕЗ applyVatResolver, БЕЗ hasDeprecated);
- *   - importCalcFromFile: migrate + enrich (БЕЗ applyVatResolver).
- *
- * Эта функция — единственный источник правды для «как подготовить stored
- * calc к use». Симметрия защищена линтером
- * [tests/unit/architecture/loaded-calc-pipeline-invariant.test.js].
- *
- * Контракт результата:
- *   { calc, needsPersist, error? }
- *   - calc: новый объект, готов к store.setActiveCalc и commitMigratedCalc;
- *   - needsPersist: true если pipeline что-либо изменил относительно stored
- *     (schemaVersion bump, vatRate пересчитан, deprecated id sanitize'нуты);
- *   - error: MigrationError | Error если migrate упал. calc=null в этом случае.
- *
- * @param {object} stored — raw calc-объект, прочитанный из persist.loadCalc.
- * @returns {{calc: object|null, needsPersist: boolean, error: Error|null}}
- */
-export function prepareLoadedCalc(stored) {
-    if (!stored || typeof stored !== 'object') {
-        return { calc: stored, needsPersist: false, error: null };
-    }
-    let calc;
-    try {
-        calc = migrateCalculation(stored);
-        enrichLegacyDictionaryWithAgentSeed(calc);
-    } catch (e) {
-        return { calc: null, needsPersist: false, error: e };
-    }
-    const beforeVat = calc;
-    calc = applyVatResolver(calc);
-    const vatChanged = calc !== beforeVat;
-
-    const storedVersion = Number.isFinite(stored.schemaVersion) ? stored.schemaVersion : 0;
-    const schemaChanged = calc.schemaVersion !== storedVersion;
-    /* persist-after-sanitize: schemaVersion может уже быть на LATEST, но
-     * sanitize в migrateCalculation удалил deprecated id. Без этого флага
-     * stored остаётся stale (см. P2#4 внешнего аудита #9). */
-    const hadDeprecated = hasDeprecatedQuestions(stored);
-
-    return {
-        calc,
-        needsPersist: schemaChanged || vatChanged || hadDeprecated,
-        error: null
-    };
-}
+/* prepareLoadedCalc вынесен в services/ (PATCH 2.18.5, audit #12), чтобы
+ * и controllers, и bundleExport могли использовать его без cross-layer
+ * нарушения (domain → state запрещён, services → state допустим).
+ * Re-export для backward-compat. */
+export { prepareLoadedCalc };
 
 /* ---------- Внутреннее ---------- */
 

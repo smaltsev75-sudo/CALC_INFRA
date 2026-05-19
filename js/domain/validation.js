@@ -393,6 +393,14 @@ export function validateCalculation(calc, errors = [], path = '') {
         }
     }
 
+    /* Внешний аудит #12 (2026-05-19, PATCH 2.18.5, P3): root.answersMeta.
+     * До фикса не валидировался — syncRootFromActiveScenario через spread
+     * строки `{...'meta'}` превращал meta в `{0:'m',1:'e',2:'t',3:'a'}`.
+     * null = «нет meta», объект = ok, всё остальное (массив, строка, число) — ошибка. */
+    if (calc.answersMeta !== undefined && calc.answersMeta !== null && !isObject(calc.answersMeta)) {
+        err(errors, `${path}answersMeta`, 'answersMeta должен быть объектом или null');
+    }
+
     // view — опциональный блок настроек отображения, привязанных к расчёту
     // (например, выключенные стенды). Переносится через JSON-экспорт.
     if (calc.view !== undefined && calc.view !== null) {
@@ -451,12 +459,17 @@ export function validateCalculation(calc, errors = [], path = '') {
             if (isObject(calc.answers)) {
                 _validateAnswersAgainstQuestions(calc.answers, qById, errors, `${path}answers`);
             }
-            if (isArray(calc.scenarios)) {
+            /* Внешний аудит #12 (2026-05-19, PATCH 2.18.5, P3): scenarios
+             * defined и не массив — явная ошибка. Раньше `if (isArray(...))`
+             * молча skip'ал `scenarios:"bad"`, после чего activeScenarioId
+             * тоже не валидировался (он жил внутри этого же guard'а). */
+            const seenScenarioIds = new Set();
+            if (calc.scenarios !== undefined && calc.scenarios !== null && !isArray(calc.scenarios)) {
+                err(errors, `${path}scenarios`, 'scenarios должен быть массивом, undefined или null');
+            } else if (isArray(calc.scenarios)) {
                 /* Внешний аудит #9 (2026-05-19, P1#3): валидация ФОРМЫ scenario
                  * (id, label, answers как объект, wizard как объект-или-null).
-                 * Per-answer type-check ниже использует qById, который пришёл
-                 * выше из dictionaries.questions. */
-                const seenScenarioIds = new Set();
+                 * Per-answer type-check ниже использует qById. */
                 calc.scenarios.forEach((sc, i) => {
                     validateScenario(sc, errors, `${path}scenarios[${i}]`);
                     if (sc && isString(sc.id)) {
@@ -471,18 +484,27 @@ export function validateCalculation(calc, errors = [], path = '') {
                         );
                     }
                 });
-                /* activeScenarioId обязан указывать на существующий scenario,
-                 * иначе switchScenario вернёт null и root останется
-                 * рассинхронизированным с UI-табом. До фикса допускался
-                 * «призрак» — валидация падала молча. */
-                if (calc.activeScenarioId !== undefined && calc.activeScenarioId !== null) {
-                    if (!isString(calc.activeScenarioId)) {
-                        err(errors, `${path}activeScenarioId`,
-                            'activeScenarioId должен быть строкой или null');
-                    } else if (calc.scenarios.length > 0 && !seenScenarioIds.has(calc.activeScenarioId)) {
-                        err(errors, `${path}activeScenarioId`,
-                            `activeScenarioId="${calc.activeScenarioId}" не найден среди scenarios`);
-                    }
+            }
+            /* activeScenarioId обязан указывать на существующий scenario,
+             * иначе switchScenario вернёт null и root останется
+             * рассинхронизированным с UI-табом.
+             *
+             * audit #12 (P3): проверка ВЫНЕСЕНА из isArray-guard'а — раньше
+             * при scenarios:"bad" + activeScenarioId:"ghost" обе ошибки
+             * молча игнорировались. */
+            if (calc.activeScenarioId !== undefined && calc.activeScenarioId !== null) {
+                if (!isString(calc.activeScenarioId)) {
+                    err(errors, `${path}activeScenarioId`,
+                        'activeScenarioId должен быть строкой или null');
+                } else if (!seenScenarioIds.has(calc.activeScenarioId)) {
+                    /* Покрывает обе ветки симметрично:
+                     * (a) scenarios = массив, activeScenarioId не найден среди id — ошибка;
+                     * (b) scenarios = "bad" / число / undefined — seenScenarioIds пуст,
+                     *     любой непустой activeScenarioId = призрак.
+                     * Семантика: если activeScenarioId установлен, он обязан указывать
+                     * на реально существующий scenario; иначе switchScenario вернёт null. */
+                    err(errors, `${path}activeScenarioId`,
+                        `activeScenarioId="${calc.activeScenarioId}" не найден среди scenarios`);
                 }
             }
         }
