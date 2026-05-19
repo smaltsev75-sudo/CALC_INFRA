@@ -350,20 +350,30 @@ export const MIGRATIONS = [
                      '(теперь 0.20..1.20 для capacity-запаса). DEV/IFT/PSI ' +
                      'остаются ≤ 1.00. Clamp идёт через STAND_RATIO_RANGES — ' +
                      'если в будущем диапазоны изменятся, миграция автоматически ' +
-                     'согласуется. До 2.19.0 — глобальный clamp до 1.00.',
+                     'согласуется. Audit-14 P1#2 (PATCH 2.19.1): двусторонний ' +
+                     'clamp [min..max], не только сверху. Раньше bundle-export ' +
+                     'legacy calc с LOAD=0.10 проходил буду validateBundle, ' +
+                     'падал на LOAD<0.20. PROD=1.00 (min=max=1.00) — clamp ' +
+                     'возвращает 1.00 для любого значения.',
         run(calc) {
             const s = calc.settings;
             if (!s) return;
-            const standMax = (stand) => {
+            const standRange = (stand) => {
                 const r = STAND_RATIO_RANGES[stand];
-                return r ? r.max : 1.00;
+                return r ? { min: r.min, max: r.max } : { min: 0, max: 1.00 };
+            };
+            const clamp = (v, range) => {
+                if (v < range.min) return range.min;
+                if (v > range.max) return range.max;
+                return v;
             };
             if (s.standSizeRatio && typeof s.standSizeRatio === 'object') {
                 for (const stand of STAND_IDS) {
                     const v = s.standSizeRatio[stand];
-                    const max = standMax(stand);
-                    if (Number.isFinite(v) && v > max) {
-                        s.standSizeRatio[stand] = max;
+                    if (!Number.isFinite(v)) continue;
+                    const range = standRange(stand);
+                    if (v < range.min || v > range.max) {
+                        s.standSizeRatio[stand] = clamp(v, range);
                     }
                 }
             }
@@ -371,11 +381,12 @@ export const MIGRATIONS = [
                 for (const stand of STAND_IDS) {
                     const row = s.resourceRatio[stand];
                     if (!row || typeof row !== 'object') continue;
-                    const max = standMax(stand);
+                    const range = standRange(stand);
                     for (const r of DASHBOARD_RESOURCE_LABELS) {
                         const v = row[r];
-                        if (Number.isFinite(v) && v > max) {
-                            row[r] = max;
+                        if (!Number.isFinite(v)) continue;
+                        if (v < range.min || v > range.max) {
+                            row[r] = clamp(v, range);
                         }
                     }
                 }

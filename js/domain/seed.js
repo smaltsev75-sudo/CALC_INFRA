@@ -29,6 +29,7 @@ import {
     DEFAULT_PLANNING_HORIZON_YEARS,
     DEFAULT_DAYS_PER_MONTH,
     DEFAULT_STAND_SIZE_RATIO,
+    DEFAULT_RESOURCE_RATIO,
     DEFAULT_AI_STAND_FACTOR,
     DEFAULT_PERIOD,
     DEFAULT_PHASE_DURATION_MONTHS,
@@ -3764,6 +3765,17 @@ export const SEED_SETTINGS = Object.freeze({
     daysPerMonth: DEFAULT_DAYS_PER_MONTH,
     phaseDurationMonths: DEFAULT_PHASE_DURATION_MONTHS,
     standSizeRatio: { ...DEFAULT_STAND_SIZE_RATIO },
+    /* Внешний аудит #14 (2026-05-19, PATCH 2.19.1, P1#1): per-resource ratio
+     * (schema v3, 12.U12). До 2.19.1 поле отсутствовало в SEED_SETTINGS, и
+     * makeNewCalculation ставило schemaVersion=LATEST → миграция v2→v3 пропускалась.
+     * Calculator.buildContext падал на fallback к общему standSizeRatio, UI
+     * таблица per-resource показывала DEFAULT_RESOURCE_RATIO — UI и движок
+     * расходились при правке LOAD-ratio в Опроснике. Deep-copy на 2 уровнях:
+     * DEFAULT_RESOURCE_RATIO frozen, иначе setResourceRatio упал бы с
+     * TypeError на nested-write. */
+    resourceRatio: Object.fromEntries(
+        Object.entries(DEFAULT_RESOURCE_RATIO).map(([stand, row]) => [stand, { ...row }])
+    ),
     // Применять ли риск-коэффициенты при расчёте бюджета.
     // По умолчанию TRUE — итоговая стоимость с учётом всех буферов / инфляции / НДС
     // (это та цифра, которую увидит заказчик). При FALSE — «голая» базовая стоимость

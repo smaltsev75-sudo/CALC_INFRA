@@ -123,6 +123,20 @@ export function validateQuestion(q, errors = [], path = '') {
             err(errors, `${path}.max`, 'max должен быть числом');
         if (q.step !== undefined && q.step !== null && !isNumber(q.step))
             err(errors, `${path}.step`, 'step должен быть числом');
+
+        /* Внешний аудит #14 (2026-05-19, PATCH 2.19.1, P2#3): coherence-checks.
+         * Раньше можно было сохранить {min:10, max:5, step:0} — типы валидны,
+         * но calc становится невалидным (validateCalculation отвергает любой
+         * answer ∉ [min,max], а с min>max диапазон пустой).
+         *   - min <= max (если оба заданы)
+         *   - step > 0 (если задан) — нулевой/отрицательный step бессмысленен
+         *     и ломает UI-инпут (бесконечный цикл стрелок). */
+        if (isNumber(q.min) && isNumber(q.max) && q.min > q.max) {
+            err(errors, `${path}.min`, `min=${q.min} должен быть ≤ max=${q.max}`);
+        }
+        if (isNumber(q.step) && q.step <= 0) {
+            err(errors, `${path}.step`, `step должен быть > 0 (получено ${q.step})`);
+        }
     }
 
     if (q.type === 'select' || q.type === 'multiselect') {
@@ -134,7 +148,17 @@ export function validateQuestion(q, errors = [], path = '') {
             const o = q.options[i];
             if (!isObject(o)) err(errors, `${path}.options[${i}]`, 'Опция должна быть объектом');
             else {
-                if (!('value' in o)) err(errors, `${path}.options[${i}].value`, 'value обязателен');
+                if (!('value' in o)) {
+                    err(errors, `${path}.options[${i}].value`, 'value обязателен');
+                } else if (typeof o.value !== 'string' && typeof o.value !== 'number') {
+                    /* Внешний аудит #14 (2026-05-19, PATCH 2.19.1, P2#4): тип
+                     * value должен быть скалярным. validateCalculation для
+                     * select-answer проверяет `allowed.includes(answer)`, но
+                     * answers ограничены string|number — option.value=Object
+                     * проходил validateQuestion, делая вопрос неотвечаемым. */
+                    err(errors, `${path}.options[${i}].value`,
+                        `value должен быть строкой или числом (получено ${typeof o.value})`);
+                }
                 if (!isString(o.label) || o.label.trim() === '') err(errors, `${path}.options[${i}].label`, 'label обязателен');
             }
         }
@@ -150,6 +174,19 @@ export function validateQuestion(q, errors = [], path = '') {
         if (dv === undefined || dv === null) continue;
         if (q.type === 'number' && typeof dv !== 'number') {
             err(errors, `${path}.${defField}`, `${defField} для number-вопроса должен быть числом`);
+        } else if (q.type === 'number' && typeof dv === 'number') {
+            /* Внешний аудит #14 (2026-05-19, PATCH 2.19.1, P2#3): defaultValue/
+             * defaultIfUnknown должны попадать в [min, max]. До фикса
+             * saveQuestion клал дефолтный ответ через defaultAnswerFor(q),
+             * после чего сам calc не проходил validateCalculation (answer вне
+             * диапазона). isNumber NaN-guard уже сделан выше. */
+            if (isNumber(q.min) && dv < q.min) {
+                err(errors, `${path}.${defField}`,
+                    `${defField}=${dv} меньше min=${q.min}`);
+            } else if (isNumber(q.max) && dv > q.max) {
+                err(errors, `${path}.${defField}`,
+                    `${defField}=${dv} больше max=${q.max}`);
+            }
         } else if (q.type === 'boolean' && typeof dv !== 'boolean') {
             err(errors, `${path}.${defField}`, `${defField} для boolean-вопроса должен быть булевым`);
         } else if (q.type === 'select') {
