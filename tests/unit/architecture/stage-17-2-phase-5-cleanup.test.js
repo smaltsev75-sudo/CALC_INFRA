@@ -33,6 +33,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..', '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf-8');
 
+/* Внешний аудит #18 (PATCH 2.19.5, P1, выбор 1A): graceful skip когда
+ * maintainer-only fixtures отсутствуют (tests/unit/services/, Architecture.md,
+ * data/providers/). Скипаем только те describe-блоки, которые их читают —
+ * первые 3 (orphan exports / live exports / no callers) работают всегда. */
+const SKIP_VALIDATE_TEST = !existsSync(join(ROOT, 'tests/unit/services/provider-price-fetch.test.js'))
+    ? 'maintainer-only: tests/unit/services/provider-price-fetch.test.js отсутствует в clean clone'
+    : false;
+const SKIP_LIVE_INVARIANTS = !existsSync(join(ROOT, 'data/providers'))
+    ? 'maintainer-only: data/providers/ или Architecture.md отсутствуют в clean clone'
+    : false;
+
 /* ============================================================
  * 1. providerPriceFetch.js НЕ экспортирует bundled-fetch функции
  * ============================================================ */
@@ -131,8 +142,8 @@ describe('Phase 5 — obsolete test-файлы удалены', () => {
  * 5. provider-price-fetch.test.js переписан под validate-only
  * ============================================================ */
 
-describe('Phase 5 — provider-price-fetch.test.js (validate-only)', () => {
-    const src = read('tests/unit/services/provider-price-fetch.test.js');
+describe('Phase 5 — provider-price-fetch.test.js (validate-only)', { skip: SKIP_VALIDATE_TEST }, () => {
+    const src = SKIP_VALIDATE_TEST ? '' : read('tests/unit/services/provider-price-fetch.test.js');
 
     it('файл существует (переписан, не удалён)', () => {
         assert.ok(src.length > 0);
@@ -163,7 +174,7 @@ describe('Phase 5 — provider-price-fetch.test.js (validate-only)', () => {
  * 6. Live invariants — что НЕ удаляли (UserManual / MAINTAINER_GUIDE)
  * ============================================================ */
 
-describe('Phase 5 — Live invariants', () => {
+describe('Phase 5 — Live invariants', { skip: SKIP_LIVE_INVARIANTS }, () => {
     it('data/providers/<id>-latest.json: 3 фикстуры остались (maintainer reference)', () => {
         for (const id of ['sbercloud', 'yandex', 'vk']) {
             assert.equal(existsSync(join(ROOT, `data/providers/${id}-latest.json`)), true,

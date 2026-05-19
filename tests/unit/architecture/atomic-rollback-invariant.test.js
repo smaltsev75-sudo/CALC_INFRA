@@ -645,9 +645,14 @@ describe('audit #8 P2-2: importItemPrices anomaly-ветка формирует 
          * следующего блока (return-statement в конце функции). */
         const anchorIdx = src.indexOf('// Аномалии — только после явного');
         assert.ok(anchorIdx >= 0, 'Якорный комментарий anomaly-блока должен существовать');
-        /* Берём примерно до return-объекта функции (return { ok:true, updatesCount:... }). */
+        /* Берём примерно до return-объекта функции (return { ok:true, updatesCount:... }).
+         * Внешний аудит #18 (PATCH 2.19.5, P2, выбор 2A): regex-fix только.
+         * Раньше indexOf искал точный '\n    return {\n        ok: true' — на
+         * Windows clean clone с CRLF (autocrlf) подстрока не находилась →
+         * тест падал в clean clone. Регулярка \r?\n устойчива к обоим line-endings. */
         const tail = src.slice(anchorIdx);
-        const endIdx = tail.indexOf('\n    return {\n        ok: true');
+        const endMatch = tail.match(/\r?\n {4}return \{\r?\n {8}ok: true/);
+        const endIdx = endMatch ? endMatch.index : -1;
         assert.ok(endIdx > 0, 'Конец anomaly-блока через return success должен существовать');
         const blockBody = tail.slice(0, endIdx);
 

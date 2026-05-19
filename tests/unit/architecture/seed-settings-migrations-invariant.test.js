@@ -193,6 +193,45 @@ describe('CRUD validateAnswersConsistency — invariant (защита от audit
     });
 });
 
+describe('Audit #18 invariants — answersMeta cleanup + graceful skip + regex line-endings', () => {
+    it('deleteQuestion очищает answersMeta в root + scenarios', () => {
+        const src = readFileSync(join(REPO_ROOT, 'js', 'controllers', 'questionController.js'), 'utf8');
+        const m = src.match(/export function deleteQuestion[\s\S]*?(?=\nexport |\nfunction )/);
+        assert.ok(m, 'deleteQuestion должна быть');
+        assert.ok(
+            /delete\s+\w*answersMeta\w*\[qid\]/.test(m[0]) || /delete\s+m\[qid\]/.test(m[0]),
+            'deleteQuestion обязан чистить root.answersMeta[qid] (audit-18 P3)'
+        );
+        assert.ok(
+            /sc\.answersMeta[\s\S]*?delete/.test(m[0]),
+            'deleteQuestion обязан чистить scenarios[*].answersMeta[qid] (audit-18 P3)'
+        );
+    });
+
+    it('maintainer-only tests имеют graceful skip guard', () => {
+        const MAINTAINER_ONLY = [
+            'providers-bundled-sync.test.js',
+            'stage-14-7-json-linter.test.js',
+            'stage-17-2-phase-5-cleanup.test.js',
+            'stage-17-2-phase-6-final-sweep.test.js',
+            'stage-17-7-regression-pack.test.js'
+        ];
+        for (const f of MAINTAINER_ONLY) {
+            const src = readFileSync(join(REPO_ROOT, 'tests', 'unit', 'architecture', f), 'utf8');
+            assert.ok(/SKIP[_A-Z]*\s*=/.test(src),
+                `${f} обязан иметь SKIP_*-guard (audit-18 P1)`);
+            assert.ok(/{\s*skip:\s*SKIP/.test(src),
+                `${f} обязан использовать describe({skip:SKIP}, ...) (audit-18 P1)`);
+        }
+    });
+
+    it('atomic-rollback-invariant использует CRLF-tolerant regex', () => {
+        const src = readFileSync(join(REPO_ROOT, 'tests', 'unit', 'architecture', 'atomic-rollback-invariant.test.js'), 'utf8');
+        assert.ok(/\\r\?\\n/.test(src),
+            'atomic-rollback-invariant должен использовать \\r?\\n regex для line-endings (audit-18 P2)');
+    });
+});
+
 describe('Audit #17 invariants — root↔scenarios mirror в CRUD', () => {
     it('deleteQuestion очищает scenarios[*].answers', () => {
         const src = readFileSync(join(REPO_ROOT, 'js', 'controllers', 'questionController.js'), 'utf8');

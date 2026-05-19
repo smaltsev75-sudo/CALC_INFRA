@@ -32,6 +32,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..', '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf-8');
 
+/* Внешний аудит #18 (PATCH 2.19.5, P1, выбор 1A): graceful skip BROWSER_SMOKE.md
+ * блока — этот файл maintainer-only doc-артефакт, gitignored. */
+const SKIP_BROWSER_SMOKE = !existsSync(join(ROOT, 'BROWSER_SMOKE.md'))
+    ? 'maintainer-only: BROWSER_SMOKE.md отсутствует в clean clone'
+    : false;
+
 /* ============================================================
  * 1. Полнота TARGET_DISPATCH (recommendedActions ↔ nextSteps)
  * ============================================================ */
@@ -169,7 +175,7 @@ describe('Stage 17.7 — UserManual.md не содержит orphan-ссылок
  * 5. BROWSER_SMOKE.md существует и не пуст (Stage 17.7 doc-артефакт)
  * ============================================================ */
 
-describe('Stage 17.7 — BROWSER_SMOKE.md — doc-артефакт UX regression checklist', () => {
+describe('Stage 17.7 — BROWSER_SMOKE.md — doc-артефакт UX regression checklist', { skip: SKIP_BROWSER_SMOKE }, () => {
     it('файл существует', () => {
         assert.equal(existsSync(join(ROOT, 'BROWSER_SMOKE.md')), true,
             'BROWSER_SMOKE.md — артефакт ручного regression-чека после изменений IA. ' +

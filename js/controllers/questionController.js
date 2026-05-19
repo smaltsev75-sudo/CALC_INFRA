@@ -103,23 +103,43 @@ export function deleteQuestion(qid) {
     const questions = removeById(calc.dictionaries.questions, qid);
     const answers = { ...calc.answers };
     delete answers[qid];
+    /* Внешний аудит #18 (PATCH 2.19.5, P3): answersMeta[qid] — параллель к
+     * answers[qid] (UI-бейджи источника). До фикса оставался stale ключ; после
+     * switchScenario → syncRootFromActiveScenario копировал meta из scenario
+     * обратно в root → bundle экспортировал orphan meta. Сейчас удаляем
+     * симметрично answers. */
+    const answersMeta = (calc.answersMeta && qid in calc.answersMeta)
+        ? (() => { const m = { ...calc.answersMeta }; delete m[qid]; return m; })()
+        : calc.answersMeta;
     /* Внешний аудит #17 (2026-05-19, PATCH 2.19.4, P1): scenarios[*].answers
      * тоже содержат ответы на этот вопрос. До фикса удалялось только из root —
      * switchScenario потом копировал stale answers обратно, удалённый вопрос
      * «воскресал» в root. Формулы доверяют любому ключу в Q, что могло менять
-     * расчёт по удалённому вопросу. */
+     * расчёт по удалённому вопросу.
+     * Внешний аудит #18 (PATCH 2.19.5, P3): то же для scenarios[*].answersMeta. */
     const scenarios = Array.isArray(calc.scenarios)
         ? calc.scenarios.map(sc => {
-            if (!sc || !sc.answers || !(qid in sc.answers)) return sc;
-            const scAnswers = { ...sc.answers };
-            delete scAnswers[qid];
-            return { ...sc, answers: scAnswers };
+            if (!sc) return sc;
+            const needsAnswers = sc.answers && qid in sc.answers;
+            const needsMeta = sc.answersMeta && qid in sc.answersMeta;
+            if (!needsAnswers && !needsMeta) return sc;
+            const next = { ...sc };
+            if (needsAnswers) {
+                next.answers = { ...sc.answers };
+                delete next.answers[qid];
+            }
+            if (needsMeta) {
+                next.answersMeta = { ...sc.answersMeta };
+                delete next.answersMeta[qid];
+            }
+            return next;
         })
         : calc.scenarios;
     const newCalc = {
         ...calc,
         dictionaries: { ...calc.dictionaries, questions },
         answers,
+        ...(answersMeta !== calc.answersMeta ? { answersMeta } : {}),
         ...(scenarios !== calc.scenarios ? { scenarios } : {})
     };
     if (!commitActiveCalc(newCalc)) {

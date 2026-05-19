@@ -24,6 +24,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..', '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf-8');
 
+/* Внешний аудит #18 (PATCH 2.19.5, P1, выбор 1A): graceful skip для блоков,
+ * читающих maintainer-only fixtures (MAINTAINER_GUIDE.md, data/providers/). */
+const SKIP_USER_DOCS = !existsSync(join(ROOT, 'MAINTAINER_GUIDE.md'))
+    ? 'maintainer-only: MAINTAINER_GUIDE.md отсутствует в clean clone'
+    : false;
+const SKIP_PROVIDERS_FIXTURES = !existsSync(join(ROOT, 'data/providers'))
+    ? 'maintainer-only: data/providers/ отсутствует в clean clone'
+    : false;
+
 function listJsFiles(dir) {
     const out = [];
     function walk(d) {
@@ -158,7 +167,7 @@ describe('Phase 6 — Целевые UI labels присутствуют', () => 
  * 3. User-facing docs не обещают удалённое
  * ============================================================ */
 
-describe('Phase 6 — UserManual.md / ReadMe.md hygiene', () => {
+describe('Phase 6 — UserManual.md / ReadMe.md hygiene', { skip: SKIP_USER_DOCS }, () => {
     const um = read('UserManual.md');
     const rm = read('ReadMe.md');
 
@@ -208,7 +217,7 @@ describe('Phase 6 — UserManual.md / ReadMe.md hygiene', () => {
  * 4. data/providers/<id>-latest.json — maintainer-shipped reference
  * ============================================================ */
 
-describe('Phase 6 — data/providers/* фикстуры остались', () => {
+describe('Phase 6 — data/providers/* фикстуры остались', { skip: SKIP_PROVIDERS_FIXTURES }, () => {
     for (const id of ['sbercloud', 'yandex', 'vk']) {
         it(`data/providers/${id}-latest.json существует`, () => {
             assert.equal(existsSync(join(ROOT, `data/providers/${id}-latest.json`)), true);

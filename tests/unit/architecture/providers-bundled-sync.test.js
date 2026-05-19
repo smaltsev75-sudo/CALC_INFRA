@@ -14,7 +14,7 @@
  * — никакой дубликации сериализации.
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
@@ -29,6 +29,14 @@ const REPO_ROOT = join(__dirname, '..', '..', '..');
 const PROVIDERS_DIR = join(REPO_ROOT, 'data', 'providers');
 const OUTPUT_PATH = join(REPO_ROOT, 'js', 'data', 'providers-bundled.generated.js');
 
+/* Внешний аудит #18 (PATCH 2.19.5, P1, выбор 1A): graceful skip когда
+ * data/providers/ отсутствует (clean clone / git archive — maintainer-only
+ * fixture). Тест продолжает работать у maintainer'а с локальной директорией,
+ * в clean checkout тихо скипается. */
+const SKIP_REASON = !existsSync(PROVIDERS_DIR)
+    ? 'maintainer-only: data/providers/ отсутствует в clean clone'
+    : false;
+
 /* Нормализация CRLF→LF: git на Windows может конвертировать line endings
  * при checkout (autocrlf=true). Файл может быть закоммичен с LF, но прочитан
  * с CRLF. Сравнение тогда фейлит на пустых местах. Нормализуем оба. */
@@ -36,7 +44,7 @@ function normalizeLineEndings(s) {
     return s.replace(/\r\n/g, '\n');
 }
 
-describe('Stage VAT-2 Phase 2: bundled providers sync', () => {
+describe('Stage VAT-2 Phase 2: bundled providers sync', { skip: SKIP_REASON }, () => {
     it('generated.js синхронен с data/providers/*-latest.json', () => {
         const providers = readProvidersFromDir(PROVIDERS_DIR);
         const expectedSource = buildGeneratedModuleSource(providers);

@@ -33,12 +33,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../../..');
 const PROVIDERS_DIR = path.join(ROOT, 'data', 'providers');
 
+/* Внешний аудит #18 (PATCH 2.19.5, P1, выбор 1A): graceful skip когда
+ * data/providers/ отсутствует (maintainer-only fixture). */
+const SKIP_REASON = !fs.existsSync(PROVIDERS_DIR)
+    ? 'maintainer-only: data/providers/ отсутствует в clean clone'
+    : false;
+
 function listProviderJsons() {
     /* Берём только production bundle'ы `<id>-latest.json` — maintainer-shipped
        reference prices, которые пользователь может вручную загрузить через
        «Импорт прайса JSON» в Опроснике. Поддиректории (`drafts/`, `archive/`,
        тестовые fixtures) НЕ трогаем — они могут содержать work-in-progress
        JSON с другими providerId / structurой. */
+    if (SKIP_REASON) return [];
     return fs.readdirSync(PROVIDERS_DIR, { withFileTypes: true })
         .filter(e => e.isFile() && /-latest\.json$/.test(e.name))
         .map(e => ({
@@ -53,7 +60,7 @@ before(async () => {
     ({ validateProviderPriceJson } = await import('../../../js/services/providerPriceFetch.js'));
 });
 
-describe('Stage 14.7 / bundled JSON: structural validate', () => {
+describe('Stage 14.7 / bundled JSON: structural validate', { skip: SKIP_REASON }, () => {
     const bundles = listProviderJsons();
 
     it('папка data/providers/ содержит хотя бы один bundle (sanity)', () => {
@@ -69,7 +76,7 @@ describe('Stage 14.7 / bundled JSON: structural validate', () => {
     }
 });
 
-describe('Stage 14.7 / bundled JSON: prices.<id> ⊆ SEED_ITEMS', () => {
+describe('Stage 14.7 / bundled JSON: prices.<id> ⊆ SEED_ITEMS', { skip: SKIP_REASON }, () => {
     const bundles = listProviderJsons();
 
     for (const { file, content } of bundles) {
