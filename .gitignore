@@ -11,7 +11,14 @@ skill.md
 ТЗ.md
 
 # Dev-only: tests and tooling
-tests/
+# Аудит #16 (PATCH 2.19.3): tests/unit/architecture/ — это executable-инварианты
+# архитектуры (контракты production-кода), не dev tooling. Они tracked в репо
+# чтобы следующая сессия / контрибьютор / CI имели доступ к invariants как к
+# части кода. tests/integration/ и tests/unit/ остальное — dev-only по контракту.
+tests/*
+!tests/unit/
+tests/unit/*
+!tests/unit/architecture/
 scripts/
 
 # Provider price sources (maintainer-only; runtime uses js/data/providers-bundled.generated.js)

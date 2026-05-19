@@ -1,6 +1,6 @@
 {
     "name": "infrastructure-calculator",
-    "version": "2.19.2",
+    "version": "2.19.3",
     "description": "Локальное web-приложение для расчёта инфраструктуры и стоимости программных продуктов по 5 стендам (DEV / ИФТ / ПСИ / ПРОМ / Нагрузка). Работает offline, без зависимостей.",
     "type": "module",
     "private": true,

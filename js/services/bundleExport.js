@@ -101,6 +101,26 @@ export function buildStateBundle() {
             });
             continue;
         }
+        /* Внешний аудит #16 (2026-05-19, PATCH 2.19.3, P2, выбор пользователя 2A):
+         * валидация ПЕРЕД включением в bundle. До фикса buildStateBundle отдавал
+         * calc без validateCalculation — bundle.errors=[] лгал, validateBundle
+         * на импорте тот же bundle отвергал. Контракт: invalid calc НЕ
+         * включается в bundle, errors[] явно фиксирует потерю. Симметрично
+         * applyStateBundle (тот rollback на validate-fail). */
+        const validateErrors = [];
+        validateCalculation(calc, validateErrors, '');
+        if (validateErrors.length > 0) {
+            errors.push({
+                calcId: meta.id,
+                name: meta.name || calc.name || null,
+                reason: 'validation',
+                step: null,
+                message: `Не прошёл валидацию (${validateErrors.length} ошибок): ` +
+                         validateErrors.slice(0, 3).map(e => `${e.path}: ${e.message}`).join('; ') +
+                         (validateErrors.length > 3 ? `; +${validateErrors.length - 3} ещё` : '')
+            });
+            continue;
+        }
         calcs.push(calc);
     }
     const rawDict = persist.loadDefaultDictionary() || { items: [], questions: [] };

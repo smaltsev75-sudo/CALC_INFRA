@@ -158,6 +158,16 @@ export function validateQuestion(q, errors = [], path = '') {
                      * проходил validateQuestion, делая вопрос неотвечаемым. */
                     err(errors, `${path}.options[${i}].value`,
                         `value должен быть строкой или числом (получено ${typeof o.value})`);
+                } else if (typeof o.value === 'number' && !Number.isFinite(o.value)) {
+                    /* Внешний аудит #16 (2026-05-19, PATCH 2.19.3, P3): NaN/
+                     * Infinity имеют typeof === 'number'. JSON.stringify(NaN)
+                     * = 'null'. До фикса option с NaN-value сохранялся валидным,
+                     * persist превращал value в null, allowed.includes(answer)
+                     * больше не находил совпадения → select-вопрос становился
+                     * неотвечаемым. audit-15 P3 закрыл NaN для number-default
+                     * и number-answer, но не для option.value. */
+                    err(errors, `${path}.options[${i}].value`,
+                        `value должен быть конечным числом (получено ${o.value})`);
                 }
                 if (!isString(o.label) || o.label.trim() === '') err(errors, `${path}.options[${i}].label`, 'label обязателен');
             }
@@ -199,6 +209,11 @@ export function validateQuestion(q, errors = [], path = '') {
         } else if (q.type === 'select') {
             if (typeof dv !== 'string' && typeof dv !== 'number') {
                 err(errors, `${path}.${defField}`, `${defField} для select-вопроса должен быть строкой или числом`);
+            } else if (typeof dv === 'number' && !Number.isFinite(dv)) {
+                /* Внешний аудит #16 (2026-05-19, PATCH 2.19.3, P3):
+                 * NaN/Infinity-default для select. */
+                err(errors, `${path}.${defField}`,
+                    `${defField} для select-вопроса должен быть конечным числом (получено ${dv})`);
             } else if (isArray(q.options) && q.options.length > 0) {
                 const allowed = q.options.map(o =>
                     (o && typeof o === 'object' && 'value' in o) ? o.value : o
@@ -446,6 +461,23 @@ export function validateAnswersConsistency(calc, errors = []) {
     if (isObject(calc.answers)) {
         _validateAnswersAgainstQuestions(calc.answers, qById, errors, 'answers');
     }
+    /* Внешний аудит #16 (2026-05-19, PATCH 2.19.3, P1): scenarios[*].answers
+     * — тоже persisted state. До фикса saveQuestion отвергал только активный
+     * answer; bundle export ронял на неактивных scenarios. validateCalculation
+     * УЖЕ покрывает scenarios — мой helper это пропустил при audit-15.
+     * Выбор пользователя 3A: строгое отвержение для всех scenarios (включая
+     * неактивные). path формата `scenarios[i].answers.<id>` совпадает с
+     * validateCalculation, чтобы caller видел тот же контракт. */
+    if (isArray(calc.scenarios)) {
+        for (let i = 0; i < calc.scenarios.length; i++) {
+            const sc = calc.scenarios[i];
+            if (sc && isObject(sc.answers)) {
+                _validateAnswersAgainstQuestions(
+                    sc.answers, qById, errors, `scenarios[${i}].answers`
+                );
+            }
+        }
+    }
     return errors;
 }
 
@@ -480,6 +512,11 @@ function _validateAnswersAgainstQuestions(answers, qById, errors, basePath) {
         } else if (q.type === 'select') {
             if (typeof value !== 'string' && typeof value !== 'number') {
                 err(errors, ePath, `Ожидается строка/число (тип вопроса: select)`);
+            } else if (typeof value === 'number' && !Number.isFinite(value)) {
+                /* Внешний аудит #16 (2026-05-19, PATCH 2.19.3, P3):
+                 * NaN/Infinity-answer для select. */
+                err(errors, ePath,
+                    `Ожидается конечное число (получено ${value})`);
             } else if (isArray(q.options) && q.options.length > 0) {
                 const allowed = q.options.map(o =>
                     (o && typeof o === 'object' && 'value' in o) ? o.value : o
