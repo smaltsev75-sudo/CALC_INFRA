@@ -670,11 +670,37 @@ export function renderDashboard(state, ctx) {
    geography / activity / derived / sla_preset / compliance + manual).
    Группы для бейджа в баннере: manual, profile (объединяет profile/wizard/
    product_type/geography/activity), scale. Остальные (derived/sla_preset/
-   compliance) — в общую группу «auto». */
-export function countAnswerSources(answersMeta) {
+   compliance) — в общую группу «auto».
+
+   PATCH 2.18.3 (audit-10, P2.1 defensive): опциональный второй аргумент `calc`
+   фильтрует orphan-meta-keys — id, для которого нет ни вопроса в dictionary,
+   ни валидного ответа в answers (типичный случай — stale meta после удаления
+   вопроса миграцией). Без calc — backward-compatible поведение «count all». */
+export function countAnswerSources(answersMeta, calc) {
     const counts = { manual: 0, profile: 0, scale: 0, auto: 0 };
     if (!answersMeta || typeof answersMeta !== 'object') return counts;
-    for (const meta of Object.values(answersMeta)) {
+
+    // Orphan-filter активен только когда передан calc (новый API).
+    let liveIds = null;
+    if (calc && typeof calc === 'object') {
+        const answers = calc.answers || {};
+        const qIds = new Set(
+            (calc.dictionaries?.questions || [])
+                .filter(q => q && typeof q.id === 'string')
+                .map(q => q.id)
+        );
+        liveIds = new Set();
+        for (const [id, value] of Object.entries(answers)) {
+            if (!qIds.has(id)) continue;
+            if (value === null || value === undefined) continue;
+            if (Array.isArray(value) && value.length === 0) continue;
+            if (value === '') continue;
+            liveIds.add(id);
+        }
+    }
+
+    for (const [id, meta] of Object.entries(answersMeta)) {
+        if (liveIds && !liveIds.has(id)) continue; // orphan — нет вопроса/ответа
         const s = meta?.source;
         if (s === 'manual') counts.manual++;
         else if (s === 'scale') counts.scale++;
@@ -697,7 +723,7 @@ export function renderProfileBanner(calc, ctx) {
     const pdn      = w.pdn ? 'да' : 'нет';
     const ai       = w.ai_used ? 'используется' : 'нет';
 
-    const counts = countAnswerSources(calc.answersMeta);
+    const counts = countAnswerSources(calc.answersMeta, calc);
 
     /* Sprint 3.0 Stage 2: scenario-aware label. Если у calc есть scenarios[]
        (миграция v15+), показываем активный scenario.label рядом с профилем —

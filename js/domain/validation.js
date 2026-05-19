@@ -287,6 +287,57 @@ export function validateSettings(settings, errors = [], path = 'settings') {
     return errors;
 }
 
+/* Внутренний хелпер per-question check (PATCH 2.18.3, audit-10 P1.1).
+ * Вынесен ради DRY между root.answers и scenarios[*].answers. */
+function _validateAnswersAgainstQuestions(answers, qById, errors, basePath) {
+    for (const [id, value] of Object.entries(answers)) {
+        if (value === null) continue; // «Не знаю»
+        const q = qById.get(id);
+        if (!q) continue; // ответ на удалённый вопрос — не наша зона (lintFormulas/cleanup)
+        const ePath = `${basePath}.${id}`;
+        if (q.type === 'number' && typeof value !== 'number') {
+            err(errors, ePath, `Ожидается число (тип вопроса: number)`);
+        } else if (q.type === 'number' && typeof value === 'number') {
+            if (typeof q.min === 'number' && value < q.min) {
+                err(errors, ePath,
+                    `Значение ${value} вне допустимого диапазона: меньше min=${q.min}`);
+            } else if (typeof q.max === 'number' && value > q.max) {
+                err(errors, ePath,
+                    `Значение ${value} вне допустимого диапазона: больше max=${q.max}`);
+            }
+        } else if (q.type === 'boolean' && typeof value !== 'boolean') {
+            err(errors, ePath, `Ожидается boolean (тип вопроса: boolean)`);
+        } else if (q.type === 'select') {
+            if (typeof value !== 'string' && typeof value !== 'number') {
+                err(errors, ePath, `Ожидается строка/число (тип вопроса: select)`);
+            } else if (isArray(q.options) && q.options.length > 0) {
+                const allowed = q.options.map(o =>
+                    (o && typeof o === 'object' && 'value' in o) ? o.value : o
+                );
+                if (!allowed.includes(value)) {
+                    err(errors, ePath,
+                        `Значение "${value}" вне допустимых options: [${allowed.join(', ')}]`);
+                }
+            }
+        } else if (q.type === 'multiselect') {
+            if (!isArray(value)) {
+                err(errors, ePath, `Ожидается массив (тип вопроса: multiselect)`);
+            } else if (isArray(q.options) && q.options.length > 0) {
+                const allowed = q.options.map(o =>
+                    (o && typeof o === 'object' && 'value' in o) ? o.value : o
+                );
+                const bad = value.filter(v => !allowed.includes(v));
+                if (bad.length > 0) {
+                    err(errors, ePath,
+                        `Значения [${bad.join(', ')}] вне допустимых options: [${allowed.join(', ')}]`);
+                }
+            }
+        } else if (q.type === 'text' && typeof value !== 'string') {
+            err(errors, ePath, `Ожидается строка (тип вопроса: text)`);
+        }
+    }
+}
+
 export function validateCalculation(calc, errors = [], path = '') {
     if (!isObject(calc)) { err(errors, path || 'calc', 'Расчёт должен быть объектом'); return errors; }
     if (!isString(calc.id) || calc.id.trim() === '') err(errors, `${path}.id`, 'id обязателен');
@@ -354,65 +405,26 @@ export function validateCalculation(calc, errors = [], path = '') {
             // показывался [object Object], в формулах через toNum давал 0.
             // null для любого типа = «Не знаю» (CLAUDE.md countAnswered),
             // допустимо. Проверяем только когда answers и questions согласованы.
+            //
+            // PATCH 2.18.3 (audit-10, P1.1): тот же per-question check применяется
+            // к КАЖДОМУ scenarios[*].answers. До фикса inactive scenario
+            // с invalid value давал `validationErrors 0`, и потом switchScenario
+            // копировал invalid в root.
+            const qById = new Map(
+                calc.dictionaries.questions.filter(q => q && isString(q.id)).map(q => [q.id, q])
+            );
             if (isObject(calc.answers)) {
-                const qById = new Map(
-                    calc.dictionaries.questions.filter(q => q && isString(q.id)).map(q => [q.id, q])
-                );
-                for (const [id, value] of Object.entries(calc.answers)) {
-                    if (value === null) continue; // «Не знаю»
-                    const q = qById.get(id);
-                    if (!q) continue; // ответ на удалённый вопрос — не наша зона (lintFormulas/cleanup)
-                    if (q.type === 'number' && typeof value !== 'number') {
-                        err(errors, `${path}answers.${id}`, `Ожидается число (тип вопроса: number)`);
-                    } else if (q.type === 'number' && typeof value === 'number') {
-                        /* Внешний аудит #2 (2026-05-18, P3-3): кроме type-check
-                         * проверяем range из q.min/q.max. UI clamp'ит руками
-                         * (calcController.setAnswer), но импорт расчёта через
-                         * JSON-файл миновал clamp → out-of-range значения
-                         * проходили в storage и в формулы. */
-                        if (typeof q.min === 'number' && value < q.min) {
-                            err(errors, `${path}answers.${id}`,
-                                `Значение ${value} вне допустимого диапазона: меньше min=${q.min}`);
-                        } else if (typeof q.max === 'number' && value > q.max) {
-                            err(errors, `${path}answers.${id}`,
-                                `Значение ${value} вне допустимого диапазона: больше max=${q.max}`);
-                        }
-                    } else if (q.type === 'boolean' && typeof value !== 'boolean') {
-                        err(errors, `${path}answers.${id}`, `Ожидается boolean (тип вопроса: boolean)`);
-                    } else if (q.type === 'select') {
-                        if (typeof value !== 'string' && typeof value !== 'number') {
-                            err(errors, `${path}answers.${id}`,
-                                `Ожидается строка/число (тип вопроса: select)`);
-                        } else if (isArray(q.options) && q.options.length > 0) {
-                            /* P3-3: select-ответ обязан быть из q.options.
-                             * Сравниваем по сырому value; options могут быть
-                             * `[{value, label}]` или `[scalar]` — нормализуем. */
-                            const allowed = q.options.map(o =>
-                                (o && typeof o === 'object' && 'value' in o) ? o.value : o
-                            );
-                            if (!allowed.includes(value)) {
-                                err(errors, `${path}answers.${id}`,
-                                    `Значение "${value}" вне допустимых options: [${allowed.join(', ')}]`);
-                            }
-                        }
-                    } else if (q.type === 'multiselect') {
-                        if (!isArray(value)) {
-                            err(errors, `${path}answers.${id}`,
-                                `Ожидается массив (тип вопроса: multiselect)`);
-                        } else if (isArray(q.options) && q.options.length > 0) {
-                            const allowed = q.options.map(o =>
-                                (o && typeof o === 'object' && 'value' in o) ? o.value : o
-                            );
-                            const bad = value.filter(v => !allowed.includes(v));
-                            if (bad.length > 0) {
-                                err(errors, `${path}answers.${id}`,
-                                    `Значения [${bad.join(', ')}] вне допустимых options: [${allowed.join(', ')}]`);
-                            }
-                        }
-                    } else if (q.type === 'text' && typeof value !== 'string') {
-                        err(errors, `${path}answers.${id}`, `Ожидается строка (тип вопроса: text)`);
+                _validateAnswersAgainstQuestions(calc.answers, qById, errors, `${path}answers`);
+            }
+            if (isArray(calc.scenarios)) {
+                calc.scenarios.forEach((sc, i) => {
+                    if (sc && isObject(sc.answers)) {
+                        _validateAnswersAgainstQuestions(
+                            sc.answers, qById, errors,
+                            `${path}scenarios[${i}].answers`
+                        );
                     }
-                }
+                });
             }
         }
     }

@@ -18,6 +18,7 @@ import { getTemplateById } from '../domain/templates.js';
 import { wizardToAnswers } from '../domain/wizardProfiles.js';
 import { buildScenarioFromRoot, syncActiveScenarioFromRoot } from '../domain/scenarios.js';
 import { applyVatResolver } from '../domain/vatResolver.js';
+import { hasDeprecatedQuestions } from '../domain/deprecatedQuestions.js';
 import { getVatRateForDate, isoDateOf, getCurrentVatRate } from '../domain/vatRateTable.js';
 
 /* ---------- Внутреннее ---------- */
@@ -231,13 +232,19 @@ export function openCalc(id) {
     // 11.1.1: пишем через commitMigratedCalc — calc + list атомарно,
     // вместо прямого persist.saveCalc, чтобы list[i].updatedAt согласовался.
     const storedVersion = Number.isFinite(stored.schemaVersion) ? stored.schemaVersion : 0;
+    /* Внешний аудит #10 (2026-05-19, P2.2): persist-after-sanitize.
+     * Если stored содержал deprecated id (snapshot на LATEST schemaVersion,
+     * шаг-удаление пропущен) — sanitize очищает in-memory, но без явного
+     * commit'а stale данные остаются в localStorage и в bundle-export.
+     * Проверяем raw stored ДО migrate. */
+    const hadDeprecated = hasDeprecatedQuestions(stored);
     /* Внешний аудит #7 (2026-05-18, P2): commitMigratedCalc проверяется.
      * При quota раньше store получал мигрированный calc, а storage оставался
      * legacy — на F5 миграция повторялась (идемпотентно), но в текущей
      * сессии любая правка через обычный commit тоже падала бы, что вводило
      * пользователя в заблуждение «calc открыт». Теперь при persist-fail
      * миграции — calc НЕ открывается, явный error-banner с инструкцией. */
-    if (calc.schemaVersion !== storedVersion || vatChanged) {
+    if (calc.schemaVersion !== storedVersion || vatChanged || hadDeprecated) {
         if (!commitMigratedCalc(calc)) {
             const name = stored.name || id;
             store.setPersistStatus('error',
