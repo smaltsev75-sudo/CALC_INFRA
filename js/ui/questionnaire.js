@@ -34,7 +34,7 @@ import {
     UI_TOOLTIPS_SHORT
 } from '../utils/constants.js';
 import { parseNumberInput, percent, formatDate } from '../services/format.js';
-import { SEED_QUESTIONS, SEED_ITEMS } from '../domain/seed.js';
+import { SEED_QUESTIONS, SEED_ITEMS, DEPRECATED_QUESTION_IDS } from '../domain/seed.js';
 import { listProviders, DEFAULT_PROVIDER, PROVIDER_OVERLAYS } from '../domain/providerOverlay.js';
 import {
     renderProviderUpdateRow,
@@ -153,9 +153,44 @@ function renderSourceBadge(meta) {
     });
 }
 
+/**
+ * Объединённый источник списка вопросов для рендера + счётчиков.
+ *
+ * Шаги (идентичны логике `renderSection`, чтобы шапочный progress-bar и
+ * фактически-видимое количество вопросов не расходились — audit-9 P2):
+ *   1) Берём `calc.dictionaries.questions` (snapshot legacy-расчёта).
+ *   2) Доливаем недостающие вопросы из текущего SEED (forward-compat: новые
+ *      seed-вопросы видны и в старых расчётах без миграции).
+ *   3) Фильтруем `DEPRECATED_QUESTION_IDS` (defense-in-depth поверх
+ *      sanitizeDeprecatedQuestions в migrateCalculation).
+ *   4) Опционально фильтруем по `sectionId`.
+ *   5) Сортируем по `order` если фильтр по секции.
+ *
+ * @param {object} calc          расчёт (any schemaVersion)
+ * @param {object} [opts]
+ * @param {string} [opts.sectionId] если задан — оставляем только вопросы секции, отсортированные по order
+ * @returns {Array<object>}      нормализованный список вопросов
+ */
+export function getRenderableQuestions(calc, opts = {}) {
+    const dictQuestions = calc?.dictionaries?.questions || [];
+    const dictById = new Map(dictQuestions.map(q => [q.id, q]));
+    const merged = dictQuestions.slice();
+    for (const seedQ of SEED_QUESTIONS) {
+        if (!dictById.has(seedQ.id)) merged.push(seedQ);
+    }
+    const filtered = merged.filter(q => q && !DEPRECATED_QUESTION_IDS.has(q.id));
+    if (opts.sectionId) {
+        return filtered
+            .filter(q => q.section === opts.sectionId)
+            .slice()
+            .sort((a, b) => a.order - b.order);
+    }
+    return filtered;
+}
+
 /** Сколько вопросов уточнено: answer не null и не undefined. */
 function countAnswered(calc) {
-    const all = calc?.dictionaries?.questions || [];
+    const all = getRenderableQuestions(calc);
     const answers = calc?.answers || {};
     let answered = 0;
     for (const q of all) {
@@ -1247,17 +1282,15 @@ const SUBGROUP_LAYOUTS = {
 
 function renderSection(sectionId, calc, state, ctx) {
     /* 12.U18-U19: SEED-fallback для новых вопросов и для текстовых полей.
-       1) Если в seed.js добавлены вопросы, которых нет в dictionary-снимке
-          legacy-расчёта (создан до правки seed), они всё равно показываются
-          пользователю (пример: dau_share_of_registered_percent в расчётах до U18).
+       1) Базовый список + фильтр deprecated + sort по секции — из общего
+          getRenderableQuestions (один источник истины для counter+render,
+          audit-9 P2).
        2) Для known-вопросов (есть в SEED): title/description/recommendation/impact
           ВСЕГДА берутся из SEED. Это даёт «живую» документацию даже для legacy-
           расчётов: при reword'е вопроса пользователь видит новый текст. Cost:
           теряются user-edited title (но в этом проекте редактирование title редко
           и обычно нежелательно — SEED-формулировки выверены). */
-    const dictQuestions = calc.dictionaries.questions || [];
-    const dictById = new Map(dictQuestions.map(q => [q.id, q]));
-    const merged = dictQuestions.map(q => {
+    const questions = getRenderableQuestions(calc, { sectionId }).map(q => {
         const seed = SEED_BY_ID.get(q.id);
         if (!seed) return q;  // user-defined custom question — оставляем as-is
         return {
@@ -1278,19 +1311,6 @@ function renderSection(sectionId, calc, state, ctx) {
             // q.options — отдельная логика через questionOptions(q), здесь не трогаем.
         };
     });
-    for (const seedQ of SEED_QUESTIONS) {
-        if (!dictById.has(seedQ.id)) merged.push(seedQ);
-    }
-    /* 12.U18-U19: фильтр deprecated-вопросов. Migration удаляет вопросы из
-       dictionary, но если расчёт уже был мигрирован до того, как мы добавили
-       удаление в шаг — его dictionary всё ещё содержит старые вопросы. Доп.
-       фильтр на render-time убирает их наверняка. */
-    const DEPRECATED_QUESTION_IDS = new Set(['dau_target', 'mau_target']);
-    const questions = merged
-        .filter(q => !DEPRECATED_QUESTION_IDS.has(q.id))
-        .filter(q => q.section === sectionId)
-        .slice()
-        .sort((a, b) => a.order - b.order);
 
     const isOpen = openedSections(state).includes(sectionId);
 

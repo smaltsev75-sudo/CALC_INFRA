@@ -27,6 +27,7 @@ import {
     STAND_IDS
 } from '../utils/constants.js';
 import { VAT_RATE_HISTORY, getCurrentVatRate } from '../domain/vatRateTable.js';
+import { sanitizeDeprecatedQuestions } from '../domain/deprecatedQuestions.js';
 import { uuid } from '../utils/uuid.js';
 
 /**
@@ -641,5 +642,8 @@ export function migrateCalculation(input, _migrations = MIGRATIONS) {
         }
     }
     calc.schemaVersion = v;
-    return calc;
+    // Defense-in-depth (PATCH 2.18.2, audit-9 P1): зачистка deprecated-вопросов
+    // независимо от schemaVersion. Если snapshot уже на LATEST (миграция-удаление
+    // пропущена) и содержит stale id — sanitize отловит. Идемпотентен.
+    return sanitizeDeprecatedQuestions(calc);
 }
