@@ -193,6 +193,44 @@ describe('CRUD validateAnswersConsistency — invariant (защита от audit
     });
 });
 
+describe('Audit #17 invariants — root↔scenarios mirror в CRUD', () => {
+    it('deleteQuestion очищает scenarios[*].answers', () => {
+        const src = readFileSync(join(REPO_ROOT, 'js', 'controllers', 'questionController.js'), 'utf8');
+        const m = src.match(/export function deleteQuestion[\s\S]*?(?=\nexport |\nfunction )/);
+        assert.ok(m, 'deleteQuestion должна быть');
+        assert.ok(
+            /calc\.scenarios[\s\S]*?delete scAnswers\[qid\]|calc\.scenarios[\s\S]*?\.map\(sc =>/.test(m[0]),
+            'deleteQuestion обязан итерировать scenarios[*] (audit-17 P1)'
+        );
+    });
+
+    it('saveQuestion добавляет default во все scenarios для нового вопроса', () => {
+        const src = readFileSync(join(REPO_ROOT, 'js', 'controllers', 'questionController.js'), 'utf8');
+        const m = src.match(/export function saveQuestion[\s\S]*?(?=\nexport |\nfunction )/);
+        assert.ok(m, 'saveQuestion должна быть');
+        assert.ok(
+            /calc\.scenarios[\s\S]*?defaultAnswerFor\(q\)/.test(m[0]),
+            'saveQuestion обязан зеркалить default в scenarios (audit-17 P2.a)'
+        );
+    });
+
+    it('importQuestions добавляет default во все scenarios для новых вопросов', () => {
+        const src = readFileSync(join(REPO_ROOT, 'js', 'controllers', 'questionController.js'), 'utf8');
+        const m = src.match(/export async function importQuestions[\s\S]*?(?=\nexport |\nfunction \w|$)/);
+        assert.ok(m, 'importQuestions должна быть');
+        assert.ok(
+            /calc\.scenarios[\s\S]*?defaultAnswerFor/.test(m[0]),
+            'importQuestions обязан зеркалить default в scenarios (audit-17 P2.a)'
+        );
+    });
+
+    it('app.js различает reason="validation" в bundle.errors UI', () => {
+        const src = readFileSync(join(REPO_ROOT, 'js', 'app.js'), 'utf8');
+        assert.ok(/reasons\.validation/.test(src),
+            'app.js bundle export UI должен явно группировать по reason=validation (audit-17 P3)');
+    });
+});
+
 describe('Audit #16 invariants — scenarios + bundle validate + NaN-options', () => {
     it('validateAnswersConsistency покрывает scenarios[*].answers', () => {
         const src = readFileSync(join(REPO_ROOT, 'js', 'domain', 'validation.js'), 'utf8');

@@ -559,9 +559,26 @@ const ctx = {
                  * { exported, errors } чтобы UI мог честно сообщить о потерянных calc'ах. */
                 const result = await calcList.exportStateBundle();
                 if (result && Array.isArray(result.errors) && result.errors.length > 0) {
+                    /* Внешний аудит #17 (PATCH 2.19.4, P3): различаем причины
+                     * пропуска. После audit-16 в errors появилось reason='validation'
+                     * (calc прошёл migrate но не прошёл validateCalculation), и UI
+                     * лгал что это «миграция/чтение». Пользователь не понимает,
+                     * что делать. Группируем по reason для точной диагностики. */
+                    const reasons = result.errors.reduce((acc, e) => {
+                        const key = e.reason || 'unknown';
+                        acc[key] = (acc[key] || 0) + 1;
+                        return acc;
+                    }, {});
+                    const parts = [];
+                    if (reasons.migration) parts.push(`${reasons.migration} миграц.`);
+                    if (reasons.pipeline)  parts.push(`${reasons.pipeline} pipeline`);
+                    if (reasons.validation) parts.push(`${reasons.validation} невалид.`);
+                    if (reasons.missing)    parts.push(`${reasons.missing} не найдено`);
+                    if (reasons.unknown)    parts.push(`${reasons.unknown} прочих`);
                     snackbar.warning(
                         `Snapshot сохранён (${result.exported} расч.); ` +
-                        `${result.errors.length} расчёт(ов) пропущено из-за ошибок миграции/чтения.`
+                        `${result.errors.length} пропущено: ${parts.join(', ')}. ` +
+                        `Откройте проблемные расчёты для исправления.`
                     );
                 } else {
                     snackbar.success(`Полный snapshot сохранён (${result?.exported ?? store.getState().calcList.length} расч.)`);

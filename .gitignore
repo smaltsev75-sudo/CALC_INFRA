@@ -12,14 +12,30 @@ skill.md
 
 # Dev-only: tests and tooling
 # Аудит #16 (PATCH 2.19.3): tests/unit/architecture/ — это executable-инварианты
-# архитектуры (контракты production-кода), не dev tooling. Они tracked в репо
-# чтобы следующая сессия / контрибьютор / CI имели доступ к invariants как к
-# части кода. tests/integration/ и tests/unit/ остальное — dev-only по контракту.
+# архитектуры (контракты production-кода), не dev tooling.
+# Аудит #17 (PATCH 2.19.4): расширено до зависимостей tracked-тестов.
+# Tracked: tests/run.js (npm test entry-point), tests/_helpers/ (импортируется
+# architecture-тестами), scripts/ (npm scripts: bump, generate:providers).
+# Без них clean checkout / git archive / CI не запустят npm test и npm run bump.
+# Dev-only (gitignored): tests/integration/, tests/unit/ остальное (кроме architecture/),
+# tests/_sanity-check.mjs, tests/audit-tooltips.mjs.
 tests/*
 !tests/unit/
+!tests/run.js
+!tests/_helpers/
 tests/unit/*
 !tests/unit/architecture/
-scripts/
+# Maintainer-only architecture-тесты: депенденс на ignored data/providers/ или
+# tests/unit/services/ (audit checks вокруг maintainer-only fixtures). В clean
+# checkout эти fixtures отсутствуют, поэтому тесты maintainer-локальные.
+tests/unit/architecture/provider-overlay-coverage.test.js
+tests/unit/architecture/provider-overlay-uses-bundled.test.js
+tests/unit/architecture/providers-bundled-sync.test.js
+tests/unit/architecture/stage-14-7-json-linter.test.js
+tests/unit/architecture/stage-17-2-phase-5-cleanup.test.js
+tests/unit/architecture/stage-17-2-phase-6-final-sweep.test.js
+tests/unit/architecture/vat-rate-no-literals.test.js
+# scripts/ tracked (используется npm scripts: bump, generate:providers, migrate)
 
 # Provider price sources (maintainer-only; runtime uses js/data/providers-bundled.generated.js)
 # IMPORTANT: leading slash anchors to repo root — without it, the pattern would

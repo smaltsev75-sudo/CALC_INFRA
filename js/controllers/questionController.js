@@ -44,9 +44,27 @@ export function saveQuestion(q) {
     const questions = upsertById(calc.dictionaries.questions, q);
     // Если вопрос новый — добавим дефолтный ответ.
     const answers = { ...calc.answers };
-    if (!(q.id in answers)) answers[q.id] = defaultAnswerFor(q);
+    const isNewQuestion = !(q.id in answers);
+    if (isNewQuestion) answers[q.id] = defaultAnswerFor(q);
 
-    const newCalc = { ...calc, dictionaries: { ...calc.dictionaries, questions }, answers };
+    /* Внешний аудит #17 (2026-05-19, PATCH 2.19.4, P2.a): root ↔ scenarios mirror.
+     * До фикса новый вопрос добавлялся только в root.answers, scenarios[*].answers
+     * оставались без него. При switchScenario → scenarios.answers копируется в root,
+     * новый вопрос «пропадает». Здесь симметрично root: добавляем default в каждый
+     * scenario, у которого ключа ещё нет. */
+    const scenarios = (isNewQuestion && Array.isArray(calc.scenarios))
+        ? calc.scenarios.map(sc => {
+            if (!sc || !sc.answers || q.id in sc.answers) return sc;
+            return { ...sc, answers: { ...sc.answers, [q.id]: defaultAnswerFor(q) } };
+        })
+        : calc.scenarios;
+
+    const newCalc = {
+        ...calc,
+        dictionaries: { ...calc.dictionaries, questions },
+        answers,
+        ...(scenarios !== calc.scenarios ? { scenarios } : {})
+    };
 
     /* Внешний аудит #15 (2026-05-19, PATCH 2.19.2, P2): частичная валидация
      * answers ↔ questions для newCalc. Раньше: вопрос с min=0 редактировался
@@ -85,7 +103,25 @@ export function deleteQuestion(qid) {
     const questions = removeById(calc.dictionaries.questions, qid);
     const answers = { ...calc.answers };
     delete answers[qid];
-    const newCalc = { ...calc, dictionaries: { ...calc.dictionaries, questions }, answers };
+    /* Внешний аудит #17 (2026-05-19, PATCH 2.19.4, P1): scenarios[*].answers
+     * тоже содержат ответы на этот вопрос. До фикса удалялось только из root —
+     * switchScenario потом копировал stale answers обратно, удалённый вопрос
+     * «воскресал» в root. Формулы доверяют любому ключу в Q, что могло менять
+     * расчёт по удалённому вопросу. */
+    const scenarios = Array.isArray(calc.scenarios)
+        ? calc.scenarios.map(sc => {
+            if (!sc || !sc.answers || !(qid in sc.answers)) return sc;
+            const scAnswers = { ...sc.answers };
+            delete scAnswers[qid];
+            return { ...sc, answers: scAnswers };
+        })
+        : calc.scenarios;
+    const newCalc = {
+        ...calc,
+        dictionaries: { ...calc.dictionaries, questions },
+        answers,
+        ...(scenarios !== calc.scenarios ? { scenarios } : {})
+    };
     if (!commitActiveCalc(newCalc)) {
         return { ok: false, reason: 'persist',
             message: 'Не удалось удалить вопрос: превышен лимит хранилища (quota?). ' +
@@ -143,13 +179,33 @@ export async function importQuestions({ replace = false } = {}) {
                 const base = replace ? [] : [...calc.dictionaries.questions];
                 const merged = mergeById(base, accepted);
                 const answers = { ...calc.answers };
+                const newIds = [];
                 for (const q of accepted) {
-                    if (!(q.id in answers)) answers[q.id] = defaultAnswerFor(q);
+                    if (!(q.id in answers)) {
+                        answers[q.id] = defaultAnswerFor(q);
+                        newIds.push(q);
+                    }
                 }
+                /* Внешний аудит #17 (PATCH 2.19.4, P2.a): scenarios mirror — symmetric к saveQuestion. */
+                const scenarios = (newIds.length > 0 && Array.isArray(calc.scenarios))
+                    ? calc.scenarios.map(sc => {
+                        if (!sc || !sc.answers) return sc;
+                        const additions = {};
+                        let added = false;
+                        for (const q of newIds) {
+                            if (!(q.id in sc.answers)) {
+                                additions[q.id] = defaultAnswerFor(q);
+                                added = true;
+                            }
+                        }
+                        return added ? { ...sc, answers: { ...sc.answers, ...additions } } : sc;
+                    })
+                    : calc.scenarios;
                 const newCalc = {
                     ...calc,
                     dictionaries: { ...calc.dictionaries, questions: merged },
-                    answers
+                    answers,
+                    ...(scenarios !== calc.scenarios ? { scenarios } : {})
                 };
                 /* Внешний аудит #15 (2026-05-19, PATCH 2.19.2, P2): частичная
                  * валидация answers ↔ questions — родственное к saveQuestion. */
