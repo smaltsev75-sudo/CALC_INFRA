@@ -24,7 +24,8 @@ import {
     DEFAULT_RESOURCE_RATIO,
     DEFAULT_AI_STAND_FACTOR,
     DASHBOARD_RESOURCE_LABELS,
-    STAND_IDS
+    STAND_IDS,
+    STAND_RATIO_RANGES
 } from '../utils/constants.js';
 import { VAT_RATE_HISTORY, getCurrentVatRate } from '../domain/vatRateTable.js';
 import { sanitizeDeprecatedQuestions } from '../domain/deprecatedQuestions.js';
@@ -344,19 +345,25 @@ export const MIGRATIONS = [
     },
     {
         from: 11, to: 12,
-        description: 'Инвариант «ни один стенд ≤ ПРОМ»: clamp standSizeRatio и ' +
-                     'resourceRatio до 1.00. Раньше LOAD имел max=1.20 («нагрузочные ' +
-                     'с запасом»), а VALIDATION.RATIO_MAX=5.0 пропускал любые legacy/' +
-                     'импортные значения до 5x. Теперь верхняя граница — 1.00 (= PROD). ' +
-                     'aiStandFactor уже был 0..1 и трогать не нужно.',
+        description: 'Per-stand clamp standSizeRatio и resourceRatio. Stage 19 ' +
+                     '(MINOR 2.19.0) — инвариант «стенд ≤ ПРОМ» снят для LOAD ' +
+                     '(теперь 0.20..1.20 для capacity-запаса). DEV/IFT/PSI ' +
+                     'остаются ≤ 1.00. Clamp идёт через STAND_RATIO_RANGES — ' +
+                     'если в будущем диапазоны изменятся, миграция автоматически ' +
+                     'согласуется. До 2.19.0 — глобальный clamp до 1.00.',
         run(calc) {
             const s = calc.settings;
             if (!s) return;
+            const standMax = (stand) => {
+                const r = STAND_RATIO_RANGES[stand];
+                return r ? r.max : 1.00;
+            };
             if (s.standSizeRatio && typeof s.standSizeRatio === 'object') {
                 for (const stand of STAND_IDS) {
                     const v = s.standSizeRatio[stand];
-                    if (Number.isFinite(v) && v > 1.00) {
-                        s.standSizeRatio[stand] = 1.00;
+                    const max = standMax(stand);
+                    if (Number.isFinite(v) && v > max) {
+                        s.standSizeRatio[stand] = max;
                     }
                 }
             }
@@ -364,10 +371,11 @@ export const MIGRATIONS = [
                 for (const stand of STAND_IDS) {
                     const row = s.resourceRatio[stand];
                     if (!row || typeof row !== 'object') continue;
+                    const max = standMax(stand);
                     for (const r of DASHBOARD_RESOURCE_LABELS) {
                         const v = row[r];
-                        if (Number.isFinite(v) && v > 1.00) {
-                            row[r] = 1.00;
+                        if (Number.isFinite(v) && v > max) {
+                            row[r] = max;
                         }
                     }
                 }

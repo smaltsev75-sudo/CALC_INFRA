@@ -6,7 +6,7 @@
 import {
     STAND_IDS, CATEGORY_IDS, BILLING_INTERVAL_IDS, RESOURCE_CLASS_IDS,
     SECTION_IDS, QUESTION_TYPES, PERIOD_IDS, COST_TYPE_IDS,
-    DASHBOARD_RESOURCE_LABELS, VALIDATION
+    DASHBOARD_RESOURCE_LABELS, VALIDATION, STAND_RATIO_RANGES
 } from '../utils/constants.js';
 import { getAst, isAstError } from './formula/cache.js';
 import { collectReferences } from './formula/evaluator.js';
@@ -262,9 +262,16 @@ export function validateSettings(settings, errors = [], path = 'settings') {
                     err(errors, `${path}.standSizeRatio.${stand}`, `${stand}: должно быть числом`);
                     continue;
                 }
-                if (v < VALIDATION.RATIO_MIN || v > VALIDATION.RATIO_MAX)
+                /* Stage 19 (MINOR 2.19.0): per-stand диапазон через
+                 * STAND_RATIO_RANGES. LOAD до 1.20 (нагрузочный с capacity-
+                 * запасом), DEV/IFT/PSI до 1.00. До 2.19.0 — общий
+                 * VALIDATION.RATIO_MAX=1.0 (инвариант 13.U11). */
+                const range = STAND_RATIO_RANGES[stand];
+                const min = range ? range.min : VALIDATION.RATIO_MIN;
+                const max = range ? range.max : VALIDATION.RATIO_MAX;
+                if (v < min || v > max)
                     err(errors, `${path}.standSizeRatio.${stand}`,
-                        `${stand} в диапазоне ${VALIDATION.RATIO_MIN}…${VALIDATION.RATIO_MAX}`);
+                        `${stand} в диапазоне ${min}…${max}`);
             }
             // ПРОМ — эталон, всегда 1.00.
             if (settings.standSizeRatio.PROD !== undefined && settings.standSizeRatio.PROD !== 1.00)
@@ -317,9 +324,15 @@ export function validateSettings(settings, errors = [], path = 'settings') {
                         err(errors, `${path}.resourceRatio.${stand}.${r}`, `${stand}.${r}: должно быть числом`);
                         continue;
                     }
-                    if (v < VALIDATION.RATIO_MIN || v > VALIDATION.RATIO_MAX)
+                    /* Stage 19 (MINOR 2.19.0): per-stand диапазон через
+                     * STAND_RATIO_RANGES. resourceRatio наследует общий
+                     * stand-диапазон (LOAD до 1.20, остальные до 1.00). */
+                    const range = STAND_RATIO_RANGES[stand];
+                    const min = range ? range.min : VALIDATION.RATIO_MIN;
+                    const max = range ? range.max : VALIDATION.RATIO_MAX;
+                    if (v < min || v > max)
                         err(errors, `${path}.resourceRatio.${stand}.${r}`,
-                            `${stand}.${r} в диапазоне ${VALIDATION.RATIO_MIN}…${VALIDATION.RATIO_MAX}`);
+                            `${stand}.${r} в диапазоне ${min}…${max}`);
                     else if (stand === 'PROD' && v !== 1.00)
                         err(errors, `${path}.resourceRatio.PROD.${r}`,
                             'PROD-ratio зафиксирован = 1.00 для каждого ресурса (эталон)');

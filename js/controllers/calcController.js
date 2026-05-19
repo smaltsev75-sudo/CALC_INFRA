@@ -4,7 +4,7 @@
 
 import { store } from '../state/store.js';
 import { debounce } from '../utils/debounce.js';
-import { RECALC_DEBOUNCE_MS } from '../utils/constants.js';
+import { RECALC_DEBOUNCE_MS, STAND_RATIO_RANGES } from '../utils/constants.js';
 import { commitActiveCalc } from '../services/calcPersistence.js';
 import { SEED_QUESTIONS } from '../domain/seed.js';
 import { wizardToAnswers } from '../domain/wizardProfiles.js';
@@ -346,9 +346,13 @@ export function setResourceRatio(stand, resource, value) {
     if (!calc) return;
     if (stand === 'PROD') return;  // PROD = эталон, неизменяем.
     if (!Number.isFinite(value)) return;
-    /* Инвариант «стенд ≤ ПРОМ»: per-resource ratio в [0, 1]. PROD = 1.00 эталон,
-       любой другой стенд — доля от ПРОМ. Симметрично setAiStandFactor. */
-    if (value < 0 || value > 1) return;
+    /* Stage 19 (MINOR 2.19.0): per-stand диапазон через STAND_RATIO_RANGES.
+     * LOAD до 1.20 (нагрузочный с capacity-запасом), DEV/IFT/PSI до 1.00.
+     * До 2.19.0 — общий guard [0, 1] (инвариант 13.U11). */
+    const range = STAND_RATIO_RANGES[stand];
+    const min = range ? range.min : 0;
+    const max = range ? range.max : 1;
+    if (value < min || value > max) return;
 
     const current = (calc.settings.resourceRatio && typeof calc.settings.resourceRatio === 'object')
         ? calc.settings.resourceRatio

@@ -67,6 +67,11 @@ function makeNewCalculation(name, templateId = null) {
 
     const calc = {
         version: '1.0',
+        /* Stage 19 (MINOR 2.19.0): новый calc сразу на LATEST schemaVersion.
+         * До 2.19.0 поле опускалось → при первом open migrate применял ВСЕ
+         * шаги начиная с 0. В частности шаг 11→12 clamp'ил standSizeRatio
+         * до 1.00, что с новым дефолтом LOAD=1.20 ронял создаваемые calc'и. */
+        schemaVersion: CURRENT_SCHEMA_VERSION,
         id: uuid(),
         name: name || 'Новый расчёт',
         createdAt: createdAtIso,
@@ -105,6 +110,15 @@ function makeNewCalculation(name, templateId = null) {
     const scenario = buildScenarioFromRoot(calc, { label: 'Базовый' });
     calc.scenarios = [scenario];
     calc.activeScenarioId = scenario.id;
+
+    /* Stage 19 (2026-05-19, MINOR 2.19.0): enrich сразу в create-path — иначе
+     * asymmetry с open-path. До 2.19.0 enrich применялся только при первом
+     * open (через prepareLoadedCalc), что давало расхождение totalMonthly
+     * между before (in-memory after create) и after (after open + enrich).
+     * Audit-13 P2#4 fix снял length-only detection — теперь enrich changes
+     * формул ловятся как needsPersist. Поэтому symmetric enrich at-create
+     * необходим. */
+    enrichLegacyDictionaryWithAgentSeed(calc);
     return calc;
 }
 
