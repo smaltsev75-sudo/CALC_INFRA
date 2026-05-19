@@ -25,6 +25,11 @@ import { validateCalculation, validateItem, validateQuestion } from '../domain/v
 import { migrateCalculation, MigrationError } from '../state/migrations.js';
 import { APP_VERSION } from '../utils/constants.js';
 import { dateForFilename } from './format.js';
+import {
+    sanitizeDeprecatedQuestions,
+    sanitizeDefaultDictionary
+} from '../domain/deprecatedQuestions.js';
+import { applyVatResolver } from '../domain/vatResolver.js';
 
 export const BUNDLE_VERSION = 'bundle-3.0';
 
@@ -62,13 +67,23 @@ function parseBundleVersion(version) {
  */
 export function buildStateBundle() {
     const list = persist.loadCalcList();
-    const calcs = list.map(meta => persist.loadCalc(meta.id)).filter(Boolean);
+    /* Внешний аудит #9 (2026-05-19, P1#2-родственный): экспорт ВСЕГДА
+     * проходит через sanitize. Storage мог содержать stale deprecated id
+     * на LATEST schemaVersion (миграция-удаление пропущена для snapshot'ов
+     * уже на актуальной версии). Без sanitize stale утекал в backup —
+     * пользователь, восстанавливая bundle, получал обратно удалённые
+     * вопросы. Идемпотентно: clean → тот же объект. */
+    const calcs = list
+        .map(meta => persist.loadCalc(meta.id))
+        .filter(Boolean)
+        .map(c => sanitizeDeprecatedQuestions(c));
+    const rawDict = persist.loadDefaultDictionary() || { items: [], questions: [] };
     return {
         version: BUNDLE_VERSION,
         exportedAt: new Date().toISOString(),
         appVersion: APP_VERSION,
         activeCalcId: persist.loadActiveCalcId(),
-        defaultDictionary: persist.loadDefaultDictionary() || { items: [], questions: [] },
+        defaultDictionary: sanitizeDefaultDictionary(rawDict),
         calculations: calcs
     };
 }
@@ -231,10 +246,14 @@ export function applyStateBundle(data) {
     //    записей в localStorage. Это даёт настоящую атомарность: если хоть один
     //    расчёт не мигрирует — мы возвращаем ошибку, а текущее состояние
     //    хранилища остаётся нетронутым (backup даже не пришлось задействовать).
+    /* Внешний аудит #9 (2026-05-19, P1#1-родственный): добавлен applyVatResolver
+     * после migrate — симметрично с openCalc и importCalcFromFile. Bundle от
+     * старой версии приложения (до VAT-resolver fix) с auto-by-date calc'ом
+     * раньше восстанавливал stale ставку, теперь пересчитывается. */
     let migrated;
     try {
         migrated = data.calculations.map(c => {
-            const m = migrateCalculation(c);
+            const m = applyVatResolver(migrateCalculation(c));
             if (!m.view || typeof m.view !== 'object') m.view = { disabledStands: [] };
             else if (!Array.isArray(m.view.disabledStands)) m.view.disabledStands = [];
             return m;

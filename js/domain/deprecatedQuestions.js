@@ -124,3 +124,43 @@ export function sanitizeDeprecatedQuestions(calc) {
 
     return out;
 }
+
+/**
+ * Содержит ли defaultDictionary хотя бы один deprecated id?
+ * Symmetric helper для calc-варианта (hasDeprecatedQuestions выше) —
+ * без него нельзя сделать guarded sanitize без двойного scan'а.
+ *
+ * Внешний аудит #9 (2026-05-19, P1#2): makeNewCalculation берёт stored
+ * defaultDictionary без sanitize и переносит deprecated вопросы в новый
+ * calc. До фикса единственный sanitize в коде — на calc (через migrate),
+ * default dict оставался нетронутым.
+ */
+export function hasDeprecatedInDictionary(dict) {
+    if (!dict || typeof dict !== 'object') return false;
+    if (!Array.isArray(dict.questions)) return false;
+    return dict.questions.some(q => q && DEPRECATED_QUESTION_IDS.has(q.id));
+}
+
+/**
+ * Идемпотентная зачистка deprecated-вопросов из defaultDictionary.
+ *
+ * Возвращает новый объект (не мутирует вход). Если чистить нечего —
+ * возвращает тот же reference (важно для reference-equality в подписчиках).
+ *
+ * Используется в:
+ *   - calcListController.makeNewCalculation (стертые stale id не попадают
+ *     в dictionaries.questions и в answers нового calc'а);
+ *   - bundleExport.buildStateBundle (stale не утекает в backup);
+ *   - state/persistence.saveDefaultDictionary (write-side cleanup — новый
+ *     stale не создаётся, даже если caller передал грязный объект).
+ *
+ * @param {object} dict
+ * @returns {object}
+ */
+export function sanitizeDefaultDictionary(dict) {
+    if (!hasDeprecatedInDictionary(dict)) return dict;
+    return {
+        ...dict,
+        questions: dict.questions.filter(q => !q || !DEPRECATED_QUESTION_IDS.has(q.id))
+    };
+}

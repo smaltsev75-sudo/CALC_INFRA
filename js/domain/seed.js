@@ -40,7 +40,7 @@ import { getCurrentVatRate } from './vatRateTable.js';
 
 /* Re-export для удобства UI/domain-слоя (источник — deprecatedQuestions.js,
    вынесен отдельно ради разрыва цикла migrations → seed → constants → migrations). */
-export { DEPRECATED_QUESTION_IDS, sanitizeDeprecatedQuestions } from './deprecatedQuestions.js';
+export { DEPRECATED_QUESTION_IDS, sanitizeDeprecatedQuestions, sanitizeDefaultDictionary } from './deprecatedQuestions.js';
 
 /*
  * Заголовки и описания пишутся для НЕТЕХНИЧЕСКОГО пользователя:

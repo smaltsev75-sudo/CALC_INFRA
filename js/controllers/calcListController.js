@@ -18,15 +18,74 @@ import { getTemplateById } from '../domain/templates.js';
 import { wizardToAnswers } from '../domain/wizardProfiles.js';
 import { buildScenarioFromRoot, syncActiveScenarioFromRoot } from '../domain/scenarios.js';
 import { applyVatResolver } from '../domain/vatResolver.js';
-import { hasDeprecatedQuestions } from '../domain/deprecatedQuestions.js';
+import { hasDeprecatedQuestions, sanitizeDefaultDictionary } from '../domain/deprecatedQuestions.js';
 import { getVatRateForDate, isoDateOf, getCurrentVatRate } from '../domain/vatRateTable.js';
+
+/**
+ * Единый pipeline загрузки calc из storage: migrate → enrich → applyVatResolver.
+ *
+ * Внешний аудит #9 (2026-05-19): три load-path (openCalc / initFromStorage
+ * boot / importCalcFromFile) делали части pipeline вручную и разошлись:
+ *   - openCalc: migrate + enrich + applyVatResolver + hasDeprecated check;
+ *   - initFromStorage: migrate + enrich (БЕЗ applyVatResolver, БЕЗ hasDeprecated);
+ *   - importCalcFromFile: migrate + enrich (БЕЗ applyVatResolver).
+ *
+ * Эта функция — единственный источник правды для «как подготовить stored
+ * calc к use». Симметрия защищена линтером
+ * [tests/unit/architecture/loaded-calc-pipeline-invariant.test.js].
+ *
+ * Контракт результата:
+ *   { calc, needsPersist, error? }
+ *   - calc: новый объект, готов к store.setActiveCalc и commitMigratedCalc;
+ *   - needsPersist: true если pipeline что-либо изменил относительно stored
+ *     (schemaVersion bump, vatRate пересчитан, deprecated id sanitize'нуты);
+ *   - error: MigrationError | Error если migrate упал. calc=null в этом случае.
+ *
+ * @param {object} stored — raw calc-объект, прочитанный из persist.loadCalc.
+ * @returns {{calc: object|null, needsPersist: boolean, error: Error|null}}
+ */
+export function prepareLoadedCalc(stored) {
+    if (!stored || typeof stored !== 'object') {
+        return { calc: stored, needsPersist: false, error: null };
+    }
+    let calc;
+    try {
+        calc = migrateCalculation(stored);
+        enrichLegacyDictionaryWithAgentSeed(calc);
+    } catch (e) {
+        return { calc: null, needsPersist: false, error: e };
+    }
+    const beforeVat = calc;
+    calc = applyVatResolver(calc);
+    const vatChanged = calc !== beforeVat;
+
+    const storedVersion = Number.isFinite(stored.schemaVersion) ? stored.schemaVersion : 0;
+    const schemaChanged = calc.schemaVersion !== storedVersion;
+    /* persist-after-sanitize: schemaVersion может уже быть на LATEST, но
+     * sanitize в migrateCalculation удалил deprecated id. Без этого флага
+     * stored остаётся stale (см. P2#4 внешнего аудита #9). */
+    const hadDeprecated = hasDeprecatedQuestions(stored);
+
+    return {
+        calc,
+        needsPersist: schemaChanged || vatChanged || hadDeprecated,
+        error: null
+    };
+}
 
 /* ---------- Внутреннее ---------- */
 
 function makeNewCalculation(name, templateId = null) {
     const dict = (() => {
         const stored = persist.loadDefaultDictionary();
-        return stored && stored.items && stored.questions ? stored : buildSeedDictionaries();
+        const raw = stored && stored.items && stored.questions ? stored : buildSeedDictionaries();
+        /* Внешний аудит #9 (2026-05-19, P1#2): stored defaultDictionary мог
+         * содержать deprecated id (snapshot от старой версии без миграции
+         * самого dict — миграция чистит только calc.dictionaries.questions).
+         * Без sanitize здесь новый calc уносит stale в `dict.questions`,
+         * `defaultAnswersFrom` создаёт answer-key, scenarios[0] копирует это.
+         * Идемпотентный sanitize — clean dict возвращает тот же reference. */
+        return sanitizeDefaultDictionary(raw);
     })();
     /* 12.U16: если задан templateId — мерджим answers/settings из шаблона поверх дефолтов.
        Если шаблон не найден (id невалиден) — silent fallback на пустые дефолты. */
@@ -150,7 +209,15 @@ export function refreshCalcList() {
             // дефолты, чтобы один битый расчёт не уронил весь список «Расчёты».
             // Реальную ошибку увидит пользователь, когда попробует открыть calc.
             try {
-                const migrated = migrateCalculation(calc);
+                /* Внешний аудит #9 (2026-05-19, self-audit): card-display
+                 * показывал stale vatRate для auto-by-date legacy-расчётов,
+                 * пока пользователь не открывал их (openCalc делал resolver+
+                 * persist). После фикса list-card сразу показывает
+                 * resolved-ставку. БЕЗ persist здесь — итерируем все calc'и,
+                 * N писем в storage на каждый F5 = лишний overhead. Persist
+                 * случится при первом openCalc или сразу на boot для
+                 * активного calc'а (initFromStorage уже зовёт prepareLoadedCalc). */
+                const migrated = applyVatResolver(migrateCalculation(calc));
                 enrichLegacyDictionaryWithAgentSeed(migrated);
                 try {
                     const r = calculate(migrated);
@@ -203,48 +270,24 @@ export function createCalc(name, templateId = null) {
 export function openCalc(id) {
     const stored = persist.loadCalc(id);
     if (!stored) return null;
-    // Атомарная миграция (10.1.3): если упала — не открываем calc, не трогаем
-    // activeCalc, выводим snackbar. Иначе пользователь увидел бы partial-mutated
-    // calc или необработанное исключение, которое уронит app.js subscriber.
-    let calc;
-    try {
-        calc = migrateCalculation(stored);
-        // Этап 13: подмешать новые agent-вопросы / ЭК / обновить LLM-формулы
-        // (избегаем circular import seed ↔ migrations через post-migration enrich).
-        enrichLegacyDictionaryWithAgentSeed(calc);
-    } catch (e) {
+    /* Внешний аудит #9 (2026-05-19): pipeline вынесен в prepareLoadedCalc
+     * для симметрии с initFromStorage и importCalcFromFile. Раньше каждый
+     * load-path собирал последовательность migrate/enrich/applyVatResolver/
+     * hasDeprecated вручную и расходился. */
+    const { calc, needsPersist, error } = prepareLoadedCalc(stored);
+    if (error) {
         const name = stored?.name || id;
-        const reason = e instanceof MigrationError ? e.message : (e?.message || String(e));
+        const reason = error instanceof MigrationError ? error.message : (error?.message || String(error));
         store.setPersistStatus('error', `Не удалось мигрировать расчёт «${name}»: ${reason}`);
         return null;
     }
-    /* Stage VAT-1 Phase 3: после миграции + enrichment — пересчитать эффективную
-       ставку НДС для auto-by-date. Manual/frozen — no-op (тот же объект). */
-    const beforeVatResolve = calc;
-    calc = applyVatResolver(calc);
-    const vatChanged = calc !== beforeVatResolve;
-
-    // migrateCalculation всегда возвращает новый объект (deep clone), поэтому
-    // сравнивать ссылки бесполезно. Сохраняем только если изменилась версия
-    // схемы или resolver реально пересчитал vatRate (auto-by-date после
-    // обновления справочника или legacy с null vatEffectiveDate) — иначе на
-    // каждом open плодили бы лишние записи в localStorage.
-    // 11.1.1: пишем через commitMigratedCalc — calc + list атомарно,
-    // вместо прямого persist.saveCalc, чтобы list[i].updatedAt согласовался.
-    const storedVersion = Number.isFinite(stored.schemaVersion) ? stored.schemaVersion : 0;
-    /* Внешний аудит #10 (2026-05-19, P2.2): persist-after-sanitize.
-     * Если stored содержал deprecated id (snapshot на LATEST schemaVersion,
-     * шаг-удаление пропущен) — sanitize очищает in-memory, но без явного
-     * commit'а stale данные остаются в localStorage и в bundle-export.
-     * Проверяем raw stored ДО migrate. */
-    const hadDeprecated = hasDeprecatedQuestions(stored);
     /* Внешний аудит #7 (2026-05-18, P2): commitMigratedCalc проверяется.
      * При quota раньше store получал мигрированный calc, а storage оставался
      * legacy — на F5 миграция повторялась (идемпотентно), но в текущей
      * сессии любая правка через обычный commit тоже падала бы, что вводило
      * пользователя в заблуждение «calc открыт». Теперь при persist-fail
      * миграции — calc НЕ открывается, явный error-banner с инструкцией. */
-    if (calc.schemaVersion !== storedVersion || vatChanged || hadDeprecated) {
+    if (needsPersist) {
         if (!commitMigratedCalc(calc)) {
             const name = stored.name || id;
             store.setPersistStatus('error',
@@ -403,20 +446,26 @@ export async function importCalcFromFile(opts = {}) {
     // Миграция legacy-формата ДО валидации (валидатор уже проверяет phaseDurationMonths).
     // На MigrationError (10.1.3) возвращаем reason='migration' вместо throw,
     // чтобы импорт повёл себя консистентно с остальными ошибочными исходами.
-    try {
-        data = migrateCalculation(data);
-        enrichLegacyDictionaryWithAgentSeed(data);
-    } catch (e) {
-        const reason = e instanceof MigrationError ? e.message : (e?.message || String(e));
-        return {
-            ok: false,
-            reason: 'migration',
-            errors: [{
-                calcId: data?.id ?? null,
-                step: e instanceof MigrationError ? `${e.from}→${e.to}` : null,
-                message: reason
-            }]
-        };
+    /* Внешний аудит #9 (2026-05-19, P1#1-родственный): пайплайн через
+     * prepareLoadedCalc — даёт applyVatResolver симметрично с openCalc.
+     * До фикса auto-by-date calc из старой версии (без resolver) импортился
+     * с stale vatRate. */
+    {
+        const prepared = prepareLoadedCalc(data);
+        if (prepared.error) {
+            const e = prepared.error;
+            const reason = e instanceof MigrationError ? e.message : (e?.message || String(e));
+            return {
+                ok: false,
+                reason: 'migration',
+                errors: [{
+                    calcId: data?.id ?? null,
+                    step: e instanceof MigrationError ? `${e.from}→${e.to}` : null,
+                    message: reason
+                }]
+            };
+        }
+        data = prepared.calc;
     }
 
     // view — опциональный блок; если в файле его нет, дефолтим, чтобы UI имел
@@ -655,38 +704,28 @@ export function initFromStorage() {
 
     const activeId = persist.loadActiveCalcId();
     if (activeId) {
-        const calc = persist.loadCalc(activeId);
-        if (calc) {
-            // Защитная миграция (10.1.3): если schemaVersion расчёта меньше
-            // последней — мигрируем здесь же. На MigrationError не кладём
-            // битый calc в store, не падаем в boot, выводим snackbar и
-            // оставляем activeCalc в null, чтобы пользователь мог хотя бы
-            // открыть список и выбрать другой расчёт.
-            let migrated;
-            try {
-                migrated = migrateCalculation(calc);
-                enrichLegacyDictionaryWithAgentSeed(migrated);
-            } catch (e) {
-                const name = calc?.name || activeId;
-                const reason = e instanceof MigrationError ? e.message : (e?.message || String(e));
+        const stored = persist.loadCalc(activeId);
+        if (stored) {
+            /* Внешний аудит #9 (2026-05-19, P1#1 + P2#4): boot-path активного
+             * calc'а собирал миграцию и persist-condition вручную, без
+             * applyVatResolver и без hasDeprecated-check. Теперь — единый
+             * pipeline через prepareLoadedCalc, симметричный с openCalc. */
+            const { calc: migrated, needsPersist, error } = prepareLoadedCalc(stored);
+            if (error) {
+                const name = stored?.name || activeId;
+                const reason = error instanceof MigrationError ? error.message : (error?.message || String(error));
                 store.setPersistStatus('error', `Не удалось мигрировать расчёт «${name}»: ${reason}`);
                 /* best-effort: уже выставили error выше; сбросить activeId — повторить на следующем boot. */
                 persist.saveActiveCalcId(null);
                 return;
             }
-            // Если миграция изменила версию схемы — переписываем расчёт в storage,
-            // чтобы при следующей загрузке миграция не выполнялась повторно (10.2.2).
-            // Сравниваем по schemaVersion, а не по ссылке: migrateCalculation
-            // всегда возвращает deep clone, поэтому сравнение ссылок бессмысленно.
-            // 11.1.1: атомарно через commitMigratedCalc (calc + list одновременно).
-            const storedVersion = Number.isFinite(calc.schemaVersion) ? calc.schemaVersion : 0;
-            /* Внешний аудит #7 (2026-05-18, P2): commitMigratedCalc проверяется
-             * (см. openCalc). При quota НЕ ставим migrated активным —
-             * сбрасываем activeCalcId, boot завершается без активного calc'а,
-             * пользователь видит persist-error-banner с инструкцией. */
-            if (migrated.schemaVersion !== storedVersion) {
+            /* Внешний аудит #7 (2026-05-18, P2): commitMigratedCalc проверяется.
+             * При quota НЕ ставим migrated активным — сбрасываем activeCalcId,
+             * boot завершается без активного calc'а, пользователь видит
+             * persist-error-banner с инструкцией. */
+            if (needsPersist) {
                 if (!commitMigratedCalc(migrated)) {
-                    const name = calc.name || activeId;
+                    const name = stored.name || activeId;
                     store.setPersistStatus('error',
                         `Не удалось сохранить мигрированный расчёт «${name}» (quota?). ` +
                         `Освободите место (экспорт JSON + удаление старых расчётов) и перезагрузите страницу.`);

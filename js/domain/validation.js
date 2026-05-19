@@ -287,6 +287,41 @@ export function validateSettings(settings, errors = [], path = 'settings') {
     return errors;
 }
 
+/**
+ * Валидация одного scenario.
+ *
+ * Внешний аудит #9 (2026-05-19, P1#3): до фикса validateCalculation
+ * проверял scenarios[*].answers только через guard `if (sc && isObject(sc.answers))` —
+ * массив `[null, "bad", {label:"No id"}]` проходил БЕЗ ошибок, потом
+ * `switchScenario` через spread строки превращал root.answers в
+ * `{0:'o',1:'o',2:'p',3:'s'}` (символы по индексам).
+ *
+ * Контракт scenario (см. [domain/scenarios.js#addScenario]):
+ *   { id: string-uuid, label: string≤120, wizard: object|null,
+ *     answers: object, answersMeta: object }.
+ *
+ * Per-answer type-check выполняется отдельно в validateCalculation
+ * (общий хелпер `_validateAnswersAgainstQuestions`), чтобы один и тот же
+ * helper покрывал и root.answers, и scenarios[*].answers.
+ */
+export function validateScenario(sc, errors = [], path = '') {
+    if (!isObject(sc)) { err(errors, path, 'Сценарий должен быть объектом'); return errors; }
+    if (!isString(sc.id) || sc.id.trim() === '') err(errors, `${path}.id`, 'id сценария обязателен');
+    if (isString(sc.id) && sc.id.length > VALIDATION.NAME_MAX)
+        err(errors, `${path}.id`, `id сценария: ≤ ${VALIDATION.NAME_MAX} симв.`);
+    if (!isString(sc.label) || sc.label.trim() === '')
+        err(errors, `${path}.label`, 'label сценария обязателен');
+    if (isString(sc.label) && sc.label.length > VALIDATION.NAME_MAX)
+        err(errors, `${path}.label`, `label ≤ ${VALIDATION.NAME_MAX} симв.`);
+    if (sc.wizard !== undefined && sc.wizard !== null && !isObject(sc.wizard))
+        err(errors, `${path}.wizard`, 'wizard должен быть объектом или null');
+    if (!isObject(sc.answers))
+        err(errors, `${path}.answers`, 'answers должен быть объектом');
+    if (sc.answersMeta !== undefined && sc.answersMeta !== null && !isObject(sc.answersMeta))
+        err(errors, `${path}.answersMeta`, 'answersMeta должен быть объектом или null');
+    return errors;
+}
+
 /* Внутренний хелпер per-question check (PATCH 2.18.3, audit-10 P1.1).
  * Вынесен ради DRY между root.answers и scenarios[*].answers. */
 function _validateAnswersAgainstQuestions(answers, qById, errors, basePath) {
@@ -417,7 +452,18 @@ export function validateCalculation(calc, errors = [], path = '') {
                 _validateAnswersAgainstQuestions(calc.answers, qById, errors, `${path}answers`);
             }
             if (isArray(calc.scenarios)) {
+                /* Внешний аудит #9 (2026-05-19, P1#3): валидация ФОРМЫ scenario
+                 * (id, label, answers как объект, wizard как объект-или-null).
+                 * Per-answer type-check ниже использует qById, который пришёл
+                 * выше из dictionaries.questions. */
+                const seenScenarioIds = new Set();
                 calc.scenarios.forEach((sc, i) => {
+                    validateScenario(sc, errors, `${path}scenarios[${i}]`);
+                    if (sc && isString(sc.id)) {
+                        if (seenScenarioIds.has(sc.id))
+                            err(errors, `${path}scenarios[${i}].id`, `Дубликат id сценария: ${sc.id}`);
+                        seenScenarioIds.add(sc.id);
+                    }
                     if (sc && isObject(sc.answers)) {
                         _validateAnswersAgainstQuestions(
                             sc.answers, qById, errors,
@@ -425,6 +471,19 @@ export function validateCalculation(calc, errors = [], path = '') {
                         );
                     }
                 });
+                /* activeScenarioId обязан указывать на существующий scenario,
+                 * иначе switchScenario вернёт null и root останется
+                 * рассинхронизированным с UI-табом. До фикса допускался
+                 * «призрак» — валидация падала молча. */
+                if (calc.activeScenarioId !== undefined && calc.activeScenarioId !== null) {
+                    if (!isString(calc.activeScenarioId)) {
+                        err(errors, `${path}activeScenarioId`,
+                            'activeScenarioId должен быть строкой или null');
+                    } else if (calc.scenarios.length > 0 && !seenScenarioIds.has(calc.activeScenarioId)) {
+                        err(errors, `${path}activeScenarioId`,
+                            `activeScenarioId="${calc.activeScenarioId}" не найден среди scenarios`);
+                    }
+                }
             }
         }
     }
@@ -440,6 +499,7 @@ export function validate(target, kind = 'calculation') {
     else if (kind === 'item')   validateItem(target, errors);
     else if (kind === 'question') validateQuestion(target, errors);
     else if (kind === 'settings') validateSettings(target, errors);
+    else if (kind === 'scenario') validateScenario(target, errors);
     return { valid: errors.length === 0, errors };
 }
 
