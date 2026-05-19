@@ -174,6 +174,13 @@ export function validateQuestion(q, errors = [], path = '') {
         if (dv === undefined || dv === null) continue;
         if (q.type === 'number' && typeof dv !== 'number') {
             err(errors, `${path}.${defField}`, `${defField} для number-вопроса должен быть числом`);
+        } else if (q.type === 'number' && typeof dv === 'number' && !Number.isFinite(dv)) {
+            /* Внешний аудит #15 (2026-05-19, PATCH 2.19.2, P3): NaN/Infinity
+             * имеют typeof === 'number'. До фикса проходили валидацию, в
+             * persisted JSON превращались в null (JSON.stringify(NaN)='null'),
+             * UI получал nullable там где ожидал число. */
+            err(errors, `${path}.${defField}`,
+                `${defField} должен быть конечным числом (получено ${dv})`);
         } else if (q.type === 'number' && typeof dv === 'number') {
             /* Внешний аудит #14 (2026-05-19, PATCH 2.19.1, P2#3): defaultValue/
              * defaultIfUnknown должны попадать в [min, max]. До фикса
@@ -415,6 +422,33 @@ export function validateScenario(sc, errors = [], path = '') {
     return errors;
 }
 
+/**
+ * Публичная частичная валидация answers против questions calc'а.
+ *
+ * Audit #15 P2 (PATCH 2.19.2): saveQuestion/importQuestions нужно отвергать
+ * изменение, после которого answer оказывается вне `[q.min, q.max]` или
+ * вне `q.options[*].value`. Полная validateCalculation отвергала бы
+ * также минимальные тестовые seed (settings:{}). Этот helper проверяет
+ * ТОЛЬКО answer↔question консистентность, не settings/items/etc.
+ *
+ * @param {object} calc — calc с dictionaries.questions и answers.
+ * @param {Array}  [errors=[]] аккумулятор.
+ * @returns {Array} errors (ссылка).
+ */
+export function validateAnswersConsistency(calc, errors = []) {
+    if (!calc || typeof calc !== 'object') return errors;
+    const dict = calc.dictionaries;
+    if (!dict || !isArray(dict.questions)) return errors;
+    const qById = new Map();
+    for (const q of dict.questions) {
+        if (q && typeof q.id === 'string') qById.set(q.id, q);
+    }
+    if (isObject(calc.answers)) {
+        _validateAnswersAgainstQuestions(calc.answers, qById, errors, 'answers');
+    }
+    return errors;
+}
+
 /* Внутренний хелпер per-question check (PATCH 2.18.3, audit-10 P1.1).
  * Вынесен ради DRY между root.answers и scenarios[*].answers.
  * Size-limit ANSWER_STR_MAX делается отдельно (см. validateCalculation),
@@ -427,6 +461,12 @@ function _validateAnswersAgainstQuestions(answers, qById, errors, basePath) {
         const ePath = `${basePath}.${id}`;
         if (q.type === 'number' && typeof value !== 'number') {
             err(errors, ePath, `Ожидается число (тип вопроса: number)`);
+        } else if (q.type === 'number' && typeof value === 'number' && !Number.isFinite(value)) {
+            /* Внешний аудит #15 (2026-05-19, PATCH 2.19.2, P3): NaN/Infinity
+             * имеют typeof === 'number' но JSON.stringify превращает их в
+             * 'null'. До фикса answer=NaN проходил, persisted=null, UI
+             * парсил number-input → NaN снова, цикл. */
+            err(errors, ePath, `Ожидается конечное число (получено ${value})`);
         } else if (q.type === 'number' && typeof value === 'number') {
             if (typeof q.min === 'number' && value < q.min) {
                 err(errors, ePath,

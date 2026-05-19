@@ -30,6 +30,7 @@ import { migrateCalculation } from '../state/migrations.js';
 import { enrichLegacyDictionaryWithAgentSeed } from '../domain/seed.js';
 import { applyVatResolver } from '../domain/vatResolver.js';
 import { hasDeprecatedQuestions } from '../domain/deprecatedQuestions.js';
+import { normalizeStandRatios } from '../domain/standRatioNormalizer.js';
 
 /**
  * Подготовить calc из raw stored для use в store.
@@ -87,13 +88,25 @@ export function prepareLoadedCalc(stored) {
     calc = applyVatResolver(calc);
     const vatChanged = calc !== beforeVat;
 
+    /* Внешний аудит #15 (2026-05-19, PATCH 2.19.2, P1+P1/P2): idempotent
+     * normalizer для standSizeRatio/resourceRatio. Migration v11→v12 (двусторонний
+     * clamp, audit #14 P1#2) и v2→v3 (init resourceRatio) запускаются ТОЛЬКО
+     * для legacy calc'ов со schemaVersion < 12 / < 3. Calc на LATEST с
+     * LOAD=0.10 (out-of-range) или без resourceRatio (из 2.19.0 до audit-14
+     * P1#1) пропускали оба шага — bundle export проходил, validateBundle
+     * отвергал, расчёт UI ↔ движок расходился.
+     *
+     * Normalizer применяется к ВСЕМ load-paths через этот pipeline. Мутирует
+     * calc; возвращает true если что-то изменилось → needsPersist. */
+    const normalizeChanged = normalizeStandRatios(calc);
+
     const storedVersion = Number.isFinite(stored.schemaVersion) ? stored.schemaVersion : 0;
     const schemaChanged = calc.schemaVersion !== storedVersion;
     const hadDeprecated = hasDeprecatedQuestions(stored);
 
     return {
         calc,
-        needsPersist: schemaChanged || vatChanged || hadDeprecated || enrichChanged,
+        needsPersist: schemaChanged || vatChanged || hadDeprecated || enrichChanged || normalizeChanged,
         error: null
     };
 }

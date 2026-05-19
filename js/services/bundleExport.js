@@ -27,6 +27,7 @@ import { APP_VERSION, STORAGE_KEYS } from '../utils/constants.js';
 import { dateForFilename } from './format.js';
 import { sanitizeDefaultDictionary } from '../domain/deprecatedQuestions.js';
 import { prepareLoadedCalc } from './loadedCalc.js';
+import { normalizeStandRatios } from '../domain/standRatioNormalizer.js';
 import { removeKey } from './storage.js';
 
 export const BUNDLE_VERSION = 'bundle-3.0';
@@ -155,6 +156,11 @@ export function validateBundle(data) {
             const calcErrors = [];
             // Применяем миграцию ДО валидации, чтобы legacy-форматы прошли проверку.
             const migrated = migrateCalculation(c);
+            /* Внешний аудит #15 (2026-05-19, PATCH 2.19.2, P1+P1/P2): помимо
+             * migrate нужен normalize — для calc'ов уже на LATEST schemaVersion,
+             * где migrate ничего не делает, но resourceRatio отсутствует или
+             * standSizeRatio out-of-range. Симметрично prepareLoadedCalc. */
+            normalizeStandRatios(migrated);
             validateCalculation(migrated, calcErrors, `calculations[${i}].`);
             errors.push(...calcErrors);
             if (c && typeof c.id === 'string' && c.id !== '') {

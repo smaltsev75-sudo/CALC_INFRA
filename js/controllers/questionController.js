@@ -5,7 +5,7 @@
 import { store } from '../state/store.js';
 import * as persist from '../state/persistence.js';
 import { uuid } from '../utils/uuid.js';
-import { validateQuestion } from '../domain/validation.js';
+import { validateQuestion, validateAnswersConsistency } from '../domain/validation.js';
 import { downloadJson } from '../services/json.js';
 import { dateForFilename } from '../services/format.js';
 import { importJsonCollection } from '../services/jsonImport.js';
@@ -47,6 +47,24 @@ export function saveQuestion(q) {
     if (!(q.id in answers)) answers[q.id] = defaultAnswerFor(q);
 
     const newCalc = { ...calc, dictionaries: { ...calc.dictionaries, questions }, answers };
+
+    /* Внешний аудит #15 (2026-05-19, PATCH 2.19.2, P2): частичная валидация
+     * answers ↔ questions для newCalc. Раньше: вопрос с min=0 редактировался
+     * на min=5, существующий answer=0 оставался — saveQuestion возвращал
+     * {ok:true}, но calc становился невалидным. Также number без default +
+     * min>0 + defaultAnswerFor=0 → answer вне диапазона при создании.
+     * Полную validateCalculation НЕ используем — она требует валидный
+     * settings/items, что для минимальных тестовых fixtures избыточно.
+     * validateAnswersConsistency проверяет ТОЛЬКО answer↔question. */
+    const answerErrors = [];
+    validateAnswersConsistency(newCalc, answerErrors);
+    if (answerErrors.length) {
+        return { ok: false, errors: answerErrors.map(e => ({
+            path: e.path,
+            message: `Сохранение нарушит расчёт: ${e.message}. Уточните min/max/default вопроса или поправьте текущий ответ.`
+        })) };
+    }
+
     /* Внешний аудит #7 (2026-05-18, P1): inverse pattern — commit ПЕРВЫМ.
      * См. parallel-фикс в itemController.saveItem. */
     if (!commitActiveCalc(newCalc)) {
@@ -133,6 +151,14 @@ export async function importQuestions({ replace = false } = {}) {
                     dictionaries: { ...calc.dictionaries, questions: merged },
                     answers
                 };
+                /* Внешний аудит #15 (2026-05-19, PATCH 2.19.2, P2): частичная
+                 * валидация answers ↔ questions — родственное к saveQuestion. */
+                const answerErrors = [];
+                validateAnswersConsistency(newCalc, answerErrors);
+                if (answerErrors.length) {
+                    return { ok: false, reason: 'invalid',
+                        message: `Импорт нарушит расчёт: ${answerErrors[0].message}. Проверьте min/max/default вопросов.` };
+                }
                 /* Внешний аудит #7 (2026-05-18, P1): inverse pattern. */
                 if (!commitActiveCalc(newCalc)) {
                     return { ok: false, reason: 'persist',

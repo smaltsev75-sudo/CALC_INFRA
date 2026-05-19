@@ -21,6 +21,7 @@ import { applyVatResolver } from '../domain/vatResolver.js';
 import { hasDeprecatedQuestions, sanitizeDefaultDictionary } from '../domain/deprecatedQuestions.js';
 import { getVatRateForDate, isoDateOf, getCurrentVatRate } from '../domain/vatRateTable.js';
 import { prepareLoadedCalc } from '../services/loadedCalc.js';
+import { normalizeStandRatios } from '../domain/standRatioNormalizer.js';
 
 /* prepareLoadedCalc вынесен в services/ (PATCH 2.18.5, audit #12), чтобы
  * и controllers, и bundleExport могли использовать его без cross-layer
@@ -188,6 +189,14 @@ export function refreshCalcList() {
                  * активного calc'а (initFromStorage уже зовёт prepareLoadedCalc). */
                 const migrated = applyVatResolver(migrateCalculation(calc));
                 enrichLegacyDictionaryWithAgentSeed(migrated);
+                /* Внешний аудит #15 (2026-05-19, PATCH 2.19.2, §5.bis уровень 2):
+                 * refreshCalcList — card-display path с собственным pipeline
+                 * (не через prepareLoadedCalc). Без normalize calculate() мог
+                 * упасть на invalid clamp standSizeRatio.LOAD из 2.19.0-эры.
+                 * Симметрия с prepareLoadedCalc. Best-effort: card-display не
+                 * persist'ит, normalize применяется в-памяти для корректного
+                 * вычисления totalMonthly. */
+                normalizeStandRatios(migrated);
                 try {
                     const r = calculate(migrated);
                     totalMonthly = r.totalMonthly;
@@ -294,7 +303,17 @@ export function renameCalc(id, newName) {
 export function duplicateCalc(id) {
     const src = persist.loadCalc(id);
     if (!src) return null;
-    const copy = JSON.parse(JSON.stringify(src));
+    /* Внешний аудит #15 (2026-05-19, PATCH 2.19.2, §5.bis уровень 3): источник
+     * прогоняется через prepareLoadedCalc, чтобы копия наследовала
+     * нормализованные standSizeRatio/resourceRatio. Раньше JSON.parse(stringify)
+     * копировал raw src — если source был schema 19 без resourceRatio (legacy
+     * 2.19.0 calc), копия тоже без, и refreshCalcList card-display попадал на
+     * fallback. Через prepared.calc копия гарантированно валидна. */
+    const prepared = prepareLoadedCalc(src);
+    if (prepared.error || !prepared.calc) {
+        return null;
+    }
+    const copy = JSON.parse(JSON.stringify(prepared.calc));
     copy.id = uuid();
     copy.name = `${src.name} (копия)`;
     copy.createdAt = new Date().toISOString();

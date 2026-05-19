@@ -59,6 +59,14 @@ export function saveItem(item) {
 
     const items = upsertById(calc.dictionaries.items, itemToSave);
     const newCalc = { ...calc, dictionaries: { ...calc.dictionaries, items } };
+
+    /* Audit #15 P2-родственное: validateCalculation НЕ применяется здесь —
+     * item ↔ calc консистентность уже покрыта validateItem (формулы, типы,
+     * applicableStands). В отличие от saveQuestion, item не имеет answer-
+     * respec класса: формулы линтятся отдельно через lintFormulas. Полная
+     * validateCalculation отвергала бы тестовые minimal-seed calc'и
+     * (settings:{}), где Item-flow и так работает. */
+
     /* Внешний аудит #7 (2026-05-18, P1): inverse pattern — commit ПЕРВЫМ.
      * Раньше store.updateActiveCalc выполнялся ДО commit'а; при quota пользователь
      * получал {ok:false, errors}, форма оставалась открытой, но в store
@@ -147,6 +155,8 @@ export async function importItems({ replace = false } = {}) {
                 const baseItems = replace ? [] : [...calc.dictionaries.items];
                 const merged = mergeById(baseItems, accepted);
                 const newCalc = { ...calc, dictionaries: { ...calc.dictionaries, items: merged } };
+                /* Audit #15: см. saveItem — validateCalculation не применяется
+                 * здесь, item ↔ calc консистентность покрыта validateItem. */
                 /* Внешний аудит #7 (2026-05-18, P1): inverse pattern. */
                 if (!commitActiveCalc(newCalc)) {
                     return { ok: false, reason: 'persist',
