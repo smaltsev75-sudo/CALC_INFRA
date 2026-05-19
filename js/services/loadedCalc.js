@@ -39,8 +39,23 @@ import { hasDeprecatedQuestions } from '../domain/deprecatedQuestions.js';
  * @returns {{ calc: object|null, needsPersist: boolean, error: Error|null }}
  */
 export function prepareLoadedCalc(stored) {
-    if (!stored || typeof stored !== 'object') {
+    /* null / undefined — нет stored, это не ошибка (caller обычно сразу
+     * возвращает null до вызова — но defensive: позволяем). */
+    if (stored === null || stored === undefined) {
         return { calc: stored, needsPersist: false, error: null };
+    }
+    /* Внешний аудит #13 (2026-05-19, P1/P2#3): любой не-object вход
+     * (строка/число/boolean/массив) — это битый stored, не валидный calc.
+     * Раньше guard `typeof stored !== 'object'` пропускал primitives
+     * через success path с calc=stored. store.setActiveCalc("bad") через
+     * spread деструктурировался в `{0:'b',1:'a',2:'d'}`. */
+    if (typeof stored !== 'object' || Array.isArray(stored)) {
+        const err = new TypeError(
+            `prepareLoadedCalc: stored должен быть объектом-calc, получено ${
+                Array.isArray(stored) ? 'массив' : typeof stored
+            }`
+        );
+        return { calc: null, needsPersist: false, error: err };
     }
     let calc;
     try {
@@ -50,21 +65,23 @@ export function prepareLoadedCalc(stored) {
     }
 
     /* enrich мутирует calc.dictionaries напрямую (push новых вопросов/ЭК
-     * + замена qtyFormulas у целевых). Перед/после считаем размеры словаря
-     * — если выросли или formulas обновились, считаем что enrich что-то
-     * изменил, и storage нужно перезаписать. */
-    const beforeQ = Array.isArray(calc.dictionaries?.questions) ? calc.dictionaries.questions.length : 0;
-    const beforeI = Array.isArray(calc.dictionaries?.items) ? calc.dictionaries.items.length : 0;
-    /* Хэш qtyFormulas агентских ЭК до enrich. _AGENT_FORMULA_REFRESH_IDS —
-     * внутренний для seed.js, здесь повторять не надо: enrich сам решит,
-     * нужно ли формулы обновлять. Для invalid'ации хватает length-check'а;
-     * корнер-кейс «то же количество, но другие формулы» закрывается тем,
-     * что enrich идемпотентен — повторный вызов в новой сессии тоже
-     * перезапишет, F5 → ok. */
+     * + замена qtyFormulas/applicableStands/formulaHelp у целевых items).
+     *
+     * Внешний аудит #13 (2026-05-19, P2#4): прежний length-check ловил
+     * только добавления, не refresh формул у уже существующих items
+     * (_AGENT_FORMULA_REFRESH_IDS в seed.js). Calc, у которого все agent-
+     * items уже есть, но qtyFormulas устарели — `length до === length после`,
+     * needsPersist=false, openCalc не персистил обновлённые формулы.
+     *
+     * Снапшот перед enrich — JSON-string словаря; после — сравнение строк.
+     * Это покрывает все три операции enrich (push questions, push items,
+     * refresh qtyFormulas/applicableStands/formulaHelp). Цена — один deep
+     * stringify на load; для 80 вопросов + 36 items — миллисекунды,
+     * acceptable для openCalc / boot. */
+    const beforeSnapshot = JSON.stringify(calc.dictionaries);
     enrichLegacyDictionaryWithAgentSeed(calc);
-    const afterQ = Array.isArray(calc.dictionaries?.questions) ? calc.dictionaries.questions.length : 0;
-    const afterI = Array.isArray(calc.dictionaries?.items) ? calc.dictionaries.items.length : 0;
-    const enrichChanged = (afterQ !== beforeQ) || (afterI !== beforeI);
+    const afterSnapshot = JSON.stringify(calc.dictionaries);
+    const enrichChanged = beforeSnapshot !== afterSnapshot;
 
     const beforeVat = calc;
     calc = applyVatResolver(calc);

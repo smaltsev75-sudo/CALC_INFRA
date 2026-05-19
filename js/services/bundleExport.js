@@ -23,10 +23,11 @@
 import * as persist from '../state/persistence.js';
 import { validateCalculation, validateItem, validateQuestion } from '../domain/validation.js';
 import { migrateCalculation, MigrationError } from '../state/migrations.js';
-import { APP_VERSION } from '../utils/constants.js';
+import { APP_VERSION, STORAGE_KEYS } from '../utils/constants.js';
 import { dateForFilename } from './format.js';
 import { sanitizeDefaultDictionary } from '../domain/deprecatedQuestions.js';
 import { prepareLoadedCalc } from './loadedCalc.js';
+import { removeKey } from './storage.js';
 
 export const BUNDLE_VERSION = 'bundle-3.0';
 
@@ -66,28 +67,41 @@ export function buildStateBundle() {
     const list = persist.loadCalcList();
     /* Внешний аудит #12 (2026-05-19, PATCH 2.18.5): экспорт прогоняет
      * каждый calc через ПОЛНЫЙ pipeline (migrate → enrich → applyVatResolver),
-     * не только sanitize. Прежняя версия делала `sanitizeDeprecatedQuestions`
-     * напрямую — это удаляло `dau_target` ИЗ legacy schemaVersion=3 calc'а
-     * ДО того, как миграция 3→4 успевала его прочитать и пересчитать в
-     * `dau_share_of_registered_percent`. Результат — миграция падала в
-     * дефолт 5% вместо реального share. ТИХАЯ ПОРЧА ДАННЫХ.
+     * не только sanitize. Прежняя версия делала sanitize-БЕЗ-migrate —
+     * миграция 3→4 теряла dau_target → дефолт share=5%. ТИХАЯ ПОРЧА ДАННЫХ.
      *
-     * Через prepareLoadedCalc порядок гарантирован: migrate работает на raw
-     * stored (видит dau_target), внутри migrate сам зовёт
-     * sanitizeDeprecatedQuestions в конце (defense-in-depth) — stale id уже
-     * не нужны после конверсии. Игнорируем needsPersist: экспорт side-effect-
-     * free, persist делает не buildStateBundle. */
-    const calcs = list
-        .map(meta => persist.loadCalc(meta.id))
-        .filter(Boolean)
-        .map(c => {
-            const { calc, error } = prepareLoadedCalc(c);
-            /* MigrationError на конкретном calc — пропускаем; export
-             * остальных. Согласовано с refreshCalcList: один битый calc
-             * не должен ронять весь bundle. */
-            return error ? null : calc;
-        })
-        .filter(Boolean);
+     * Внешний аудит #13 (2026-05-19, PATCH 2.18.6, P1#2): bundle теперь
+     * содержит errors[] для calc'ов, не прошедших pipeline. Раньше .filter
+     * молча выкидывал такие calc'и → пользователь экспортировал bundle,
+     * не зная что в нём меньше расчётов чем в state.calcList. */
+    const calcs = [];
+    const errors = [];
+    for (const meta of list) {
+        const stored = persist.loadCalc(meta.id);
+        if (!stored) {
+            /* meta есть, calc.<id> отсутствует — рассогласование storage.
+             * Сигналим, чтобы UI мог показать warning. */
+            errors.push({
+                calcId: meta.id,
+                name: meta.name || null,
+                reason: 'missing',
+                message: 'calc.<id> отсутствует в storage (рассогласование с calc.list)'
+            });
+            continue;
+        }
+        const { calc, error } = prepareLoadedCalc(stored);
+        if (error) {
+            errors.push({
+                calcId: meta.id,
+                name: meta.name || stored.name || null,
+                reason: error instanceof MigrationError ? 'migration' : 'pipeline',
+                step: error instanceof MigrationError ? `${error.from}→${error.to}` : null,
+                message: error.message || String(error)
+            });
+            continue;
+        }
+        calcs.push(calc);
+    }
     const rawDict = persist.loadDefaultDictionary() || { items: [], questions: [] };
     return {
         version: BUNDLE_VERSION,
@@ -95,7 +109,8 @@ export function buildStateBundle() {
         appVersion: APP_VERSION,
         activeCalcId: persist.loadActiveCalcId(),
         defaultDictionary: sanitizeDefaultDictionary(rawDict),
-        calculations: calcs
+        calculations: calcs,
+        errors  /* always-array; пустой [] для clean экспорта */
     };
 }
 
@@ -378,8 +393,22 @@ export function applyStateBundle(data) {
             if (!persist.saveCalcList(backup.list)) {
                 rollbackFailures.push('saveCalcList');
             }
-            if (backup.defaultDict && !persist.saveDefaultDictionary(backup.defaultDict)) {
-                rollbackFailures.push('saveDefaultDictionary');
+            /* Внешний аудит #13 (2026-05-19, PATCH 2.18.6, P3#7): если в backup
+             * defaultDict был null (его не было в storage до apply), rollback
+             * обязан УБРАТЬ ключ — раньше else-ветка отсутствовала, импортированный
+             * {items:[], questions:[]} оставался в storage как «новый default». */
+            if (backup.defaultDict) {
+                if (!persist.saveDefaultDictionary(backup.defaultDict)) {
+                    rollbackFailures.push('saveDefaultDictionary');
+                }
+            } else {
+                /* removeKey не throws (storage helper); defensive try/catch
+                 * чтобы любая внутренняя ошибка попадала в rollbackFailures. */
+                try {
+                    removeKey(STORAGE_KEYS.DEFAULT_DICTIONARY);
+                } catch {
+                    rollbackFailures.push('removeKey(DEFAULT_DICTIONARY)');
+                }
             }
             if (!persist.saveActiveCalcId(backup.activeId)) {
                 rollbackFailures.push('saveActiveCalcId');

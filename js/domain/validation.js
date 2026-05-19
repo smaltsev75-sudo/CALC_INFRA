@@ -139,6 +139,49 @@ export function validateQuestion(q, errors = [], path = '') {
             }
         }
     }
+
+    /* Внешний аудит #13 (2026-05-19, PATCH 2.18.6, P2#5): defaultValue /
+     * defaultIfUnknown должны соответствовать типу вопроса. До фикса
+     * questionController.saveQuestion клал invalid default в answers,
+     * после чего сам calc не проходил validateCalculation. null допустим
+     * для всех типов (= «Не знаю»). */
+    for (const defField of ['defaultValue', 'defaultIfUnknown']) {
+        const dv = q[defField];
+        if (dv === undefined || dv === null) continue;
+        if (q.type === 'number' && typeof dv !== 'number') {
+            err(errors, `${path}.${defField}`, `${defField} для number-вопроса должен быть числом`);
+        } else if (q.type === 'boolean' && typeof dv !== 'boolean') {
+            err(errors, `${path}.${defField}`, `${defField} для boolean-вопроса должен быть булевым`);
+        } else if (q.type === 'select') {
+            if (typeof dv !== 'string' && typeof dv !== 'number') {
+                err(errors, `${path}.${defField}`, `${defField} для select-вопроса должен быть строкой или числом`);
+            } else if (isArray(q.options) && q.options.length > 0) {
+                const allowed = q.options.map(o =>
+                    (o && typeof o === 'object' && 'value' in o) ? o.value : o
+                );
+                if (!allowed.includes(dv)) {
+                    err(errors, `${path}.${defField}`,
+                        `${defField}="${dv}" должен быть одним из options: [${allowed.join(', ')}]`);
+                }
+            }
+        } else if (q.type === 'multiselect') {
+            if (!isArray(dv)) {
+                err(errors, `${path}.${defField}`, `${defField} для multiselect должен быть массивом`);
+            } else if (isArray(q.options) && q.options.length > 0) {
+                const allowed = q.options.map(o =>
+                    (o && typeof o === 'object' && 'value' in o) ? o.value : o
+                );
+                const bad = dv.filter(v => !allowed.includes(v));
+                if (bad.length > 0) {
+                    err(errors, `${path}.${defField}`,
+                        `${defField}: значения [${bad.join(', ')}] не из options`);
+                }
+            }
+        } else if (q.type === 'text' && typeof dv !== 'string') {
+            err(errors, `${path}.${defField}`, `${defField} для text-вопроса должен быть строкой`);
+        }
+    }
+
     return errors;
 }
 
@@ -323,7 +366,9 @@ export function validateScenario(sc, errors = [], path = '') {
 }
 
 /* Внутренний хелпер per-question check (PATCH 2.18.3, audit-10 P1.1).
- * Вынесен ради DRY между root.answers и scenarios[*].answers. */
+ * Вынесен ради DRY между root.answers и scenarios[*].answers.
+ * Size-limit ANSWER_STR_MAX делается отдельно (см. validateCalculation),
+ * чтобы он работал даже когда qById пуст (нет dict.questions). */
 function _validateAnswersAgainstQuestions(answers, qById, errors, basePath) {
     for (const [id, value] of Object.entries(answers)) {
         if (value === null) continue; // «Не знаю»
@@ -391,6 +436,21 @@ export function validateCalculation(calc, errors = [], path = '') {
                 err(errors, `${path}answers.${k}`,
                     `Длина значения превышает ${VALIDATION.ANSWER_STR_MAX} симв.`);
         }
+    }
+    /* Внешний аудит #13 (P3#6, PATCH 2.18.6): аналогичный size-check для
+     * scenarios[*].answers. Раньше работал только в root. Helper
+     * _validateAnswersAgainstQuestions проверяет type, но НЕ длину
+     * (требует qById, которого может не быть если dict.questions пуст). */
+    if (Array.isArray(calc.scenarios)) {
+        calc.scenarios.forEach((sc, i) => {
+            if (sc && isObject(sc.answers)) {
+                for (const [k, v] of Object.entries(sc.answers)) {
+                    if (typeof v === 'string' && v.length > VALIDATION.ANSWER_STR_MAX)
+                        err(errors, `${path}scenarios[${i}].answers.${k}`,
+                            `Длина значения превышает ${VALIDATION.ANSWER_STR_MAX} симв.`);
+                }
+            }
+        });
     }
 
     /* Внешний аудит #12 (2026-05-19, PATCH 2.18.5, P3): root.answersMeta.

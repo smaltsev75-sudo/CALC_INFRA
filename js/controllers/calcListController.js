@@ -332,6 +332,28 @@ export function snapshotCalc(id) {
 }
 
 /**
+ * Загрузить calc по id из storage, прогнав через полный pipeline
+ * (`prepareLoadedCalc`): migrate → enrich → applyVatResolver. Без persist —
+ * это read-only path для UI Comparison, CSV-экспорта и любых других мест,
+ * где нужен consistent calc-объект, но не нужно persist'ить корректировки
+ * обратно в storage (это сделает следующий openCalc через autosave-pipeline).
+ *
+ * Внешний аудит #13 (2026-05-19, P1#1): до фикса ctx.loadCalcById возвращал
+ * raw `persist.loadCalc(id)` без resolver/enrich → Comparison/CSV
+ * показывали stale значения для legacy auto-by-date calc'ов.
+ *
+ * @param {string} id
+ * @returns {object|null} prepared calc или null если stored=null/битый
+ */
+export function loadCalcPrepared(id) {
+    const stored = persist.loadCalc(id);
+    if (!stored) return null;
+    const { calc, error } = prepareLoadedCalc(stored);
+    if (error) return null;
+    return calc;
+}
+
+/**
  * Восстановить расчёт из снимка.
  */
 export function restoreCalc(calc) {
@@ -486,7 +508,12 @@ export async function exportStateBundle() {
     const { downloadJson } = await import('../services/json.js');
     const bundle = buildStateBundle();
     downloadJson(buildBundleFilename(), bundle);
-    return true;
+    /* Внешний аудит #13 (P1#2, 2026-05-19): возвращаем счётчики честно,
+     * чтобы UI snackbar мог сообщить о потерянных calc'ах. */
+    return {
+        exported: bundle.calculations.length,
+        errors: bundle.errors || []
+    };
 }
 
 /**

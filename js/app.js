@@ -555,9 +555,17 @@ const ctx = {
     exportStateBundle(triggerEvent) {
         return withLoadingButton(triggerEvent, async () => {
             try {
-                await calcList.exportStateBundle();
-                const list = store.getState().calcList;
-                snackbar.success(`Полный snapshot сохранён (${list.length} расч.)`);
+                /* Внешний аудит #13 (P1#2, 2026-05-19): exportStateBundle возвращает
+                 * { exported, errors } чтобы UI мог честно сообщить о потерянных calc'ах. */
+                const result = await calcList.exportStateBundle();
+                if (result && Array.isArray(result.errors) && result.errors.length > 0) {
+                    snackbar.warning(
+                        `Snapshot сохранён (${result.exported} расч.); ` +
+                        `${result.errors.length} расчёт(ов) пропущено из-за ошибок миграции/чтения.`
+                    );
+                } else {
+                    snackbar.success(`Полный snapshot сохранён (${result?.exported ?? store.getState().calcList.length} расч.)`);
+                }
             } catch (e) {
                 snackbar.error('Не удалось экспортировать: ' + e.message);
             }
@@ -1587,12 +1595,14 @@ const ctx = {
         const ids = store.getState().comparisonIds || [];
         if (ids.length === 0) { snackbar.warning('Нечего экспортировать'); return; }
         return withLoadingButton(triggerEvent, async () => {
-            const [{ calculate }, csvMod, persistMod] = await Promise.all([
+            /* Внешний аудит #13 (P1#1, 2026-05-19): берём calc через
+             * calcList.loadCalcPrepared (full pipeline) вместо raw persistMod.loadCalc.
+             * Иначе CSV для auto-by-date legacy calc'а содержал stale vatRate. */
+            const [{ calculate }, csvMod] = await Promise.all([
                 import('./domain/calculator.js'),
-                import('./services/csvExport.js'),
-                import('./state/persistence.js')
+                import('./services/csvExport.js')
             ]);
-            const calcs = ids.map(i => persistMod.loadCalc(i)).filter(Boolean);
+            const calcs = ids.map(i => calcList.loadCalcPrepared(i)).filter(Boolean);
             if (calcs.length === 0) return;
             const content = csvMod.buildComparisonCsv(calcs, calcs.map(c => calculate(c)));
             csvMod.downloadCsv(csvMod.buildComparisonCsvFilename(), content);
@@ -1625,8 +1635,9 @@ const ctx = {
     saveItem(item)            { return itemCtl.saveItem(item); },
     saveQuestion(q)           { return questionCtl.saveQuestion(q); },
     resetToDefaults()         { calcList.resetToDefaults(); },
-    /** Загрузить расчёт по id из persistence (для сравнения и т.п.). */
-    loadCalcById(id)          { return persist.loadCalc(id); },
+    /** Загрузить расчёт по id из persistence через full pipeline (migrate→enrich→applyVatResolver).
+     *  Используется UI Comparison / CSV-экспортом / другими read-only потребителями. */
+    loadCalcById(id)          { return calcList.loadCalcPrepared(id); },
     /** Содержимое README.md (Markdown → HTML), кэшируется. */
     loadReadmeHtml()          { return loadReadmeHtml(); },
     confirmAsync(opts) {
