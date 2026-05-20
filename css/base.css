@@ -647,6 +647,23 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
     opacity: 0;
     pointer-events: none;
 }
+.instance-blocked-close-hint {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: var(--bg-input);
+    border-left: 3px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    transition: background-color var(--t-fast, 150ms) ease,
+                border-left-color var(--t-fast, 150ms) ease,
+                color var(--t-fast, 150ms) ease;
+}
+.instance-blocked-close-hint-flash {
+    background: var(--bg-card);
+    border-left-color: var(--accent);
+    color: var(--text);
+}
 
 /* ============================================================
  * WCAG 2.3.3 Animation from Interactions

@@ -109,6 +109,27 @@ export function renderInstanceBlockedScreen(lockResult) {
         }
     });
 
+    /* Кнопка «Закрыть эту вкладку». По HTML-spec `window.close()` через скрипт
+     * работает ТОЛЬКО когда session history вкладки содержит ровно 1 Document
+     * (новая вкладка / Ctrl+T → URL → blocked-screen) ИЛИ когда окно было
+     * открыто через `window.open()`. Если пользователь переходил по ссылкам
+     * до того как попал сюда — браузер тихо проигнорирует close().
+     * Поэтому ниже рендерим подсказку «Если ничего не произошло — Ctrl+W». */
+    const closeBtn = el('button', {
+        class: 'btn',
+        attrs: { type: 'button' },
+        text: 'Закрыть эту вкладку',
+        onClick: () => {
+            try { window.close(); } catch { /* no-op для node-env */ }
+            /* Если close проигнорирован браузером — фокусируем подсказку,
+             * чтобы пользователь увидел, что делать дальше. */
+            setTimeout(() => {
+                const hint = document.querySelector('.instance-blocked-close-hint');
+                if (hint) hint.classList.add('instance-blocked-close-hint-flash');
+            }, 100);
+        }
+    });
+
     const copyBtn = el('button', {
         class: 'btn',
         attrs: { type: 'button' },
@@ -188,8 +209,13 @@ export function renderInstanceBlockedScreen(lockResult) {
         ...diagChildren,
         el('div', { class: 'instance-blocked-actions' },
             recheckBtn,
+            closeBtn,
             copyBtn
         ),
+        el('p', {
+            class: 'instance-blocked-close-hint',
+            text: 'Если кнопка «Закрыть эту вкладку» не сработала, закройте её вручную клавишами Ctrl+W (Windows/Linux) или Cmd+W (macOS) — браузер защищает от программного закрытия вкладок, открытых не из приложения.'
+        }),
         fallbackTextarea
     );
 
