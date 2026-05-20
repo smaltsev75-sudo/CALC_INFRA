@@ -418,4 +418,45 @@
 @media (max-width: 720px) {
     .app-topbar { padding: 12px 16px; }
     .app-main   { padding: 14px 16px 24px; }
+
+    /* Внешний аудит «Жёсткая проверка» (2026-05-20, P2#4): на 390×844 правая
+     * часть TopBar (Импорт JSON · Экспорт JSON · PDF · Сброс…) выходила за
+     * viewport. PATCH 2.4.35 сознательно убрал `min-width: 0` с .app-main-col,
+     * чтобы wide-tables (Детализация, Сравнение) разрешали body horizontal
+     * scroll. На mobile же таблицы всё равно прокручиваются h-scroll'ом
+     * внутри своего родителя (CSS-overflow ужесточается медиа-запросом на
+     * conftab/details на узких экранах), а главная угроза — sticky TopBar,
+     * который не сжимается под viewport. Возвращаем min-width: 0 на mobile
+     * только для main-col + явно даём wrap'ить actions на новые строки.
+     * `max-width: 100%` страхует от flex-item, ставшего шире контейнера. */
+    .app-main-col {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .app-topbar {
+        flex-wrap: wrap;
+        row-gap: 8px;
+    }
+    .app-topbar-title {
+        flex-basis: 100%;
+        min-width: 0;
+    }
+    .app-topbar-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+/* Совсем узкие экраны (≤480px): кнопки TopBar становятся flex-item'ами и
+ * могут сжиматься/растягиваться по полной ширине ряда. Иначе на 360px
+ * label «Светлая тема» / «Экспорт JSON» делает кнопку шире доступного. */
+@media (max-width: 480px) {
+    .app-topbar-actions {
+        gap: 4px;
+    }
+    .app-topbar-actions > * {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
 }

@@ -24,6 +24,8 @@ const RUB_SIGN = '₽';
    (NBSP по семантике характера всегда не-разрывен; обычный SPACE — точка слома). */
 const NBSP = ' ';
 
+export const NUMBER_INPUT_FRACTION_DIGITS = 2;
+
 const _moneyFmt = new Intl.NumberFormat(LOCALE, {
     minimumFractionDigits: MONEY_FRACTION_DIGITS,
     maximumFractionDigits: MONEY_FRACTION_DIGITS,
@@ -139,6 +141,8 @@ export function parseNumberInput(value) {
     const cleaned = String(value).replace(/\s+/g, '').replace(',', '.');
     if (cleaned === '') return NaN;
     if (!/^-?(?:\d+(?:\.\d+)?|\.\d+)$/.test(cleaned)) return NaN;
+    const fraction = cleaned.split('.')[1] || '';
+    if (fraction.length > NUMBER_INPUT_FRACTION_DIGITS) return NaN;
     const n = Number(cleaned);
     return Number.isFinite(n) ? n : NaN;
 }

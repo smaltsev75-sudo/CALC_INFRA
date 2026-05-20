@@ -132,7 +132,23 @@ export function acquireAppInstanceLock(opts = {}) {
         return { ok: false, reason: 'write-failed', existing };
     }
 
-    return { ok: true, ownerId, lock };
+    /* Внешний аудит «Жёсткая проверка» (2026-05-20, P1#2): read-back после
+     * write закрывает gap между existing-check и write. До этого фикса две
+     * вкладки, стартовавшие одновременно (например, после crash'а владельца
+     * или одновременный double-click на ярлык приложения), обе проходили
+     * проверку «existing is stale» и обе писали свой ownerId — последняя
+     * запись побеждала, но первая считала себя владельцем и работала с
+     * shared localStorage параллельно второй. После write сразу читаем
+     * обратно: если ownerId не наш — другой процесс перетёр запись между
+     * нашим write и read-back; этому процессу мы уступаем и блокируем
+     * запуск как occupied. localStorage гарантирует последовательную
+     * консистентность для write-then-read в одном tick. */
+    const verified = readLock();
+    if (!verified || verified.ownerId !== ownerId) {
+        return { ok: false, reason: 'race-lost', existing: verified };
+    }
+
+    return { ok: true, ownerId, lock: verified };
 }
 
 /**

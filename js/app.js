@@ -1791,8 +1791,62 @@ function enterBlockedState(lockResult) {
     renderInstanceBlockedScreen(lockResult);
 }
 
+/* Внешний аудит «Жёсткая проверка» (2026-05-20, P1#2): storage-listener
+ * вешается ОДИН раз и до acquire — закрывает gap между existing-check и
+ * write-then-readback (если другая вкладка успеет вставить свой ownerId
+ * сразу после нашего read-back). До acquire _instanceOwnerId=null,
+ * listener silent-no-op'ит; после acquire — реагирует на overtake. */
+function handleInstanceLockStorageEvent(e) {
+    if (e.key !== STORAGE_KEYS.APP_INSTANCE_LOCK) return;
+    if (!_instanceOwnerId) return;
+    let parsed = null;
+    try { parsed = e.newValue ? JSON.parse(e.newValue) : null; }
+    catch { /* битый JSON — игнорируем */ }
+    if (!parsed) return;
+    if (parsed.ownerId && parsed.ownerId !== _instanceOwnerId) {
+        enterBlockedState({ ok: false, reason: 'occupied', existing: parsed });
+    }
+}
+
+/* Внешний аудит «Жёсткая проверка» (2026-05-20, P1#1): pagehide
+ * освобождает lock (releaseOnExit), но при BFCache страница не закрывается,
+ * а замораживается. На возврат через History (Back/Forward) приходит
+ * `pageshow` с `persisted=true` — наш state в JS уцелел, но lock в
+ * storage уже не наш. Без этого handler'а две вкладки могут одновременно
+ * считаться владельцами после BFCache-restore. Re-acquire здесь
+ * восстанавливает инвариант. */
+function handleInstanceLockPageshow(e) {
+    if (!e || !e.persisted) return;
+    /* Возможно lock уже передан другому процессу — останавливаем старый
+     * heartbeat (он указывал на освобождённый ownerId) и пытаемся
+     * захватить заново. */
+    if (_heartbeatHandle && typeof _heartbeatHandle.stop === 'function') {
+        try { _heartbeatHandle.stop(); } catch { /* no-op */ }
+        _heartbeatHandle = null;
+    }
+    _instanceOwnerId = null;
+
+    const r = acquireAppInstanceLock();
+    if (!r.ok) {
+        enterBlockedState(r);
+        return;
+    }
+    _instanceOwnerId = r.ownerId;
+    _heartbeatHandle = startAppInstanceHeartbeat(_instanceOwnerId, {
+        onLost: existing => {
+            enterBlockedState({ ok: false, reason: 'occupied', existing });
+        }
+    });
+}
+
 function boot() {
     mountUi();
+
+    /* Storage- и pageshow-listener'ы вешаем ПЕРВЫМИ, до acquire.
+     * P1#2: см. handleInstanceLockStorageEvent.
+     * P1#1: см. handleInstanceLockPageshow. */
+    window.addEventListener('storage', handleInstanceLockStorageEvent);
+    window.addEventListener('pageshow', handleInstanceLockPageshow);
 
     // Single-instance lock — ДО любых чтений/записей в storage.
     const lockResult = acquireAppInstanceLock();
@@ -1998,21 +2052,9 @@ function boot() {
     window.addEventListener('beforeunload', releaseOnExit);
     window.addEventListener('pagehide', releaseOnExit);
 
-    /* Stage 19.x: cross-tab detection через storage-event. Если другая
-     * вкладка/окно успели записать свой ownerId в APP_INSTANCE_LOCK (это
-     * происходит, если они стартовали быстрее наших heartbeat'ов после
-     * нашего crash) — текущий экземпляр обязан перейти в blocked-state. */
-    window.addEventListener('storage', e => {
-        if (e.key !== STORAGE_KEYS.APP_INSTANCE_LOCK) return;
-        if (!_instanceOwnerId) return;
-        let parsed = null;
-        try { parsed = e.newValue ? JSON.parse(e.newValue) : null; }
-        catch { /* битый JSON — игнорируем */ }
-        if (!parsed) return;
-        if (parsed.ownerId && parsed.ownerId !== _instanceOwnerId) {
-            enterBlockedState({ ok: false, reason: 'occupied', existing: parsed });
-        }
-    });
+    /* Stage 19.x: cross-tab detection через storage-event перенесён в
+     * handleInstanceLockStorageEvent и подписывается ДО acquire — см.
+     * P1#2 fix выше. Здесь раньше было дублирующее addEventListener. */
 
     /* PATCH 2.20.3: Anchor links внутри модалок (например, TOC в F1-справке
      * UserManual.md `[Термины и сокращения](#термины-и-сокращения)`) по

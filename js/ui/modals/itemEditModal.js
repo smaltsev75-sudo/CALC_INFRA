@@ -12,7 +12,7 @@ import { modalShell } from './baseModal.js';
 import { STAND_IDS, STAND_LABELS, CATEGORY_IDS, CATEGORY_LABELS, BILLING_INTERVAL_IDS, BILLING_INTERVAL_LABELS, RESOURCE_CLASS_IDS, RESOURCE_CLASS_LABELS, COST_TYPE_IDS, COST_TYPE_LABELS } from '../../utils/constants.js';
 import { getCostType } from '../../domain/costType.js';
 import { parseNumberInput } from '../../services/format.js';
-import { DECIMAL_INPUT_TYPE, decimalInputAttrs, formatDecimalInputValue } from '../decimalInput.js';
+import { DECIMAL_INPUT_TYPE, applyDecimalInputPrecision, decimalInputAttrs, formatDecimalInputValue } from '../decimalInput.js';
 import { getAst } from '../../domain/formula/cache.js';
 import { collectReferences } from '../../domain/formula/evaluator.js';
 
@@ -124,7 +124,18 @@ function renderMain(draft, ctx) {
             title: 'Стоимость одной единицы измерения в текущей валюте расчёта',
             attrs: decimalInputAttrs({ 'data-focus-key': 'item-edit:pricePerUnit' }),
             onInput: e => {
-                const n = parseNumberInput(e.target.value);
+                /* Внешний аудит «Жёсткая проверка» (2026-05-20, P2#3):
+                 * при очистке поля раньше старое draft.pricePerUnit оставалось,
+                 * пользователь видел пусто → жал Сохранить → сохранялась старая
+                 * цена. Empty → undefined, validation поймает «обязательное».
+                 * Промежуточная дробь («1,») не сбрасывает draft — пользователь
+                 * допечатает цифру и parseNumberInput вернёт финитное число. */
+                const raw = applyDecimalInputPrecision(e.target);
+                if (raw === '') {
+                    patchDraft(ctx, { pricePerUnit: undefined });
+                    return;
+                }
+                const n = parseNumberInput(raw);
                 if (Number.isFinite(n)) patchDraft(ctx, {pricePerUnit: n });
             }
         })),

@@ -34,7 +34,7 @@ import {
     UI_TOOLTIPS_SHORT
 } from '../utils/constants.js';
 import { parseNumberInput, percent, formatDate } from '../services/format.js';
-import { DECIMAL_INPUT_TYPE, decimalInputAttrs, formatDecimalInputValue } from './decimalInput.js';
+import { DECIMAL_INPUT_TYPE, applyDecimalInputPrecision, decimalInputAttrs, formatDecimalInputValue } from './decimalInput.js';
 import { SEED_QUESTIONS, SEED_ITEMS, DEPRECATED_QUESTION_IDS } from '../domain/seed.js';
 import { listProviders, DEFAULT_PROVIDER, PROVIDER_OVERLAYS } from '../domain/providerOverlay.js';
 import {
@@ -506,7 +506,7 @@ function renderSettingsGroupPeriod(s, ctx) {
                     title: SETTINGS_DESCRIPTIONS.phaseDurationMonths,
                     attrs: decimalInputAttrs({ 'data-focus-key': 'setting:phaseDurationMonths' }),
                     onInput: e => {
-                        const n = parseNumberInput(e.target.value);
+                        const n = parseNumberInput(applyDecimalInputPrecision(e.target));
                         if (Number.isFinite(n) && n > 0) ctx.setSetting('phaseDurationMonths', n);
                     }
                 }),
@@ -597,7 +597,7 @@ function renderSettingsGroupRisks(s, ctx, applyRisks, totalFactor, horizon) {
                     disabled: !applyRisks,
                     attrs: decimalInputAttrs({ 'data-focus-key': 'setting:planningHorizonYears' }),
                     onInput: e => {
-                        const n = parseNumberInput(e.target.value);
+                        const n = parseNumberInput(applyDecimalInputPrecision(e.target));
                         if (Number.isFinite(n) && n >= 0) ctx.setSetting('planningHorizonYears', n);
                     }
                 }),
@@ -859,7 +859,7 @@ function renderPercentField(label, value, onChange, hint, key, disabled = false,
                     disabled,
                     attrs: decimalInputAttrs({ 'data-focus-key': key }),
                     onInput: e => {
-                        const n = parseNumberInput(e.target.value);
+                        const n = parseNumberInput(applyDecimalInputPrecision(e.target));
                         if (Number.isFinite(n)) {
                             onChange(n / 100);
                             // Оптимистичный sync slider'а до перерендера, чтобы не было визуального лага.
@@ -955,7 +955,7 @@ function renderStandSizeRatios(calc, ctx) {
                     'data-focus-key': `setting:standSizeRatio.${stand}`
                 }),
                 onInput: e => {
-                    const n = parseNumberInput(e.target.value);
+                    const n = parseNumberInput(applyDecimalInputPrecision(e.target));
                     if (Number.isFinite(n)) updateStand(stand, n);
                 }
             })
@@ -1039,7 +1039,7 @@ function renderAiStandFactors(calc, ctx) {
                     'data-focus-key': `setting:aiStandFactor.${stand}`
                 }),
                 onInput: e => {
-                    const n = parseNumberInput(e.target.value);
+                    const n = parseNumberInput(applyDecimalInputPrecision(e.target));
                     if (Number.isFinite(n)) updateStand(stand, n);
                 }
             })
@@ -1201,7 +1201,7 @@ function renderResourceRatios(calc, ctx) {
                     'aria-label': `${resource} на ${STAND_LABELS[stand]}, % от ПРОМ`
                 }),
                 onInput: e => {
-                    const n = parseNumberInput(e.target.value);
+                    const n = parseNumberInput(applyDecimalInputPrecision(e.target));
                     if (Number.isFinite(n)) updateCell(stand, resource, n);
                 }
             });
@@ -1874,8 +1874,9 @@ function renderNumberInput(q, value, isUnknown, focusKey, hoverHint, ctx) {
         onInput: e => {
             // Снимаем inline-ошибку при правке — пользователь должен видеть, что поле «жмётся».
             removeInlineError(e.target);
-            const n = parseNumberInput(e.target.value);
-            if (e.target.value === '' || !Number.isFinite(n)) {
+            const raw = applyDecimalInputPrecision(e.target);
+            const n = parseNumberInput(raw);
+            if (raw === '' || !Number.isFinite(n)) {
                 // Промежуточное значение дроби (`1,` / `1.`) не коммитим,
                 // иначе перерисовка удалит разделитель и пользователь не
                 // сможет допечатать дробную часть.
@@ -1889,7 +1890,7 @@ function renderNumberInput(q, value, isUnknown, focusKey, hoverHint, ctx) {
             ctx.setAnswer(q.id, n);
         },
         onBlur: e => {
-            const raw = e.target.value;
+            const raw = applyDecimalInputPrecision(e.target);
             if (raw === '') {
                 ctx.setAnswer(q.id, 0);
                 removeInlineError(e.target);

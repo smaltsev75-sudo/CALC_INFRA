@@ -37,7 +37,7 @@ import {
     listHighRiskChanges
 } from '../../domain/costOptimizationPlanner.js';
 import { formatRubThousands, parseNumberInput } from '../../services/format.js';
-import { DECIMAL_INPUT_TYPE, decimalInputAttrs, formatDecimalInputValue } from '../decimalInput.js';
+import { DECIMAL_INPUT_TYPE, applyDecimalInputPrecision, decimalInputAttrs, formatDecimalInputValue } from '../decimalInput.js';
 import {
     PERIOD_IDS,
     PERIOD_LABELS,
@@ -632,8 +632,9 @@ function renderNumberEditor(lever, ctx, integer) {
                 attrs: decimalInputAttrs({
                     'data-focus-key': `cop-lever-${lever.id}`,
                 }),
+                onInput: e => { applyDecimalInputPrecision(e.target); },
                 onChange: e => {
-                    const raw = parseNumberInput(e.target.value);
+                    const raw = parseNumberInput(applyDecimalInputPrecision(e.target));
                     if (Number.isFinite(raw)) ctx.updateOptimizationDraftValue(fieldId, raw);
                 }
             })

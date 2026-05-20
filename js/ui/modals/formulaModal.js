@@ -13,7 +13,7 @@ import { evaluate, collectReferences } from '../../domain/formula/evaluator.js';
 import { lintFormulas } from '../../domain/validation.js';
 import { STAND_IDS, STAND_LABELS, BILLING_INTERVAL_LABELS, MONTHS_PER_YEAR, DEFAULT_DAYS_PER_MONTH } from '../../utils/constants.js';
 import { money, num, percent } from '../../services/format.js';
-import { billingIntervalToMonthlyMultiplier } from '../../domain/calculator.js';
+import { billingIntervalToMonthlyMultiplier, buildContext } from '../../domain/calculator.js';
 
 export function renderFormulaModal(state, ctx) {
     const m = state.modals.formula;
@@ -127,18 +127,40 @@ function renderStandFormula(item, stand, calc) {
             ? el('div', { class: 'formula-empty', text: 'Формула пуста — qty = 0.' })
             : el('div', null,
                 el('pre', { class: 'formula-code', trustedHtml: trustedHtml(highlightFormula(formula)) }),
-                renderResolvedRefs(formula, calc, stand)
+                renderResolvedRefs(formula, calc, stand, item)
             )
     );
 }
 
-function renderResolvedRefs(formula, calc, stand) {
+/* Внешний аудит «Жёсткая проверка» (2026-05-20, P2#5): сигнатура расширена
+ * параметром `item`. Раньше формула собирала raw `S: calc.settings`, что для
+ * AI-ЭК (категория 'AI' / dashboardAiMetric) и hardware (dashboardResource ∈
+ * CPU/GPU/RAM/SSD/HDD/S3) давало неверное значение `S.standSizeRatio.<STAND>`:
+ * реальный calculator подменяет общий ratio на per-resource (12.U12) или на
+ * aiStandFactor (13.U10). Теперь используем тот же `buildContext(...)` — что
+ * и calculate(), — поэтому диагностика и evaluate показывают то же, что
+ * реально считается в дашборде. Дополнительно: для S.<sid> в таблице
+ * переменных показываем разрешённое из контекста значение, а не сырое из
+ * calc.settings (иначе на AI-item «S.standSizeRatio» рисовало hardware-карту
+ * без перекраски на AI-фактор). */
+function renderResolvedRefs(formula, calc, stand, item) {
     const ast = getAst(formula);
     if (ast === null) return null;
     if (isAstError(ast)) {
         return el('div', { class: 'formula-error', text: `Ошибка парсинга: ${ast.__error.message}` });
     }
     const refs = collectReferences(ast);
+
+    const questionDefaults = Object.fromEntries(
+        (calc.dictionaries.questions || []).map(q => [q.id, q.defaultValue])
+    );
+    const ctx = buildContext(
+        calc.answers || {},
+        calc.settings || {},
+        questionDefaults,
+        stand,
+        item || null
+    );
 
     const rows = [];
     for (const qid of refs.questions) {
@@ -151,22 +173,16 @@ function renderResolvedRefs(formula, calc, stand) {
         ));
     }
     for (const sid of refs.settings) {
-        const v = calc.settings?.[sid];
+        const v = ctx.S?.[sid];
         rows.push(el('tr', null,
             el('td', null, el('code', { text: 'S.' + sid })),
-            el('td', { text: 'Параметр настроек' }),
+            el('td', { text: 'Параметр настроек (с учётом per-item override)' }),
             el('td', null, el('code', { text: JSON.stringify(v) }))
         ));
     }
 
     let resultText;
     try {
-        const ctx = {
-            Q: calc.answers || {},
-            S: calc.settings || {},
-            STAND: stand,
-            questionDefaults: Object.fromEntries((calc.dictionaries.questions || []).map(q => [q.id, q.defaultValue]))
-        };
         const r = evaluate(ast, ctx);
         resultText = `qty = ${typeof r === 'boolean' ? (r ? 1 : 0) : Number(r)}`;
     } catch (e) {

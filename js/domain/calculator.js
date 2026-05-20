@@ -184,8 +184,14 @@ function buildQuestionDefaults(questions) {
  * Подготовить контекст для evaluator: ответы Q, настройки S, defaults вопросов.
  * questionDefaults передаётся снаружи (см. buildQuestionDefaults) — buildContext
  * вызывается 180 раз на recalc и не должен пересобирать defaults сам.
+ *
+ * Внешний аудит «Жёсткая проверка» (2026-05-20, P2#5): экспортируем эту
+ * функцию, чтобы Formula Modal мог собирать ТОТ ЖЕ context, что реальный
+ * расчёт. Раньше formulaModal использовал raw `S: calc.settings` без
+ * per-resource ratios / AI stand factor / agentStepFactor — диагностика
+ * формул для AI-ЭК и hardware показывала неправильные значения.
  */
-function buildContext(answers, settings, questionDefaults, stand, item = null) {
+export function buildContext(answers, settings, questionDefaults, stand, item = null) {
     let ratio = settings.standSizeRatio && typeof settings.standSizeRatio === 'object'
         ? settings.standSizeRatio
         : DEFAULT_STAND_SIZE_RATIO;

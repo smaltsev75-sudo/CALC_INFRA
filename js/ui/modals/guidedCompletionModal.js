@@ -22,7 +22,7 @@ import { modalShell } from './baseModal.js';
 import { evaluateCalculationHealth } from '../../domain/calculationHealth.js';
 import { getStepAt, getCompletionProgress } from '../../domain/guidedCompletion.js';
 import { parseNumberInput } from '../../services/format.js';
-import { DECIMAL_INPUT_TYPE, decimalInputAttrs, formatDecimalInputValue } from '../decimalInput.js';
+import { DECIMAL_INPUT_TYPE, applyDecimalInputPrecision, decimalInputAttrs, formatDecimalInputValue } from '../decimalInput.js';
 
 /* ============================================================
  * Главный entry
@@ -213,7 +213,7 @@ function renderNumberInput(currentValue, onApply, q) {
             class: 'input',
             attrs: inputAttrs,
             value: formatDecimalInputValue(draft),
-            onInput: e => { draft = e.target.value; },
+            onInput: e => { draft = applyDecimalInputPrecision(e.target); },
             onKeyDown: e => { if (e.key === 'Enter') submit(); }
         }),
         el('button', {
