@@ -2013,6 +2013,39 @@ function boot() {
             enterBlockedState({ ok: false, reason: 'occupied', existing: parsed });
         }
     });
+
+    /* PATCH 2.20.3: Anchor links внутри модалок (например, TOC в F1-справке
+     * UserManual.md `[Термины и сокращения](#термины-и-сокращения)`) по
+     * default-навигации пишут hash в location.href. После F5 hash остаётся в
+     * URL вида `#%D1%82%D0%B5%D1%80%D0%BC%D0%B8%D0%BD%D1%8B...` — выглядит
+     * как утечка локального состояния модалки в глобальный URL приложения.
+     *
+     * Делегированный handler перехватывает все клики по `a[href^="#"]` внутри
+     * `#app-modals`, prevent-default'ит default-навигацию и сам скроллит к
+     * нужному заголовку через scrollIntoView. Skip-link `#main-content` живёт
+     * вне #app-modals — он не пойдёт сюда. */
+    document.addEventListener('click', e => {
+        const anchor = e.target.closest && e.target.closest('a[href^="#"]');
+        if (!anchor) return;
+        const modalsRoot = anchor.closest('#app-modals');
+        if (!modalsRoot) return;
+        const href = anchor.getAttribute('href');
+        if (!href || href === '#') return;
+        e.preventDefault();
+        try {
+            const rawId = decodeURIComponent(href.slice(1));
+            if (!rawId) return;
+            /* CSS.escape нужен для id, содержащих кириллицу или дефисы — без
+             * него querySelector упадёт на нестандартных символах. */
+            const escapedId = (typeof CSS !== 'undefined' && CSS.escape)
+                ? CSS.escape(rawId)
+                : rawId.replace(/([\W])/g, '\\$1');
+            const target = modalsRoot.querySelector('#' + escapedId);
+            if (target && typeof target.scrollIntoView === 'function') {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        } catch { /* malformed href — игнорируем */ }
+    });
 }
 
 if (document.readyState === 'loading') {
