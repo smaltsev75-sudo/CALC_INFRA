@@ -613,84 +613,14 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
 }
 
 /* Stage 19.x: single-instance lock blocking screen.
-   Использует те же базовые стили .boot-fallback (рамка/тень карточки).
-   Здесь только специфика — список диагностики и actions-row. */
-.instance-blocked-diag-list {
-    margin: 16px 0;
-    padding: 12px 14px;
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 0.9rem;
-}
-.instance-blocked-diag-row {
-    display: flex;
-    gap: 8px;
-    padding: 2px 0;
-}
-.instance-blocked-diag-label {
-    color: var(--text-muted);
-    min-width: 180px;
-}
-.instance-blocked-diag-value { color: var(--text); }
+   Использует базовые стили .boot-fallback (рамка/тень карточки).
+   PATCH 2.20.4: убраны стили диагностического блока, кнопки «Закрыть»
+   и связанных hint'ов — единственная кнопка «Проверить снова». */
 .instance-blocked-actions {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
     margin-top: 20px;
-}
-.instance-blocked-diag {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    opacity: 0;
-    pointer-events: none;
-}
-.instance-blocked-close-hint {
-    margin-top: 12px;
-    padding: 10px 12px;
-    background: var(--bg-input);
-    border-left: 3px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    transition: background-color var(--t-fast, 150ms) ease,
-                border-left-color var(--t-fast, 150ms) ease,
-                color var(--t-fast, 150ms) ease;
-}
-.instance-blocked-close-hint-flash {
-    background: var(--bg-card);
-    border-left-color: var(--accent);
-    color: var(--text);
-}
-.instance-blocked-close-hint-failed {
-    background: rgba(245, 158, 11, 0.12);
-    border-left: 3px solid rgb(245, 158, 11);
-    color: var(--text);
-    font-size: 0.92rem;
-    line-height: 1.5;
-    outline: none;
-}
-.instance-blocked-close-hint-failed strong {
-    display: block;
-    margin-bottom: 6px;
-    color: rgb(245, 158, 11);
-    font-size: 0.98rem;
-}
-.instance-blocked-kbd {
-    display: inline-block;
-    padding: 2px 7px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-bottom-width: 2px;
-    border-radius: 4px;
-    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-    font-size: 0.85em;
-    font-weight: 600;
-    color: var(--text);
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
-    margin: 0 1px;
 }
 
 /* ============================================================
