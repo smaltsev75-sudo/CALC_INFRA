@@ -34,6 +34,12 @@ import * as snackbar from './ui/snackbar.js';
 import { setButtonLoading } from './ui/dom.js';
 import { findQuestionUsages, lintFormulas } from './domain/validation.js';
 import { VAT_RATE_HISTORY } from './domain/vatRateTable.js';
+import {
+    acquireAppInstanceLock,
+    releaseAppInstanceLock,
+    startAppInstanceHeartbeat
+} from './services/appInstanceLock.js';
+import { renderInstanceBlockedScreen } from './ui/instanceBlockedScreen.js';
 
 /* ---------- Защита от двойных кликов ---------- */
 
@@ -1763,8 +1769,47 @@ function scheduleRender() {
 
 /* ---------- Bootstrapping ---------- */
 
+/* ---------- Single-instance lock (Stage 19.x) ----------
+ * Защищаем пользователя от потери расчётов при одновременном запуске
+ * нескольких экземпляров приложения на одном компьютере. Версия НЕ
+ * участвует в логике допуска — блокируем любой второй запуск
+ * (см. js/services/appInstanceLock.js).
+ *
+ * Lock-проверка ОБЯЗАНА быть до initFromStorage и любых persist-подписок,
+ * иначе заблокированный экземпляр успеет прочитать calc.* и закрепить
+ * stale-state в собственном in-memory store. */
+let _instanceOwnerId = null;
+let _heartbeatHandle = null;
+
+function enterBlockedState(lockResult) {
+    /* Остановить heartbeat, если он успел запуститься. */
+    if (_heartbeatHandle && typeof _heartbeatHandle.stop === 'function') {
+        try { _heartbeatHandle.stop(); } catch { /* no-op */ }
+        _heartbeatHandle = null;
+    }
+    _instanceOwnerId = null;
+    renderInstanceBlockedScreen(lockResult);
+}
+
 function boot() {
     mountUi();
+
+    // Single-instance lock — ДО любых чтений/записей в storage.
+    const lockResult = acquireAppInstanceLock();
+    if (!lockResult.ok) {
+        renderInstanceBlockedScreen(lockResult);
+        return;
+    }
+    _instanceOwnerId = lockResult.ownerId;
+
+    // Heartbeat: обновляем lastSeenAt, чтобы lock не считался stale.
+    // Если другой экземпляр перехватил lock (reason='lost') — переходим
+    // в blocked-state и прекращаем рабочий UX.
+    _heartbeatHandle = startAppInstanceHeartbeat(_instanceOwnerId, {
+        onLost: existing => {
+            enterBlockedState({ ok: false, reason: 'occupied', existing });
+        }
+    });
 
     // Загрузить состояние из localStorage
     calcList.initFromStorage();
@@ -1936,6 +1981,37 @@ function boot() {
     window.addEventListener('pagehide', flushOnExit);
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') flushOnExit();
+    });
+
+    /* Stage 19.x: на закрытие окна освобождаем single-instance lock и
+     * останавливаем heartbeat — чтобы следующий запуск не ждал TTL=90с. */
+    const releaseOnExit = () => {
+        if (_heartbeatHandle && typeof _heartbeatHandle.stop === 'function') {
+            try { _heartbeatHandle.stop(); } catch { /* no-op */ }
+            _heartbeatHandle = null;
+        }
+        if (_instanceOwnerId) {
+            try { releaseAppInstanceLock(_instanceOwnerId); } catch { /* no-op */ }
+            _instanceOwnerId = null;
+        }
+    };
+    window.addEventListener('beforeunload', releaseOnExit);
+    window.addEventListener('pagehide', releaseOnExit);
+
+    /* Stage 19.x: cross-tab detection через storage-event. Если другая
+     * вкладка/окно успели записать свой ownerId в APP_INSTANCE_LOCK (это
+     * происходит, если они стартовали быстрее наших heartbeat'ов после
+     * нашего crash) — текущий экземпляр обязан перейти в blocked-state. */
+    window.addEventListener('storage', e => {
+        if (e.key !== STORAGE_KEYS.APP_INSTANCE_LOCK) return;
+        if (!_instanceOwnerId) return;
+        let parsed = null;
+        try { parsed = e.newValue ? JSON.parse(e.newValue) : null; }
+        catch { /* битый JSON — игнорируем */ }
+        if (!parsed) return;
+        if (parsed.ownerId && parsed.ownerId !== _instanceOwnerId) {
+            enterBlockedState({ ok: false, reason: 'occupied', existing: parsed });
+        }
     });
 }
 

@@ -612,6 +612,42 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
     font-size: 0.85rem;
 }
 
+/* Stage 19.x: single-instance lock blocking screen.
+   Использует те же базовые стили .boot-fallback (рамка/тень карточки).
+   Здесь только специфика — список диагностики и actions-row. */
+.instance-blocked-diag-list {
+    margin: 16px 0;
+    padding: 12px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+}
+.instance-blocked-diag-row {
+    display: flex;
+    gap: 8px;
+    padding: 2px 0;
+}
+.instance-blocked-diag-label {
+    color: var(--text-muted);
+    min-width: 180px;
+}
+.instance-blocked-diag-value { color: var(--text); }
+.instance-blocked-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+.instance-blocked-diag {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
 /* ============================================================
  * WCAG 2.3.3 Animation from Interactions
  * Уважаем системную настройку «уменьшить анимации» (OS-level

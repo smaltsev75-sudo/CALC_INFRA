@@ -19,7 +19,7 @@
  *                   новая вкладка, новый блок дашборда, AI-агенты, светлая тема.
  *   PATCH (1.1.X) — багфиксы, рефакторинг, мелкие UX-правки, hardening,
  *                   обновления прайсов без новых фич. */
-export const APP_VERSION = '2.19.5';
+export const APP_VERSION = '2.20.0';
 export const APP_NAME = 'Калькулятор инфраструктуры';
 
 /* ============================================================
@@ -1085,7 +1085,17 @@ export const STORAGE_KEYS = Object.freeze({
         Source ∈ 'health_check'|'guided_completion'|'optimization_playbook'|'manual_recheck'.
         Хранится отдельно от calc — schema migration не требуется. F5-safe.
         resetAll() очищает (через whitelist). */
-    HEALTH_SCORE_TREND: 'calc.healthScoreTrend'
+    HEALTH_SCORE_TREND: 'calc.healthScoreTrend',
+    /** Stage 19.x: single-instance lock (browser-level). Защита от
+        одновременного запуска нескольких экземпляров приложения на одном
+        компьютере (одной origin/profile) — иначе две вкладки конкурируют
+        за `calc.*` ключи и повреждают данные.
+        Структура: { schemaVersion: 1, ownerId, startedAt, lastSeenAt,
+        appVersion, url }. ownerId генерируется один раз при boot
+        (crypto.randomUUID). lastSeenAt обновляется heartbeat'ом каждые
+        APP_INSTANCE_LOCK_HEARTBEAT_MS. Stale-detection — `Date.now() -
+        lastSeenAt > APP_INSTANCE_LOCK_TTL_MS`. */
+    APP_INSTANCE_LOCK: 'calc.appInstanceLock'
 });
 
 /** Stage 9.5: лимит истории override'ов per provider. Хранение глубже 3 не даёт
@@ -1097,6 +1107,18 @@ export const PROVIDER_OVERRIDE_HISTORY_LIMIT = 3;
     игнорируем. 60 секунд достаточно для самого долгого сценария update'а
     (fetch JSON ~5s + apply ~1s + persist ~1s = max ~10s, 6× запас). */
 export const PROVIDER_TAB_LOCK_TTL_MS = 60_000;
+
+/** Stage 19.x: TTL single-instance lock'а в миллисекундах. Если ownerId не
+    обновил `lastSeenAt` дольше TTL — считаем lock «мёртвым» (вкладка-владелец
+    крашнулась / закрыта без cleanup'а), текущий экземпляр захватывает lock.
+    Значение из ТЗ: 90 секунд. Heartbeat 10 c → запас 9× на временные паузы
+    (свернутая вкладка с дросселированным rAF, сон ноутбука <90 c и т.п.). */
+export const APP_INSTANCE_LOCK_TTL_MS = 90_000;
+
+/** Stage 19.x: интервал heartbeat'а single-instance lock'а. Каждые N мс
+    активный экземпляр обновляет `lastSeenAt`, чтобы lock не считался stale.
+    Значение из ТЗ: 10 секунд. Heartbeat 9× меньше TTL — комфортный запас. */
+export const APP_INSTANCE_LOCK_HEARTBEAT_MS = 10_000;
 
 /** 12.U33: допустимые значения темы. */
 export const THEME_IDS = Object.freeze(['dark', 'light']);

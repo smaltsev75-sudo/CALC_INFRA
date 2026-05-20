@@ -266,10 +266,10 @@ describe('Stage 18.1 Phase 4 — legacy CSS absence', () => {
     });
 });
 
-describe('Stage 18.1 / 18.1.1 / 18.2 / VAT-1 / VAT-2 / Stage 19 — версия 2.13.x..2.19.x', () => {
-    it('package.json содержит 2.13.x..2.19.x (Stage 18.1 → VAT-2 → MINOR 2.18.0 → Stage 19 stand defaults)', () => {
+describe('Stage 18.1 / 18.1.1 / 18.2 / VAT-1 / VAT-2 / Stage 19 / Stage 19.x — версия 2.13.x..2.20.x', () => {
+    it('package.json содержит 2.13.x..2.20.x (Stage 18.1 → VAT-2 → MINOR 2.18.0 → Stage 19 stand defaults → Stage 19.x single-instance lock)', () => {
         const pkg = JSON.parse(read('package.json'));
-        assert.match(pkg.version, /^2\.(13|14|15|16|17|18|19)\.\d+$/);
+        assert.match(pkg.version, /^2\.(13|14|15|16|17|18|19|20)\.\d+$/);
     });
 
     it('APP_VERSION в constants.js синхронизирован с package.json', () => {
