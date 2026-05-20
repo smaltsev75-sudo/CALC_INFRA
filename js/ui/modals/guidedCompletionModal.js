@@ -21,6 +21,8 @@ import { el } from '../dom.js';
 import { modalShell } from './baseModal.js';
 import { evaluateCalculationHealth } from '../../domain/calculationHealth.js';
 import { getStepAt, getCompletionProgress } from '../../domain/guidedCompletion.js';
+import { parseNumberInput } from '../../services/format.js';
+import { DECIMAL_INPUT_TYPE, decimalInputAttrs, formatDecimalInputValue } from '../decimalInput.js';
 
 /* ============================================================
  * Главный entry
@@ -195,18 +197,13 @@ function renderBooleanInput(currentValue, onApply, q) {
 
 function renderNumberInput(currentValue, onApply, q) {
     let draft = currentValue ?? '';
-    const inputAttrs = {
-        type: 'number',
+    const inputAttrs = decimalInputAttrs({
+        type: DECIMAL_INPUT_TYPE,
         'data-focus-key': `gc-${q.id}`
-    };
-    if (q.min !== undefined) inputAttrs.min = String(q.min);
-    if (q.max !== undefined) inputAttrs.max = String(q.max);
-    /* PATCH 2.20.5: step="any" — HTML5 принимает дробные. SEED q.step не
-     * передаётся в DOM (раньше step:1 блокировал ввод `5.5`). */
-    inputAttrs.step = 'any';
+    });
 
     const submit = () => {
-        const num = Number(draft);
+        const num = parseNumberInput(draft);
         if (!Number.isFinite(num)) return;
         onApply(num);
     };
@@ -215,7 +212,7 @@ function renderNumberInput(currentValue, onApply, q) {
         el('input', {
             class: 'input',
             attrs: inputAttrs,
-            value: draft === '' ? '' : String(draft),
+            value: formatDecimalInputValue(draft),
             onInput: e => { draft = e.target.value; },
             onKeyDown: e => { if (e.key === 'Enter') submit(); }
         }),

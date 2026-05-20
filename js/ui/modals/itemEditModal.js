@@ -12,6 +12,7 @@ import { modalShell } from './baseModal.js';
 import { STAND_IDS, STAND_LABELS, CATEGORY_IDS, CATEGORY_LABELS, BILLING_INTERVAL_IDS, BILLING_INTERVAL_LABELS, RESOURCE_CLASS_IDS, RESOURCE_CLASS_LABELS, COST_TYPE_IDS, COST_TYPE_LABELS } from '../../utils/constants.js';
 import { getCostType } from '../../domain/costType.js';
 import { parseNumberInput } from '../../services/format.js';
+import { DECIMAL_INPUT_TYPE, decimalInputAttrs, formatDecimalInputValue } from '../decimalInput.js';
 import { getAst } from '../../domain/formula/cache.js';
 import { collectReferences } from '../../domain/formula/evaluator.js';
 
@@ -118,13 +119,13 @@ function renderMain(draft, ctx) {
         })),
         field('Цена за единицу *', el('input', {
             class: 'input',
-            type: 'number',
-            value: draft.pricePerUnit,
+            type: DECIMAL_INPUT_TYPE,
+            value: formatDecimalInputValue(draft.pricePerUnit),
             title: 'Стоимость одной единицы измерения в текущей валюте расчёта',
-            attrs: { min: 0, step: 'any', 'data-focus-key': 'item-edit:pricePerUnit' },
+            attrs: decimalInputAttrs({ 'data-focus-key': 'item-edit:pricePerUnit' }),
             onInput: e => {
                 const n = parseNumberInput(e.target.value);
-                patchDraft(ctx, {pricePerUnit: Number.isFinite(n) ? n : 0 });
+                if (Number.isFinite(n)) patchDraft(ctx, {pricePerUnit: n });
             }
         })),
         field('Категория *', el('select', {

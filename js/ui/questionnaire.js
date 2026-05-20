@@ -34,6 +34,7 @@ import {
     UI_TOOLTIPS_SHORT
 } from '../utils/constants.js';
 import { parseNumberInput, percent, formatDate } from '../services/format.js';
+import { DECIMAL_INPUT_TYPE, decimalInputAttrs, formatDecimalInputValue } from './decimalInput.js';
 import { SEED_QUESTIONS, SEED_ITEMS, DEPRECATED_QUESTION_IDS } from '../domain/seed.js';
 import { listProviders, DEFAULT_PROVIDER, PROVIDER_OVERLAYS } from '../domain/providerOverlay.js';
 import {
@@ -500,10 +501,10 @@ function renderSettingsGroupPeriod(s, ctx) {
                 el('span', { class: 'field-label', text: 'Длительность этапа проекта, мес.' }),
                 el('input', {
                     class: 'input',
-                    type: 'number',
-                    value: s.phaseDurationMonths ?? 12,
+                    type: DECIMAL_INPUT_TYPE,
+                    value: formatDecimalInputValue(s.phaseDurationMonths ?? 12),
                     title: SETTINGS_DESCRIPTIONS.phaseDurationMonths,
-                    attrs: { min: 1, max: 1200, step: 'any', 'data-focus-key': 'setting:phaseDurationMonths' },
+                    attrs: decimalInputAttrs({ 'data-focus-key': 'setting:phaseDurationMonths' }),
                     onInput: e => {
                         const n = parseNumberInput(e.target.value);
                         if (Number.isFinite(n) && n > 0) ctx.setSetting('phaseDurationMonths', n);
@@ -588,13 +589,13 @@ function renderSettingsGroupRisks(s, ctx, applyRisks, totalFactor, horizon) {
             el('label', { class: ['field', !applyRisks && 'field-disabled'] },
                 el('span', { class: 'field-label', text: 'Горизонт планирования, лет' }),
                 el('input', {
-                    class: 'input', type: 'number',
-                    value: s.planningHorizonYears ?? 1,
+                    class: 'input', type: DECIMAL_INPUT_TYPE,
+                    value: formatDecimalInputValue(s.planningHorizonYears ?? 1),
                     title: !applyRisks
                         ? `${SETTINGS_DESCRIPTIONS.planningHorizonYears}\n\nПоле неактивно: выключен переключатель «Учитывать риск-коэффициенты в бюджете».`
                         : SETTINGS_DESCRIPTIONS.planningHorizonYears,
                     disabled: !applyRisks,
-                    attrs: { min: 0, max: 50, step: 'any', 'data-focus-key': 'setting:planningHorizonYears' },
+                    attrs: decimalInputAttrs({ 'data-focus-key': 'setting:planningHorizonYears' }),
                     onInput: e => {
                         const n = parseNumberInput(e.target.value);
                         if (Number.isFinite(n) && n >= 0) ctx.setSetting('planningHorizonYears', n);
@@ -850,13 +851,13 @@ function renderPercentField(label, value, onChange, hint, key, disabled = false,
             el('div', { class: 'percent-input' },
                 el('input', {
                     class: 'input',
-                    type: 'number',
-                    value: pct.toString().replace('.', ','),
+                    type: DECIMAL_INPUT_TYPE,
+                    value: formatDecimalInputValue(pct),
                     title: disabled
                         ? hint + '\n\nПоле неактивно: в Опроснике выключен переключатель «Учитывать риск-коэффициенты в бюджете».'
                         : hint,
                     disabled,
-                    attrs: { step: 'any', min: -100, max: 1000, 'data-focus-key': key },
+                    attrs: decimalInputAttrs({ 'data-focus-key': key }),
                     onInput: e => {
                         const n = parseNumberInput(e.target.value);
                         if (Number.isFinite(n)) {
@@ -944,18 +945,15 @@ function renderStandSizeRatios(calc, ctx) {
             el('span', { class: 'field-label', text: STAND_LABELS[stand] || stand }),
             el('input', {
                 class: ['input', isFixed && 'input-readonly'],
-                type: 'number',
-                value: cur,
+                type: DECIMAL_INPUT_TYPE,
+                value: formatDecimalInputValue(cur),
                 title: isFixed
                     ? 'ПРОМ зафиксирован = 1.00 как эталон. Размеры остальных стендов задаются относительно ПРОМ.'
                     : `Множитель ресурсов стенда ${STAND_LABELS[stand]} относительно ПРОМ (${range.min.toFixed(2)}…${range.max.toFixed(2)}).`,
-                attrs: {
-                    min: range.min,
-                    max: range.max,
-                    step: 'any',
+                attrs: decimalInputAttrs({
                     disabled: isFixed ? '' : undefined,
                     'data-focus-key': `setting:standSizeRatio.${stand}`
-                },
+                }),
                 onInput: e => {
                     const n = parseNumberInput(e.target.value);
                     if (Number.isFinite(n)) updateStand(stand, n);
@@ -1022,7 +1020,7 @@ function renderAiStandFactors(calc, ctx) {
     const fields = STAND_DISPLAY_ORDER.map(stand => {
         const range = AI_STAND_FACTOR_RANGES[stand];
         const cur = Number.isFinite(factors[stand]) ? factors[stand] : DEFAULT_AI_STAND_FACTOR[stand];
-        const curPercent = Math.round(cur * 100);
+        const curPercent = cur * 100;
 
         const tooltip =
             `Доля AI-нагрузки на стенде ${STAND_LABELS[stand]}: 0% = AI выкл., 100% = как на ПРОМ. ` +
@@ -1033,16 +1031,13 @@ function renderAiStandFactors(calc, ctx) {
             el('span', { class: 'field-label', text: `${STAND_LABELS[stand] || stand}, %` }),
             el('input', {
                 class: 'input',
-                type: 'number',
-                value: curPercent,
+                type: DECIMAL_INPUT_TYPE,
+                value: formatDecimalInputValue(curPercent),
                 title: tooltip,
                 disabled: !aiUsed,
-                attrs: {
-                    min: 0,
-                    max: 100,
-                    step: 'any',
+                attrs: decimalInputAttrs({
                     'data-focus-key': `setting:aiStandFactor.${stand}`
-                },
+                }),
                 onInput: e => {
                     const n = parseNumberInput(e.target.value);
                     if (Number.isFinite(n)) updateStand(stand, n);
@@ -1181,7 +1176,8 @@ function renderResourceRatios(calc, ctx) {
             const cur = Number.isFinite(standMap[resource])
                 ? standMap[resource]
                 : DEFAULT_RESOURCE_RATIO[stand][resource];
-            const curPercent = Math.round(cur * 100);
+            const curPercent = cur * 100;
+            const curPercentLabel = formatDecimalInputValue(curPercent);
 
             if (!applicable) {
                 return el('span', {
@@ -1194,19 +1190,16 @@ function renderResourceRatios(calc, ctx) {
             }
             return el('input', {
                 class: 'resource-ratio-cell resource-ratio-cell-input input',
-                type: 'number',
-                value: curPercent,
+                type: DECIMAL_INPUT_TYPE,
+                value: curPercentLabel,
                 title: `Множитель ${resource} стенда ${STAND_LABELS[stand]} от ПРОМ, %. ` +
-                       `Например, ${curPercent}% означает: ${resource} на ${STAND_LABELS[stand]} = ` +
-                       `${curPercent}% от объёма ${resource} на ПРОМ. ` +
+                       `Например, ${curPercentLabel}% означает: ${resource} на ${STAND_LABELS[stand]} = ` +
+                       `${curPercentLabel}% от объёма ${resource} на ПРОМ. ` +
                        `Допустимый диапазон: ${(range.min * 100).toFixed(0)}…${(range.max * 100).toFixed(0)}%.`,
-                attrs: {
-                    min: Math.round(range.min * 100),
-                    max: Math.round(range.max * 100),
-                    step: 'any',
+                attrs: decimalInputAttrs({
                     'data-focus-key': `setting:resourceRatio.${stand}.${resource}`,
                     'aria-label': `${resource} на ${STAND_LABELS[stand]}, % от ПРОМ`
-                },
+                }),
                 onInput: e => {
                     const n = parseNumberInput(e.target.value);
                     if (Number.isFinite(n)) updateCell(stand, resource, n);
@@ -1867,32 +1860,25 @@ function renderNumberInput(q, value, isUnknown, focusKey, hoverHint, ctx) {
 
     const minAttr = q.min !== undefined ? q.min : undefined;
     const maxAttr = q.max !== undefined ? q.max : undefined;
-    /* PATCH 2.20.5: всегда step="any" — HTML5-валидация принимает дробные.
-     * SEED-уровневый q.step игнорируется в DOM (раньше step:1 из SEED отвергал
-     * `5.5` через :invalid). Stepper-стрелки сохраняют дефолтный шаг 1.
-     * min/max валидация продолжает работать как раньше. */
-    const stepAttr = 'any';
 
     const node = el('input', {
         class: ['input', isUnknown && 'input-unknown'],
-        type: 'number',
-        value: isUnknown ? '' : (value ?? ''),
-        placeholder,
+        type: DECIMAL_INPUT_TYPE,
+        value: isUnknown ? '' : formatDecimalInputValue(value ?? ''),
+        placeholder: formatDecimalInputValue(placeholder),
         title: hoverHint,
-        attrs: {
-            min: minAttr,
-            max: maxAttr,
-            step: stepAttr,
+        attrs: decimalInputAttrs({
             disabled: isUnknown ? '' : undefined,
             'data-focus-key': focusKey
-        },
+        }),
         onInput: e => {
             // Снимаем inline-ошибку при правке — пользователь должен видеть, что поле «жмётся».
             removeInlineError(e.target);
             const n = parseNumberInput(e.target.value);
             if (e.target.value === '' || !Number.isFinite(n)) {
-                // Пустое или мусорное значение: пишем 0, но без всплывающих ошибок.
-                ctx.setAnswer(q.id, 0);
+                // Промежуточное значение дроби (`1,` / `1.`) не коммитим,
+                // иначе перерисовка удалит разделитель и пользователь не
+                // сможет допечатать дробную часть.
                 return;
             }
             // В границы — пишем; вне границ — НЕ пишем (старое значение сохраняется).
@@ -1904,7 +1890,11 @@ function renderNumberInput(q, value, isUnknown, focusKey, hoverHint, ctx) {
         },
         onBlur: e => {
             const raw = e.target.value;
-            if (raw === '') return;
+            if (raw === '') {
+                ctx.setAnswer(q.id, 0);
+                removeInlineError(e.target);
+                return;
+            }
             const n = parseNumberInput(raw);
             if (!Number.isFinite(n)) return;
             if (isOutOfRange(n, minAttr, maxAttr)) {

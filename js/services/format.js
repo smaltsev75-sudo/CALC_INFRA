@@ -138,7 +138,7 @@ export function parseNumberInput(value) {
     if (value === null || value === undefined) return NaN;
     const cleaned = String(value).replace(/\s+/g, '').replace(',', '.');
     if (cleaned === '') return NaN;
-    if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return NaN;
+    if (!/^-?(?:\d+(?:\.\d+)?|\.\d+)$/.test(cleaned)) return NaN;
     const n = Number(cleaned);
     return Number.isFinite(n) ? n : NaN;
 }

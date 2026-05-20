@@ -36,7 +36,8 @@ import {
     draftHasHighRisk,
     listHighRiskChanges
 } from '../../domain/costOptimizationPlanner.js';
-import { formatRubThousands } from '../../services/format.js';
+import { formatRubThousands, parseNumberInput } from '../../services/format.js';
+import { DECIMAL_INPUT_TYPE, decimalInputAttrs, formatDecimalInputValue } from '../decimalInput.js';
 import {
     PERIOD_IDS,
     PERIOD_LABELS,
@@ -626,19 +627,13 @@ function renderNumberEditor(lever, ctx, integer) {
                 text: `Сейчас: ${formatValueShort(lever.baseValue, lever)}` }),
             el('input', {
                 class: 'input cop-lever-input',
-                type: 'number',
-                value: integer ? String(Math.round(current)) : String(current),
-                attrs: {
+                type: DECIMAL_INPUT_TYPE,
+                value: formatDecimalInputValue(integer ? Math.round(current) : current),
+                attrs: decimalInputAttrs({
                     'data-focus-key': `cop-lever-${lever.id}`,
-                    min:  String(editor.min),
-                    max:  String(editor.max),
-                    /* PATCH 2.20.5: step="any" — HTML5 принимает дробные.
-                     * editor.step используется только как UX-подсказка stepper'а
-                     * в logic'е выше, но в DOM лучше не блокировать ввод. */
-                    step: 'any'
-                },
+                }),
                 onChange: e => {
-                    const raw = Number(e.target.value);
+                    const raw = parseNumberInput(e.target.value);
                     if (Number.isFinite(raw)) ctx.updateOptimizationDraftValue(fieldId, raw);
                 }
             })

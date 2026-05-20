@@ -1,25 +1,11 @@
 /**
- * Архитектурный инвариант (PATCH 2.20.5): все `<input type="number">` в UI-слое
- * обязаны иметь `step: 'any'` (или отсутствие step-атрибута — но это рискованно,
- * HTML5-default = step:1 блокирует дробные).
+ * Архитектурный инвариант (PATCH 2.20.5): числовые UI-поля должны принимать
+ * дробные значения с точкой и с русской запятой.
  *
- * Прецедент 2026-05-20: жалоба пользователя «нельзя вводить дробные числа».
- * Корень — SEED-уровневые `step: N` (1/5/10/1000) в renderer'ах number-input
- * передавались напрямую в DOM. HTML5 `:invalid` validation отвергала любое
- * значение, кратное step'у дробью. Замена на `step="any"` снимает это
- * ограничение, min/max валидация продолжает работать.
- *
- * Этот тест предотвращает регрессию: если кто-то через 2 недели добавит новое
- * number-input с `step: 1` (или числовым step), invariant провалится в CI.
- *
- * Что разрешено:
- *   - `step: 'any'`
- *   - `step: 1` ВНУТРИ `<input type="range">` (slider — там это шаг slider'а,
- *     а не валидация дробных). Такие случаи помечаются явным комментарием
- *     `// allow-numeric-step: range-slider`.
- *
- * Что запрещено в production-коде (исключая тесты):
- *   - Любой числовой литерал в `step: N` для `<input type="number">`.
+ * Корень бага: `<input type="number">` плохо переживает ru-RU ввод (`1,5`) и
+ * промежуточные состояния (`1,` / `1.`) при перерисовке. Поэтому UI-слой для
+ * числового ввода использует text-input + `inputmode="decimal"` и общий строгий
+ * парсер `parseNumberInput`.
  */
 
 import { describe, it } from 'node:test';
@@ -28,9 +14,10 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stripJsComments } from '../../_helpers/source.js';
+import { parseNumberInput } from '../../../js/services/format.js';
 
 const __filename = fileURLToPath(import.meta.url);
-const ROOT = join(__filename, '..', '..', '..', '..');
+const ROOT = join(dirname(__filename), '..', '..', '..');
 
 function walk(dir, out = []) {
     for (const entry of readdirSync(dir)) {
@@ -42,57 +29,44 @@ function walk(dir, out = []) {
     return out;
 }
 
-describe('number-input step="any" invariant — все <input type="number"> принимают дробные', () => {
-    it('в js/ui/ нет числовых step:N в number-input (кроме range slider)', () => {
+describe('decimal numeric input invariant — дробные числа вводятся везде', () => {
+    it('в js/ui/ нет DOM `<input type="number">` для числовых редакторов', () => {
         const uiFiles = walk(join(ROOT, 'js', 'ui'));
         const violations = [];
 
         for (const file of uiFiles) {
-            const src = readFileSync(file, 'utf8');
-            // Снимаем комментарии: упоминания step:1 в JSDoc легитимны
-            // и не должны валить тест. Проверяем только исполняемый код.
-            const code = stripJsComments(src);
-
-            /* Ищем все `step: <число>` (с пробелом и без), в любом контексте. */
-            const stepRegex = /step\s*:\s*(\d[\d._]*)/g;
+            const code = stripJsComments(readFileSync(file, 'utf8'));
+            const typeNumberRegex = /type\s*:\s*['"]number['"]/g;
             let match;
-            while ((match = stepRegex.exec(code)) !== null) {
+            while ((match = typeNumberRegex.exec(code)) !== null) {
                 const lineStart = code.lastIndexOf('\n', match.index) + 1;
                 const lineEnd = code.indexOf('\n', match.index);
-                const line = code.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
-                /* Whitelist: если ближайший type:'range' в окне 200 символов
-                 * до этого `step:N` — это slider, разрешено. */
-                const windowStart = Math.max(0, match.index - 400);
-                const windowText = code.slice(windowStart, match.index);
-                const isRangeSlider = /type\s*:\s*['"]range['"]/.test(windowText);
-                if (isRangeSlider) continue;
-
                 violations.push({
                     file: file.replace(ROOT, '').replace(/\\/g, '/'),
-                    line: line.trim().slice(0, 100),
-                    matched: match[0]
+                    line: code.slice(lineStart, lineEnd === -1 ? undefined : lineEnd).trim()
                 });
             }
         }
 
         assert.equal(violations.length, 0,
-            'Найдены number-input с числовым step (блокирует дробные). ' +
-            'Заменить на `step: \'any\'`:\n' +
-            violations.map(v => `  ${v.file}: ${v.matched} → ${v.line}`).join('\n'));
+            'Найдены HTML number-input в UI. Для дробного ru-RU ввода используйте ' +
+            '`DECIMAL_INPUT_TYPE` + `decimalInputAttrs()`:\n' +
+            violations.map(v => `  ${v.file}: ${v.line}`).join('\n'));
     });
 
-    it('renderNumberInput в questionnaire.js использует step="any" как stepAttr', () => {
-        const src = readFileSync(join(ROOT, 'js', 'ui', 'questionnaire.js'), 'utf8');
+    it('decimalInputAttrs включает inputmode="decimal"', () => {
+        const src = readFileSync(join(ROOT, 'js', 'ui', 'decimalInput.js'), 'utf8');
         const code = stripJsComments(src);
-        /* Должна быть строка `const stepAttr = 'any';` или эквивалент. */
-        assert.match(code, /stepAttr\s*=\s*['"]any['"]/,
-            'renderNumberInput должен явно ставить stepAttr = "any" (не q.step из SEED)');
+        assert.match(code, /inputmode\s*:\s*['"]decimal['"]/,
+            'decimalInputAttrs должен просить у браузера десятичную клавиатуру');
     });
 
-    it('guidedCompletionModal.js использует step="any" для number-input', () => {
-        const src = readFileSync(join(ROOT, 'js', 'ui', 'modals', 'guidedCompletionModal.js'), 'utf8');
-        const code = stripJsComments(src);
-        assert.match(code, /inputAttrs\.step\s*=\s*['"]any['"]/,
-            'guidedCompletionModal renderNumberInput должен ставить inputAttrs.step = "any"');
+    it('parseNumberInput принимает дроби с точкой, запятой и без ведущего нуля', () => {
+        assert.equal(parseNumberInput('1.5'), 1.5);
+        assert.equal(parseNumberInput('1,5'), 1.5);
+        assert.equal(parseNumberInput(',5'), 0.5);
+        assert.equal(parseNumberInput('.5'), 0.5);
+        assert.equal(Number.isNaN(parseNumberInput('1,')), true);
+        assert.equal(Number.isNaN(parseNumberInput('1.')), true);
     });
 });

@@ -8,6 +8,7 @@ import { icon } from '../icons.js';
 import { modalShell } from './baseModal.js';
 import { SECTION_IDS, SECTION_LABELS, QUESTION_TYPES, QUESTION_TYPE_LABELS, VALIDATION } from '../../utils/constants.js';
 import { parseNumberInput } from '../../services/format.js';
+import { DECIMAL_INPUT_TYPE, decimalInputAttrs, formatDecimalInputValue } from '../decimalInput.js';
 
 export function renderQuestionEditModal(state, ctx) {
     const m = state.modals.questionEdit;
@@ -61,13 +62,10 @@ export function renderQuestionEditModal(state, ctx) {
             })),
             field('Порядок отображения *', el('input', {
                 class: 'input',
-                type: 'number',
-                value: draft.order,
-                attrs: { step: 'any', min: 0 },
-                onInput: e => {
-                    const n = parseNumberInput(e.target.value);
-                    patchDraft(ctx, {order: Number.isFinite(n) ? n : 0 });
-                }
+                type: DECIMAL_INPUT_TYPE,
+                value: formatDecimalInputValue(draft.order),
+                attrs: decimalInputAttrs(),
+                onInput: e => patchNumberDraft(ctx, 'order', e.target.value)
             })),
 
             el('div', { class: 'form-row form-row-wide' },
@@ -173,11 +171,11 @@ function renderDefaultIfUnknown(draft, ctx) {
     const out = [];
     if (draft.type === 'number') {
         out.push(field('Значение если «не знаю»', el('input', {
-            class: 'input', type: 'number',
-            value: draft.defaultIfUnknown ?? '',
+            class: 'input', type: DECIMAL_INPUT_TYPE,
+            value: formatDecimalInputValue(draft.defaultIfUnknown ?? ''),
             title: 'Какое числовое значение подставить, если пользователь не ответил. Используется при расчёте и попадает в реестр допущений.',
-            attrs: { step: 'any' },
-            onInput: e => patchDraft(ctx, {defaultIfUnknown: numOr(draft.defaultIfUnknown, e.target.value) })
+            attrs: decimalInputAttrs(),
+            onInput: e => patchNumberDraft(ctx, 'defaultIfUnknown', e.target.value)
         })));
     } else if (draft.type === 'boolean') {
         out.push(field('Значение если «не знаю»', el('label', { class: 'switch' },
@@ -236,28 +234,28 @@ function renderTypeSpecific(draft, ctx) {
     const out = [];
     if (draft.type === 'number') {
         out.push(field('min', el('input', {
-            class: 'input', type: 'number',
-            value: draft.min ?? '',
-            attrs: { step: 'any' },
-            onInput: e => patchDraft(ctx, {min: numOr(draft.min, e.target.value) })
+            class: 'input', type: DECIMAL_INPUT_TYPE,
+            value: formatDecimalInputValue(draft.min ?? ''),
+            attrs: decimalInputAttrs(),
+            onInput: e => patchNumberDraft(ctx, 'min', e.target.value)
         })));
         out.push(field('max', el('input', {
-            class: 'input', type: 'number',
-            value: draft.max ?? '',
-            attrs: { step: 'any' },
-            onInput: e => patchDraft(ctx, {max: numOr(draft.max, e.target.value) })
+            class: 'input', type: DECIMAL_INPUT_TYPE,
+            value: formatDecimalInputValue(draft.max ?? ''),
+            attrs: decimalInputAttrs(),
+            onInput: e => patchNumberDraft(ctx, 'max', e.target.value)
         })));
         out.push(field('step', el('input', {
-            class: 'input', type: 'number',
-            value: draft.step ?? '',
-            attrs: { step: 'any' },
-            onInput: e => patchDraft(ctx, {step: numOr(draft.step, e.target.value) })
+            class: 'input', type: DECIMAL_INPUT_TYPE,
+            value: formatDecimalInputValue(draft.step ?? ''),
+            attrs: decimalInputAttrs(),
+            onInput: e => patchNumberDraft(ctx, 'step', e.target.value)
         })));
         out.push(field('Значение по умолчанию', el('input', {
-            class: 'input', type: 'number',
-            value: draft.defaultValue ?? '',
-            attrs: { step: 'any' },
-            onInput: e => patchDraft(ctx, {defaultValue: numOr(draft.defaultValue, e.target.value) })
+            class: 'input', type: DECIMAL_INPUT_TYPE,
+            value: formatDecimalInputValue(draft.defaultValue ?? ''),
+            attrs: decimalInputAttrs(),
+            onInput: e => patchNumberDraft(ctx, 'defaultValue', e.target.value)
         })));
     } else if (draft.type === 'boolean') {
         out.push(field('Значение по умолчанию', el('label', { class: 'switch' },
@@ -324,10 +322,13 @@ function renderOptions(draft, ctx) {
     );
 }
 
-function numOr(prev, raw) {
-    if (raw === '' || raw === null || raw === undefined) return undefined;
+function patchNumberDraft(ctx, key, raw) {
+    if (raw === '' || raw === null || raw === undefined) {
+        patchDraft(ctx, { [key]: undefined });
+        return;
+    }
     const n = parseNumberInput(raw);
-    return Number.isFinite(n) ? n : prev;
+    if (Number.isFinite(n)) patchDraft(ctx, { [key]: n });
 }
 
 function renderErrors(errors) {
