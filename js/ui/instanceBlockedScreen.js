@@ -112,21 +112,57 @@ export function renderInstanceBlockedScreen(lockResult) {
     /* Кнопка «Закрыть эту вкладку». По HTML-spec `window.close()` через скрипт
      * работает ТОЛЬКО когда session history вкладки содержит ровно 1 Document
      * (новая вкладка / Ctrl+T → URL → blocked-screen) ИЛИ когда окно было
-     * открыто через `window.open()`. Если пользователь переходил по ссылкам
-     * до того как попал сюда — браузер тихо проигнорирует close().
-     * Поэтому ниже рендерим подсказку «Если ничего не произошло — Ctrl+W». */
+     * открыто через `window.open()`. Если у вкладки есть история навигации
+     * (F5, переход по ссылкам, восстановленная сессия) — браузер тихо
+     * проигнорирует close().
+     *
+     * PATCH 2.20.2: silent-fail v2.20.1 → пользователь не видел разницы между
+     * «успешно закрыто» и «браузер заблокировал». Теперь:
+     *  - проверяем закрытие через 250 ms (если бы window.close() сработал,
+     *    этот колбэк уже бы не выполнился);
+     *  - если выполнился — переключаем blocked-screen в режим failure-hint:
+     *    подсказка становится warning-блоком с явным сообщением и `<kbd>`-
+     *    стилизованными клавишами, кнопка дизейблится с текстом-объяснением. */
     const closeBtn = el('button', {
         class: 'btn',
         attrs: { type: 'button' },
         text: 'Закрыть эту вкладку',
         onClick: () => {
             try { window.close(); } catch { /* no-op для node-env */ }
-            /* Если close проигнорирован браузером — фокусируем подсказку,
-             * чтобы пользователь увидел, что делать дальше. */
             setTimeout(() => {
+                /* Если мы здесь — close() проигнорирован браузером. */
                 const hint = document.querySelector('.instance-blocked-close-hint');
-                if (hint) hint.classList.add('instance-blocked-close-hint-flash');
-            }, 100);
+                if (hint) {
+                    hint.classList.add('instance-blocked-close-hint-failed');
+                    /* Очищаем default-текст и рендерим warning-структуру с <kbd>. */
+                    while (hint.firstChild) hint.removeChild(hint.firstChild);
+                    const ua = (typeof navigator !== 'undefined' && navigator.platform) || '';
+                    const isMac = /Mac|iPhone|iPad|iPod/i.test(ua);
+                    hint.appendChild(el('strong', { text: 'Браузер заблокировал программное закрытие этой вкладки.' }));
+                    hint.appendChild(el('br'));
+                    hint.appendChild(document.createTextNode('Это защита от malicious-сайтов: закрывать можно только вкладки, у которых нет истории навигации. Закройте вручную: '));
+                    if (isMac) {
+                        hint.appendChild(el('kbd', { class: 'instance-blocked-kbd', text: 'Cmd' }));
+                        hint.appendChild(document.createTextNode(' + '));
+                        hint.appendChild(el('kbd', { class: 'instance-blocked-kbd', text: 'W' }));
+                    } else {
+                        hint.appendChild(el('kbd', { class: 'instance-blocked-kbd', text: 'Ctrl' }));
+                        hint.appendChild(document.createTextNode(' + '));
+                        hint.appendChild(el('kbd', { class: 'instance-blocked-kbd', text: 'W' }));
+                    }
+                    hint.appendChild(document.createTextNode('.'));
+                    /* Фокус на блок — screen-reader проговорит aria-live. */
+                    if (typeof hint.focus === 'function') {
+                        hint.setAttribute('tabindex', '-1');
+                        hint.focus({ preventScroll: false });
+                    }
+                }
+                /* Кнопку отключаем — повторный клик ничего не даст, лучше явно
+                 * показать что путь «через клик» исчерпан. */
+                closeBtn.disabled = true;
+                closeBtn.textContent = 'Закрытие заблокировано браузером';
+                closeBtn.setAttribute('aria-disabled', 'true');
+            }, 250);
         }
     });
 

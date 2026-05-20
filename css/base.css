@@ -664,6 +664,34 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
     border-left-color: var(--accent);
     color: var(--text);
 }
+.instance-blocked-close-hint-failed {
+    background: rgba(245, 158, 11, 0.12);
+    border-left: 3px solid rgb(245, 158, 11);
+    color: var(--text);
+    font-size: 0.92rem;
+    line-height: 1.5;
+    outline: none;
+}
+.instance-blocked-close-hint-failed strong {
+    display: block;
+    margin-bottom: 6px;
+    color: rgb(245, 158, 11);
+    font-size: 0.98rem;
+}
+.instance-blocked-kbd {
+    display: inline-block;
+    padding: 2px 7px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--text);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+    margin: 0 1px;
+}
 
 /* ============================================================
  * WCAG 2.3.3 Animation from Interactions
