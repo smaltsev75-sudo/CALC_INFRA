@@ -63,7 +63,7 @@ export function renderQuestionEditModal(state, ctx) {
                 class: 'input',
                 type: 'number',
                 value: draft.order,
-                attrs: { step: 10, min: 0 },
+                attrs: { step: 'any', min: 0 },
                 onInput: e => {
                     const n = parseNumberInput(e.target.value);
                     patchDraft(ctx, {order: Number.isFinite(n) ? n : 0 });
@@ -238,11 +238,13 @@ function renderTypeSpecific(draft, ctx) {
         out.push(field('min', el('input', {
             class: 'input', type: 'number',
             value: draft.min ?? '',
+            attrs: { step: 'any' },
             onInput: e => patchDraft(ctx, {min: numOr(draft.min, e.target.value) })
         })));
         out.push(field('max', el('input', {
             class: 'input', type: 'number',
             value: draft.max ?? '',
+            attrs: { step: 'any' },
             onInput: e => patchDraft(ctx, {max: numOr(draft.max, e.target.value) })
         })));
         out.push(field('step', el('input', {
@@ -254,6 +256,7 @@ function renderTypeSpecific(draft, ctx) {
         out.push(field('Значение по умолчанию', el('input', {
             class: 'input', type: 'number',
             value: draft.defaultValue ?? '',
+            attrs: { step: 'any' },
             onInput: e => patchDraft(ctx, {defaultValue: numOr(draft.defaultValue, e.target.value) })
         })));
     } else if (draft.type === 'boolean') {

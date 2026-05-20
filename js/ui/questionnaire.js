@@ -503,7 +503,7 @@ function renderSettingsGroupPeriod(s, ctx) {
                     type: 'number',
                     value: s.phaseDurationMonths ?? 12,
                     title: SETTINGS_DESCRIPTIONS.phaseDurationMonths,
-                    attrs: { min: 1, max: 1200, step: 1, 'data-focus-key': 'setting:phaseDurationMonths' },
+                    attrs: { min: 1, max: 1200, step: 'any', 'data-focus-key': 'setting:phaseDurationMonths' },
                     onInput: e => {
                         const n = parseNumberInput(e.target.value);
                         if (Number.isFinite(n) && n > 0) ctx.setSetting('phaseDurationMonths', n);
@@ -594,7 +594,7 @@ function renderSettingsGroupRisks(s, ctx, applyRisks, totalFactor, horizon) {
                         ? `${SETTINGS_DESCRIPTIONS.planningHorizonYears}\n\nПоле неактивно: выключен переключатель «Учитывать риск-коэффициенты в бюджете».`
                         : SETTINGS_DESCRIPTIONS.planningHorizonYears,
                     disabled: !applyRisks,
-                    attrs: { min: 0, max: 50, step: 1, 'data-focus-key': 'setting:planningHorizonYears' },
+                    attrs: { min: 0, max: 50, step: 'any', 'data-focus-key': 'setting:planningHorizonYears' },
                     onInput: e => {
                         const n = parseNumberInput(e.target.value);
                         if (Number.isFinite(n) && n >= 0) ctx.setSetting('planningHorizonYears', n);
@@ -856,7 +856,7 @@ function renderPercentField(label, value, onChange, hint, key, disabled = false,
                         ? hint + '\n\nПоле неактивно: в Опроснике выключен переключатель «Учитывать риск-коэффициенты в бюджете».'
                         : hint,
                     disabled,
-                    attrs: { step: 0.5, min: -100, max: 1000, 'data-focus-key': key },
+                    attrs: { step: 'any', min: -100, max: 1000, 'data-focus-key': key },
                     onInput: e => {
                         const n = parseNumberInput(e.target.value);
                         if (Number.isFinite(n)) {
@@ -952,7 +952,7 @@ function renderStandSizeRatios(calc, ctx) {
                 attrs: {
                     min: range.min,
                     max: range.max,
-                    step: 0.05,
+                    step: 'any',
                     disabled: isFixed ? '' : undefined,
                     'data-focus-key': `setting:standSizeRatio.${stand}`
                 },
@@ -1040,7 +1040,7 @@ function renderAiStandFactors(calc, ctx) {
                 attrs: {
                     min: 0,
                     max: 100,
-                    step: 5,
+                    step: 'any',
                     'data-focus-key': `setting:aiStandFactor.${stand}`
                 },
                 onInput: e => {
@@ -1203,7 +1203,7 @@ function renderResourceRatios(calc, ctx) {
                 attrs: {
                     min: Math.round(range.min * 100),
                     max: Math.round(range.max * 100),
-                    step: 5,
+                    step: 'any',
                     'data-focus-key': `setting:resourceRatio.${stand}.${resource}`,
                     'aria-label': `${resource} на ${STAND_LABELS[stand]}, % от ПРОМ`
                 },
@@ -1867,7 +1867,11 @@ function renderNumberInput(q, value, isUnknown, focusKey, hoverHint, ctx) {
 
     const minAttr = q.min !== undefined ? q.min : undefined;
     const maxAttr = q.max !== undefined ? q.max : undefined;
-    const stepAttr = q.step !== undefined ? q.step : 1;
+    /* PATCH 2.20.5: всегда step="any" — HTML5-валидация принимает дробные.
+     * SEED-уровневый q.step игнорируется в DOM (раньше step:1 из SEED отвергал
+     * `5.5` через :invalid). Stepper-стрелки сохраняют дефолтный шаг 1.
+     * min/max валидация продолжает работать как раньше. */
+    const stepAttr = 'any';
 
     const node = el('input', {
         class: ['input', isUnknown && 'input-unknown'],

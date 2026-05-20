@@ -201,7 +201,9 @@ function renderNumberInput(currentValue, onApply, q) {
     };
     if (q.min !== undefined) inputAttrs.min = String(q.min);
     if (q.max !== undefined) inputAttrs.max = String(q.max);
-    if (q.step !== undefined) inputAttrs.step = String(q.step);
+    /* PATCH 2.20.5: step="any" — HTML5 принимает дробные. SEED q.step не
+     * передаётся в DOM (раньше step:1 блокировал ввод `5.5`). */
+    inputAttrs.step = 'any';
 
     const submit = () => {
         const num = Number(draft);

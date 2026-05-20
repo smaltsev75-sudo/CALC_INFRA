@@ -632,7 +632,10 @@ function renderNumberEditor(lever, ctx, integer) {
                     'data-focus-key': `cop-lever-${lever.id}`,
                     min:  String(editor.min),
                     max:  String(editor.max),
-                    step: String(editor.step ?? (integer ? 1 : 0.01))
+                    /* PATCH 2.20.5: step="any" — HTML5 принимает дробные.
+                     * editor.step используется только как UX-подсказка stepper'а
+                     * в logic'е выше, но в DOM лучше не блокировать ввод. */
+                    step: 'any'
                 },
                 onChange: e => {
                     const raw = Number(e.target.value);
