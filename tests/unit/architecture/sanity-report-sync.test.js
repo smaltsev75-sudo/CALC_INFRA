@@ -8,7 +8,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 test('SANITY_REPORT.md синхронизирован с текущей расчётной логикой', (t) => {
     if (!existsSync('SANITY_REPORT.md')) {
@@ -22,4 +24,20 @@ test('SANITY_REPORT.md синхронизирован с текущей расч
             stdio: 'pipe'
         });
     }, 'SANITY_REPORT.md устарел; обновите его командой `npm run sanity`.');
+});
+
+test('sanity-report --check мягко пропускает отсутствующий maintainer-only отчёт', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sanity-report-'));
+    const missingReportPath = join(dir, 'SANITY_REPORT.md');
+    try {
+        assert.doesNotThrow(() => {
+            execFileSync(process.execPath, ['scripts/sanity-report.mjs', '--check'], {
+                cwd: process.cwd(),
+                env: { ...process.env, SANITY_REPORT_PATH: missingReportPath },
+                stdio: 'pipe'
+            });
+        }, 'sanity:check не должен падать в clean checkout без maintainer-only SANITY_REPORT.md.');
+    } finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
 });

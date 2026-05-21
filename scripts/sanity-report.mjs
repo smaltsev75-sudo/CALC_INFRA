@@ -7,7 +7,7 @@
  *   node scripts/sanity-report.mjs --check  -> проверить, что SANITY_REPORT.md свежий
  */
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as seed from '../js/domain/seed.js';
@@ -15,7 +15,9 @@ import { calculate, clearCalculationCache } from '../js/domain/calculator.js';
 import { getVatRateForDate } from '../js/domain/vatRateTable.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPORT_PATH = resolve(__dirname, '..', 'SANITY_REPORT.md');
+const REPORT_PATH = process.env.SANITY_REPORT_PATH
+    ? resolve(process.env.SANITY_REPORT_PATH)
+    : resolve(__dirname, '..', 'SANITY_REPORT.md');
 
 const REPORT_DATE = '2026-05-21';
 const CALC_CREATED_AT = '2026-05-02T00:00:00Z';
@@ -181,6 +183,10 @@ if (mode === '--write') {
     writeFileSync(REPORT_PATH, output, 'utf8');
     console.log(`SANITY_REPORT.md updated (${lines.length} lines)`);
 } else if (mode === '--check') {
+    if (!existsSync(REPORT_PATH)) {
+        console.warn('SANITY_REPORT.md отсутствует (maintainer-only документ); проверка пропущена.');
+        process.exit(0);
+    }
     const current = readFileSync(REPORT_PATH, 'utf8');
     if (current !== output) {
         console.error('SANITY_REPORT.md is stale. Run: npm run sanity');
