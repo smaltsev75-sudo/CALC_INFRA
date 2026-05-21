@@ -708,8 +708,28 @@ function renderGeoChipsField({ value, infoShort, onChange }) {
  * Облачный провайдер инфраструктуры. Список приходит через ctx из app.js,
  * чтобы UI не импортировал provider-контроллеры напрямую.
  */
+function openProviderSelectFromFieldClick(e) {
+    const target = e.target;
+    if (target?.tagName === 'SELECT') return;
+    if (target?.closest?.('.qs-info-icon')) {
+        e.preventDefault();
+        return;
+    }
+    const select = e.currentTarget?.querySelector?.('select');
+    if (!select || select.disabled) return;
+    e.preventDefault();
+    select.focus({ preventScroll: true });
+    if (typeof select.showPicker === 'function') {
+        try {
+            select.showPicker();
+        } catch {
+            // showPicker может быть недоступен без user activation; фокус уже поставлен.
+        }
+    }
+}
+
 function renderProviderField({ value, options, infoShort, onChange }) {
-    return el('label', { class: 'field' },
+    return el('label', { class: 'field', onClick: openProviderSelectFromFieldClick },
         renderFieldLabel({
             label: 'Облачный провайдер',
             info: 'Поставщик облачной инфраструктуры — серверов, хранилищ и сетевых каналов. Поставщики других услуг (тестирование безопасности, интеграция, лицензии на ПО) настраиваются отдельно в Опроснике в соответствующих категориях.'

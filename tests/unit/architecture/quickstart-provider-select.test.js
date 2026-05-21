@@ -56,6 +56,23 @@ test('Quick Start provider field uses ctx providers and is not disabled', () => 
         'provider-select должен рендерить options из списка, а не одну зашитую опцию.');
 });
 
+test('Quick Start provider field opens picker from field label area on first click', () => {
+    const src = read('js/ui/modals/quickStartModal.js');
+    const clean = stripJsComments(src);
+    const body = functionBody(src, 'renderProviderField');
+
+    assert.match(clean, /openProviderSelectFromFieldClick/,
+        'у provider-select должен быть click-helper для клика по области поля.');
+    assert.match(body, /onClick:\s*openProviderSelectFromFieldClick/,
+        'wrapper provider-поля должен вызывать helper на click.');
+    assert.match(clean, /tagName\s*===\s*'SELECT'/,
+        'прямой клик по самому select должен оставаться нативным.');
+    assert.match(clean, /select\.showPicker\(\)/,
+        'клик по label/description должен открывать native select через showPicker(), а не только фокусировать.');
+    assert.match(clean, /e\.preventDefault\(\)/,
+        'helper должен подавлять label-forwarding, который даёт UX «первый клик только фокусирует».');
+});
+
 test('app ctx exposes Quick Start provider methods without UI importing controllers', () => {
     const app = stripJsComments(read('js/app.js'));
     const quickStart = stripJsComments(read('js/ui/modals/quickStartModal.js'));
