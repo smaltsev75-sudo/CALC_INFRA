@@ -46,7 +46,7 @@ import {
     isProviderLockedByOtherTab
 } from '../state/crossTabSync.js';
 import { compareCalcAcrossProviders } from '../domain/calcImpact.js';
-import { listProviders } from '../domain/providerOverlay.js';
+import { listProviders, DEFAULT_PROVIDER } from '../domain/providerOverlay.js';
 
 /* ---------- helpers для записи в state.ui.providerOverlayUpdate ---------- */
 
@@ -403,6 +403,22 @@ export function listActiveProvidersForComparison() {
     return listProviders()
         .filter(p => p.active)
         .map(p => ({ id: p.id, label: p.label }));
+}
+
+/**
+ * Quick Start показывает только активные облачные провайдеры: inactive stubs
+ * вроде on-prem не должны выглядеть как доступный вариант расчёта.
+ *
+ * @returns {Array<{id: string, label: string}>}
+ */
+export function listActiveProvidersForQuickStart() {
+    return listProviders()
+        .filter(p => p.active)
+        .map(p => ({ id: p.id, label: p.label }));
+}
+
+export function getDefaultProviderId() {
+    return DEFAULT_PROVIDER;
 }
 
 /**

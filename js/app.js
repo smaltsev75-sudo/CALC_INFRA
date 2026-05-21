@@ -327,6 +327,12 @@ const ctx = {
     openQuickStart() {
         store.openModal('quickStart');
     },
+    listActiveProvidersForQuickStart() {
+        return providerCtl.listActiveProvidersForQuickStart();
+    },
+    getDefaultProviderId() {
+        return providerCtl.getDefaultProviderId();
+    },
     /* 14.U3: открыть Quick Start в режиме просмотра/изменения параметров активного
        расчёта. Draft предзаполнен из calc.wizard, поле «Название» скрыто, submit
        пока no-op (re-apply придёт в Sprint 2.2 пункте 3 с диалогом сохранения правок). */
@@ -335,7 +341,7 @@ const ctx = {
         if (!calc || !calc.wizard) return;
         store.openModal('quickStart', {
             mode: 'edit',
-            draft: { ...calc.wizard, name: calc.name }
+            draft: { ...calc.wizard, provider: calc.settings?.provider, name: calc.name }
         });
     },
     /* Stage 18.2 (v2.13.1): открыть Quick Start, чтобы задать профиль активного
@@ -348,8 +354,8 @@ const ctx = {
         const calc = store.getState().activeCalc;
         if (!calc) return;
         const draft = calc.wizard
-            ? { ...calc.wizard, name: calc.name }
-            : { name: calc.name };  /* модалка сама использует defaultDraft() */
+            ? { ...calc.wizard, provider: calc.settings?.provider, name: calc.name }
+            : { provider: calc.settings?.provider, name: calc.name };  /* модалка сама использует defaultDraft() */
         store.openModal('quickStart', { mode: 'edit', draft });
     },
     /* 14.U3: helper-обёртка над snackbar.info для UI-слоя — UI не импортирует snackbar

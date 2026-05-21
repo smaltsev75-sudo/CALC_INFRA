@@ -22,6 +22,7 @@ import { hasDeprecatedQuestions, sanitizeDefaultDictionary } from '../domain/dep
 import { getVatRateForDate, isoDateOf, getCurrentVatRate } from '../domain/vatRateTable.js';
 import { prepareLoadedCalc } from '../services/loadedCalc.js';
 import { normalizeStandRatios } from '../domain/standRatioNormalizer.js';
+import { DEFAULT_PROVIDER, getActiveProviders } from '../domain/providerOverlay.js';
 
 /* prepareLoadedCalc вынесен в services/ (PATCH 2.18.5, audit #12), чтобы
  * и controllers, и bundleExport могли использовать его без cross-layer
@@ -79,7 +80,7 @@ function makeNewCalculation(name, templateId = null) {
         updatedAt: createdAtIso,
         settings: {
             ...settings,
-            provider: settings.provider || 'sbercloud',
+            provider: settings.provider || DEFAULT_PROVIDER,
             /* 14.U4: false для нового расчёта без wizard'а — provider пришёл из
                default settings, не от мастера. createCalcFromWizard ниже
                перезапишет в true. */
@@ -136,13 +137,19 @@ function makeNewCalculation(name, templateId = null) {
 export function createCalcFromWizard(name, wizardInput) {
     const calc = makeNewCalculation(name, null);
     const { answers: wizardAnswers, meta } = wizardToAnswers(wizardInput);
+    const activeProviders = getActiveProviders();
+    const provider = (typeof wizardInput?.provider === 'string' && activeProviders.includes(wizardInput.provider))
+        ? wizardInput.provider
+        : DEFAULT_PROVIDER;
     // Мерджим: wizard-ответы поверх дефолтов опросника.
     calc.answers = { ...calc.answers, ...wizardAnswers };
     calc.answersMeta = meta;
-    calc.wizard = { ...wizardInput };  // freeze-snapshot для retroactive перерасчёта
-    /* 14.U4: provider у wizard-расчёта пришёл из мастера (default sbercloud),
+    calc.wizard = typeof wizardInput?.provider === 'string'
+        ? { ...wizardInput, provider }
+        : { ...wizardInput };  // freeze-snapshot для retroactive перерасчёта
+    /* 14.U4: provider у wizard-расчёта пришёл из мастера,
        UI-бейдж рядом с dropdown показывает «Из мастера» до первой ручной правки. */
-    calc.settings = { ...calc.settings, providerSetByWizard: true };
+    calc.settings = { ...calc.settings, provider, providerSetByWizard: true };
     /* Sprint 3.0 Stage 1: после применения wizard'а на root — синхронизируем
        scenarios[0] (созданный в makeNewCalculation с пустым answers/wizard).
        Без этого scenarios[0] остался бы со старым snapshot-ом до wizard'а,

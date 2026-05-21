@@ -19,7 +19,7 @@
  *                   новая вкладка, новый блок дашборда, AI-агенты, светлая тема.
  *   PATCH (1.1.X) — багфиксы, рефакторинг, мелкие UX-правки, hardening,
  *                   обновления прайсов без новых фич. */
-export const APP_VERSION = '2.20.11';
+export const APP_VERSION = '2.20.12';
 export const APP_NAME = 'Калькулятор инфраструктуры';
 
 /* ============================================================
@@ -73,7 +73,7 @@ export const STAND_DESCRIPTIONS = Object.freeze({
  * Принцип: tooltipShort ≠ tooltipFull. tooltipShort — answers «что и почему»,
  * tooltipFull — «как именно и при каких условиях».
  *
- * Quick Start ключи (product_type / industry / scale / geography / pdn /
+ * Quick Start ключи (product_type / industry / scale / geography / provider / pdn /
  * activity / ai_used / name) тоже здесь — в quickStartModal они передаются
  * как infoShort в render-helpers.
  */
@@ -119,6 +119,8 @@ export const UI_TOOLTIPS_SHORT = Object.freeze({
         'Размер аудитории — задаёт PCU, нагрузку, размер БД и хранилища.',
     'qs.geography':
         'Регион пользователей. Один регион РФ дешевле, глобально — multi-region и GDPR.',
+    'qs.provider':
+        'Выбранный провайдер задаёт тарифы CPU, RAM, дисков и сети для всего расчёта.',
     'qs.pdn':
         'Если да — применяются требования 152-ФЗ: хранение в РФ, защита по уровню УЗ.',
     'qs.activity':

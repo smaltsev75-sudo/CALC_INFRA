@@ -254,7 +254,7 @@ function renderEmptyState(ctx) {
                    primary-точка создания теперь Quick Start (3 preset'а). */
                 el('button', {
                     class: 'btn btn-primary btn-large btn-icon-text',
-                    title: 'Открыть Quick Start: заполнить 7 макро-параметров (Ctrl+Alt+N).',
+                    title: 'Открыть Quick Start: заполнить 8 параметров (Ctrl+Alt+N).',
                     onClick: () => ctx.openQuickStart()
                 },
                     icon('sparkles', { size: 18 }),

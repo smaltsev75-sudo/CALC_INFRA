@@ -1,5 +1,6 @@
 /**
- * Quick Start Wizard — модалка с 7 макро-вопросами + 3 пресета сверху.
+ * Quick Start Wizard — модалка с 7 профильными параметрами,
+ * выбором провайдера и 3 пресетами сверху.
  *
  * Заполняется новым пользователем за минуту. По submit:
  *   1. wizardToAnswers(input) → 40+ предзаполненных полей опросника + meta.
@@ -23,6 +24,7 @@
  *   industry:      'corporate' | 'edtech' | 'fintech' | 'consumer',
  *   scale:         'xs' | 's' | 'm' | 'l' | 'xl',
  *   geography:     'ru' | 'ru_cis' | 'global',
+ *   provider:      string,
  *   pdn:           boolean,
  *   activity:      'very_low' | 'low' | 'medium' | 'high',
  *   ai_used:       boolean,
@@ -84,6 +86,10 @@ const ACTIVITIES = [
     { value: 'medium',   label: 'Средняя (ежедневно — корпоративные приложения, рабочие сервисы)' },
     { value: 'high',     label: 'Высокая (несколько раз в день — соцсети, торговля, мессенджеры)' }
 ];
+
+const FALLBACK_PROVIDER_OPTIONS = Object.freeze([
+    Object.freeze({ id: 'sbercloud', label: 'Cloud.ru (бывший SberCloud)' })
+]);
 
 /* ============================================================================
  * PRESETS — 3 преднастройки сверху модалки. Утверждены 2026-05-08.
@@ -309,11 +315,12 @@ export function findActivePresetId(draft) {
 }
 
 /** Стартовый draft (Стандартный B2B по умолчанию — самый частый кейс). */
-function defaultDraft() {
+function defaultDraft(providerId) {
     const std = PRESETS[0].draft;
     return {
         name: autoName(std.product_type, std.industry),
         nameLocked: false,
+        provider: providerId,
         ...std
     };
 }
@@ -325,6 +332,24 @@ function defaultDraft() {
  */
 function defaultPdnFor(productType) {
     return productType !== 'internal';
+}
+
+function getProviderOptions(ctx) {
+    const fromCtx = typeof ctx.listActiveProvidersForQuickStart === 'function'
+        ? ctx.listActiveProvidersForQuickStart()
+        : [];
+    const safe = Array.isArray(fromCtx)
+        ? fromCtx
+            .filter(p => p && typeof p.id === 'string' && p.id && typeof p.label === 'string' && p.label)
+            .map(p => ({ id: p.id, label: p.label }))
+        : [];
+    return safe.length > 0 ? safe : FALLBACK_PROVIDER_OPTIONS;
+}
+
+function getDefaultProvider(ctx, providerOptions) {
+    const fromCtx = typeof ctx.getDefaultProviderId === 'function' ? ctx.getDefaultProviderId() : '';
+    if (providerOptions.some(p => p.id === fromCtx)) return fromCtx;
+    return providerOptions[0]?.id || FALLBACK_PROVIDER_OPTIONS[0].id;
 }
 
 /**
@@ -359,7 +384,12 @@ export function renderQuickStartModal(state, ctx) {
     const mode = m.mode === 'edit' ? 'edit' : 'create';
     const isEdit = mode === 'edit';
 
-    const draft = m.draft || defaultDraft();
+    const providerOptions = getProviderOptions(ctx);
+    const defaultProvider = getDefaultProvider(ctx, providerOptions);
+    const draft = { ...defaultDraft(defaultProvider), ...(m.draft || {}) };
+    if (!providerOptions.some(p => p.id === draft.provider)) {
+        draft.provider = defaultProvider;
+    }
     const activePresetId = findActivePresetId(draft);
 
     const patch = (changes) => ctx.patchModal('quickStart', { draft: { ...draft, ...changes } });
@@ -425,6 +455,7 @@ export function renderQuickStartModal(state, ctx) {
             industry:     draft.industry,
             scale:        draft.scale,
             geography:    draft.geography,
+            provider:     draft.provider || defaultProvider,
             pdn:          !!draft.pdn,
             activity:     draft.activity,
             ai_used:      !!draft.ai_used
@@ -442,7 +473,7 @@ export function renderQuickStartModal(state, ctx) {
                 attrs: { role: 'note' }
             },
                 el('span', { class: 'quickstart-intro-text',
-                    text: 'Выберите шаблон или заполните 7 параметров — калькулятор предзаполнит детальный опросник готовыми значениями для вашей отрасли. Любой ответ потом можно поправить вручную.'
+                    text: 'Выберите шаблон или заполните 8 параметров — калькулятор предзаполнит детальный опросник готовыми значениями для вашей отрасли. Любой ответ потом можно поправить вручную.'
                 })
             ),
 
@@ -514,7 +545,12 @@ export function renderQuickStartModal(state, ctx) {
                         infoShort: UI_TOOLTIPS_SHORT['qs.geography'],
                         onChange: v => patch({ geography: v })
                     }),
-                    renderProviderField()
+                    !isEdit ? renderProviderField({
+                        value: draft.provider,
+                        options: providerOptions,
+                        infoShort: UI_TOOLTIPS_SHORT['qs.provider'],
+                        onChange: v => patch({ provider: v })
+                    }) : null
                 )
             ),
 
@@ -669,19 +705,25 @@ function renderGeoChipsField({ value, infoShort, onChange }) {
 }
 
 /**
- * Облачный провайдер инфраструктуры — disabled select с одной опцией.
- * Поддержка других провайдеров (Yandex Cloud, VK Cloud, on-premise) появится
- * в следующих обновлениях.
+ * Облачный провайдер инфраструктуры. Список приходит через ctx из app.js,
+ * чтобы UI не импортировал provider-контроллеры напрямую.
  */
-function renderProviderField() {
+function renderProviderField({ value, options, infoShort, onChange }) {
     return el('label', { class: 'field' },
         renderFieldLabel({
             label: 'Облачный провайдер',
-            info: 'Поставщик облачной инфраструктуры — серверов, хранилищ и сетевых каналов. Поставщики других услуг (тестирование безопасности, интеграция, лицензии на ПО) настраиваются отдельно в Опроснике в соответствующих категориях. В текущей версии активен Cloud.ru (бывший SberCloud) — поддержка Yandex Cloud, VK Cloud и собственной инфраструктуры (on-premise) появится в следующих обновлениях.'
+            info: 'Поставщик облачной инфраструктуры — серверов, хранилищ и сетевых каналов. Поставщики других услуг (тестирование безопасности, интеграция, лицензии на ПО) настраиваются отдельно в Опроснике в соответствующих категориях.'
         }),
-        el('select', { class: 'input', attrs: { disabled: 'disabled' } },
-            el('option', { value: 'sbercloud', attrs: { selected: 'selected' } }, 'Cloud.ru (бывший SberCloud)')
-        )
+        el('select', {
+            class: ['input', 'qs-flash-target'],
+            onChange: e => onChange(e.target.value)
+        },
+            ...options.map(o => el('option', {
+                value: o.id,
+                attrs: o.id === value ? { selected: 'selected' } : {}
+            }, o.label))
+        ),
+        infoShort ? el('span', { class: 'field-description', text: infoShort }) : null
     );
 }
 
@@ -741,13 +783,14 @@ function renderToggleRow({ checked, label, info, infoShort, onChange }) {
 }
 
 /**
- * Прогресс-индикатор: 7 точек в шапке. Все активны (зелёные) когда draft.*
- * заполнен — все 7 параметров имеют значения по умолчанию, поэтому индикатор
+ * Прогресс-индикатор: 8 точек в шапке. Все активны (зелёные) когда draft.*
+ * заполнен — все 8 параметров имеют значения по умолчанию, поэтому индикатор
  * успокаивает «всё готово, можно нажать Создать».
  */
 function renderProgressDots(draft) {
     const filled = [
         draft.product_type, draft.industry, draft.scale, draft.geography,
+        draft.provider,
         draft.activity, typeof draft.pdn === 'boolean' ? 'set' : null,
         typeof draft.ai_used === 'boolean' ? 'set' : null
     ].map(v => v != null && v !== '');
@@ -761,9 +804,9 @@ function renderProgressDots(draft) {
     return el('div', { class: 'qs-progress', attrs: { role: 'status', 'aria-live': 'polite' } },
         el('div', { class: 'qs-progress-dots' }, ...dots),
         el('span', { class: 'qs-progress-text',
-            text: filledCount === 7
-                ? 'Все 7 параметров заданы — можно создавать расчёт.'
-                : `Заполнено ${filledCount} из 7 параметров.`
+            text: filledCount === 8
+                ? 'Все 8 параметров заданы — можно создавать расчёт.'
+                : `Заполнено ${filledCount} из 8 параметров.`
         })
     );
 }

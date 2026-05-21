@@ -34,7 +34,7 @@ export function renderCalcList(state, ctx) {
                    ctx.createCalc(name, null) из CRUD-flow). */
                 el('button', {
                     class: 'btn btn-primary btn-icon-text',
-                    title: 'Открыть Quick Start: заполнить 7 макро-параметров (готовый расчёт за пару минут) — Ctrl+Alt+N.',
+                    title: 'Открыть Quick Start: заполнить 8 параметров (готовый расчёт за пару минут) — Ctrl+Alt+N.',
                     onClick: () => ctx.openQuickStart()
                 },
                     icon('sparkles', { size: 16 }),
@@ -95,7 +95,7 @@ function renderEmptyState(ctx) {
                Secondary-кнопка — импорт из JSON. */
             el('button', {
                 class: 'btn btn-primary btn-large btn-icon-text',
-                title: 'Заполнить 7 макро-параметров (готовый расчёт за пару минут) — Quick Start (Ctrl+Alt+N).',
+                title: 'Заполнить 8 параметров (готовый расчёт за пару минут) — Quick Start (Ctrl+Alt+N).',
                 onClick: () => ctx.openQuickStart()
             },
                 icon('sparkles', { size: 18 }),
