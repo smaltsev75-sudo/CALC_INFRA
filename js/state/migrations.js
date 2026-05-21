@@ -661,8 +661,13 @@ export function migrateCalculation(input, _migrations = MIGRATIONS) {
         }
     }
     calc.schemaVersion = v;
-    // Defense-in-depth (PATCH 2.18.2, audit-9 P1): зачистка deprecated-вопросов
-    // независимо от schemaVersion. Если snapshot уже на LATEST (миграция-удаление
-    // пропущена) и содержит stale id — sanitize отловит. Идемпотентен.
-    return sanitizeDeprecatedQuestions(calc);
+    // Defense-in-depth (PATCH 2.18.2, audit-9 P1): финальная зачистка
+    // deprecated-вопросов. Важно выполнять её только после полной цепочки:
+    // при partial migration (dependency injection в тестах) ранний sanitize
+    // может удалить legacy-ответ до шага, который должен прочитать и
+    // сконвертировать это значение (пример: dau_target в v3→v4).
+    if (v >= LATEST_SCHEMA_VERSION) {
+        return sanitizeDeprecatedQuestions(calc);
+    }
+    return calc;
 }

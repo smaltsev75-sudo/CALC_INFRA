@@ -1,7 +1,7 @@
 {
     "name": "infrastructure-calculator",
-    "version": "2.20.8",
-    "description": "Локальное web-приложение для расчёта инфраструктуры и стоимости программных продуктов по 5 стендам (DEV / ИФТ / ПСИ / ПРОМ / Нагрузка). Работает offline, без зависимостей.",
+    "version": "2.20.10",
+    "description": "Локальное web-приложение для расчёта инфраструктуры и стоимости программных продуктов по 5 стендам (DEV / ИФТ / ПСИ / ПРОМ / НТ). Работает offline, без зависимостей.",
     "type": "module",
     "private": true,
     "license": "MIT",
@@ -10,6 +10,8 @@
         "start:node": "npx --yes http-server -p 8000 -c-1",
         "test": "node tests/run.js",
         "test:watch": "node --watch tests/run.js",
+        "sanity": "node scripts/sanity-report.mjs --write",
+        "sanity:check": "node scripts/sanity-report.mjs --check",
         "generate:providers": "node scripts/generate-providers-bundled.js",
         "bump": "node scripts/bump-version.mjs",
         "syntax-check": "node -e \"const fs=require('fs');const p=require('path');function walk(d){return fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(p.join(d,e.name)):p.join(d,e.name))} const files=walk('js').filter(f=>f.endsWith('.js')); for(const f of files){require('child_process').execSync('node --check '+JSON.stringify(f),{stdio:'inherit'})}\""
