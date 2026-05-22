@@ -35,6 +35,9 @@ jobs:
       - name: Sanity report check
         run: npm run sanity:check
 
+      - name: Provider freshness report check
+        run: npm run prices:freshness:check
+
       - name: Git whitespace check
         run: git diff --check
 

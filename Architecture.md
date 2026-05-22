@@ -2,7 +2,7 @@
 
 Целевая аудитория — архитекторы, разработчики, тестировщики. Здесь только то, что не выводится из чтения README.md / UserManual.md: устройство кода, потоки данных, паттерны защиты целостности и тестовая инфраструктура.
 
-**Версия 2.20.22** (CI runtime refresh, published smoke diagnostics, full Quick Start calculation invariants, Details category share). Schema v20.
+**Версия 2.20.23** (Details module split, desktop visual regression, provider freshness report). Schema v20.
 
 ---
 
@@ -514,7 +514,7 @@ el('div', {
 - Триггер `ctx.openXxxModal(payload)` → `store.openModal(name, payload)`.
 - Закрытие `ctx.closeModal(name)` или `store.closeModal(name)`.
 
-Зарегистрированных модалок 28 (на 2.20.22): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
+Зарегистрированных модалок 28 (на 2.20.23): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
 
 Удалены в Stage 17.2: `recommendedActions` (заменён блоком «Следующие шаги» на Дашборде), `calculationDiff` (UI убран; pure-domain helper остался — см. п. 4.7).
 
@@ -547,11 +547,14 @@ npm run test:watch        # watch-режим (node --watch)
 npm run smoke:desktop     # Playwright desktop suite (smoke + UI/domain + real user flows)
 npm run smoke:published   # короткий smoke GitHub Pages build на /CALC_INFRA/
 npm run syntax-check      # node --check на всех js/**/*.js
+npm run prices:freshness:check # provider freshness report sync
 node --test tests/unit/domain/calculator.test.js                 # один файл
 node --test --test-name-pattern="riskFactor" tests/...            # один тест
 ```
 
 Sanity-check скрипт ([scripts/sanity-report.mjs](scripts/sanity-report.mjs)): прогоняет калькулятор на 3 профилях (Startup / SMB / Enterprise), пишет [SANITY_REPORT.md](SANITY_REPORT.md) через `npm run sanity` или проверяет актуальность через `npm run sanity:check`. Для более жёсткого контроля расчётных цифр есть golden-сценарии Quick Start в [golden-scenarios.test.js](tests/unit/domain/golden-scenarios.test.js): они закрепляют ожидаемые totalMonthly, totalAnnual, topCategory и byCategoryMonthly для 9 профилей, включая регулируемый B2G FinTech XL + AI. Инварианты всей Quick Start матрицы живут в [wizard-calculation-invariants.test.js](tests/unit/domain/wizard-calculation-invariants.test.js): 2880 комбинаций проходят production `calculate()` с проверкой aggregate drift, NaN/Infinity, отрицательных сумм, monotonic scale/geography и AI >= non-AI. Полезно после правок прайсов или формул.
+
+Provider freshness report ([scripts/provider-freshness-report.mjs](scripts/provider-freshness-report.mjs)): пишет [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md) через `npm run prices:freshness` или проверяет актуальность через `npm run prices:freshness:check`. Отчёт строится из `js/data/providers-bundled.generated.js`, фиксирует timestamp/age/version/SKU-count/VAT confidence и подсвечивает `STALE`, `STUB`, `ASSUMED_VAT`.
 
 ### Виды тестов
 
@@ -565,7 +568,7 @@ Sanity-check скрипт ([scripts/sanity-report.mjs](scripts/sanity-report.mjs
 | **Unit (UI smoke)** | Все ui/-модули импортируются параллельно под минимальным DOM-mock'ом | [ui-modules-smoke.test.js](tests/unit/ui/) |
 | **Architecture** | Layer-linter, версии, A11y, no-emoji, no-toiso-slice | [layer-imports.test.js](tests/unit/architecture/) |
 | **Integration** | Полный controller-path с installLocalStorage | [calc-persistence-atomicity.test.js](tests/integration/) |
-| **Desktop browser smoke/regression** | Реальный Chromium/Chrome-рендер критичных desktop-сцен, console/overflow checks, UI↔domain сверка Dashboard/Details, реальные user-flow клики Quick Start/Sidebar/Опросник/Dashboard CTA, disabled-стенды, risk/VAT, active/bundle JSON import-export-reset, scenario tabs, provider VAT policy import, Decision Memo download, PDF print routing, screenshots | [desktop-smoke.spec.js](tests/e2e/desktop-smoke.spec.js), [desktop-regression.spec.js](tests/e2e/desktop-regression.spec.js), [desktop-user-flow.spec.js](tests/e2e/desktop-user-flow.spec.js), [desktop-data-management.spec.js](tests/e2e/desktop-data-management.spec.js), [desktop-export-print.spec.js](tests/e2e/desktop-export-print.spec.js) |
+| **Desktop browser smoke/regression** | Реальный Chromium/Chrome-рендер критичных desktop-сцен, console/overflow checks, UI↔domain сверка Dashboard/Details, реальные user-flow клики Quick Start/Sidebar/Опросник/Dashboard CTA, disabled-стенды, risk/VAT, active/bundle JSON import-export-reset, scenario tabs, provider VAT policy import, Decision Memo download, PDF print routing, screenshots и PNG-signal visual regression | [desktop-smoke.spec.js](tests/e2e/desktop-smoke.spec.js), [desktop-regression.spec.js](tests/e2e/desktop-regression.spec.js), [desktop-user-flow.spec.js](tests/e2e/desktop-user-flow.spec.js), [desktop-data-management.spec.js](tests/e2e/desktop-data-management.spec.js), [desktop-export-print.spec.js](tests/e2e/desktop-export-print.spec.js), [desktop-visual-regression.spec.js](tests/e2e/desktop-visual-regression.spec.js) |
 | **Published smoke** | GitHub Pages build на base path `/CALC_INFRA/`: версия в sidebar, Quick Start, Dashboard, Детализация, Сравнение, console/overflow checks, HTTP 4xx/5xx diagnostics with URL | [published-smoke.spec.js](tests/e2e/published-smoke.spec.js), [smoke-published.mjs](scripts/smoke-published.mjs) |
 
 Для Playwright user-flow используются `data-testid` только на стабильных
@@ -582,7 +585,8 @@ Playwright helpers используют module imports через `new URL('js/.
 GitHub Actions workflow [ci.yml](.github/workflows/ci.yml) разделён на два
 job'а:
 - `unit-and-sanity`: Node 24, `npm ci --ignore-scripts`, `npm test`,
-  `npm run syntax-check`, `npm run sanity:check`, `git diff --check`.
+  `npm run syntax-check`, `npm run sanity:check`,
+  `npm run prices:freshness:check`, `git diff --check`.
 - `desktop-smoke`: Node 24, `npx playwright install --with-deps chromium`,
   `npm run smoke:desktop`; на failure загружает `.playwright-mcp/test-results`.
 
@@ -973,6 +977,13 @@ js/domain/calculator.js
 | `source-level` | Публичные тарифы провайдера (price-list page) | yandex (yandex.cloud/pricing) |
 | `assumed` | Realistic-stub / синтетика, не верифицирована | vk (placeholder Q3-2026) |
 | `user-declared` | Пользователь явно указал политику через `vatPolicyChoiceModal` (legacy v1 import) | — runtime only |
+
+Свежесть bundled-прайсов контролируется отдельно от runtime health-check:
+[PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md) генерируется из
+`BUNDLED_PROVIDER_PRICES` и входит в CI через `npm run prices:freshness:check`.
+Это maintainer-gate: пользовательский UI всё ещё показывает stale/stub findings
+в Health Check, а репозиторий дополнительно фиксирует текущий статус bundle до
+релиза.
 
 ### Constants
 

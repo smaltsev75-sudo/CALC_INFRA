@@ -1,147 +1,29 @@
 /**
  * Heavy render sections for the Details tab.
  *
- * details.js owns screen orchestration; this module owns the qty/cost tables,
- * AI metrics summary, and the totals helpers they share.
+ * details.js owns screen orchestration; this module owns the qty/cost tables.
+ * AI summary and shared totals are split into smaller focused modules and
+ * re-exported below for backwards-compatible callers.
  */
 
-import { el, infoIcon } from './dom.js';
+import { el } from './dom.js';
 import { icon } from './icons.js';
 import {
     STAND_IDS, STAND_LABELS,
     CATEGORY_IDS, CATEGORY_LABELS, CATEGORY_COLORS,
-    BILLING_INTERVAL_LABELS, COST_TYPE_LABELS, MONTHS_PER_YEAR,
-    DASHBOARD_AI_METRIC_LABELS, DASHBOARD_AI_METRIC_TITLES,
-    DASHBOARD_AI_METRIC_DESCRIPTIONS, DASHBOARD_AI_METRIC_UNIT_SUFFIX
+    BILLING_INTERVAL_LABELS, COST_TYPE_LABELS, MONTHS_PER_YEAR
 } from '../utils/constants.js';
 import { formatRub, num, percent } from '../services/format.js';
 import { getCostType } from '../domain/costType.js';
 import { renderVatBadge, renderVatBreakdownLine } from './vatBadge.js';
-import { aggregateAiMetrics, formatResourceQty } from './dashboard.js';
+
+export { renderAiMetricsSummary } from './detailsAiSummary.js';
+export { computeTotalsForItems, itemMonthlyOnActiveStands } from './detailsTotals.js';
+
 function isCategoryCollapsed(catId, state) {
     const collapsed = state.ui?.detailsCollapsedCats;
     if (collapsed === null || collapsed === undefined) return true;
     return collapsed.includes(catId);
-}
-
-/**
- * Считает ИТОГО ₽/мес для ЭК по активным стендам.
- * Используется для определения «не влияет ли на бюджет».
- * В режиме «без рисков» суммы уже на costBase — функция работает прозрачно.
- */
-export function itemMonthlyOnActiveStands(itemId, result, disabledStands) {
-    const r = result.items[itemId];
-    if (!r) return 0;
-    let m = 0;
-    for (const sid of STAND_IDS) {
-        if (disabledStands.includes(sid)) continue;
-        m += r.stands[sid]?.costFinal || 0;
-    }
-    return m;
-}
-
-/* Сводный блок AI-метрик внизу таблицы Детализации.
-
-   UI: маленькая таблица 4 строки × 5 столбцов стендов + ИТОГО. Каждая
-   строка — одна AI-метрика (Токены / RAG-индекс / Эмбеддинги / CPU агентов),
-   каждая ячейка — qty этой метрики на этом стенде с правильной единицей
-   измерения. Disabled-стенды показаны приглушёнными.
-
-   Граничные:
-     calc=null              → null (нет активного расчёта).
-     все qty всех метрик=0  → null (AI отключён в проекте).
-     хотя бы одна qty>0     → блок появляется с заголовком + таблица.
-
-   Зачем здесь, а не только на Дэшборде:
-     Детализация = разрез ИТ-аналитика. Он видит per-item суммы (токены input,
-     output, эмбеддинги отдельно), а здесь — агрегаты этих ЭК по операционной
-     метрике (TOKENS = input + output вместе). Помогает быстро ответить на
-     вопрос «сколько у нас в сумме токенов на PSI?» без ручного сложения
-     двух строк. */
-export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx) {
-    if (!calc) return null;
-    const aiMetrics = aggregateAiMetrics(result, calc.dictionaries?.items || [], disabledStands, applyRisks);
-    const total = aiMetrics.total || {};
-    const perStand = aiMetrics.perStand || {};
-
-    // Скрываем блок, если ВСЕ метрики пусты (AI отключён в проекте).
-    const hasAny = DASHBOARD_AI_METRIC_LABELS.some(label => {
-        const e = total[label];
-        return e && e.qty > 0;
-    });
-    if (!hasAny) return null;
-
-    const fmt = (qty, unit) => {
-        const v = formatResourceQty(qty, unit);
-        return v === null ? '—' : `${v} ${unit}`;
-    };
-
-    const headerRow = el('tr', { class: 'details-thead-row details-thead-row-headers' },
-        el('th', { class: 'details-ai-cell-metric', text: 'Метрика' }),
-        ...STAND_IDS.map(sid => el('th', {
-            class: ['details-ai-cell-stand', disabledStands.includes(sid) && 'details-ai-cell-disabled'],
-            title: disabledStands.includes(sid)
-                ? `${STAND_LABELS[sid]} исключён из ИТОГО (toolbar). Цифра в этой колонке остаётся для справки, но в ИТОГО не входит.`
-                : STAND_LABELS[sid],
-            text: STAND_LABELS[sid]
-        })),
-        el('th', { class: 'details-ai-cell-total', text: 'ИТОГО' })
-    );
-
-    const rows = DASHBOARD_AI_METRIC_LABELS.map(label => {
-        const tot = total[label];
-        const title = DASHBOARD_AI_METRIC_TITLES[label] || label;
-        const desc = DASHBOARD_AI_METRIC_DESCRIPTIONS[label] || '';
-        const suffix = DASHBOARD_AI_METRIC_UNIT_SUFFIX[label] || '';
-
-        const openHint = ev => {
-            ev?.preventDefault?.();
-            ev?.stopPropagation?.();
-            if (typeof ctx.openMessageModal === 'function') {
-                ctx.openMessageModal({ title, message: desc });
-            }
-        };
-
-        const cells = STAND_IDS.map(sid => {
-            const cell = perStand[sid]?.[label];
-            const text = cell ? fmt(cell.qty, cell.unit) : '—';
-            return el('td', {
-                class: ['details-ai-cell-stand', disabledStands.includes(sid) && 'details-ai-cell-disabled'],
-                title: cell ? `${STAND_LABELS[sid]}: ${text}${suffix}` : `${STAND_LABELS[sid]}: нет данных`,
-                text: cell && cell.qty > 0 ? `${formatResourceQty(cell.qty, cell.unit) ?? '—'}` : '—'
-            });
-        });
-
-        const totalText = tot && tot.qty > 0
-            ? `${formatResourceQty(tot.qty, tot.unit) ?? '—'} ${tot.unit}${suffix}`
-            : '—';
-
-        return el('tr', { class: 'details-ai-row' },
-            el('td', { class: 'details-ai-cell-metric' },
-                el('span', { class: 'details-ai-cell-metric-name', text: title }),
-                infoIcon(openHint, 'Подробное описание метрики')
-            ),
-            ...cells,
-            el('td', { class: 'details-ai-cell-total', text: totalText })
-        );
-    });
-
-    const modeNote = applyRisks
-        ? 'С capacity-буферами (буферы / сезонность / сдвиг / контингент). Без VAT и инфляции — финансовые факторы, не capacity.'
-        : 'Без capacity-буферов — голый объём. Включите «Учитывать риск-коэффициенты» в Опроснике для оценки с буферами.';
-
-    return el('div', { class: 'details-ai-summary' },
-        el('div', { class: 'details-ai-summary-header' },
-            el('span', { class: 'details-ai-summary-title', text: 'Сводка AI-метрик' }),
-            el('span', { class: 'details-ai-summary-note', text: modeNote })
-        ),
-        el('div', { class: 'details-ai-summary-table-wrap' },
-            el('table', { class: 'details-ai-summary-table' },
-                el('thead', null, headerRow),
-                el('tbody', null, ...rows)
-            )
-        )
-    );
 }
 
 /* ============================================================
@@ -649,45 +531,4 @@ function renderCostTotalsRows(totals, isFiltered, disabled = new Set()) {
     );
 
     return [grandRow, capexRow, opexRow];
-}
-
-/**
- * Сумма по отфильтрованному набору ЭК и активным стендам (для строки ИТОГО).
- * Возвращает структуру со всеми агрегатами, нужными footer'у.
- *
- * Колонки выключенных стендов сохраняют свои частичные суммы — UI приглушает
- * их визуально, но строка-сумма по стенду остаётся видимой; сами агрегаты
- * totalMonthly / byCostType — только по активным.
- */
-export function computeTotalsForItems(items, result, disabledStands = []) {
-    const disabled = new Set(disabledStands);
-    const stands = {};
-    const byCostType = { capex: 0, opex: 0 };
-    let totalMonthly = 0;
-    // Сумма «вклада риск-коэф. в ₽» по активным стендам — для footer'а.
-    // Считаем по cell.costBase × (riskBreakdown.total - 1) — это наценка в рублях,
-    // независимо от applyRisks (в режиме без рисков показывается потенциальная).
-    let riskAmountTotal = 0;
-    for (const sid of STAND_IDS) stands[sid] = { totalMonthly: 0 };
-    for (const it of items) {
-        const r = result.items[it.id];
-        if (!r) continue;
-        const ct = getCostType(it);
-        let itemActive = 0;
-        for (const sid of STAND_IDS) {
-            const cell = r.stands[sid];
-            const cf = cell?.costFinal || 0;
-            stands[sid].totalMonthly += cf;
-            if (!disabled.has(sid)) {
-                itemActive += cf;
-                if (cell?.costBase > 0) {
-                    const totalRisk = cell.riskBreakdown?.total || 1;
-                    riskAmountTotal += cell.costBase * (totalRisk - 1);
-                }
-            }
-        }
-        totalMonthly += itemActive;
-        byCostType[ct] += itemActive;
-    }
-    return { stands, totalMonthly, byCostType, riskAmountTotal };
 }

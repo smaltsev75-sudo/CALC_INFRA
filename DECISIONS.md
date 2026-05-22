@@ -9077,3 +9077,58 @@ bundle format не меняются.
 ### Версионирование
 
 `2.20.21 → 2.20.22` (PATCH). Schema остаётся v20; bundle format не меняется.
+
+## PATCH 2.20.23 — Details split + desktop visual regression + provider freshness report (2026-05-22)
+
+### Контекст
+
+После сортировки групп ЭК по `ИТОГО / год` оставались три крупных полезных
+куска: `detailsSections.js` снова становился тяжёлым фасадом, Playwright
+проверял поведение и overflow, но не ловил пустой/однотонный визуальный рендер,
+а свежесть bundled provider-прайсов была видна только в runtime health-check и
+ручных договорённостях maintainer'а.
+
+### Решение
+
+- Детализация разделена по ownership:
+  [detailsSections.js](js/ui/detailsSections.js) оставлен за qty/cost tables,
+  [detailsAiSummary.js](js/ui/detailsAiSummary.js) владеет AI capacity summary,
+  [detailsTotals.js](js/ui/detailsTotals.js) содержит DOM-free helpers
+  `itemMonthlyOnActiveStands` и `computeTotalsForItems`. Старый import surface
+  через `detailsSections.js` сохранён re-export'ами.
+- Добавлен архитектурный guard
+  [details-module-split.test.js](tests/unit/architecture/details-module-split.test.js):
+  AI-константы не возвращаются в heavy table module, totals остаются DOM-free,
+  `detailsAiSummary` не импортирует heavy facade.
+- Добавлен desktop visual-regression слой:
+  [visual-assertions.js](tests/e2e/visual-assertions.js) декодирует PNG
+  стандартным `node:zlib` и проверяет размер, число цветовых buckets,
+  visible-pixels и non-blank ratio; [desktop-visual-regression.spec.js](tests/e2e/desktop-visual-regression.spec.js)
+  покрывает Dashboard, Details, Comparison, Questionnaire и Decision Memo.
+- Добавлен provider freshness maintainer-flow:
+  [provider-freshness-report.mjs](scripts/provider-freshness-report.mjs),
+  npm-скрипты `prices:freshness` / `prices:freshness:check`,
+  [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md) и sync-test
+  [provider-freshness-report-sync.test.js](tests/unit/architecture/provider-freshness-report-sync.test.js).
+  Текущий bundle: `sbercloud=OK`, `yandex=OK`, `vk=STUB + ASSUMED_VAT`.
+- CI `unit-and-sanity` теперь дополнительно запускает
+  `npm run prices:freshness:check`.
+- Документация обновлена: README, Architecture, Maintainer Guide,
+  Browser Smoke, CLAUDE и этот журнал.
+
+### Проверки
+
+- Details targeted tests: 12/12 pass.
+- Provider freshness targeted tests: 4/4 pass.
+- Desktop visual regression targeted Playwright: 5/5 pass.
+- `npm test`: 5012/5012 pass.
+- `npm run smoke:desktop`: 22/22 pass.
+- `npm run syntax-check`: pass.
+- `npm run sanity:check`: pass.
+- `npm run prices:freshness:check`: pass.
+- `git diff --check`: pass.
+- CI/Pages/published smoke — после push/release, см. release notes `v2.20.23`.
+
+### Версионирование
+
+`2.20.22 → 2.20.23` (PATCH). Schema остаётся v20; bundle format не меняется.

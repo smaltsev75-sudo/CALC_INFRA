@@ -82,9 +82,23 @@ data/providers/vk-latest.json
 
 Допустимые `<itemId>` — это id любого ЭК из `js/domain/seed.js`. Опечатка ловится линтером (см. п. 2 ниже).
 
-#### Шаг 3. Прогнать тесты
+#### Шаг 3. Пересобрать bundled module и отчёт свежести
 
 ```bash
+npm run generate:providers
+npm run prices:freshness
+```
+
+`generate:providers` обновляет runtime-источник `js/data/providers-bundled.generated.js`.
+`prices:freshness` обновляет [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md):
+возраст прайса, число SKU, VAT confidence и флаги `STALE` / `STUB` /
+`ASSUMED_VAT`.
+
+#### Шаг 4. Прогнать тесты
+
+```bash
+npm run prices:freshness:check
+npm run sanity:check
 npm test
 ```
 
@@ -97,7 +111,7 @@ npm test
 
 Если упало — читать сообщение об ошибке, оно укажет на конкретное поле.
 
-#### Шаг 4. Закоммитить и задеплоить
+#### Шаг 5. Закоммитить и задеплоить
 
 После следующего deploy / обновления приложения пользователи через **Опросник → Тарифы провайдера → Импорт прайса** получают новый bundle (если выберут provider-JSON из поставки) или применяют JSON через файл-picker как разовый override.
 
@@ -110,6 +124,7 @@ npm test
 | Линтер | Что проверяет |
 |---|---|
 | [stage-14-7-json-linter.test.js](tests/unit/architecture/stage-14-7-json-linter.test.js) | Структура `data/providers/*.json` (schemaVersion, providerId, vatPolicy, prices.<id> ∈ SEED_ITEMS, net/gross price > 0) |
+| [provider-freshness-report-sync.test.js](tests/unit/architecture/provider-freshness-report-sync.test.js) | [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md) соответствует bundled-прайсам, timestamps и VAT confidence |
 | [seed-formulas.test.js](tests/unit/domain/seed-formulas.test.js) | Каждая qty-формула в seed парсится и считается в финитное неотрицательное число |
 | [no-emoji-in-source.test.js](tests/unit/architecture/) | Эмодзи в UI-исходниках запрещены |
 | [storage-whitelist.test.js](tests/unit/services/storage-whitelist.test.js) | Все ключи localStorage идут через `STORAGE_KEYS` |
@@ -173,6 +188,8 @@ npm run smoke:published   # Короткий smoke опубликованной 
 npm run syntax-check      # node --check на всех js/**/*.js
 npm run sanity:check      # SANITY_REPORT.md соответствует текущим формулам/прайсам
 npm run sanity            # Пересобрать SANITY_REPORT.md
+npm run prices:freshness:check # PROVIDER_FRESHNESS_REPORT.md соответствует bundled-прайсам
+npm run prices:freshness       # Пересобрать PROVIDER_FRESHNESS_REPORT.md
 ```
 
 Запустить один файл:
@@ -207,12 +224,13 @@ node --test --test-name-pattern="riskFactor" tests/unit/domain/calculator.test.j
 npm run smoke:desktop
 ```
 
-Автоматический Playwright smoke поднимает локальный static server (`scripts/static-server.mjs`) и параллельно проверяет реальные desktop-сцены 1365×768: Dashboard, Cost Optimization Planner, Decision Memo, Детализация, Сравнение, scenario tabs, активный и bundle JSON import/export/reset, provider VAT-policy import, Decision Memo `.md` download и PDF routing из шапки приложения. Для Детализации suite сверяет порядок групп ЭК по `ИТОГО / год` и видимые totals/share группы с production-моделью. Скриншоты пишутся в `.playwright-mcp/`; runner не должен создавать артефакты в корне проекта.
+Автоматический Playwright smoke поднимает локальный static server (`scripts/static-server.mjs`) и параллельно проверяет реальные desktop-сцены 1365×768: Dashboard, Cost Optimization Planner, Decision Memo, Детализация, Сравнение, Опросник, scenario tabs, активный и bundle JSON import/export/reset, provider VAT-policy import, Decision Memo `.md` download и PDF routing из шапки приложения. Для Детализации suite сверяет порядок групп ЭК по `ИТОГО / год` и видимые totals/share группы с production-моделью. Отдельный visual-regression слой делает PNG-signal проверки ключевых экранов: скриншот не должен быть пустым/однотонным, экран должен иметь ожидаемый desktop-размер, а основные chrome-блоки не должны перекрываться. Скриншоты пишутся в `.playwright-mcp/`; runner не должен создавать артефакты в корне проекта.
 
 Локально по умолчанию используется системный Chrome (`PLAYWRIGHT_CHANNEL=chrome`). В CI channel не фиксируется: workflow ставит bundled Chromium через `npx playwright install --with-deps chromium`. При необходимости можно переключить канал, например `PLAYWRIGHT_CHANNEL=msedge npm run smoke:desktop`.
 
 GitHub Actions workflow [ci.yml](.github/workflows/ci.yml) запускает два job'а:
-`unit-and-sanity` (`npm test`, `syntax-check`, `sanity:check`, `git diff --check`)
+`unit-and-sanity` (`npm test`, `syntax-check`, `sanity:check`,
+`prices:freshness:check`, `git diff --check`)
 и `desktop-smoke` (`npm run smoke:desktop`). При падении browser job'а
 артефакты забираются из `.playwright-mcp/test-results`.
 
@@ -239,7 +257,23 @@ npm run sanity
 
 ---
 
-### 4.5 Source-grep тесты после модульного рефакторинга
+### 4.5 Provider freshness report
+
+```bash
+npm run prices:freshness
+npm run prices:freshness:check
+```
+
+[PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md) фиксирует дату отчёта,
+порог `STALE_BUNDLE_THRESHOLD_MONTHS`, версию/timestamp каждого bundled-прайса,
+число позиций, `vatPolicy.confidence` и статус. `OK` означает, что прайс свежее
+порога и не помечен stub/assumed. `STUB` и `ASSUMED_VAT` не ломают приложение, но
+должны быть видны в релизном контексте. `--check` сравнивает отчёт с текущим
+`js/data/providers-bundled.generated.js` и входит в CI.
+
+---
+
+### 4.6 Source-grep тесты после модульного рефакторинга
 
 В проекте много архитектурных и UI-тестов, которые читают исходник как текст. После дробления монолитов важно обновлять **путь файла-владельца поведения**, а не добавлять дубли в старый фасад:
 
@@ -250,6 +284,9 @@ npm run sanity
 | number input и inline validation в Опроснике | `js/ui/questionnaireNumberInput.js` |
 | группы настроек Опросника | `js/ui/questionnaireSettings.js`, `questionnaireProviderSettings.js`, `questionnaireVatSettings.js`, `questionnaireStandSettings.js` |
 | Dashboard profile/banner/aggregates | `js/ui/dashboardProfileBanner.js`, `dashboardAggregates.js`, `dashboardMetricBlocks.js`, `dashboardRiskCard.js` |
+| Details qty/cost tables | `js/ui/detailsSections.js` |
+| Details AI summary | `js/ui/detailsAiSummary.js` |
+| Details totals helpers | `js/ui/detailsTotals.js` |
 | provider update row | `js/ui/providerUpdateRow.js` |
 | VAT normalization provider JSON | `js/services/providerPriceNormalize.js` |
 | price import mapping rows/suggestions | `js/domain/priceImportMappingRows.js`, `priceImportMappingSuggest.js` |
@@ -294,7 +331,7 @@ npm run sanity
 1. `npm test` зелёный.
 2. `npm run syntax-check` зелёный.
 3. `git diff --check` без trailing whitespace / conflict markers.
-4. Для правок прайсов или формул — `npm run sanity:check` или обновлённый `npm run sanity`.
+4. Для правок прайсов или формул — `npm run sanity:check` или обновлённый `npm run sanity`; для provider-прайсов дополнительно `npm run prices:freshness:check` или обновлённый `npm run prices:freshness`.
 5. Никаких `style:` user-input, никаких `el(..., { html: ... })` без `trustedHtml(...)`.
 6. Никаких `eval` / `new Function` / `setTimeout(string)` / `.innerHTML = userInput`.
 7. Все ключи localStorage — через `STORAGE_KEYS`.
@@ -382,6 +419,7 @@ npm run sanity
 
 ```bash
 npm run generate:providers   # пересобирает js/data/providers-bundled.generated.js
+npm run prices:freshness      # обновляет PROVIDER_FRESHNESS_REPORT.md
 npm test                      # sync-test проверит, что generated module ≡ свежим JSON
 ```
 
@@ -390,7 +428,7 @@ npm test                      # sync-test проверит, что generated mod
 ### Какие SKU входят в bundled
 
 Coverage у каждого провайдера разная и отражает реальный прайс-лист:
-- **sbercloud** (15 SKU) — Cloud.ru Evolution: compute + AI agents + LLM tokens + RAG.
+- **sbercloud** (16 SKU) — Cloud.ru Evolution: compute + AI agents + LLM tokens + RAG.
 - **yandex** (15 SKU) — yandex.cloud/pricing: compute + dedicated + AI tokens + RAG.
 - **vk** (14 SKU) — realistic-stub: compute + licenses + услуги.
 
