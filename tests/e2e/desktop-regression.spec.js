@@ -132,3 +132,29 @@ test('Risk and VAT toggles stay independent in rendered desktop totals', async (
 
     expect(consoleErrors).toEqual([]);
 });
+
+test('Provider price summary preserves decimal comma in expanded tariff rows', async ({ page }) => {
+    const consoleErrors = await bootCleanApp(page);
+    await seedCalculations(page);
+
+    await page.evaluate(async () => {
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
+        store.setActiveTab('questionnaire');
+        store.setUi({
+            questionnaireSettingsOpen: true,
+            providerOverlayExpanded: true
+        });
+    });
+
+    const summary = page.locator('.provider-price-summary.is-expanded');
+    await expect(summary).toBeVisible();
+
+    const gpuRowValue = summary
+        .locator('.provider-price-row')
+        .filter({ hasText: 'vCPU GPU' })
+        .locator('.provider-price-row-value-num');
+    await expect(gpuRowValue).toHaveText(/9\s*490,16/);
+    await expect(gpuRowValue).not.toHaveText(/9\s*490\s+16/);
+
+    expect(consoleErrors).toEqual([]);
+});

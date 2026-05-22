@@ -22,10 +22,11 @@
 import { el } from './dom.js';
 import { icon } from './icons.js';
 import { PROVIDER_OVERLAYS, getEffectivePrices } from '../domain/providerOverlay.js';
+import { formatNumber } from '../services/format.js';
 
 export { renderProviderUpdateRow } from './providerUpdateRow.js';
 
-const fmtRub = n => n.toLocaleString('ru-RU').replace(/,/g, ' ');
+const fmtRub = n => formatNumber(n, { min: 0, max: 2 });
 
 /* Stage 4.6: top-5 цен в header сводки (vCPU/RAM/SSD/HDD/ObjectStorage). */
 const PROVIDER_PRICE_SUMMARY_PICKS = [

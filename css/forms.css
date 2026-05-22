@@ -1267,6 +1267,7 @@
 .provider-price-row-value-num {
     color: inherit;
     font-weight: inherit;
+    white-space: nowrap;
 }
 /* Stage 9.1: delta-pill — точечный visual diff цены провайдера между frozen-default
    и applied override. Размер мелкий, чтобы не доминировать над числом цены.

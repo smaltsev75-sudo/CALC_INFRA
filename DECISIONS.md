@@ -9132,3 +9132,43 @@ bundle format не меняются.
 ### Версионирование
 
 `2.20.22 → 2.20.23` (PATCH). Schema остаётся v20; bundle format не меняется.
+
+## PATCH 2.20.24 — provider tariff decimal formatting fix (2026-05-22)
+
+### Контекст
+
+В раскрытом блоке «Тарифы активного провайдера» десятичные цены отображались
+как смешанные группы цифр: например `9 490,16 ₽/мес` превращалось в
+`9 490 16`. Причина была в локальном formatter'е provider summary:
+`toLocaleString('ru-RU').replace(/,/g, ' ')` заменял не только разделители
+тысяч, но и десятичную запятую.
+
+### Решение
+
+- [providerPriceSummary.js](js/ui/providerPriceSummary.js) переведён на общий
+  [formatNumber](js/services/format.js), который сохраняет российскую
+  десятичную запятую и не смешивает рубли с копейками.
+- `.provider-price-row-value-num` получил `white-space: nowrap`, чтобы
+  десятичная часть не отрывалась от основной суммы в плотной desktop-панели.
+- Добавлен unit guard
+  [provider-price-decimal-format.test.js](tests/unit/ui/provider-price-decimal-format.test.js):
+  запрещает возвращать `.replace(/,/g, ' ')`, проверяет `9 490,16`,
+  `583,61`, `152,46` и CSS nowrap.
+- Добавлен Playwright regression test в
+  [desktop-regression.spec.js](tests/e2e/desktop-regression.spec.js): реальный
+  Chromium раскрывает provider summary и проверяет, что строка `vCPU GPU`
+  содержит `9 490,16`, а не `9 490 16`.
+
+### Проверки
+
+- Targeted provider/UI tests: 51/51 pass.
+- `npm test`: 5015/5015 pass.
+- `npm run smoke:desktop`: 23/23 pass.
+- `npm run syntax-check`: pass.
+- `git diff --check`: pass.
+- CI/Pages/published smoke — после push/release, см. release notes `v2.20.24`.
+
+### Версионирование
+
+`2.20.23 → 2.20.24` (PATCH). Schema остаётся v20; расчётная модель, прайсы и
+bundle format не меняются.
