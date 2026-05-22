@@ -19,6 +19,12 @@ npm run smoke:published   # после публикации релиза на Gi
 
 В Детализации desktop-suite сверяет строки групп ЭК с production-моделью: порядок по `ИТОГО / год`, `ИТОГО / мес`, `ИТОГО / год` и долю группы в колонке `Доля, %`.
 
+GitHub Pages публикуется workflow'ом `.github/workflows/pages.yml` из
+`.pages-dist`, который собирается командой `npm run pages:build`. После
+переключения Pages source на `GitHub Actions` legacy deploy-from-branch warning
+GitHub больше не должен появляться в релизном цикле; проверка результата всё
+равно остаётся `npm run smoke:published`.
+
 На Node 26 upstream Playwright 1.60.0 может выводить `DEP0205 module.register()` warning при прямом `npx playwright ...`. Проектный `npm run smoke:desktop` запускает тот же CLI через `node --no-deprecation`, поэтому релизный прогон остаётся без шумных warning'ов.
 
 Ручной checklist ниже остаётся нужен для сценариев, где важны UX-нюансы, клики и визуальная оценка, но базовые console/overflow regressions теперь должны ловиться автоматикой.

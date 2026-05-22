@@ -239,7 +239,7 @@ vatMul     = vatEnabled ? (1 + vatRate) : 1                          // неза
 
 ## Миграции схемы
 
-[js/state/migrations.js](js/state/migrations.js) содержит массив `MIGRATIONS` шагов `from → to`. Текущая версия вычисляется автоматически из последнего шага `MIGRATIONS`; на PATCH 2.20.25 это **20** (см. `LATEST_SCHEMA_VERSION` в [js/state/migrations.js](js/state/migrations.js) и re-export `CURRENT_SCHEMA_VERSION` в [js/utils/constants.js](js/utils/constants.js)). Не дублировать номер схемы в production-коде.
+[js/state/migrations.js](js/state/migrations.js) содержит массив `MIGRATIONS` шагов `from → to`. Текущая версия вычисляется автоматически из последнего шага `MIGRATIONS`; на PATCH 2.20.26 это **20** (см. `LATEST_SCHEMA_VERSION` в [js/state/migrations.js](js/state/migrations.js) и re-export `CURRENT_SCHEMA_VERSION` в [js/utils/constants.js](js/utils/constants.js)). Не дублировать номер схемы в production-коде.
 
 При добавлении миграции:
 1. Реализовать `step.run(calc)` — мутирует **глубокую копию**, не оригинал.
@@ -267,7 +267,7 @@ Bump делается **синхронно в двух файлах** (`constant
 
 ## Контекст этапов разработки
 
-[DECISIONS.md](DECISIONS.md) — журнал ключевых решений и допущений по этапам, главный source of truth при расхождении с краткими сводками. Короткий срез на PATCH 2.20.25 (2026-05-22): `APP_VERSION=2.20.25`, schema v20, `BUNDLE_MAJOR=3`, `PROVIDER_PRICE_SCHEMA_VERSION=2`; проект production-ready/hardened, с 6-слойной архитектурой, immutable store, sandbox DSL, VAT Rate History + provider JSON VAT Schema v2, сценариями расчёта, composite-сводкой Dashboard, Stage 19 LOAD-capacity моделью, sanity-report guard, provider freshness report guard, 9 golden Quick Start snapshots, full Quick Start calculation invariants на 2880 комбинаций, Node 24-aware GitHub Actions, desktop Playwright UI↔domain regression-suite, PNG-signal visual regression, real-click user-flow/data-management/export/print E2E через `data-testid`, published GitHub Pages smoke с HTTP URL diagnostics/retry, Details category share, выделенными Details-модулями (`detailsSections` / `detailsAiSummary` / `detailsTotals`) и source-level guard'ами против ad-hoc форматирования чисел/денег/процентов. Актуальное число тестов брать из `npm test`, не из этого файла.
+[DECISIONS.md](DECISIONS.md) — журнал ключевых решений и допущений по этапам, главный source of truth при расхождении с краткими сводками. Короткий срез на PATCH 2.20.26 (2026-05-22): `APP_VERSION=2.20.26`, schema v20, `BUNDLE_MAJOR=3`, `PROVIDER_PRICE_SCHEMA_VERSION=2`; проект production-ready/hardened, с 6-слойной архитектурой, immutable store, sandbox DSL, VAT Rate History + provider JSON VAT Schema v2, сценариями расчёта, composite-сводкой Dashboard, Stage 19 LOAD-capacity моделью, sanity-report guard, provider freshness report guard, 9 golden Quick Start snapshots, full Quick Start calculation invariants на 2880 комбинаций, Node 24-aware GitHub Actions, explicit GitHub Pages workflow на `.pages-dist`, scoped `tests/run.js` профилями, desktop Playwright UI↔domain regression-suite, PNG-signal visual regression, real-click user-flow/data-management/export/print E2E через `data-testid`, published GitHub Pages smoke с HTTP URL diagnostics/retry, Details category share, выделенными Details-модулями (`detailsSections` / `detailsAiSummary` / `detailsTotals`), strict `vatPolicy` shape validation и source-level guard'ами против ad-hoc форматирования чисел/денег/процентов. Актуальное число тестов брать из `npm test`, не из этого файла.
 
 ### Накопленный функционал (краткая шкала)
 
@@ -537,7 +537,7 @@ Bump делается **синхронно в двух файлах** (`constant
 
 **Provider freshness report** ([scripts/provider-freshness-report.mjs](scripts/provider-freshness-report.mjs)) — maintainer-команда для bundled provider-прайсов. Запуск: `npm run prices:freshness` обновляет [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md), `npm run prices:freshness:check` сверяет отчёт с `js/data/providers-bundled.generated.js`. Фиксирует version/timestamp/age/SKU-count/VAT confidence и статусы `STALE`, `STUB`, `ASSUMED_VAT`; входит в CI.
 
-**Desktop Playwright suite** (`npm run smoke:desktop`) — 22 desktop-first теста:
+**Desktop Playwright suite** (`npm run smoke:desktop`) — 23 desktop-first теста:
 smoke-рендер критичных экранов, UI↔domain сверка Dashboard/Details и реальные
 user-flow клики Quick Start/Sidebar/Опросник/Dashboard CTA, scenario tabs,
 active/bundle JSON import-export-reset, provider VAT-policy import, Decision

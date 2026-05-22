@@ -714,6 +714,7 @@ function _humanizeReason(reason, fallback) {
         case 'gross-without-vat-rate':   return 'В файле gross-цена без vatRate.';
         case 'vat-inconsistency':        return 'В файле net и gross не согласованы (с учётом vatRate).';
         case 'missing-vat-policy':       return 'В v2-файле отсутствует обязательный vatPolicy.';
+        case 'invalid-vat-policy':       return 'Некорректная структура vatPolicy.';
         case 'invalid-confidence':       return 'Некорректное значение vatPolicy.confidence.';
         case 'invalid-preloaded':        return 'Нет данных для повторного применения.';
         default:                   return fallback || 'Не удалось обновить прайс.';

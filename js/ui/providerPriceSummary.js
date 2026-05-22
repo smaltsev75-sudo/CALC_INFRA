@@ -215,8 +215,11 @@ export function renderProviderPriceSummary(providerId, state, ctx) {
                     const valueText = commonUnit
                         ? fmtRub(r.value)
                         : `${fmtRub(r.value)} ${r.unit}`;
+                    const unitText = commonUnit || r.unit || '';
+                    const accessibleValue = unitText ? `${fmtRub(r.value)} ${unitText}` : fmtRub(r.value);
                     return el('li', {
-                        class: ['provider-price-row', isTopExpensive && 'is-top-expensive']
+                        class: ['provider-price-row', isTopExpensive && 'is-top-expensive'],
+                        attrs: { title: `${r.label}: ${accessibleValue}` }
                     },
                         el('span', { class: 'provider-price-row-name', text: r.label }),
                         el('span', { class: 'provider-price-row-value' },

@@ -2,7 +2,7 @@
 
 Целевая аудитория — архитекторы, разработчики, тестировщики. Здесь только то, что не выводится из чтения README.md / UserManual.md: устройство кода, потоки данных, паттерны защиты целостности и тестовая инфраструктура.
 
-**Версия 2.20.25** (shared ru-RU number formatting consolidation + source guards). Schema v20.
+**Версия 2.20.26** (Pages workflow + scoped tests + provider VAT hardening + desktop tariff alignment). Schema v20.
 
 ---
 
@@ -514,7 +514,7 @@ el('div', {
 - Триггер `ctx.openXxxModal(payload)` → `store.openModal(name, payload)`.
 - Закрытие `ctx.closeModal(name)` или `store.closeModal(name)`.
 
-Зарегистрированных модалок 28 (на 2.20.25): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
+Зарегистрированных модалок 28 (на 2.20.26): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
 
 Удалены в Stage 17.2: `recommendedActions` (заменён блоком «Следующие шаги» на Дашборде), `calculationDiff` (UI убран; pure-domain helper остался — см. п. 4.7).
 
@@ -543,12 +543,18 @@ tests/
 
 ```bash
 npm test                  # все тесты, параллельно через node:test, spec-репортер
+npm run test:quick        # быстрый unit-slice
+npm run test:architecture # architecture/source guards
+npm run test:ui           # UI unit/source smoke
+npm run test:integration  # integration-сценарии
 npm run test:watch        # watch-режим (node --watch)
 npm run smoke:desktop     # Playwright desktop suite (smoke + UI/domain + real user flows)
 npm run smoke:published   # короткий smoke GitHub Pages build на /CALC_INFRA/
 npm run syntax-check      # node --check на всех js/**/*.js
 npm run prices:freshness:check # provider freshness report sync
+npm run pages:build       # собрать .pages-dist для Pages workflow
 node --test tests/unit/domain/calculator.test.js                 # один файл
+node tests/run.js tests/unit/domain tests/unit/services           # scoped runner
 node --test --test-name-pattern="riskFactor" tests/...            # один тест
 ```
 
@@ -586,13 +592,21 @@ GitHub Actions workflow [ci.yml](.github/workflows/ci.yml) разделён на
 job'а:
 - `unit-and-sanity`: Node 24, `npm ci --ignore-scripts`, `npm test`,
   `npm run syntax-check`, `npm run sanity:check`,
-  `npm run prices:freshness:check`, `git diff --check`.
+  `npm run prices:freshness:check`, `npm run pages:build`,
+  `git diff --check`.
 - `desktop-smoke`: Node 24, `npx playwright install --with-deps chromium`,
   `npm run smoke:desktop`; на failure загружает `.playwright-mcp/test-results`.
 
 Workflow использует Node 24-aware action majors: `actions/checkout@v6`,
 `actions/setup-node@v6`, `actions/upload-artifact@v7`. Это убирает warning GitHub
 Actions о deprecated Node.js 20 runtime внутри самих actions.
+
+GitHub Pages публикуется отдельным workflow
+[pages.yml](.github/workflows/pages.yml): `actions/configure-pages@v6`,
+`actions/upload-pages-artifact@v5`, `actions/deploy-pages@v5`. Artifact
+`.pages-dist` собирается из tracked static-файлов через `npm run pages:build`
+и содержит `.nojekyll`. Pages source должен быть `GitHub Actions`
+(`build_type=workflow`), а не legacy deploy-from-branch.
 
 Локально Playwright по умолчанию использует системный Chrome
 (`PLAYWRIGHT_CHANNEL=chrome`), а в CI — bundled Chromium, установленный
@@ -970,6 +984,10 @@ js/domain/calculator.js
 ```
 
 ### vatPolicy.confidence
+
+`vatPolicy` валидируется строго: разрешены только `pricesIncludeVat`,
+`vatRateIncluded`, `confidence`; `pricesIncludeVat` обязан быть boolean, при
+`pricesIncludeVat=true` нужен `vatRateIncluded` как доля в `[0, 1]`.
 
 | Value | Семантика | Текущий пример |
 |---|---|---|

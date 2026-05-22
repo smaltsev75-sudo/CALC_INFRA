@@ -327,7 +327,7 @@ describe('External audit #8 P2-1: applyPriceImport summary partial при cross-
                     priceSource: 'cloud.ru/test'
                 }
             },
-            vatPolicy: { confidence: 'verified' }
+            vatPolicy: { pricesIncludeVat: false, confidence: 'verified' }
         };
 
         /* setUi через priceImportCtl.openPriceImportMappingModal + handlePriceImportFile,

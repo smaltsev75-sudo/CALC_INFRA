@@ -47,7 +47,10 @@ data/providers/vk-latest.json
 - `vatPolicy`: явная VAT-семантика источника
 - `prices`: объект `{ <itemId>: { pricePerUnitNet? | pricePerUnitGross?, vatRate?, vendor, priceSource } }`
 
-Любое другое поле верхнего уровня → reject линтером.
+Любое другое поле верхнего уровня → reject линтером. Внутри `vatPolicy`
+разрешены только `pricesIncludeVat`, `vatRateIncluded`, `confidence`;
+`pricesIncludeVat` обязан быть boolean, а при `pricesIncludeVat=true`
+обязателен `vatRateIncluded` как доля (`0.22`, не `22`).
 
 **Пример**:
 
@@ -138,6 +141,7 @@ npm test
 | `pricePerUnit must be > 0` | Цена 0 или отрицательная | Поправить значение |
 | `schemaVersion expected 1 or 2` | Используется неподдерживаемая версия формата | Обновить файл под текущий schema, либо обновить парсер |
 | `unknown top-level field 'discount'` | Лишнее поле верхнего уровня | Удалить либо вынести в `prices.<id>.<vendor-meta>` |
+| `invalid-vat-policy` | `vatPolicy` неполный, с лишними полями или ставкой `22` вместо `0.22` | Исправить `pricesIncludeVat`, `vatRateIncluded`, `confidence` |
 | `vat-policy-required` | Импорт legacy schema v1 без явного выбора VAT-политики | В UI выбрать net / gross-20 / gross-22 либо перевести файл в schema v2 |
 | `vat-inconsistency` | `net`, `gross` и `vatRate` математически не сходятся | Проверить округления; допуск consistency = 0.01 ₽ |
 
@@ -181,6 +185,10 @@ Maintainer раз в квартал руками выписывает прайс
 
 ```bash
 npm test                  # Все тесты (node:test, custom runner)
+npm run test:quick        # Быстрый unit-slice: domain/services/controllers/utils
+npm run test:architecture # Architecture/source guards
+npm run test:ui           # UI unit/source smoke
+npm run test:integration  # Integration-сценарии
 npm run test:watch        # Watch-режим (node --watch)
 npm run smoke:desktop     # Playwright desktop smoke, 1365×768, parallel workers
 npm run smoke:desktop:headed # То же, но с видимым браузером
@@ -190,12 +198,15 @@ npm run sanity:check      # SANITY_REPORT.md соответствует теку
 npm run sanity            # Пересобрать SANITY_REPORT.md
 npm run prices:freshness:check # PROVIDER_FRESHNESS_REPORT.md соответствует bundled-прайсам
 npm run prices:freshness       # Пересобрать PROVIDER_FRESHNESS_REPORT.md
+npm run pages:build       # Собрать .pages-dist для Pages workflow
 ```
 
 Запустить один файл:
 
 ```bash
 node --test tests/unit/domain/calculator.test.js
+node tests/run.js tests/unit/domain tests/unit/services
+node tests/run.js --list tests/unit/ui
 ```
 
 Запустить один тест по имени:
@@ -230,9 +241,15 @@ npm run smoke:desktop
 
 GitHub Actions workflow [ci.yml](.github/workflows/ci.yml) запускает два job'а:
 `unit-and-sanity` (`npm test`, `syntax-check`, `sanity:check`,
-`prices:freshness:check`, `git diff --check`)
+`prices:freshness:check`, `pages:build`, `git diff --check`)
 и `desktop-smoke` (`npm run smoke:desktop`). При падении browser job'а
 артефакты забираются из `.playwright-mcp/test-results`.
+
+GitHub Pages публикуется через [pages.yml](.github/workflows/pages.yml), а не
+через legacy deploy-from-branch. Workflow собирает `.pages-dist` из tracked
+static-файлов командой `npm run pages:build`, добавляет `.nojekyll` и деплоит
+через `actions/deploy-pages@v5`. Репозиторий должен иметь Pages source
+`GitHub Actions` (`build_type=workflow`).
 
 После релиза полезно отдельно запускать `npm run smoke:published`: он проверяет
 уже опубликованный GitHub Pages URL на base path `/CALC_INFRA/`. Если нужен
@@ -414,6 +431,10 @@ npm run prices:freshness:check
    - `verified` — данные из официальных договорных приложений / verified API;
    - `source-level` — публичные тарифы провайдера (price-list page);
    - `assumed` — realistic-stub / синтетика, не верифицирована (используйте для placeholder-источников).
+
+   Validator также проверяет shape: `pricesIncludeVat` только boolean,
+   `vatRateIncluded` только доля в `[0, 1]`; при `pricesIncludeVat=true`
+   ставка обязательна. Лишние поля внутри `vatPolicy` отклоняются.
 
 ### После изменения JSON — обязательно
 

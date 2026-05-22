@@ -1236,10 +1236,10 @@
     margin-bottom: 2px;
 }
 .provider-price-row {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
     align-items: baseline;
-    gap: var(--space-2);
+    column-gap: var(--space-2);
 }
 .provider-price-row-name {
     color: var(--text-muted);
@@ -1259,10 +1259,13 @@
 .provider-price-row-value {
     color: var(--text);
     font-weight: 500;
-    flex: 0 0 auto;
+    justify-self: end;
     display: inline-flex;
     align-items: baseline;
+    justify-content: flex-end;
     gap: 6px;
+    min-width: 8ch;
+    text-align: right;
 }
 .provider-price-row-value-num {
     color: inherit;

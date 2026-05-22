@@ -138,6 +138,10 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'
 
 ```bash
 npm test                  # весь test-suite
+npm run test:quick        # быстрый unit-slice: domain/services/controllers/utils
+npm run test:architecture # только architecture/source guards
+npm run test:ui           # только UI unit/source smoke
+npm run test:integration  # только integration-сценарии
 npm run smoke:desktop     # Playwright desktop suite: smoke + UI↔domain + real user flows
 npm run smoke:published   # короткий smoke опубликованной GitHub Pages сборки
 npm run syntax-check      # node --check для js/**/*.js
@@ -145,6 +149,7 @@ npm run sanity:check      # проверка актуальности SANITY_REP
 npm run sanity            # пересобрать SANITY_REPORT.md
 npm run prices:freshness:check # проверка PROVIDER_FRESHNESS_REPORT.md
 npm run prices:freshness       # пересобрать PROVIDER_FRESHNESS_REPORT.md
+npm run pages:build       # собрать .pages-dist для GitHub Pages workflow
 ```
 
 `npm test` включает golden-сценарии Quick Start с закреплёнными итогами и
@@ -171,9 +176,11 @@ Dashboard, Детализацию и Сравнение на реальном ba
 
 В GitHub Actions заведены два обязательных job'а: `unit-and-sanity`
 (`npm test`, `syntax-check`, `sanity:check`, `prices:freshness:check`,
-whitespace diff check) и
-`desktop-smoke` (Playwright Chromium, desktop viewport 1365×768). Playwright
-артефакты при падении загружаются из `.playwright-mcp/test-results`.
+`pages:build`, whitespace diff check) и `desktop-smoke` (Playwright Chromium,
+desktop viewport 1365×768). Публикация GitHub Pages идёт отдельным workflow
+`.github/workflows/pages.yml` через `.pages-dist`, а не через legacy
+deploy-from-branch. Playwright артефакты при падении загружаются из
+`.playwright-mcp/test-results`.
 
 Архитектура держится на ES-модулях без bundler'а. Исторические entry point'ы вроде `js/app.js`, `js/ui/questionnaire.js`, `js/domain/costOptimizationPlanner.js`, `js/services/providerPriceFetch.js` сохранены как стабильные фасады; узкая логика вынесена в соседние модули (`js/app/*Actions.js`, `questionnaire*`, `dashboard*`, `costOptimizationPlanner*`, `priceImportMapping*`, `providerPriceNormalize.js`, `decisionMemoFormat.js`). Актуальная карта ownership — в [Architecture.md](Architecture.md#фасады-после-модульного-рефакторинга).
 

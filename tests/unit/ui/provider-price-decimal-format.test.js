@@ -33,4 +33,20 @@ describe('Provider price summary: decimal price formatting', () => {
         const body = ruleBody(formsCss, '.provider-price-row-value-num');
         assert.match(body, /white-space:\s*nowrap/);
     });
+
+    it('aligns expanded tariff rows as label/value grid on desktop', () => {
+        const rowBody = formsCss.match(/(?:^|\n)\.provider-price-row\s*\{([^}]+)\}/)?.[1] || '';
+        assert.match(rowBody, /display:\s*grid/);
+        assert.match(rowBody, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+max-content/);
+
+        const valueBody = ruleBody(formsCss, '.provider-price-row-value');
+        assert.match(valueBody, /justify-self:\s*end/);
+        assert.match(valueBody, /text-align:\s*right/);
+        assert.match(valueBody, /min-width:\s*8ch/);
+    });
+
+    it('adds row-level title with value and unit for expanded tariff rows', () => {
+        assert.match(providerSrc, /attrs:\s*\{\s*title:\s*`\$\{r\.label\}:\s*\$\{accessibleValue\}`\s*\}/);
+        assert.match(providerSrc, /const\s+accessibleValue\s*=\s*unitText\s*\?/);
+    });
 });

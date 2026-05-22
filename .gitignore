@@ -5,6 +5,7 @@
 # Workshop / temp artifacts
 _demo-screenshot.html
 .playwright-mcp/
+.pages-dist/
 .claude/
 
 # OS / editor cruft

@@ -50,6 +50,10 @@ const ALLOWED_TOP_LEVEL_V2 = Object.freeze([
     'schemaVersion', 'providerId', 'version', 'timestamp', 'source', 'prices', 'vatPolicy'
 ]);
 
+const ALLOWED_VAT_POLICY_FIELDS = Object.freeze([
+    'pricesIncludeVat', 'vatRateIncluded', 'confidence'
+]);
+
 const REQUIRED_TOP_LEVEL = Object.freeze([
     'schemaVersion', 'providerId', 'version', 'timestamp', 'source', 'prices'
 ]);
@@ -74,8 +78,9 @@ const REQUIRED_TOP_LEVEL = Object.freeze([
  *               | invalid-timestamp | empty-prices | shape-prices
  *               | invalid-price | unknown-fields | vat-policy-required
  *               | invalid-user-vat-policy
- *   v2 reasons: всё из v1 + missing-vat-policy | invalid-confidence
- *               | invalid-vat-rate | gross-without-vat-rate | vat-inconsistency
+ *   v2 reasons: всё из v1 + missing-vat-policy | invalid-vat-policy
+ *               | invalid-confidence | invalid-vat-rate
+ *               | gross-without-vat-rate | vat-inconsistency
  */
 export function validateProviderPriceJson(parsed, expectedProviderId, options = {}) {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
@@ -204,8 +209,52 @@ function _validateV2(parsed, expectedProviderId, options) {
             message: 'vatPolicy должен быть объектом.'
         };
     }
-    if (typeof parsed.vatPolicy.confidence !== 'string'
-        || !ALLOWED_CONFIDENCE.includes(parsed.vatPolicy.confidence)) {
+    const policyCheck = _validateVatPolicy(parsed.vatPolicy);
+    if (!policyCheck.ok) return policyCheck;
+
+    return _normalizeAllEntries(parsed, parsed.vatPolicy, {});
+}
+
+function _validateVatPolicy(vatPolicy) {
+    for (const k of Object.keys(vatPolicy)) {
+        if (!ALLOWED_VAT_POLICY_FIELDS.includes(k)) {
+            return {
+                ok: false,
+                reason: 'invalid-vat-policy',
+                message: `Неизвестное поле vatPolicy: ${k}`
+            };
+        }
+    }
+
+    if (typeof vatPolicy.pricesIncludeVat !== 'boolean') {
+        return {
+            ok: false,
+            reason: 'invalid-vat-policy',
+            message: 'vatPolicy.pricesIncludeVat должен быть boolean.'
+        };
+    }
+
+    if (vatPolicy.pricesIncludeVat && !('vatRateIncluded' in vatPolicy)) {
+        return {
+            ok: false,
+            reason: 'invalid-vat-policy',
+            message: 'vatPolicy.vatRateIncluded обязателен, когда pricesIncludeVat=true.'
+        };
+    }
+
+    if ('vatRateIncluded' in vatPolicy) {
+        const rate = vatPolicy.vatRateIncluded;
+        if (typeof rate !== 'number' || !Number.isFinite(rate) || rate < 0 || rate > 1) {
+            return {
+                ok: false,
+                reason: 'invalid-vat-policy',
+                message: 'vatPolicy.vatRateIncluded должен быть числом в [0, 1].'
+            };
+        }
+    }
+
+    if (typeof vatPolicy.confidence !== 'string'
+        || !ALLOWED_CONFIDENCE.includes(vatPolicy.confidence)) {
         return {
             ok: false,
             reason: 'invalid-confidence',
@@ -213,7 +262,7 @@ function _validateV2(parsed, expectedProviderId, options) {
         };
     }
 
-    return _normalizeAllEntries(parsed, parsed.vatPolicy, {});
+    return { ok: true };
 }
 
 function _validateCommonTopLevel(parsed, expectedProviderId) {

@@ -1,6 +1,6 @@
 {
     "name": "infrastructure-calculator",
-    "version": "2.20.25",
+    "version": "2.20.26",
     "description": "Локальное web-приложение для расчёта инфраструктуры и стоимости программных продуктов по 5 стендам (DEV / ИФТ / ПСИ / ПРОМ / НТ). Работает offline, без runtime-зависимостей.",
     "type": "module",
     "private": true,
@@ -9,6 +9,10 @@
         "start": "python -m http.server 8000",
         "start:node": "npx --yes http-server -p 8000 -c-1",
         "test": "node tests/run.js",
+        "test:quick": "node tests/run.js tests/unit/domain tests/unit/services tests/unit/controllers tests/unit/utils",
+        "test:architecture": "node tests/run.js tests/unit/architecture",
+        "test:ui": "node tests/run.js tests/unit/ui",
+        "test:integration": "node tests/run.js tests/integration",
         "test:watch": "node --watch tests/run.js",
         "smoke:desktop": "node --no-deprecation ./node_modules/@playwright/test/cli.js test --config=playwright.config.js",
         "smoke:desktop:headed": "node --no-deprecation ./node_modules/@playwright/test/cli.js test --config=playwright.config.js --headed",
@@ -17,6 +21,7 @@
         "sanity:check": "node scripts/sanity-report.mjs --check",
         "prices:freshness": "node scripts/provider-freshness-report.mjs --write",
         "prices:freshness:check": "node scripts/provider-freshness-report.mjs --check",
+        "pages:build": "node scripts/build-pages-dist.mjs",
         "generate:providers": "node scripts/generate-providers-bundled.js",
         "bump": "node scripts/bump-version.mjs",
         "syntax-check": "node -e \"const fs=require('fs');const p=require('path');function walk(d){return fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(p.join(d,e.name)):p.join(d,e.name))} const files=walk('js').filter(f=>f.endsWith('.js')); for(const f of files){require('child_process').execSync('node --check '+JSON.stringify(f),{stdio:'inherit'})}\""

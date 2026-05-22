@@ -9220,3 +9220,58 @@ bundle format не меняются.
 
 `2.20.24 → 2.20.25` (PATCH). Schema остаётся v20; расчётная модель, прайсы и
 bundle format не меняются.
+
+## PATCH 2.20.26 — Pages workflow, scoped tests, provider VAT hardening (2026-05-22)
+
+### Контекст
+
+После `2.20.25` оставались три крупных эксплуатационных хвоста: GitHub Pages
+публиковался legacy-механизмом и продолжал показывать runtime warning,
+локальные проверки нельзя было удобно дробить по зонам, а v2 provider JSON
+разрешал слишком короткий `vatPolicy` без явного признака net/gross. Параллельно
+была проверена desktop-панель тарифов активного провайдера: после исправления
+десятичных запятых значения должны оставаться выровненными и читаемыми в плотной
+раскладке.
+
+### Решение
+
+- Добавлен явный GitHub Pages workflow
+  [.github/workflows/pages.yml](.github/workflows/pages.yml): checkout/setup
+  на актуальных Node 24-aware actions, `npm run pages:build`, загрузка
+  `.pages-dist` и deploy через `actions/deploy-pages`.
+- Добавлен [build-pages-dist.mjs](scripts/build-pages-dist.mjs), который
+  собирает Pages artifact из tracked-файлов через `git ls-files -z` с
+  `core.quotepath=false`, корректно переживает кириллические пути и пишет
+  `.nojekyll`.
+- `tests/run.js` научился принимать список файлов/директорий и `--list`;
+  в [package.json](package.json) добавлены `test:quick`,
+  `test:architecture`, `test:ui`, `test:integration`, `pages:build`.
+- В [providerPriceFetch.js](js/services/providerPriceFetch.js) v2 `vatPolicy`
+  теперь строго валидируется: разрешены только `pricesIncludeVat`,
+  `vatRateIncluded`, `confidence`; `pricesIncludeVat` обязателен, gross-цены
+  требуют `vatRateIncluded` в диапазоне `[0, 1]`.
+- В [forms.css](css/forms.css) provider tariff rows переведены на desktop-grid
+  с правым выравниванием value-колонки; строки получили `title` с полной
+  суммой и единицей измерения.
+- Документация обновлена: README, Architecture, Maintainer Guide,
+  Browser Smoke и CLAUDE описывают Pages workflow, новые тестовые профили,
+  strict `vatPolicy` и актуальную версию.
+
+### Проверки
+
+- Targeted provider/UI/architecture tests: 57/57 pass.
+- Scoped profiles: `test:quick` 1942/1942 pass, `test:architecture` 1105/1105
+  pass, `test:ui` 1270/1270 pass.
+- `npm test`: 5034/5034 pass.
+- `npm run smoke:desktop`: 23/23 pass.
+- `npm run syntax-check`: pass.
+- `npm run sanity:check`: pass.
+- `npm run prices:freshness:check`: pass.
+- `npm run pages:build`: pass.
+- `git diff --check`: pass.
+- CI/Pages/published smoke — после push/release, см. release notes `v2.20.26`.
+
+### Версионирование
+
+`2.20.25 → 2.20.26` (PATCH). Schema остаётся v20; расчётная модель, bundled
+provider prices и bundle format не меняются.

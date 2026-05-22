@@ -416,6 +416,63 @@ describe('D.3 — confidence строго в whitelist', () => {
     }
 });
 
+describe('D.4 — vatPolicy shape строго валидируется', () => {
+    const cases = [
+        {
+            name: 'pricesIncludeVat отсутствует',
+            patch: policy => {
+                const next = { ...policy };
+                delete next.pricesIncludeVat;
+                return next;
+            }
+        },
+        {
+            name: 'pricesIncludeVat не boolean',
+            patch: policy => ({ ...policy, pricesIncludeVat: 'true' })
+        },
+        {
+            name: 'gross-policy без vatRateIncluded',
+            patch: policy => {
+                const next = { ...policy, pricesIncludeVat: true };
+                delete next.vatRateIncluded;
+                return next;
+            }
+        },
+        {
+            name: 'vatRateIncluded как процент 22, не доля 0.22',
+            patch: policy => ({ ...policy, vatRateIncluded: 22 })
+        },
+        {
+            name: 'лишнее поле vatPolicy',
+            patch: policy => ({ ...policy, sourceText: 'gross 22' })
+        }
+    ];
+
+    for (const c of cases) {
+        it(`reject: ${c.name}`, () => {
+            const json = makeValidV2();
+            json.vatPolicy = c.patch(json.vatPolicy);
+            const r = svc.validateProviderPriceJson(json, 'sbercloud');
+            assert.equal(r.ok, false, `expected reject for ${c.name}`);
+            assert.equal(r.reason, 'invalid-vat-policy');
+        });
+    }
+
+    it('net-policy без vatRateIncluded принимается', () => {
+        const json = makeValidV2({
+            'cpu-vcpu-shared': {
+                pricePerUnitNet: 100,
+                vendor: 'SberCloud',
+                priceSource: 'test'
+            }
+        });
+        json.vatPolicy = { pricesIncludeVat: false, confidence: 'verified' };
+        const r = svc.validateProviderPriceJson(json, 'sbercloud');
+        assert.equal(r.ok, true, `expected ok, got ${JSON.stringify(r)}`);
+        assert.equal(r.data.prices['cpu-vcpu-shared'].pricePerUnit, 100);
+    });
+});
+
 /* ============================================================
  * Group F — validator API contract
  * ============================================================ */
