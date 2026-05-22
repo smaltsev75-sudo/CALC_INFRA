@@ -8,11 +8,14 @@
 
 ```bash
 npm run smoke:desktop
+npm run smoke:published   # после публикации релиза на GitHub Pages
 ```
 
-Команда запускает Playwright на 1365×768 и параллельно проверяет Dashboard, Cost Optimization Planner, Decision Memo, Детализацию и Сравнение. Помимо smoke-рендера, suite сверяет Dashboard/Details с production `calculate()`, проверяет пересчёт после изменения ответа, исключение disabled-стенда из totals, независимость риск-коэффициентов от НДС и реальные desktop user-flow клики: Quick Start, sidebar, period/stand controls, Опросник risk/VAT, Dashboard CTA планера, scenario tabs, активный JSON import/export/reset, bundle export/import/reset и legacy provider JSON VAT-policy import. Скриншоты сохраняются в `.playwright-mcp/`; временные отчёты Playwright тоже уходят туда через `playwright.config.js`.
+Команда запускает Playwright на 1365×768 и параллельно проверяет Dashboard, Cost Optimization Planner, Decision Memo, Детализацию и Сравнение. Помимо smoke-рендера, suite сверяет Dashboard/Details с production `calculate()`, проверяет пересчёт после изменения ответа, исключение disabled-стенда из totals, независимость риск-коэффициентов от НДС и реальные desktop user-flow клики: Quick Start, sidebar, period/stand controls, Опросник risk/VAT, Dashboard CTA планера, scenario tabs, активный JSON import/export/reset, bundle export/import/reset, legacy provider JSON VAT-policy import, Decision Memo `.md` download и PDF routing из шапки приложения. Скриншоты сохраняются в `.playwright-mcp/`; временные отчёты Playwright тоже уходят туда через `playwright.config.js`.
 
 Локально suite по умолчанию использует системный Chrome. В CI channel не фиксируется: GitHub Actions ставит bundled Chromium через `npx playwright install --with-deps chromium`, чтобы прогон не зависел от браузера на машине runner'а.
+
+`npm run smoke:published` использует тот же Playwright config, но без локального `webServer`: скрипт ставит `PLAYWRIGHT_BASE_URL=https://smaltsev75-sudo.github.io/CALC_INFRA/` и гоняет короткий published-smoke. Это защищает от base-path регрессий GitHub Pages (`/CALC_INFRA/` вместо `/`).
 
 На Node 26 upstream Playwright 1.60.0 может выводить `DEP0205 module.register()` warning при прямом `npx playwright ...`. Проектный `npm run smoke:desktop` запускает тот же CLI через `node --no-deprecation`, поэтому релизный прогон остаётся без шумных warning'ов.
 

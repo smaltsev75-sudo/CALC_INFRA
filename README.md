@@ -139,6 +139,7 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'
 ```bash
 npm test                  # весь test-suite
 npm run smoke:desktop     # Playwright desktop suite: smoke + UI↔domain + real user flows
+npm run smoke:published   # короткий smoke опубликованной GitHub Pages сборки
 npm run syntax-check      # node --check для js/**/*.js
 npm run sanity:check      # проверка актуальности SANITY_REPORT.md
 npm run sanity            # пересобрать SANITY_REPORT.md
@@ -153,8 +154,11 @@ desktop-рендер: Dashboard/Details сверяются с `calculate()`, и�
 риск-коэффициенты и НДС остаются независимыми. Отдельный user-flow слой проходит
 Quick Start, sidebar-навигацию, Dashboard period/stand controls, настройки
 рисков/НДС, scenario tabs, активный и bundle JSON import/export/reset, legacy
-provider JSON VAT-policy flow и открытие Cost Optimization Planner реальными
-кликами.
+provider JSON VAT-policy flow, Decision Memo `.md` download, PDF routing из
+шапки приложения и открытие Cost Optimization Planner реальными кликами.
+`npm run smoke:published` проверяет опубликованную GitHub Pages сборку
+`https://smaltsev75-sudo.github.io/CALC_INFRA/`: shell/version, Quick Start,
+Dashboard, Детализацию и Сравнение на реальном base path `/CALC_INFRA/`.
 
 В GitHub Actions заведены два обязательных job'а: `unit-and-sanity`
 (`npm test`, `syntax-check`, `sanity:check`, whitespace diff check) и

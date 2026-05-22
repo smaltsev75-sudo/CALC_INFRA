@@ -53,7 +53,10 @@ export function renderPrintAnswersOptionsModal(state, ctx) {
         title: 'Формат выгрузки ответов опросника',
         size: 'md',
         onClose: onCancel,
-        children: el('div', { class: 'print-format-body' },
+        children: el('div', {
+            class: 'print-format-body',
+            attrs: { 'data-testid': 'print-options-modal' }
+        },
             renderFormatFieldset(draft, setDraft),
             renderOrientationToggle(draft, setDraft)
         ),
@@ -61,13 +64,17 @@ export function renderPrintAnswersOptionsModal(state, ctx) {
             el('button', {
                 class: 'btn btn-ghost',
                 title: 'Отменить выгрузку (Esc)',
-                attrs: { type: 'button' },
+                attrs: { type: 'button', 'data-testid': 'print-options-cancel' },
                 onClick: onCancel
             }, 'Отмена'),
             el('button', {
                 class: 'btn btn-primary',
                 title: 'Скачать PDF в выбранном формате (Enter)',
-                attrs: { type: 'button', 'data-autofocus': '' },
+                attrs: {
+                    type: 'button',
+                    'data-autofocus': '',
+                    'data-testid': 'print-options-submit'
+                },
                 onClick: submit
             }, 'Скачать PDF')
         )
@@ -105,7 +112,7 @@ function renderFormatCard({ value, title, subtitle, mockup, draft, setDraft }) {
     const selected = draft.format === value;
     return el('label', {
         class: ['print-format-card', selected && 'is-selected'],
-        attrs: { 'data-value': value }
+        attrs: { 'data-value': value, 'data-testid': `print-format-${value}` }
     },
         el('input', {
             type: 'radio',
@@ -113,7 +120,8 @@ function renderFormatCard({ value, title, subtitle, mockup, draft, setDraft }) {
             attrs: {
                 name: 'print-format',
                 value,
-                'data-focus-key': `format-${value}`
+                'data-focus-key': `format-${value}`,
+                'data-testid': `print-format-${value}-input`
             },
             checked: selected,
             onChange: () => setDraft({ format: value })
@@ -158,7 +166,10 @@ function renderOrientationToggle(draft, setDraft) {
         el('input', {
             type: 'checkbox',
             class: 'print-format-toggle-input',
-            attrs: { 'data-focus-key': 'landscape' },
+            attrs: {
+                'data-focus-key': 'landscape',
+                'data-testid': 'print-landscape-toggle'
+            },
             checked: !!draft.landscape,
             onChange: (e) => setDraft({ landscape: !!e.target.checked })
         }),

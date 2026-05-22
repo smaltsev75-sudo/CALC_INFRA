@@ -13,28 +13,28 @@ test.describe.configure({ mode: 'parallel' });
 
 async function setAnswer(page, fieldId, value) {
     await page.evaluate(async ({ id, nextValue }) => {
-        const calcCtl = await import('/js/controllers/calcController.js');
+        const calcCtl = await import(new URL('js/controllers/calcController.js', document.baseURI).href);
         calcCtl.setAnswer(id, nextValue);
     }, { id: fieldId, nextValue: value });
 }
 
 async function setSetting(page, key, value) {
     await page.evaluate(async ({ settingKey, nextValue }) => {
-        const calcCtl = await import('/js/controllers/calcController.js');
+        const calcCtl = await import(new URL('js/controllers/calcController.js', document.baseURI).href);
         calcCtl.setSetting(settingKey, nextValue);
     }, { settingKey: key, nextValue: value });
 }
 
 async function toggleStand(page, standId) {
     await page.evaluate(async (id) => {
-        const calcCtl = await import('/js/controllers/calcController.js');
+        const calcCtl = await import(new URL('js/controllers/calcController.js', document.baseURI).href);
         calcCtl.toggleStand(id);
     }, standId);
 }
 
 async function setManualVatRate(page, rate) {
     await page.evaluate(async (value) => {
-        const calcCtl = await import('/js/controllers/calcController.js');
+        const calcCtl = await import(new URL('js/controllers/calcController.js', document.baseURI).href);
         calcCtl.setVatRateManual(value);
     }, rate);
 }
@@ -59,7 +59,7 @@ test('Changing a key answer recalculates Dashboard and Details consistently', as
 
     const before = await getCalculationUiModel(page);
     const nextPeakRps = await page.evaluate(async () => {
-        const { store } = await import('/js/state/store.js');
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
         const current = Number(store.getState().activeCalc?.answers?.peak_rps) || 0;
         return Math.max(current * 3, 3_000);
     });

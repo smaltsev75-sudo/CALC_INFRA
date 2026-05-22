@@ -169,6 +169,7 @@ npm test                  # Все тесты (node:test, custom runner)
 npm run test:watch        # Watch-режим (node --watch)
 npm run smoke:desktop     # Playwright desktop smoke, 1365×768, parallel workers
 npm run smoke:desktop:headed # То же, но с видимым браузером
+npm run smoke:published   # Короткий smoke опубликованной GitHub Pages сборки
 npm run syntax-check      # node --check на всех js/**/*.js
 npm run sanity:check      # SANITY_REPORT.md соответствует текущим формулам/прайсам
 npm run sanity            # Пересобрать SANITY_REPORT.md
@@ -206,7 +207,7 @@ node --test --test-name-pattern="riskFactor" tests/unit/domain/calculator.test.j
 npm run smoke:desktop
 ```
 
-Автоматический Playwright smoke поднимает локальный static server (`scripts/static-server.mjs`) и параллельно проверяет реальные desktop-сцены 1365×768: Dashboard, Cost Optimization Planner, Decision Memo, Детализация, Сравнение, scenario tabs, активный и bundle JSON import/export/reset, provider VAT-policy import. Скриншоты пишутся в `.playwright-mcp/`; runner не должен создавать артефакты в корне проекта.
+Автоматический Playwright smoke поднимает локальный static server (`scripts/static-server.mjs`) и параллельно проверяет реальные desktop-сцены 1365×768: Dashboard, Cost Optimization Planner, Decision Memo, Детализация, Сравнение, scenario tabs, активный и bundle JSON import/export/reset, provider VAT-policy import, Decision Memo `.md` download и PDF routing из шапки приложения. Скриншоты пишутся в `.playwright-mcp/`; runner не должен создавать артефакты в корне проекта.
 
 Локально по умолчанию используется системный Chrome (`PLAYWRIGHT_CHANNEL=chrome`). В CI channel не фиксируется: workflow ставит bundled Chromium через `npx playwright install --with-deps chromium`. При необходимости можно переключить канал, например `PLAYWRIGHT_CHANNEL=msedge npm run smoke:desktop`.
 
@@ -214,6 +215,10 @@ GitHub Actions workflow [ci.yml](.github/workflows/ci.yml) запускает д
 `unit-and-sanity` (`npm test`, `syntax-check`, `sanity:check`, `git diff --check`)
 и `desktop-smoke` (`npm run smoke:desktop`). При падении browser job'а
 артефакты забираются из `.playwright-mcp/test-results`.
+
+После релиза полезно отдельно запускать `npm run smoke:published`: он проверяет
+уже опубликованный GitHub Pages URL на base path `/CALC_INFRA/`. Если нужен
+другой URL, задайте `PLAYWRIGHT_PUBLISHED_URL`.
 
 ### 4.4 Sanity report (вручную)
 

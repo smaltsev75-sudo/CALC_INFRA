@@ -8979,3 +8979,52 @@ numeric `pdn_category`, старые aliases `ai_model_tier=medium|large` и
 `2.20.19 → 2.20.20` (PATCH), schema `19 → 20`. Формат bundle не меняется;
 миграция совместимости чинит сохранённые данные без новой пользовательской
 фичи.
+
+## PATCH 2.20.21 — Export/print E2E + published GitHub Pages smoke (2026-05-22)
+
+### Контекст
+
+После закрытия data-management E2E оставались два важных production-контракта,
+которые всё ещё проверялись в основном вручную:
+
+1. Decision Memo должен не только рендериться в модалке, но и реально
+   скачиваться как Markdown-файл с управленческими разделами и таблицей top-10.
+2. Единая кнопка PDF в шапке должна корректно маршрутизировать печать:
+   Dashboard/Details/Comparison → обычный `window.print()`, Опросник →
+   модалка формата и print-friendly анкета.
+
+Отдельный риск — GitHub Pages публикует приложение под base path
+`/CALC_INFRA/`. Старые E2E helper imports вида `/js/...` работали локально от
+root, но не были переносимы на published URL.
+
+### Решение
+
+- `playwright.config.js` получил поддержку `PLAYWRIGHT_BASE_URL`: если переменная
+  задана, локальный `webServer` не поднимается, а suite работает против внешнего
+  URL.
+- E2E helpers переведены на module imports относительно `document.baseURI`:
+  `new URL('js/...', document.baseURI)`. Это сохраняет локальный запуск и
+  делает тесты совместимыми с GitHub Pages base path.
+- Добавлен `scripts/smoke-published.mjs` и npm-скрипт `npm run smoke:published`
+  для короткой проверки опубликованной сборки
+  `https://smaltsev75-sudo.github.io/CALC_INFRA/`.
+- Добавлен [desktop-export-print.spec.js](tests/e2e/desktop-export-print.spec.js):
+  Decision Memo `.md` download через реальный download event; PDF routing из
+  шапки для Dashboard и Опросника через `window.print` spy; проверка
+  `printing-answers` DOM и extended-формата.
+- Добавлен [published-smoke.spec.js](tests/e2e/published-smoke.spec.js):
+  sidebar version, Quick Start, Dashboard, Детализация, Сравнение,
+  console/overflow checks на настроенном base URL.
+- На Decision Memo и PDF-format modal добавлены стабильные `data-testid` для
+  экспортных кнопок и print options.
+
+### Проверки
+
+- Targeted local export/published specs: 3/3 pass.
+- Published GitHub Pages smoke: 1/1 pass.
+- Полный релизный прогон см. release notes `v2.20.21`.
+
+### Версионирование
+
+`2.20.20 → 2.20.21` (PATCH). Schema остаётся v20; расчётная формула, прайсы и
+bundle format не меняются.

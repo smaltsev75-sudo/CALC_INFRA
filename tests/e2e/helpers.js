@@ -11,15 +11,15 @@ export async function bootCleanApp(page) {
         localStorage.clear();
         sessionStorage.clear();
     });
-    await page.goto('/index.html');
+    await page.goto('./index.html');
     await expect(page.locator('.app-layout')).toBeVisible();
     return consoleErrors;
 }
 
 export async function seedCalculations(page) {
     return page.evaluate(async () => {
-        const calcCtl = await import('/js/controllers/calcListController.js');
-        const { store } = await import('/js/state/store.js');
+        const calcCtl = await import(new URL('js/controllers/calcListController.js', document.baseURI).href);
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
 
         const primary = calcCtl.createCalcFromWizard('Desktop smoke: B2C AI нагрузка', {
             product_type: 'b2c',
@@ -76,7 +76,7 @@ export async function createCalculationFromQuickStart(page, {
 
 export async function switchTab(page, tabId) {
     await page.evaluate(async (id) => {
-        const { store } = await import('/js/state/store.js');
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
         store.setActiveTab(id);
     }, tabId);
 }
@@ -115,7 +115,7 @@ export async function expectNoHorizontalOverflow(page, selectors) {
 
 export async function getAppStateSummary(page) {
     return page.evaluate(async () => {
-        const { store } = await import('/js/state/store.js');
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
         const state = store.getState();
         const activeCalc = state.activeCalc || null;
         return {
@@ -132,7 +132,7 @@ export async function getAppStateSummary(page) {
 
 export async function getScenarioSummary(page) {
     return page.evaluate(async () => {
-        const { store } = await import('/js/state/store.js');
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
         const calc = store.getState().activeCalc;
         if (!calc) throw new Error('No active calculation');
         const scenarios = Array.isArray(calc.scenarios) ? calc.scenarios : [];
@@ -148,7 +148,7 @@ export async function getScenarioSummary(page) {
 
 export async function getProviderOverrideSummary(page, providerId) {
     return page.evaluate(async (pid) => {
-        const persist = await import('/js/state/persistence.js');
+        const persist = await import(new URL('js/state/persistence.js', document.baseURI).href);
         const overrides = persist.loadProviderOverrides() || {};
         const override = overrides[pid] || null;
         if (!override) return null;
@@ -170,11 +170,11 @@ export async function getProviderOverrideSummary(page, providerId) {
 
 export async function getCalculationUiModel(page) {
     return page.evaluate(async () => {
-        const { store } = await import('/js/state/store.js');
-        const { calculate } = await import('/js/domain/calculator.js');
-        const { applyStandFilter } = await import('/js/domain/standsFilter.js');
-        const { buildDetailsCategoryOrder } = await import('/js/ui/details.js');
-        const { formatRub, formatRubThousands } = await import('/js/services/format.js');
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
+        const { calculate } = await import(new URL('js/domain/calculator.js', document.baseURI).href);
+        const { applyStandFilter } = await import(new URL('js/domain/standsFilter.js', document.baseURI).href);
+        const { buildDetailsCategoryOrder } = await import(new URL('js/ui/details.js', document.baseURI).href);
+        const { formatRub, formatRubThousands } = await import(new URL('js/services/format.js', document.baseURI).href);
         const {
             CATEGORY_IDS,
             CATEGORY_LABELS,
@@ -183,7 +183,7 @@ export async function getCalculationUiModel(page) {
             PERIOD_IDS,
             STAND_IDS,
             STAND_LABELS
-        } = await import('/js/utils/constants.js');
+        } = await import(new URL('js/utils/constants.js', document.baseURI).href);
 
         const state = store.getState();
         const calc = state.activeCalc;

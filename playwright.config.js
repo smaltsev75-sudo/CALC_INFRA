@@ -3,8 +3,11 @@ import { defineConfig } from '@playwright/test';
 const port = Number(process.env.DESKTOP_SMOKE_PORT || 8765);
 const host = process.env.DESKTOP_SMOKE_HOST || '127.0.0.1';
 const channel = process.env.PLAYWRIGHT_CHANNEL || (process.env.CI ? undefined : 'chrome');
+const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL || '';
+const localBaseURL = `http://${host}:${port}/`;
+const baseURL = externalBaseURL || localBaseURL;
 
-export default defineConfig({
+const config = {
     testDir: './tests/e2e',
     testMatch: /.*\.spec\.js/,
     fullyParallel: true,
@@ -14,7 +17,7 @@ export default defineConfig({
     reporter: [['list']],
     outputDir: '.playwright-mcp/test-results',
     use: {
-        baseURL: `http://${host}:${port}`,
+        baseURL,
         browserName: 'chromium',
         ...(channel ? { channel } : {}),
         acceptDownloads: true,
@@ -24,11 +27,16 @@ export default defineConfig({
         trace: 'retain-on-failure',
         screenshot: 'only-on-failure',
         video: 'off'
-    },
-    webServer: {
+    }
+};
+
+if (!externalBaseURL) {
+    config.webServer = {
         command: `node scripts/static-server.mjs --host ${host} --port ${port} --silent`,
-        url: `http://${host}:${port}/index.html`,
+        url: `${localBaseURL}index.html`,
         reuseExistingServer: true,
         timeout: 15_000
-    }
-});
+    };
+}
+
+export default defineConfig(config);

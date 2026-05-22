@@ -26,7 +26,10 @@ function renderPreview(markdown) {
     const html = renderMarkdown(String(markdown == null ? '' : markdown));
     const node = el('div', {
         class: 'decision-memo-preview',
-        attrs: { 'aria-label': 'Предпросмотр memo' }
+        attrs: {
+            'aria-label': 'Предпросмотр memo',
+            'data-testid': 'decision-memo-preview'
+        }
     });
     setTrustedHtml(node, trustedHtml(html));
     return node;
@@ -48,12 +51,15 @@ export function renderDecisionMemoModal(state, ctx) {
             title: 'Обоснование расчёта',
             size: 'md',
             onClose,
-            children: el('div', { class: 'decision-memo-empty' },
+            children: el('div', {
+                class: 'decision-memo-empty',
+                attrs: { 'data-testid': 'decision-memo-empty' }
+            },
                 'Нет активного расчёта для формирования memo.'
             ),
             footer: el('button', {
                 class: 'btn btn-primary',
-                attrs: { type: 'button' },
+                attrs: { type: 'button', 'data-testid': 'decision-memo-close' },
                 onClick: onClose
             }, 'Закрыть')
         });
@@ -78,17 +84,20 @@ export function renderDecisionMemoModal(state, ctx) {
         title: 'Обоснование расчёта',
         size: 'lg',
         onClose,
-        children: el('div', { class: 'decision-memo-modal-body' },
+        children: el('div', {
+            class: 'decision-memo-modal-body',
+            attrs: { 'data-testid': 'decision-memo-modal' }
+        },
             el('div', { class: 'decision-memo-actions', attrs: { role: 'toolbar' } },
                 el('button', {
                     class: 'btn btn-primary',
-                    attrs: { type: 'button' },
+                    attrs: { type: 'button', 'data-testid': 'decision-memo-copy' },
                     title: 'Скопировать memo как Markdown',
                     onClick: onCopy
                 }, 'Скопировать Markdown'),
                 el('button', {
                     class: 'btn btn-ghost',
-                    attrs: { type: 'button' },
+                    attrs: { type: 'button', 'data-testid': 'decision-memo-download' },
                     title: 'Скачать memo как .md-файл',
                     onClick: onDownload
                 }, 'Скачать .md')
@@ -101,7 +110,7 @@ export function renderDecisionMemoModal(state, ctx) {
         ),
         footer: el('button', {
             class: 'btn btn-ghost',
-            attrs: { type: 'button' },
+            attrs: { type: 'button', 'data-testid': 'decision-memo-close' },
             title: 'Закрыть (Esc)',
             onClick: onClose
         }, 'Закрыть')

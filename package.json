@@ -1,6 +1,6 @@
 {
     "name": "infrastructure-calculator",
-    "version": "2.20.20",
+    "version": "2.20.21",
     "description": "Локальное web-приложение для расчёта инфраструктуры и стоимости программных продуктов по 5 стендам (DEV / ИФТ / ПСИ / ПРОМ / НТ). Работает offline, без runtime-зависимостей.",
     "type": "module",
     "private": true,
@@ -12,6 +12,7 @@
         "test:watch": "node --watch tests/run.js",
         "smoke:desktop": "node --no-deprecation ./node_modules/@playwright/test/cli.js test --config=playwright.config.js",
         "smoke:desktop:headed": "node --no-deprecation ./node_modules/@playwright/test/cli.js test --config=playwright.config.js --headed",
+        "smoke:published": "node scripts/smoke-published.mjs",
         "sanity": "node scripts/sanity-report.mjs --write",
         "sanity:check": "node scripts/sanity-report.mjs --check",
         "generate:providers": "node scripts/generate-providers-bundled.js",

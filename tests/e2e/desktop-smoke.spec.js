@@ -17,7 +17,7 @@ test('dashboard and cost optimization planner render cleanly on desktop', async 
     await expect(page.locator('.dash-card-hero')).toBeVisible();
 
     await page.evaluate(async () => {
-        const plannerCtl = await import('/js/controllers/costOptimizationPlannerController.js');
+        const plannerCtl = await import(new URL('js/controllers/costOptimizationPlannerController.js', document.baseURI).href);
         plannerCtl.openCostOptimizationPlannerModal();
     });
 
@@ -46,7 +46,7 @@ test('decision memo preview renders markdown tables on desktop', async ({ page }
     await seedCalculations(page);
 
     await page.evaluate(async () => {
-        const memoCtl = await import('/js/controllers/decisionMemoController.js');
+        const memoCtl = await import(new URL('js/controllers/decisionMemoController.js', document.baseURI).href);
         memoCtl.openDecisionMemoModal();
     });
 
