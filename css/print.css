@@ -241,6 +241,52 @@
         table-layout: auto;
         width: 100%;
     }
+
+    /* PATCH 2.20.27: header PDF / Ctrl+Alt+P на вкладке «Детализация»
+       временно добавляет body.printing-details и print-only @page A4 landscape.
+       В этом режиме обе таблицы должны занимать всю usable-ширину листа, а не
+       оставаться в content-width с пустым правым полем в preview/PDF. */
+    body.printing-details .app-layout,
+    body.printing-details .app-main-col,
+    body.printing-details .app-main,
+    body.printing-details .tab-pane,
+    body.printing-details .details-section,
+    body.printing-details .details-table-wrap {
+        display: block !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: none !important;
+    }
+    body.printing-details .tab-pane {
+        contain: none !important;
+    }
+    body.printing-details .details-table-wrap {
+        overflow: visible !important;
+        page: auto !important;
+    }
+    body.printing-details .details-table {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: none !important;
+        table-layout: fixed !important;
+    }
+    body.printing-details .details-table th {
+        word-break: keep-all !important;
+        overflow-wrap: normal !important;
+        hyphens: none !important;
+    }
+    body.printing-details .details-table .col-name,
+    body.printing-details .details-table .col-vendor,
+    body.printing-details .details-table .col-tariff,
+    body.printing-details .details-table .col-unit,
+    body.printing-details .details-table .col-price,
+    body.printing-details .details-table .col-cost-type,
+    body.printing-details .details-table .col-share,
+    body.printing-details .details-table .col-risk,
+    body.printing-details .details-table .col-risk-amount {
+        min-width: 0 !important;
+        max-width: none !important;
+    }
     .details-table th,
     .details-table td {
         padding: 2px 3px !important;
@@ -549,4 +595,3 @@ body.printing-answers-extended #print-answers-area .pa-th-x  { width: 54%; }
         color: black !important;
     }
 }
-

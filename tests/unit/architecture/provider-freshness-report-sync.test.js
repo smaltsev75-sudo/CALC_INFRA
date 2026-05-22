@@ -13,7 +13,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
     buildProviderFreshnessReport,
-    summarizeProviderFreshness
+    CORE_PROVIDER_SKU_IDS,
+    summarizeProviderFreshness,
+    summarizeProviderQuality
 } from '../../../scripts/provider-freshness-report.mjs';
 
 test('provider freshness summary marks fresh, stale, stub and assumed VAT states', () => {
@@ -47,7 +49,7 @@ test('provider freshness report contains deterministic maintainer flow', () => {
         yandex: {
             version: '2026-Q3',
             timestamp: '2026-05-09T19:30:00.000Z',
-            vatPolicy: { confidence: 'source-level' },
+            vatPolicy: { pricesIncludeVat: true, vatRateIncluded: 0.22, confidence: 'source-level' },
             prices: { cpu: {}, ram: {} }
         }
     }, { asOf: '2026-05-22' });
@@ -55,8 +57,43 @@ test('provider freshness report contains deterministic maintainer flow', () => {
     assert.match(report, /^# Свежесть provider-прайсов/m);
     assert.match(report, /Дата отчёта: 2026-05-22/);
     assert.match(report, /\| yandex \| 2026-Q3 \| 09\.05\.2026 \| 0\.4 мес \| 2 \| source-level \| OK \|/);
+    assert.match(report, /## Quality gates/);
+    assert.match(report, /\| yandex \| 0\/8 \| gross→net OK \| 2 \| 2 \| MISSING_CORE \+ BAD_PRICE \+ MISSING_SOURCE \|/);
     assert.match(report, /npm run generate:providers/);
     assert.match(report, /npm run prices:freshness:check/);
+});
+
+test('provider quality summary separates core coverage, VAT policy, prices and sources', () => {
+    const validCorePrices = Object.fromEntries(CORE_PROVIDER_SKU_IDS.map(id => [id, {
+        pricePerUnitGross: 122,
+        pricePerUnitNet: 100,
+        vendor: 'Vendor',
+        priceSource: 'vendor/source'
+    }]));
+    const rows = summarizeProviderQuality({
+        good: {
+            vatPolicy: { pricesIncludeVat: true, vatRateIncluded: 0.22 },
+            prices: validCorePrices
+        },
+        bad: {
+            vatPolicy: { confidence: 'assumed' },
+            prices: {
+                'cpu-vcpu-shared': { pricePerUnitGross: 0, pricePerUnitNet: 1, vendor: '', priceSource: '' }
+            }
+        }
+    });
+
+    const good = rows.find(row => row.providerId === 'good');
+    const bad = rows.find(row => row.providerId === 'bad');
+
+    assert.equal(good.status, 'OK');
+    assert.equal(good.coreCoverage, '8/8');
+    assert.equal(bad.coreCoverage, '1/8');
+    assert.deepEqual(bad.missingCoreIds, CORE_PROVIDER_SKU_IDS.filter(id => id !== 'cpu-vcpu-shared'));
+    assert.match(bad.status, /MISSING_CORE/);
+    assert.match(bad.status, /BAD_VAT_POLICY/);
+    assert.match(bad.status, /BAD_PRICE/);
+    assert.match(bad.status, /MISSING_SOURCE/);
 });
 
 test('PROVIDER_FRESHNESS_REPORT.md синхронизирован с bundled provider prices', (t) => {

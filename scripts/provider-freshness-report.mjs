@@ -19,6 +19,17 @@ const REPORT_PATH = process.env.PROVIDER_FRESHNESS_REPORT_PATH
     ? resolve(process.env.PROVIDER_FRESHNESS_REPORT_PATH)
     : resolve(__dirname, '..', 'PROVIDER_FRESHNESS_REPORT.md');
 
+export const CORE_PROVIDER_SKU_IDS = Object.freeze([
+    'cpu-vcpu-shared',
+    'cpu-vcpu-gpu',
+    'ram-gb',
+    'storage-ssd-tb',
+    'storage-hdd-tb',
+    'storage-object-tb',
+    'network-lb-l7',
+    'network-waf'
+]);
+
 function parseArgs(argv) {
     const result = {
         mode: '',
@@ -117,11 +128,67 @@ export function summarizeProviderFreshness(providers = BUNDLED_PROVIDER_PRICES, 
         });
 }
 
+function isPositivePrice(value) {
+    return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+function summarizeEntryQuality(provider) {
+    const entries = Object.values(provider.prices || {});
+    const badPriceCount = entries.filter(entry =>
+        !isPositivePrice(entry.pricePerUnitNet) || !isPositivePrice(entry.pricePerUnitGross)
+    ).length;
+    const missingSourceCount = entries.filter(entry =>
+        typeof entry.vendor !== 'string' || entry.vendor.trim() === ''
+        || typeof entry.priceSource !== 'string' || entry.priceSource.trim() === ''
+    ).length;
+
+    return {
+        entriesCount: entries.length,
+        badPriceCount,
+        missingSourceCount
+    };
+}
+
+export function summarizeProviderQuality(providers = BUNDLED_PROVIDER_PRICES) {
+    return Object.entries(providers)
+        .sort(([a], [b]) => a.localeCompare(b, 'en'))
+        .map(([providerId, provider]) => {
+            const priceIds = new Set(Object.keys(provider.prices || {}));
+            const missingCoreIds = CORE_PROVIDER_SKU_IDS.filter(id => !priceIds.has(id));
+            const entryQuality = summarizeEntryQuality(provider);
+            const vatPolicy = provider.vatPolicy || {};
+            const vatPolicyOk = vatPolicy.pricesIncludeVat === true
+                && typeof vatPolicy.vatRateIncluded === 'number'
+                && Number.isFinite(vatPolicy.vatRateIncluded)
+                && vatPolicy.vatRateIncluded >= 0
+                && vatPolicy.vatRateIncluded <= 1;
+            const flags = [];
+
+            if (missingCoreIds.length > 0) flags.push('MISSING_CORE');
+            if (!vatPolicyOk) flags.push('BAD_VAT_POLICY');
+            if (entryQuality.badPriceCount > 0) flags.push('BAD_PRICE');
+            if (entryQuality.missingSourceCount > 0) flags.push('MISSING_SOURCE');
+
+            return {
+                providerId,
+                coreCoverage: `${CORE_PROVIDER_SKU_IDS.length - missingCoreIds.length}/${CORE_PROVIDER_SKU_IDS.length}`,
+                missingCoreIds,
+                entriesCount: entryQuality.entriesCount,
+                vatPolicyOk,
+                badPriceCount: entryQuality.badPriceCount,
+                missingSourceCount: entryQuality.missingSourceCount,
+                status: flags.length === 0 ? 'OK' : flags.join(' + ')
+            };
+        });
+}
+
 export function buildProviderFreshnessReport(providers = BUNDLED_PROVIDER_PRICES, {
     asOf = DEFAULT_REPORT_DATE
 } = {}) {
     const rows = summarizeProviderFreshness(providers, { asOf });
+    const qualityRows = summarizeProviderQuality(providers);
     const attention = rows.filter(row => row.status !== 'OK');
+    const qualityAttention = qualityRows.filter(row => row.status !== 'OK');
     const lines = [];
     const print = (line = '') => lines.push(String(line));
 
@@ -136,6 +203,15 @@ export function buildProviderFreshnessReport(providers = BUNDLED_PROVIDER_PRICES
         print(`| ${row.providerId} | ${row.version || '—'} | ${row.collectedDate} | ${row.ageText} | ${row.pricesCount} | ${row.vatConfidence} | ${row.status} |`);
     }
     print('');
+    print('## Quality gates');
+    print('');
+    print('| Провайдер | Core SKU coverage | VAT policy | Bad prices | Missing sources | Статус |');
+    print('|---|---:|---|---:|---:|---|');
+    for (const row of qualityRows) {
+        const vatStatus = row.vatPolicyOk ? 'gross→net OK' : 'invalid';
+        print(`| ${row.providerId} | ${row.coreCoverage} | ${vatStatus} | ${row.badPriceCount} | ${row.missingSourceCount} | ${row.status} |`);
+    }
+    print('');
     print('## Интерпретация');
     print('');
     if (attention.length === 0) {
@@ -143,6 +219,12 @@ export function buildProviderFreshnessReport(providers = BUNDLED_PROVIDER_PRICES
     } else {
         print(`Требуют внимания: ${attention.map(row => `${row.providerId} (${row.status})`).join(', ')}.`);
         print('`STALE` означает возраст старше порога, `STUB` — реалистичный stub вместо проверенного прайса, `ASSUMED_VAT` — НДС-политика принята по допущению.');
+    }
+    if (qualityAttention.length === 0) {
+        print('Quality gates: базовые SKU, VAT policy, положительные цены и vendor/source заполнены у всех провайдеров.');
+    } else {
+        print(`Quality gates требуют внимания: ${qualityAttention.map(row => `${row.providerId} (${row.status})`).join(', ')}.`);
+        print('`MISSING_CORE` означает отсутствие базового compute/storage/network SKU, `BAD_VAT_POLICY` — неполную gross→net политику, `BAD_PRICE` — неположительную цену, `MISSING_SOURCE` — пустой vendor/source.');
     }
     print('');
     print('## Maintainer flow');

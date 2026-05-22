@@ -153,11 +153,14 @@ npm run pages:build       # собрать .pages-dist для GitHub Pages workf
 ```
 
 `npm test` включает golden-сценарии Quick Start с закреплёнными итогами и
-разбивкой по категориям, а также полный invariant-прогон всех 2880 комбинаций
-Quick Start через production `calculate()`: без NaN/Infinity, отрицательных
-сумм, расхождений агрегатов, немонотонного scale/geography и удешевления при
-включении AI. Сами wizard-ответы валидируются против seed-вопросов, чтобы
-расчёты из Quick Start были пригодны для JSON-импорта, bundle-экспорта и
+разбивкой по категориям, ручные бизнес-профили Startup / SMB / Enterprise из
+sanity report, а также полный invariant-прогон всех 2880 комбинаций Quick Start
+через production `calculate()`: без NaN/Infinity, отрицательных сумм,
+расхождений агрегатов, немонотонного scale/geography и удешевления при
+включении AI. Отдельный performance guard проверяет большой пользовательский
+справочник ЭК и revision-cache `calculate()`, чтобы рост каталога не ломал
+Desktop Dashboard/Details. Сами wizard-ответы валидируются против seed-вопросов,
+чтобы расчёты из Quick Start были пригодны для JSON-импорта, bundle-экспорта и
 миграций. `npm run smoke:desktop` дополнительно проверяет реальный
 desktop-рендер: Dashboard/Details сверяются с `calculate()`, изменение ключевого
 ответа пересчитывает UI, отключённый стенд исключается из totals, а
@@ -167,12 +170,24 @@ Quick Start, sidebar-навигацию, Dashboard period/stand controls, нас
 provider JSON VAT-policy flow, Decision Memo `.md` download, PDF routing из
 шапки приложения, открытие Cost Optimization Planner реальными кликами и
 desktop visual-regression checks: ключевые экраны должны иметь ненулевой
-визуальный сигнал, размер и стабильную компоновку на 1365×768.
+визуальный сигнал, размер и стабильную компоновку на 1365×768; viewport-guard
+дополнительно проверяет desktop-разрешения 1365×768, 1440×900 и 1920×1080.
+Regression-suite также защищает формат единиц уведомлений в Детализации:
+пакетные qty показываются как `тыс. SMS`, `тыс. писем`, `млн PUSH`, без
+двусмысленных строк вида `16 1000 SMS`. PDF guard для Детализации проверяет,
+что печатный режим включает A4 landscape и растягивает таблицы объёмов/стоимости
+на всю доступную ширину листа.
 `npm run smoke:published` проверяет опубликованную GitHub Pages сборку
 `https://smaltsev75-sudo.github.io/CALC_INFRA/`: shell/version, Quick Start,
 Dashboard, Детализацию и Сравнение на реальном base path `/CALC_INFRA/`.
 Скрипт делает один retry по умолчанию и при сетевых 4xx/5xx выводит точный URL
 ресурса, а не только браузерное `Failed to load resource`.
+
+`PROVIDER_FRESHNESS_REPORT.md` содержит две таблицы: freshness
+(timestamp/age/version/VAT confidence) и quality gates (core SKU coverage,
+gross→net VAT policy, неположительные цены, пустые vendor/source). `STUB` /
+`ASSUMED_VAT` остаются видимыми как maintainer findings, а structural quality
+ошибки ловятся до релиза.
 
 В GitHub Actions заведены два обязательных job'а: `unit-and-sanity`
 (`npm test`, `syntax-check`, `sanity:check`, `prices:freshness:check`,

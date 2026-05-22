@@ -1,4 +1,5 @@
 import { loadPdfHintShown, markPdfHintShown } from '../services/storage.js';
+import { printWithDetailsMode } from '../utils/printMode.js';
 
 export const SUMMARY_FORMULA_MESSAGE =
     '«Итого по расчёту» — общая стоимость всей инфраструктуры за выбранный период ' +
@@ -50,6 +51,9 @@ export function printPdfAction({
     const activeTab = store.getState().activeTab;
     if (activeTab === 'questionnaire') {
         return printAnswersAction({ triggerEvent, store, snackbar, withLoadingButton });
+    }
+    if (activeTab === 'details') {
+        return printWithDetailsMode(printWindow);
     }
     printWindow();
 }

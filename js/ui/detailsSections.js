@@ -51,9 +51,29 @@ function unitPeriodSuffix(item) {
     // monthly — отделяем flow от capacity по семантике метрики/класса.
     const isFlowAi  = item.dashboardAiMetric === 'TOKENS' || item.dashboardAiMetric === 'EMBEDDINGS';
     const isFlowNet = item.resourceClass === 'TRAFFIC';
-    const isFlowMsg = item.resourceClass === 'SERVICE' && /\/\s*мес|\bмес\b/.test(item.unit || '');
+    const isFlowMsg = item.resourceClass === 'SERVICE';
     if (isFlowAi || isFlowNet || isFlowMsg) return ' / мес';
     return '';
+}
+
+export function formatQtyDisplayUnit(unit) {
+    const raw = String(unit || '').trim();
+    if (!raw) return '';
+
+    const thousand = raw.match(/^1000\s+(.+)$/i);
+    if (thousand) return `тыс. ${thousand[1].trim()}`;
+
+    const million = raw.match(/^1\s+млн\.?\s+(.+)$/i);
+    if (million) return `млн ${million[1].trim()}`;
+
+    return raw;
+}
+
+export function formatQtyDisplayParts(qty, unit) {
+    return {
+        valueText: num(qty),
+        unitText: formatQtyDisplayUnit(unit)
+    };
 }
 
 export function renderQtySection(byCat, result, ctx, disabledStands = [], state = null, presentCats = []) {
@@ -137,6 +157,7 @@ function renderQtyCategoryRow(cat, list, disabled = new Set(), collapsed = true,
 function renderQtyItemRow(item, result, ctx, disabled = new Set()) {
     const r = result.items[item.id];
     let qtySum = 0;
+    const displayUnit = formatQtyDisplayUnit(item.unit);
     return el('tr', { class: 'item-row' },
         /* 12.U30-fix: title с полным названием + description, чтобы при ellipsis
            короткой колонки .col-name пользователь видел при hover полное имя
@@ -153,7 +174,7 @@ function renderQtyItemRow(item, result, ctx, disabled = new Set()) {
            См. unitPeriodSuffix() выше. */
         el('td', {
             class: 'col-unit',
-            text: `${item.unit}${unitPeriodSuffix(item)}`
+            text: `${displayUnit}${unitPeriodSuffix(item)}`
         }),
         ...STAND_IDS.map(sid => {
             const cell = r?.stands[sid];
@@ -175,14 +196,14 @@ function renderQtyItemRow(item, result, ctx, disabled = new Set()) {
                     ? `Ошибка: ${cell.error}`
                     : (isDisabled ? 'Стенд исключён из ИТОГО' : undefined)
             },
-                el('span', { class: 'qty-num', text: num(cell.qty) }),
+                el('span', { class: 'qty-num', text: formatQtyDisplayParts(cell.qty, item.unit).valueText }),
                 ' ',
-                el('span', { class: 'qty-unit', text: item.unit })
+                el('span', { class: 'qty-unit', text: displayUnit })
             );
         }),
         el('td', { class: 'col-total' },
             qtySum > 0
-                ? [el('span', { class: 'qty-num', text: num(qtySum) }), ' ', el('span', { class: 'qty-unit', text: item.unit })]
+                ? [el('span', { class: 'qty-num', text: formatQtyDisplayParts(qtySum, item.unit).valueText }), ' ', el('span', { class: 'qty-unit', text: displayUnit })]
                 : el('span', { text: '—' })
         ),
         el('td', { class: 'col-info' },
@@ -373,7 +394,7 @@ function renderCostItemRow(item, result, ctx, disabled = new Set(), denomMonthly
         ),
         el('td', { class: 'col-vendor', text: item.vendor || '—' }),
         el('td', { class: 'col-tariff', text: BILLING_INTERVAL_LABELS[item.billingInterval] || item.billingInterval || '—' }),
-        el('td', { class: 'col-unit', text: item.unit }),
+        el('td', { class: 'col-unit', text: formatQtyDisplayUnit(item.unit) }),
         el('td', { class: 'col-price', text: formatRub(item.pricePerUnit) }),
         el('td', { class: 'col-cost-type' },
             el('span', { class: ['cost-type-pill', `cost-type-pill-${ct}`],
@@ -389,7 +410,8 @@ function renderCostItemRow(item, result, ctx, disabled = new Set(), denomMonthly
             const standMonthly = result.stands[sid]?.totalMonthly || 0;
             const standShare = standMonthly > 0 ? cell.costFinal / standMonthly : 0;
             const cellRisk = cell.riskBreakdown?.total;
-            const tooltipParts = [`qty = ${num(cell.qty)} ${item.unit}`];
+            const qtyDisplay = formatQtyDisplayParts(cell.qty, item.unit);
+            const tooltipParts = [`qty = ${qtyDisplay.valueText} ${qtyDisplay.unitText}`];
             if (standMonthly > 0) tooltipParts.push(`Доля в стенде: ${percent(standShare)}`);
             if (Number.isFinite(cellRisk)) {
                 tooltipParts.push(`Риск-фактор ×${formatNumber(cellRisk, { min: 4, max: 4 })}`);

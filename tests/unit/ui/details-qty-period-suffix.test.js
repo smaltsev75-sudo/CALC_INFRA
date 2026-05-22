@@ -49,7 +49,7 @@ describe('Details qty: суффикс периода в столбце «Ед.и
             if (item.billingInterval === 'annually')  return ' / год';
             const isFlowAi  = item.dashboardAiMetric === 'TOKENS' || item.dashboardAiMetric === 'EMBEDDINGS';
             const isFlowNet = item.resourceClass === 'TRAFFIC';
-            const isFlowMsg = item.resourceClass === 'SERVICE' && /\/\s*мес|\bмес\b/.test(item.unit || '');
+            const isFlowMsg = item.resourceClass === 'SERVICE';
             if (isFlowAi || isFlowNet || isFlowMsg) return ' / мес';
             return '';
         }
@@ -58,6 +58,7 @@ describe('Details qty: суффикс периода в столбце «Ед.и
         assert.equal(expectedSuffix({ resourceClass: 'CPU',     billingInterval: 'monthly', unit: 'vCPU' }), '');
         // Flow
         assert.equal(expectedSuffix({ resourceClass: 'TRAFFIC', billingInterval: 'monthly', unit: 'ТБ' }), ' / мес');
+        assert.equal(expectedSuffix({ resourceClass: 'SERVICE', billingInterval: 'monthly', unit: 'тыс. SMS' }), ' / мес');
         assert.equal(expectedSuffix({ dashboardAiMetric: 'TOKENS',     billingInterval: 'monthly', unit: 'млн токенов' }), ' / мес');
         assert.equal(expectedSuffix({ dashboardAiMetric: 'EMBEDDINGS', billingInterval: 'monthly', unit: 'млн токенов' }), ' / мес');
         // One-time / annual

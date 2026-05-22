@@ -3056,7 +3056,7 @@ export const SEED_ITEMS = [
     {
         id: 'service-email-per-1k',
         name: 'Email-уведомления (тыс./мес)',
-        unit: '1000 писем',
+        unit: 'тыс. писем',
         pricePerUnit: 100,  // Тариф 0.1 ₽/письмо (UniSender Go рыночный ориентир). Источник: ТЗ ИИ-агент Smart v13.0 §14.4, 2026-05.
         billingInterval: 'monthly',
         vendor: '',
@@ -3084,7 +3084,7 @@ export const SEED_ITEMS = [
     {
         id: 'service-sms-per-1k',
         name: 'SMS-уведомления (тыс./мес)',
-        unit: '1000 SMS',
+        unit: 'тыс. SMS',
         pricePerUnit: 3000,  // Оценка по рынку (SMS Aero / SMSC, среднее по операторам Большой четвёрки): ~3 ₽/SMS. УТОЧНИТЬ ПО ТЕКУЩЕМУ ПРАЙСУ.
         billingInterval: 'monthly',
         vendor: '',
@@ -3113,7 +3113,7 @@ export const SEED_ITEMS = [
     {
         id: 'service-push-per-1m',
         name: 'PUSH-уведомления (млн./мес)',
-        unit: '1 млн PUSH',
+        unit: 'млн PUSH',
         pricePerUnit: 1000,  // Оценка по рынку (Smartpush / Pushwoosh / Sendpulse Push, mass-push тарифы): ~1 ₽/1000 PUSH = 1000 ₽/млн. УТОЧНИТЬ ПО ТЕКУЩЕМУ ПРАЙСУ.
         billingInterval: 'monthly',
         vendor: '',

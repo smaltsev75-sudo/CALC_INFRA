@@ -89,3 +89,76 @@ test('Header PDF routes dashboard print and questionnaire answer print correctly
 
     expect(consoleErrors).toEqual([]);
 });
+
+test('Details PDF print mode uses full-width landscape table layout', async ({ page }) => {
+    const consoleErrors = await bootCleanApp(page);
+
+    await createCalculationFromQuickStart(page, {
+        name: 'Desktop Details PDF layout',
+        presetId: 'std_b2b'
+    });
+    await clickSidebarTab(page, 'details');
+    await expect(page.locator('.details-table-cost')).toBeVisible();
+
+    await page.emulateMedia({ media: 'print' });
+
+    const snapshot = await page.evaluate(async () => {
+        const { printPdfAction } = await import(new URL('js/app/printActions.js', document.baseURI).href);
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
+        store.setActiveTab('details');
+        store.setUi({ detailsSubTab: 'cost' });
+        await new Promise(resolve => requestAnimationFrame(resolve));
+
+        let duringPrint = null;
+        printPdfAction({
+            store,
+            snackbar: { info() {}, warning() {} },
+            withLoadingButton: async (_event, fn) => fn(),
+            printWindow: () => {
+                const table = document.querySelector('.details-table-cost');
+                const wrap = document.querySelector('.details-table-wrap');
+                const main = document.querySelector('.app-main');
+                const vendorHeader = [...document.querySelectorAll('.details-table-cost thead th')]
+                    .find(th => th.textContent.trim() === 'Поставщик');
+                const tableStyle = getComputedStyle(table);
+                const vendorStyle = getComputedStyle(vendorHeader);
+                duringPrint = {
+                    bodyClass: document.body.className,
+                    hasStyle: !!document.getElementById('details-print-page-style'),
+                    styleText: document.getElementById('details-print-page-style')?.textContent || '',
+                    tableLayout: tableStyle.tableLayout,
+                    tableWidth: table.getBoundingClientRect().width,
+                    wrapWidth: wrap.getBoundingClientRect().width,
+                    mainWidth: main.getBoundingClientRect().width,
+                    tabContain: getComputedStyle(document.querySelector('.tab-pane')).contain,
+                    vendorWidth: vendorHeader.getBoundingClientRect().width,
+                    vendorWordBreak: vendorStyle.wordBreak,
+                    vendorOverflowWrap: vendorStyle.overflowWrap
+                };
+                window.dispatchEvent(new Event('afterprint'));
+            }
+        });
+
+        return {
+            duringPrint,
+            afterClass: document.body.className,
+            afterStyleExists: !!document.getElementById('details-print-page-style')
+        };
+    });
+
+    expect(snapshot.duringPrint.bodyClass).toContain('printing-details');
+    expect(snapshot.duringPrint.hasStyle).toBe(true);
+    expect(snapshot.duringPrint.styleText).toContain('A4 landscape');
+    expect(snapshot.duringPrint.tableLayout).toBe('fixed');
+    expect(snapshot.duringPrint.tabContain).toBe('none');
+    expect(snapshot.duringPrint.tableWidth).toBeGreaterThan(snapshot.duringPrint.mainWidth * 0.98);
+    expect(snapshot.duringPrint.wrapWidth).toBeGreaterThan(snapshot.duringPrint.mainWidth * 0.98);
+    expect(snapshot.duringPrint.vendorWidth).toBeGreaterThan(60);
+    expect(snapshot.duringPrint.vendorWordBreak).toBe('keep-all');
+    expect(snapshot.duringPrint.vendorOverflowWrap).toBe('normal');
+    expect(snapshot.afterClass).not.toContain('printing-details');
+    expect(snapshot.afterStyleExists).toBe(false);
+
+    await page.emulateMedia({ media: 'screen' });
+    expect(consoleErrors).toEqual([]);
+});

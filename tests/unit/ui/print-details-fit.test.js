@@ -93,4 +93,30 @@ describe('PDF Details: qty cells split number/unit, print hides unit', () => {
             `@page landscape margin = ${mm}мм слишком велик; для 12 колонок details на A4 нужно ≤ 10мм. ` +
             `Текущая usable-ширина ${297 - 2 * mm}мм, надо ≥ 277мм.`);
     });
+
+    it('body.printing-details растягивает обе details-таблицы на всю ширину листа', () => {
+        const css = readFileSync(PRINT_CSS, 'utf8');
+        const printBlock = extractMediaPrintBody(css);
+
+        const tableRule = printBlock.match(/body\.printing-details\s+\.details-table\s*\{([^}]*)\}/);
+        assert.ok(tableRule, 'print.css должен иметь rule body.printing-details .details-table');
+        assert.match(tableRule[1], /width\s*:\s*100%\s*!important/i);
+        assert.match(tableRule[1], /min-width\s*:\s*100%\s*!important/i);
+        assert.match(tableRule[1], /table-layout\s*:\s*fixed\s*!important/i);
+
+        const wrapRule = printBlock.match(/body\.printing-details\s+\.details-table-wrap\s*\{([^}]*)\}/);
+        assert.ok(wrapRule, 'print.css должен иметь rule body.printing-details .details-table-wrap');
+        assert.match(wrapRule[1], /width\s*:\s*100%\s*!important/i);
+        assert.match(wrapRule[1], /min-width\s*:\s*100%\s*!important/i);
+    });
+
+    it('body.printing-details запрещает посимвольный перенос заголовков', () => {
+        const css = readFileSync(PRINT_CSS, 'utf8');
+        const printBlock = extractMediaPrintBody(css);
+
+        const headerRule = printBlock.match(/body\.printing-details\s+\.details-table\s+th\s*\{([^}]*)\}/);
+        assert.ok(headerRule, 'print.css должен иметь rule для th в printing-details');
+        assert.match(headerRule[1], /word-break\s*:\s*keep-all\s*!important/i);
+        assert.match(headerRule[1], /overflow-wrap\s*:\s*normal\s*!important/i);
+    });
 });

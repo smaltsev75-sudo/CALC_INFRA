@@ -158,3 +158,38 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
 
     expect(consoleErrors).toEqual([]);
 });
+
+test('Details qty renders notification package units without numeric duplication', async ({ page }) => {
+    const consoleErrors = await bootCleanApp(page);
+    await seedCalculations(page);
+
+    await switchTab(page, 'details');
+    await page.getByRole('button', { name: 'Объём (qty)' }).click();
+    await expect(page.locator('.details-table-qty')).toBeVisible();
+
+    const servicesCategory = page
+        .locator('.details-table-qty tbody tr.category-row')
+        .filter({ hasText: 'УСЛУГИ' })
+        .first();
+    await servicesCategory.click();
+
+    const smsRow = page
+        .locator('.details-table-qty tbody tr.item-row')
+        .filter({ hasText: 'SMS-уведомления' });
+    const emailRow = page
+        .locator('.details-table-qty tbody tr.item-row')
+        .filter({ hasText: 'Email-уведомления' });
+    const pushRow = page
+        .locator('.details-table-qty tbody tr.item-row')
+        .filter({ hasText: 'PUSH-уведомления' });
+
+    await expect(smsRow).toContainText(/тыс\.\s*SMS/);
+    await expect(emailRow).toContainText(/тыс\.\s*писем/);
+    await expect(pushRow).toContainText(/млн\s*PUSH/);
+
+    await expect(smsRow).not.toContainText(/\b1000\s+SMS\b/);
+    await expect(emailRow).not.toContainText(/\b1000\s+писем\b/);
+    await expect(pushRow).not.toContainText(/\b\d+\s+1\s+млн\s+PUSH\b/);
+
+    expect(consoleErrors).toEqual([]);
+});

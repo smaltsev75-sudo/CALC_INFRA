@@ -2,7 +2,7 @@
 
 Целевая аудитория — архитекторы, разработчики, тестировщики. Здесь только то, что не выводится из чтения README.md / UserManual.md: устройство кода, потоки данных, паттерны защиты целостности и тестовая инфраструктура.
 
-**Версия 2.20.26** (Pages workflow + scoped tests + provider VAT hardening + desktop tariff alignment). Schema v20.
+**Версия 2.20.27** (business golden scenarios + large-calc performance budget + provider quality gates + desktop viewport guard + Details qty/PDF fixes). Schema v20.
 
 ---
 
@@ -514,7 +514,7 @@ el('div', {
 - Триггер `ctx.openXxxModal(payload)` → `store.openModal(name, payload)`.
 - Закрытие `ctx.closeModal(name)` или `store.closeModal(name)`.
 
-Зарегистрированных модалок 28 (на 2.20.26): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
+Зарегистрированных модалок 28 (на 2.20.27): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
 
 Удалены в Stage 17.2: `recommendedActions` (заменён блоком «Следующие шаги» на Дашборде), `calculationDiff` (UI убран; pure-domain helper остался — см. п. 4.7).
 
@@ -558,15 +558,16 @@ node tests/run.js tests/unit/domain tests/unit/services           # scoped runne
 node --test --test-name-pattern="riskFactor" tests/...            # один тест
 ```
 
-Sanity-check скрипт ([scripts/sanity-report.mjs](scripts/sanity-report.mjs)): прогоняет калькулятор на 3 профилях (Startup / SMB / Enterprise), пишет [SANITY_REPORT.md](SANITY_REPORT.md) через `npm run sanity` или проверяет актуальность через `npm run sanity:check`. Для более жёсткого контроля расчётных цифр есть golden-сценарии Quick Start в [golden-scenarios.test.js](tests/unit/domain/golden-scenarios.test.js): они закрепляют ожидаемые totalMonthly, totalAnnual, topCategory и byCategoryMonthly для 9 профилей, включая регулируемый B2G FinTech XL + AI. Инварианты всей Quick Start матрицы живут в [wizard-calculation-invariants.test.js](tests/unit/domain/wizard-calculation-invariants.test.js): 2880 комбинаций проходят production `calculate()` с проверкой aggregate drift, NaN/Infinity, отрицательных сумм, monotonic scale/geography и AI >= non-AI. Полезно после правок прайсов или формул.
+Sanity-check скрипт ([scripts/sanity-report.mjs](scripts/sanity-report.mjs)): прогоняет калькулятор на 3 профилях (Startup / SMB / Enterprise), пишет [SANITY_REPORT.md](SANITY_REPORT.md) через `npm run sanity` или проверяет актуальность через `npm run sanity:check`. Для более жёсткого контроля расчётных цифр есть два golden-слоя: Quick Start snapshots в [golden-scenarios.test.js](tests/unit/domain/golden-scenarios.test.js) закрепляют ожидаемые totalMonthly, totalAnnual, topCategory и byCategoryMonthly для 9 профилей, включая регулируемый B2G FinTech XL + AI; ручные бизнес-сценарии в [business-golden-scenarios.test.js](tests/unit/domain/business-golden-scenarios.test.js) закрепляют Startup / SMB / Enterprise из sanity report по totals, стендам, категориям и top PROD drivers. Инварианты всей Quick Start матрицы живут в [wizard-calculation-invariants.test.js](tests/unit/domain/wizard-calculation-invariants.test.js): 2880 комбинаций проходят production `calculate()` с проверкой aggregate drift, NaN/Infinity, отрицательных сумм, monotonic scale/geography и AI >= non-AI. Performance guard [calculate-large-data-budget.test.js](tests/unit/performance/calculate-large-data-budget.test.js) проверяет 8× seed-каталог и revision-cache `calculate()`. Полезно после правок прайсов или формул.
 
-Provider freshness report ([scripts/provider-freshness-report.mjs](scripts/provider-freshness-report.mjs)): пишет [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md) через `npm run prices:freshness` или проверяет актуальность через `npm run prices:freshness:check`. Отчёт строится из `js/data/providers-bundled.generated.js`, фиксирует timestamp/age/version/SKU-count/VAT confidence и подсвечивает `STALE`, `STUB`, `ASSUMED_VAT`.
+Provider freshness report ([scripts/provider-freshness-report.mjs](scripts/provider-freshness-report.mjs)): пишет [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md) через `npm run prices:freshness` или проверяет актуальность через `npm run prices:freshness:check`. Отчёт строится из `js/data/providers-bundled.generated.js`, фиксирует timestamp/age/version/SKU-count/VAT confidence и подсвечивает `STALE`, `STUB`, `ASSUMED_VAT`. Вторая таблица `Quality gates` проверяет core SKU coverage, gross→net VAT policy, неположительные net/gross цены и пустые `vendor`/`priceSource`.
 
 ### Виды тестов
 
 | Вид | Назначение | Пример |
 |---|---|---|
-| **Unit (domain)** | Чистая логика без IO, golden snapshots и матричные инварианты расчётов | [calculator.test.js](tests/unit/domain/calculator.test.js), [golden-scenarios.test.js](tests/unit/domain/golden-scenarios.test.js), [wizard-calculation-invariants.test.js](tests/unit/domain/wizard-calculation-invariants.test.js) |
+| **Unit (domain)** | Чистая логика без IO, golden snapshots и матричные инварианты расчётов | [calculator.test.js](tests/unit/domain/calculator.test.js), [golden-scenarios.test.js](tests/unit/domain/golden-scenarios.test.js), [business-golden-scenarios.test.js](tests/unit/domain/business-golden-scenarios.test.js), [wizard-calculation-invariants.test.js](tests/unit/domain/wizard-calculation-invariants.test.js) |
+| **Unit (performance)** | Бюджеты на большие локальные данные и кэш-пути без браузера | [calculate-large-data-budget.test.js](tests/unit/performance/calculate-large-data-budget.test.js), [stage-14-6-bulk-calcs.test.js](tests/unit/performance/stage-14-6-bulk-calcs.test.js) |
 | **Unit (state)** | Migrations, store-mutations | [migrations.test.js](tests/unit/state/migrations.test.js) |
 | **Unit (controller)** | Через mock store, без UI | [calcController.test.js](tests/unit/controllers/) |
 | **Unit (services)** | Storage, json, csv с mock localStorage | [csvImport.test.js](tests/unit/services/) |
@@ -574,7 +575,7 @@ Provider freshness report ([scripts/provider-freshness-report.mjs](scripts/provi
 | **Unit (UI smoke)** | Все ui/-модули импортируются параллельно под минимальным DOM-mock'ом | [ui-modules-smoke.test.js](tests/unit/ui/) |
 | **Architecture** | Layer-linter, версии, A11y, no-emoji, no-toiso-slice | [layer-imports.test.js](tests/unit/architecture/) |
 | **Integration** | Полный controller-path с installLocalStorage | [calc-persistence-atomicity.test.js](tests/integration/) |
-| **Desktop browser smoke/regression** | Реальный Chromium/Chrome-рендер критичных desktop-сцен, console/overflow checks, UI↔domain сверка Dashboard/Details, реальные user-flow клики Quick Start/Sidebar/Опросник/Dashboard CTA, disabled-стенды, risk/VAT, active/bundle JSON import-export-reset, scenario tabs, provider VAT policy import, Decision Memo download, PDF print routing, screenshots и PNG-signal visual regression | [desktop-smoke.spec.js](tests/e2e/desktop-smoke.spec.js), [desktop-regression.spec.js](tests/e2e/desktop-regression.spec.js), [desktop-user-flow.spec.js](tests/e2e/desktop-user-flow.spec.js), [desktop-data-management.spec.js](tests/e2e/desktop-data-management.spec.js), [desktop-export-print.spec.js](tests/e2e/desktop-export-print.spec.js), [desktop-visual-regression.spec.js](tests/e2e/desktop-visual-regression.spec.js) |
+| **Desktop browser smoke/regression** | Реальный Chromium/Chrome-рендер критичных desktop-сцен, console/overflow checks, UI↔domain сверка Dashboard/Details, реальные user-flow клики Quick Start/Sidebar/Опросник/Dashboard CTA, disabled-стенды, risk/VAT, active/bundle JSON import-export-reset, scenario tabs, provider VAT policy import, Decision Memo download, PDF print routing, Details PDF full-width landscape mode, Details qty package-unit guard (`тыс. SMS`, `тыс. писем`, `млн PUSH` без `16 1000 SMS`), desktop viewport range 1365×768 / 1440×900 / 1920×1080, screenshots и PNG-signal visual regression | [desktop-smoke.spec.js](tests/e2e/desktop-smoke.spec.js), [desktop-regression.spec.js](tests/e2e/desktop-regression.spec.js), [desktop-viewports.spec.js](tests/e2e/desktop-viewports.spec.js), [desktop-user-flow.spec.js](tests/e2e/desktop-user-flow.spec.js), [desktop-data-management.spec.js](tests/e2e/desktop-data-management.spec.js), [desktop-export-print.spec.js](tests/e2e/desktop-export-print.spec.js), [desktop-visual-regression.spec.js](tests/e2e/desktop-visual-regression.spec.js) |
 | **Published smoke** | GitHub Pages build на base path `/CALC_INFRA/`: версия в sidebar, Quick Start, Dashboard, Детализация, Сравнение, console/overflow checks, HTTP 4xx/5xx diagnostics with URL | [published-smoke.spec.js](tests/e2e/published-smoke.spec.js), [smoke-published.mjs](scripts/smoke-published.mjs) |
 
 Для Playwright user-flow используются `data-testid` только на стабильных
@@ -996,12 +997,14 @@ js/domain/calculator.js
 | `assumed` | Realistic-stub / синтетика, не верифицирована | vk (placeholder Q3-2026) |
 | `user-declared` | Пользователь явно указал политику через `vatPolicyChoiceModal` (legacy v1 import) | — runtime only |
 
-Свежесть bundled-прайсов контролируется отдельно от runtime health-check:
+Свежесть и структурное качество bundled-прайсов контролируются отдельно от runtime health-check:
 [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md) генерируется из
 `BUNDLED_PROVIDER_PRICES` и входит в CI через `npm run prices:freshness:check`.
 Это maintainer-gate: пользовательский UI всё ещё показывает stale/stub findings
 в Health Check, а репозиторий дополнительно фиксирует текущий статус bundle до
-релиза.
+релиза. Quality gates в отчёте проверяют наличие 8 core SKU
+(`cpu-vcpu-shared`, `cpu-vcpu-gpu`, `ram-gb`, `storage-*`, `network-lb-l7`,
+`network-waf`), корректную gross→net VAT policy и заполненность vendor/source.
 
 ### Constants
 

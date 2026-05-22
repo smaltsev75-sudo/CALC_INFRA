@@ -115,8 +115,8 @@ export async function clickSidebarTab(page, tabId) {
     await expect(item).toHaveAttribute('aria-selected', 'true');
 }
 
-export async function expectNoHorizontalOverflow(page, selectors) {
-    const overflow = await page.evaluate((checkedSelectors) => {
+export async function expectNoHorizontalOverflow(page, selectors, { tolerance = 1 } = {}) {
+    const overflow = await page.evaluate(({ checkedSelectors, allowedTolerance }) => {
         return checkedSelectors
             .flatMap((selector) => Array.from(document.querySelectorAll(selector)).map((node, index) => {
                 const rect = node.getBoundingClientRect();
@@ -131,13 +131,26 @@ export async function expectNoHorizontalOverflow(page, selectors) {
                 };
             }))
             .filter((m) =>
-                m.scrollWidth > m.clientWidth + 1 ||
-                m.left < -1 ||
-                m.right > m.viewport + 1
+                m.scrollWidth > m.clientWidth + allowedTolerance ||
+                m.left < -allowedTolerance ||
+                m.right > m.viewport + allowedTolerance
             );
-    }, selectors);
+    }, { checkedSelectors: selectors, allowedTolerance: tolerance });
 
     expect(overflow).toEqual([]);
+}
+
+export async function expectDocumentHasNoHorizontalOverflow(page, { tolerance = 2 } = {}) {
+    const overflow = await page.evaluate((allowedTolerance) => {
+        const width = window.innerWidth;
+        const docWidth = document.documentElement.scrollWidth;
+        const bodyWidth = document.body?.scrollWidth || 0;
+        const maxWidth = Math.max(docWidth, bodyWidth);
+        if (maxWidth <= width + allowedTolerance) return null;
+        return { viewport: width, document: docWidth, body: bodyWidth };
+    }, tolerance);
+
+    expect(overflow).toBeNull();
 }
 
 export async function getAppStateSummary(page) {

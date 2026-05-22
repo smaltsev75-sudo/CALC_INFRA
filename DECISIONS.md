@@ -9275,3 +9275,77 @@ bundle format не меняются.
 
 `2.20.25 → 2.20.26` (PATCH). Schema остаётся v20; расчётная модель, bundled
 provider prices и bundle format не меняются.
+
+## PATCH 2.20.27 — business/performance gates, provider quality gates, desktop qty/PDF UI guards (2026-05-22)
+
+### Контекст
+
+После `2.20.26` оставались крупные полезные зоны для hardening: ручные
+бизнес-профили из sanity-report не были закреплены golden-тестами, большой
+пользовательский каталог ЭК не имел performance budget, provider freshness
+проверял свежесть, но не структурное качество прайсов, а desktop smoke не
+покрывал диапазон типовых рабочих разрешений. Дополнительно по скриншоту
+пользователя найден UX-дефект в Детализации: qty-ячейки уведомлений выглядели
+как `16 1000 SMS` / `465 1000 писем`, то есть корректный пакетный qty
+визуально смешивался с множителем единицы. Следующий скриншот показал
+родственную проблему в PDF preview: таблицы «Объём» и «Бюджет» в Детализации
+оставались в content-width, не занимали всю usable-ширину листа, а заголовок
+«Поставщик» мог переноситься по буквам.
+
+### Решение
+
+- Добавлен [business-golden-scenarios.test.js](tests/unit/domain/business-golden-scenarios.test.js):
+  закреплены manual sanity-профили Startup MVP, SMB B2B SaaS и Enterprise с
+  итогами, категориями, stand totals и top PROD items.
+- Добавлен [calculate-large-data-budget.test.js](tests/unit/performance/calculate-large-data-budget.test.js):
+  synthetic-каталог 296 ЭК / 1480 cells должен считаться в budget, а
+  revision-cache обязан возвращать тот же result-object на cache hit.
+- [provider-freshness-report.mjs](scripts/provider-freshness-report.mjs)
+  получил `CORE_PROVIDER_SKU_IDS`, `summarizeProviderQuality()` и таблицу
+  `Quality gates`: core coverage, gross→net VAT policy, неположительные цены,
+  пустые vendor/source.
+- Добавлен [desktop-viewports.spec.js](tests/e2e/desktop-viewports.spec.js):
+  Dashboard/Questionnaire проверяются на document-level overflow, а
+  Details/Comparison — на устойчивость app chrome при 1365×768, 1440×900,
+  1920×1080.
+- В [detailsSections.js](js/ui/detailsSections.js) добавлен display-normalizer
+  пакетных qty-единиц: legacy `1000 SMS`, `1000 писем`, `1 млн PUSH`
+  отображаются как `тыс. SMS`, `тыс. писем`, `млн PUSH`. Seed-единицы
+  уведомлений переведены в тот же человекочитаемый формат, расчётная математика
+  и pricePerUnit не менялись.
+- Добавлены guards:
+  [details-qty-pack-unit-display.test.js](tests/unit/ui/details-qty-pack-unit-display.test.js)
+  и Playwright regression в
+  [desktop-regression.spec.js](tests/e2e/desktop-regression.spec.js), чтобы
+  строки вида `16 1000 SMS` не вернулись.
+- Для печати Детализации добавлен transient print-mode:
+  [printMode.js](js/utils/printMode.js) временно включает `body.printing-details`
+  и print-only `@page { size: A4 landscape; margin: 6mm; }`, а
+  [print.css](css/print.css) в этом режиме растягивает обе таблицы на 100%
+  ширины листа, переводит их в `table-layout: fixed` и запрещает
+  посимвольный перенос заголовков. Header PDF и `Ctrl+Alt+P` используют один
+  helper.
+- Обновлена документация: README, Architecture, Maintainer Guide, Browser Smoke,
+  User Manual, CLAUDE и provider freshness report.
+
+### Проверки
+
+- New targeted tests: business/performance/provider quality 11/11 pass,
+  Details qty package-unit 5/5 pass, Details PDF print guards 8/8 pass,
+  desktop-regression 6/6 pass, desktop-export-print 3/3 pass.
+- Scoped profiles: `test:quick` 1946/1946 pass, performance 15/15 pass,
+  `test:architecture` 1106/1106 pass, UserManual TOC 3/3 pass.
+- `npm test`: 5047/5047 pass.
+- `npm run smoke:desktop`: 28/28 pass.
+- `npm run syntax-check`: pass.
+- `npm run sanity:check`: pass.
+- `npm run prices:freshness:check`: pass.
+- `npm run pages:build`: pass.
+- `git diff --check`: pass.
+- CI/Pages/published smoke — после push/release, см. release notes `v2.20.27`.
+
+### Версионирование
+
+`2.20.26 → 2.20.27` (PATCH). Schema остаётся v20; bundle format и provider JSON
+schema не меняются. Изменение seed-unit для уведомлений — UI/каталожное
+уточнение: qty остаётся в пакетах, pricePerUnit остаётся за пакет.

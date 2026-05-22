@@ -6,6 +6,7 @@
 import { HOTKEYS, TAB_IDS } from '../utils/constants.js';
 import { store } from '../state/store.js';
 import { loadPdfHintShown, markPdfHintShown } from '../services/storage.js';
+import { printWithDetailsMode } from '../utils/printMode.js';
 import * as calcList from './calcListController.js';
 import * as itemCtl from './itemController.js';
 import * as questionCtl from './questionController.js';
@@ -95,7 +96,11 @@ function dispatch(actionId) {
                 // т.к. модальный диалог печати его перекроет. Достаточно одного срабатывания.
                 markPdfHintShown();
             }
-            window.print();
+            if (store.getState().activeTab === 'details') {
+                printWithDetailsMode(() => window.print());
+            } else {
+                window.print();
+            }
             break;
         }
         case 'help': {
