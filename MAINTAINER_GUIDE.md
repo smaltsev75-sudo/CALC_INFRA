@@ -26,7 +26,7 @@ data/providers/vk-latest.json
 
 | Провайдер | Источник цен |
 |---|---|
-| Cloud.ru (бывший SberCloud, `providerId: sbercloud`) | https://cloud.ru/ru/services/pricing |
+| Cloud.ru (бывший SberCloud, `providerId: sbercloud`) | https://cloud.ru/documents/tariffs/evolution/index + при отсутствии Evolution SKU: https://cloud.ru/documents/tariffs/advanced/index |
 | Yandex Cloud | https://yandex.cloud/ru/prices |
 | VK Cloud | https://cloud.vk.com/pricelist |
 | MTS Cloud | https://cloud.mts.ru/calculator/ |
@@ -470,7 +470,7 @@ npm test                      # sync-test проверит, что generated mod
 ### Какие SKU входят в bundled
 
 Coverage у каждого провайдера разная и отражает реальный прайс-лист:
-- **sbercloud** (16 SKU) — Cloud.ru Evolution: compute + AI agents + LLM tokens + RAG.
+- **sbercloud** (16 SKU) — Cloud.ru public tariffs verified 2026-05-22: Evolution Compute/Object Storage/Foundation Models/Managed Redis/PostgreSQL/Managed RAG/AI Agents + Advanced L7/WAF where Evolution has no SKU.
 - **yandex** (15 SKU) — yandex.cloud/pricing: compute + dedicated + AI tokens + RAG.
 - **vk** (10 SKU) — cloud.vk.com/pricelist source-level: compute, RAM, disks, Object Storage, load balancer и Microsoft licenses. WAF/DDoS у VK Cloud опубликованы как «по запросу», поэтому не входят в bundled и подсвечиваются как `MISSING_CORE`.
 

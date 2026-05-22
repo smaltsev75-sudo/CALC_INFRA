@@ -1,5 +1,39 @@
 # Журнал решений и допущений
 
+## 22.05.2026 · PATCH 2.20.30 — Cloud.ru public tariff refresh
+
+**Контекст.** Пользователь попросил актуализировать прайс Cloud.ru (бывший
+SberCloud). Предыдущий bundle был верифицирован по мартовским Evolution PDF,
+но официальный публичный каталог Cloud.ru уже содержит более свежий GPU-документ
+EVO.1G v260520, а WAF/HDD требовали повторной проверки по текущим тарифам.
+
+**Решение.**
+
+- `data/providers/sbercloud-latest.json` обновлён до `2026-05-20-public`,
+  timestamp `2026-05-22T00:00:00.000Z`, source — официальные документы
+  Cloud.ru Evolution/Advanced.
+- GPU A100 пересчитан по EVO.1G v260520: 100 vCPU / 5 GPU A100 = 1 586 ₽/час
+  с НДС ⇒ 11 577,80 ₽/(GPU-vCPU)/мес gross / 9 490 ₽ net.
+- HDD больше не берётся из Advanced SAS fallback: актуальный EVO.1 содержит
+  прямой SKU «Диск HDD» 0,00427 ₽/ГБ·час с НДС ⇒ 3 191,91 ₽/ТБ/мес gross.
+- WAF заменён с заниженной оценки 5 000 ₽/мес на формулу Cloud.ru Advanced
+  ADV.47: 1 домен + 5 правил + 1 млн запросов = 21 916,84 ₽/мес gross /
+  17 964,62 ₽ net; L7-LB оставлен Advanced ADV.18, потому что Evolution
+  публикует только L4.
+- LLM/RAG/AI-agent storage приведены к фактическим gross/net значениям без
+  округления до целых рублей там, где источник даёт дробную цену.
+- Добавлен regression guard на Cloud.ru baseline в
+  `bundled-providers-v2-shape.test.js`; business golden snapshots пересчитаны.
+- Удалены устаревшие `data/providers/drafts/*-2026-Q3-draft.json`, чтобы
+  старые черновые прайсы не расходились с source-of-truth latest JSON.
+
+**Документация.** Обновлены README, UserManual, Architecture, Maintainer Guide,
+CLAUDE snapshot и `PROVIDER_FRESHNESS_REPORT.md`; UserManual отдельно фиксирует
+Cloud.ru WAF baseline и необходимость КП/override для другой WAF-конфигурации.
+
+**Версионирование.** PATCH `2.20.29 → 2.20.30`: обновление bundled-прайса,
+документации и golden snapshots; schema и bundle format не менялись.
+
 ## 22.05.2026 · PATCH 2.20.29 — VK Cloud source-level прайс + quality-aware provider readiness
 
 **Контекст.** VK Cloud оставался `realistic-stub`, хотя публичный прайс-лист

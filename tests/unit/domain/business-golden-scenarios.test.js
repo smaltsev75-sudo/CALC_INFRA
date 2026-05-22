@@ -30,12 +30,12 @@ const BUSINESS_SCENARIOS = Object.freeze([
             pentest_per_year: 1, load_test_per_year: 1
         },
         expected: {
-            totalMonthly: 2_116_738,
-            totalAnnual: 25_400_860,
+            totalMonthly: 2_170_424,
+            totalAnnual: 26_045_086,
             topCategory: 'SERVICES',
-            byStandMonthly: { DEV: 39_667, IFT: 92_561, PSI: 116_667, PROD: 1_419_631, LOAD: 448_213 },
-            byCategoryMonthly: { HW: 85_646, LICENSE: 499_967, TRAFFIC: 26_509, SERVICES: 1_302_443, RESERVES: 0, SECURITY: 202_173, AI: 0 },
-            topProdItemIds: ['one-deployment', 'one-pentest-external', 'license-db-per-vcpu', 'one-pentest-regular', 'license-os-per-node']
+            byStandMonthly: { DEV: 39_666, IFT: 92_560, PSI: 144_300, PROD: 1_445_686, LOAD: 448_212 },
+            byCategoryMonthly: { HW: 80_911, LICENSE: 499_967, TRAFFIC: 26_507, SERVICES: 1_302_443, RESERVES: 0, SECURITY: 260_594, AI: 0 },
+            topProdItemIds: ['one-deployment', 'one-pentest-external', 'license-db-per-vcpu', 'one-pentest-regular', 'network-waf']
         }
     },
     {
@@ -52,11 +52,11 @@ const BUSINESS_SCENARIOS = Object.freeze([
             pentest_per_year: 2, load_test_per_year: 2
         },
         expected: {
-            totalMonthly: 5_108_808,
-            totalAnnual: 61_305_697,
+            totalMonthly: 5_162_029,
+            totalAnnual: 61_944_349,
             topCategory: 'LICENSE',
-            byStandMonthly: { DEV: 184_179, IFT: 393_624, PSI: 502_264, PROD: 2_564_407, LOAD: 1_464_334 },
-            byCategoryMonthly: { HW: 284_653, LICENSE: 2_721_746, TRAFFIC: 26_509, SERVICES: 1_485_729, RESERVES: 0, SECURITY: 590_171, AI: 0 },
+            byStandMonthly: { DEV: 184_179, IFT: 393_623, PSI: 529_896, PROD: 2_590_004, LOAD: 1_464_328 },
+            byCategoryMonthly: { HW: 279_450, LICENSE: 2_721_746, TRAFFIC: 26_507, SERVICES: 1_485_733, RESERVES: 0, SECURITY: 648_592, AI: 0 },
             topProdItemIds: ['one-deployment', 'license-db-per-vcpu', 'one-pentest-regular', 'one-pentest-external', 'one-pentest-internal']
         }
     },
@@ -74,11 +74,11 @@ const BUSINESS_SCENARIOS = Object.freeze([
             load_test_before_prod: true, pentest_per_year: 4, load_test_per_year: 4
         },
         expected: {
-            totalMonthly: 18_308_832,
-            totalAnnual: 219_705_985,
+            totalMonthly: 18_135_547,
+            totalAnnual: 217_626_561,
             topCategory: 'LICENSE',
-            byStandMonthly: { DEV: 537_366, IFT: 1_458_958, PSI: 2_282_361, PROD: 8_477_213, LOAD: 5_552_935 },
-            byCategoryMonthly: { HW: 3_789_612, LICENSE: 6_888_305, TRAFFIC: 106_035, SERVICES: 4_420_581, RESERVES: 1_474_623, SECURITY: 1_629_676, AI: 0 },
+            byStandMonthly: { DEV: 537_353, IFT: 1_458_930, PSI: 2_260_688, PROD: 8_325_827, LOAD: 5_552_750 },
+            byCategoryMonthly: { HW: 3_557_907, LICENSE: 6_888_305, TRAFFIC: 106_029, SERVICES: 4_420_585, RESERVES: 1_474_623, SECURITY: 1_688_098, AI: 0 },
             topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'res-dr-active', 'storage-ssd-tb', 'service-sms-per-1k']
         }
     },
@@ -96,11 +96,11 @@ const BUSINESS_SCENARIOS = Object.freeze([
             pentest_per_year: 0, load_test_per_year: 0
         },
         expected: {
-            totalMonthly: 1_710_390,
-            totalAnnual: 20_524_682,
+            totalMonthly: 1_705_654,
+            totalAnnual: 20_467_850,
             topCategory: 'SERVICES',
-            byStandMonthly: { DEV: 47_448, IFT: 91_744, PSI: 107_116, PROD: 1_235_227, LOAD: 228_856 },
-            byCategoryMonthly: { HW: 103_526, LICENSE: 542_100, TRAFFIC: 26_509, SERVICES: 1_035_115, RESERVES: 0, SECURITY: 3_141, AI: 0 },
+            byStandMonthly: { DEV: 47_447, IFT: 91_743, PSI: 105_538, PROD: 1_232_071, LOAD: 228_854 },
+            byCategoryMonthly: { HW: 98_791, LICENSE: 542_100, TRAFFIC: 26_507, SERVICES: 1_035_115, RESERVES: 0, SECURITY: 3_141, AI: 0 },
             topProdItemIds: ['one-deployment', 'license-db-per-vcpu', 'license-os-per-node', 'one-staff-training', 'ram-gb']
         }
     },
@@ -119,11 +119,11 @@ const BUSINESS_SCENARIOS = Object.freeze([
             pentest_per_year: 4, load_test_per_year: 4, security_audit_per_year: 2
         },
         expected: {
-            totalMonthly: 17_781_728,
-            totalAnnual: 213_380_736,
+            totalMonthly: 17_613_125,
+            totalAnnual: 211_357_496,
             topCategory: 'LICENSE',
-            byStandMonthly: { DEV: 589_123, IFT: 1_393_797, PSI: 2_210_321, PROD: 8_281_530, LOAD: 5_306_957 },
-            byCategoryMonthly: { HW: 3_204_783, LICENSE: 7_993_349, TRAFFIC: 79_526, SERVICES: 3_344_106, RESERVES: 1_474_623, SECURITY: 1_685_341, AI: 0 },
+            byStandMonthly: { DEV: 589_112, IFT: 1_393_776, PSI: 2_174_431, PROD: 8_149_009, LOAD: 5_306_796 },
+            byCategoryMonthly: { HW: 2_977_758, LICENSE: 7_993_349, TRAFFIC: 79_522, SERVICES: 3_344_110, RESERVES: 1_474_623, SECURITY: 1_743_763, AI: 0 },
             topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'res-dr-active', 'storage-ssd-tb', 'res-georedundancy']
         }
     },
@@ -149,12 +149,12 @@ const BUSINESS_SCENARIOS = Object.freeze([
             agent_memory_used: true, agent_memory_size_gb: 250
         },
         expected: {
-            totalMonthly: 423_106_256,
-            totalAnnual: 5_077_275_067,
+            totalMonthly: 422_072_051,
+            totalAnnual: 5_064_864_608,
             topCategory: 'AI',
-            byStandMonthly: { DEV: 3_277_412, IFT: 31_160_834, PSI: 77_297_164, PROD: 156_186_197, LOAD: 155_184_649 },
-            byCategoryMonthly: { HW: 603_447, LICENSE: 2_847_211, TRAFFIC: 39_763, SERVICES: 2_089_974, RESERVES: 0, SECURITY: 633_696, AI: 416_892_166 },
-            topProdItemIds: ['llm-tokens-input-1m', 'llm-tokens-output-1m', 'ai-agent-sandbox-vcpu', 'rag-embeddings-1m', 'one-deployment']
+            byStandMonthly: { DEV: 3_269_520, IFT: 31_081_890, PSI: 77_124_788, PROD: 155_805_928, LOAD: 154_789_924 },
+            byCategoryMonthly: { HW: 584_412, LICENSE: 2_847_211, TRAFFIC: 39_761, SERVICES: 2_089_978, RESERVES: 0, SECURITY: 692_117, AI: 415_818_572 },
+            topProdItemIds: ['llm-tokens-input-1m', 'llm-tokens-output-1m', 'ai-agent-sandbox-vcpu', 'one-deployment', 'rag-embeddings-1m']
         }
     }
 ]);

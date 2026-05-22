@@ -213,14 +213,14 @@ deploy-from-branch. Playwright артефакты при падении загр
 
 Все 36 элементов конфигурации в `js/domain/seed.js` имеют источник цены в inline-комментарии: 35 позиций с `pricePerUnit > 0` и 1 явно бесплатная позиция `traffic-ingress-tb` (входящий трафик, 0 ₽/ТБ):
 
-- Cloud-инфраструктура (CPU/RAM/Storage/LB/WAF/Traffic) — **Cloud.ru**.
+- Cloud-инфраструктура (CPU/RAM/Storage/LB/WAF/Traffic) — **Cloud.ru**; bundled-прайс Cloud.ru проверен 22.05.2026 по официальным тарифам Evolution/Advanced.
 - LLM-токены и embeddings — **GigaChat 2 Pro** (Сбер).
 - Email — **UniSender Go**.
 - SMS / PUSH — рыночные оценки (помечены «УТОЧНИТЬ ПО ТЕКУЩЕМУ ПРАЙСУ»).
 - Лицензии — Tantor SE, Red OS, Kaspersky EDR.
 - Пентесты, аудиты, сертификация — медианы рынка из публичных источников (anti-malware.ru, RTM Group, BI.ZONE, ibs-qa).
 
-Цены требуют ревизии раз в 6+ месяцев (особенно LLM, SMS и позиции «по запросу» вроде WAF/DDoS). Текущий статус bundled-прайсов — в [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md); регламент обновления — в [MAINTAINER_GUIDE.md](MAINTAINER_GUIDE.md).
+Цены требуют ревизии раз в 6+ месяцев (особенно LLM, SMS и конфигурационные позиции вроде WAF/DDoS). Текущий статус bundled-прайсов — в [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md); регламент обновления — в [MAINTAINER_GUIDE.md](MAINTAINER_GUIDE.md).
 
 ### Обновление цен
 

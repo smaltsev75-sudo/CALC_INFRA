@@ -2,7 +2,7 @@
 
 Целевая аудитория — архитекторы, разработчики, тестировщики. Здесь только то, что не выводится из чтения README.md / UserManual.md: устройство кода, потоки данных, паттерны защиты целостности и тестовая инфраструктура.
 
-**Версия 2.20.29** (VK Cloud source-level pricelist bundle + quality-aware provider readiness + UserManual/Maintainer docs update). Schema v20.
+**Версия 2.20.30** (Cloud.ru public tariff refresh: Evolution GPU 260520, direct HDD SKU, WAF/L7 recalculation + provider docs/tests). Schema v20.
 
 ---
 
@@ -514,7 +514,7 @@ el('div', {
 - Триггер `ctx.openXxxModal(payload)` → `store.openModal(name, payload)`.
 - Закрытие `ctx.closeModal(name)` или `store.closeModal(name)`.
 
-Зарегистрированных модалок 28 (на 2.20.29): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
+Зарегистрированных модалок 28 (на 2.20.30): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
 
 Удалены в Stage 17.2: `recommendedActions` (заменён блоком «Следующие шаги» на Дашборде), `calculationDiff` (UI убран; pure-domain helper остался — см. п. 4.7).
 
@@ -964,9 +964,9 @@ js/domain/calculator.js
 {
     "schemaVersion": 2,
     "providerId": "sbercloud",
-    "version": "2026-Q3",
-    "timestamp": "2026-05-09T19:30:00.000Z",
-    "source": "Cloud.ru Evolution договорные тарифы 2026-Q3",
+    "version": "2026-05-20-public",
+    "timestamp": "2026-05-22T00:00:00.000Z",
+    "source": "Cloud.ru official public tariff documents: Evolution/Advanced",
     "vatPolicy": {
         "pricesIncludeVat": true,
         "vatRateIncluded": 0.22,
@@ -992,7 +992,7 @@ js/domain/calculator.js
 
 | Value | Семантика | Текущий пример |
 |---|---|---|
-| `verified` | Source-of-truth — официальные договорные приложения / verified API | sbercloud (Cloud.ru Q3-2026) |
+| `verified` | Source-of-truth — официальные договорные приложения / verified API | sbercloud (Cloud.ru public tariffs verified 2026-05-22) |
 | `source-level` | Публичные тарифы провайдера (price-list page) | yandex (yandex.cloud/pricing), vk (cloud.vk.com/pricelist) |
 | `assumed` | Realistic-stub / синтетика, не верифицирована | legacy/imported placeholder |
 | `user-declared` | Пользователь явно указал политику через `vatPolicyChoiceModal` (legacy v1 import) | — runtime only |

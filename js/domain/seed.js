@@ -2378,8 +2378,8 @@ export const SEED_QUESTIONS = [
         defaultValue: false,
         dependsOn: ['ai_llm_used', 'rag_needed'],
         description:
-            'Если «Да» — стоимость хранения корпуса считается по тарифу Managed RAG провайдера (готовая «база знаний»: embeddings + index + search-API в одном тарифе, например Cloud.ru Evolution Managed RAG, EVO.20 ≈ 997 ₽/ГБ/мес с НДС).\n\n' +
-            'Если «Нет» (по умолчанию) — считается self-hosted: pgvector поверх Managed PostgreSQL или RediSearch поверх Managed Redis, ~12 ₽/ГБ/мес. В ~80 раз дешевле, но требует своего DevOps на vector-DB.\n\n' +
+            'Если «Да» — стоимость хранения корпуса считается по тарифу Managed RAG провайдера (готовая «база знаний»: embeddings + index + search-API в одном тарифе, например Cloud.ru Evolution Managed RAG, EVO.20: 817,60 ₽/ГБ/мес без НДС / 997,47 ₽/ГБ/мес с НДС).\n\n' +
+            'Если «Нет» (по умолчанию) — считается self-hosted: pgvector поверх Managed PostgreSQL или RediSearch поверх Managed Redis, 10,07 ₽/ГБ/мес без НДС (12,29 ₽ с НДС). Примерно в 81 раз дешевле, но требует своего DevOps на vector-DB.\n\n' +
             'Имеет смысл только при включённом RAG.',
         recommendation:
             '«Да» когда:\n' +
@@ -2395,7 +2395,7 @@ export const SEED_QUESTIONS = [
             '• B2B SaaS с растущим корпусом — Нет (self-hosted выгоднее на масштабе).\n' +
             '• Enterprise с собственной командой инфраструктуры — Нет.\n' +
             '• Корпоративный проект под жёсткие SLA — Да (если провайдер предоставляет нужные гарантии).',
-        impact: 'Переключает источник цены хранения корпуса RAG между rag-vector-db-gb (self-hosted, ~12 ₽/ГБ/мес) и rag-managed-knowledge-base-gb (Managed, ~997 ₽/ГБ/мес).',
+        impact: 'Переключает источник цены хранения корпуса RAG между rag-vector-db-gb (self-hosted, 10,07 ₽/ГБ/мес без НДС) и rag-managed-knowledge-base-gb (Managed, 817,60 ₽/ГБ/мес без НДС).',
         allowUnknown: true,
         defaultIfUnknown: false,
         assumptionRisk: 'high'
@@ -2914,7 +2914,7 @@ export const SEED_ITEMS = [
         id: 'network-lb-l7',
         name: 'Балансировщик нагрузки L7',
         unit: 'шт.',
-        pricePerUnit: 1691,  // Cloud.ru Load Balancer L7 (1AZ): 2.318 ₽/час × 730. Источник: cloud.ru/documents/tariffs/advanced/services/elastic-load-balance, 2026-01-01.
+        pricePerUnit: 1387,  // Cloud.ru Advanced LB L7 (1AZ): 1.90 ₽/час без НДС / 2.318 ₽/час с НДС × 730 = 1 387 ₽ net / 1 692.14 ₽ gross. Источник: cloud.ru/documents/tariffs/advanced/services/elastic-load-balance, ADV.18 v260101.
         billingInterval: 'monthly',
         vendor: '',
         category: 'SERVICES',
@@ -2927,8 +2927,8 @@ export const SEED_ITEMS = [
             'Пример: пик 100 RPS → 1 балансировщик на ПРОМ + по 0.5 на ПСИ и LOAD.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
-            'Источник: cloud.ru/documents/tariffs/advanced/services/elastic-load-balance — Load Balancer L7 (1AZ), на 2026-01-01.\n' +
-            'Расчёт: 2.318 ₽/час × 730 ч ≈ 1 691 ₽/мес.\n' +
+            'Источник: cloud.ru/documents/tariffs/advanced/services/elastic-load-balance — Load Balancer L7 (1AZ), ADV.18 v260101, на 2026-01-01.\n' +
+            'Расчёт: 1,90 ₽/час без НДС × 730 ч = 1 387 ₽/мес без НДС (2,318 ₽/час с НДС → 1 692,14 ₽/мес с НДС).\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
             PSI:  'if(Q.peak_rps > 50, 0.5, 0)',
@@ -2941,7 +2941,7 @@ export const SEED_ITEMS = [
         id: 'network-waf',
         name: 'Web Application Firewall (WAF)',
         unit: 'шт.',
-        pricePerUnit: 5000,  // Cloud.ru WAF: комплексный тариф (домены+запросы+правила); типовая конфигурация 2-3 домена + 1М запросов + 5 правил. ОЦЕНКА. Источник: cloud.ru/documents/tariffs/advanced/services/web-app-firewall, 2026-01-01.
+        pricePerUnit: 17964.62,  // Cloud.ru Advanced WAF Cloud mode baseline: 1 домен + 5 правил + 1M запросов = 17 964.62 ₽ net / 21 916.84 ₽ gross. Источник: cloud.ru/documents/tariffs/advanced/services/web-app-firewall, ADV.47 v260101.
         billingInterval: 'monthly',
         vendor: '',
         category: 'SECURITY',
@@ -2954,8 +2954,8 @@ export const SEED_ITEMS = [
             'Пример: Q.waf_required = true → 1 WAF на ПРОМ + 1 на ПСИ.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
-            'Источник: cloud.ru/documents/tariffs/advanced/services/web-app-firewall, на 2026-01-01. Это ОЦЕНКА (тариф зависит от конфигурации).\n' +
-            'Расчёт: типовая конфигурация 2-3 домена + 1М запросов + 5 правил ≈ 5 000 ₽/мес.\n' +
+            'Источник: cloud.ru/documents/tariffs/advanced/services/web-app-firewall, ADV.47 v260101, на 2026-01-01. Это минимальная рабочая Cloud-mode конфигурация; тариф зависит от числа доменов, правил и запросов.\n' +
+            'Расчёт: 1 домен (29,1336 ₽/час с НДС) + 5 правил (0,1586 ₽/правило·час с НДС) + 1М запросов (70,4184 ₽/мес с НДС) = 17 964,62 ₽/мес без НДС / 21 916,84 ₽/мес с НДС.\n' +
             'В контракте уточняйте у провайдера.',
         qtyFormulas: {
             PSI:  'if(Q.waf_required, 1, 0)',
@@ -3318,7 +3318,7 @@ export const SEED_ITEMS = [
         id: 'rag-vector-db-gb',
         name: 'Хранилище vector-DB для RAG (self-hosted, ГБ)',
         unit: 'ГБ',
-        pricePerUnit: 12,  // Cloud.ru Managed Redis® / Managed PostgreSQL® network SSD storage: 0,016836 ₽/ГБ·ч с НДС 22% × 730 ≈ 12 ₽/ГБ/мес (EVO.16 п.3 / EVO.4 п.5 версия 260316). Альтернатива (Managed RAG, готовая база знаний провайдера) — см. rag-managed-knowledge-base-gb.
+        pricePerUnit: 10.07,  // Cloud.ru Managed Redis® / Managed PostgreSQL® network SSD storage: 0.0138 ₽/ГБ·ч без НДС / 0.016836 ₽/ГБ·ч с НДС × 730 = 10.07 ₽ net / 12.29 ₽ gross (EVO.16 п.3 / EVO.4 п.5 v260316).
         billingInterval: 'monthly',
         vendor: '',
         category: 'AI',
@@ -3334,8 +3334,8 @@ export const SEED_ITEMS = [
             'Пример: 1 млн эмбеддингов × 4 КБ ≈ 4 ГБ.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
-            'Источник: ПРИЛОЖЕНИЕ №7.EVO.16 п.3 (Managed Redis) / №7.EVO.4 п.5 (Managed PostgreSQL) версия 260316 (2026-03-16): «Хранилище на сетевых SSD дисках» = 0,016836 ₽/ГБ·ч с НДС 22% × 730 ≈ 12 ₽/ГБ/мес.\n' +
-            'Когда выбирать: команда может админить vector DB сама, важна гибкость / экономия. Альтернатива — готовый Managed RAG-сервис провайдера (rag-managed-knowledge-base-gb), но дороже в ~80 раз (готовые embeddings + index + search-API в одном тарифе).',
+            'Источник: ПРИЛОЖЕНИЕ №7.EVO.16 п.3 (Managed Redis) / №7.EVO.4 п.5 (Managed PostgreSQL) версия 260316 (2026-03-26): «Хранилище на сетевых SSD дисках» = 0,0138 ₽/ГБ·ч без НДС / 0,016836 ₽/ГБ·ч с НДС 22% × 730 = 10,07 ₽/ГБ/мес без НДС.\n' +
+            'Когда выбирать: команда может админить vector DB сама, важна гибкость / экономия. Альтернатива — готовый Managed RAG-сервис провайдера (rag-managed-knowledge-base-gb), но дороже примерно в 81 раз (готовые embeddings + index + search-API в одном тарифе).',
         qtyFormulas: {
             DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.DEV))), 0)',
             IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.IFT))), 0)',
@@ -3349,7 +3349,7 @@ export const SEED_ITEMS = [
         id: 'rag-managed-knowledge-base-gb',
         name: 'Managed RAG: база знаний (ГБ)',
         unit: 'ГБ',
-        pricePerUnit: 997,  // Cloud.ru Evolution Managed RAG, EVO.20 п.2: 1,12 ₽/ГБ·ч без НДС / 1,3664 ₽/ГБ·ч с НДС 22% × 730 ≈ 997 ₽/ГБ/мес.
+        pricePerUnit: 817.6,  // Cloud.ru Evolution Managed RAG, EVO.20 п.2: 1.12 ₽/ГБ·ч без НДС / 1.3664 ₽/ГБ·ч с НДС × 730 = 817.60 ₽ net / 997.47 ₽ gross.
         billingInterval: 'monthly',
         vendor: '',
         category: 'AI',
@@ -3363,7 +3363,7 @@ export const SEED_ITEMS = [
             'Пример: 1 млн эмбеддингов × 4 КБ ≈ 4 ГБ.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
-            'Источник: ПРИЛОЖЕНИЕ №7.EVO.20 п.2 версия 260316 (2026-03-16): «Хранение преобразованных текстовых данных в базе знаний» = 1,12 ₽/ГБ·ч без НДС / 1,3664 ₽/ГБ·ч с НДС 22% × 730 ≈ 997 ₽/ГБ/мес.\n' +
+            'Источник: ПРИЛОЖЕНИЕ №7.EVO.20 п.2 версия 260316 (2026-03-26): «Хранение преобразованных текстовых данных в базе знаний» = 1,12 ₽/ГБ·ч без НДС / 1,3664 ₽/ГБ·ч с НДС 22% × 730 = 817,60 ₽/ГБ/мес без НДС.\n' +
             'Когда выбирать: ограниченные DevOps-ресурсы, нужен быстрый старт, готовы платить за full-managed. Если важна экономия — оставьте rag-vector-db-gb (self-hosted).',
         qtyFormulas: {
             DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, max(1, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.DEV)), 0), 0)',

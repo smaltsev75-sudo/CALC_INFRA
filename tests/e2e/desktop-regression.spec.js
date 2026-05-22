@@ -149,12 +149,12 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
     const summary = page.locator('.provider-price-summary.is-expanded');
     await expect(summary).toBeVisible();
 
-    const gpuRowValue = summary
+    const ssdRowValue = summary
         .locator('.provider-price-row')
-        .filter({ hasText: 'vCPU GPU' })
+        .filter({ hasText: 'SSD' })
         .locator('.provider-price-row-value-num');
-    await expect(gpuRowValue).toHaveText(/9\s*490,16/);
-    await expect(gpuRowValue).not.toHaveText(/9\s*490\s+16/);
+    await expect(ssdRowValue).toHaveText(/9\s*717,76/);
+    await expect(ssdRowValue).not.toHaveText(/9\s*717\s+76/);
 
     expect(consoleErrors).toEqual([]);
 });

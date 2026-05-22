@@ -87,6 +87,36 @@ describe('Phase 3.2: confidence per provider', () => {
     }
 });
 
+describe('Cloud.ru public tariff refresh guard', () => {
+    it('sbercloud bundle uses the 2026-05-20 Cloud.ru public tariff baseline', () => {
+        const json = bundledProviders.sbercloud;
+        assert.ok(json, 'bundled JSON для sbercloud не найден');
+        assert.equal(json.version, '2026-05-20-public');
+        assert.equal(json.timestamp, '2026-05-22T00:00:00.000Z');
+
+        const gpu = json.prices['cpu-vcpu-gpu'];
+        assert.equal(gpu.pricePerUnitGross, 11577.8);
+        assert.equal(gpu.pricePerUnitNet, 9490);
+        assert.match(gpu.priceSource, /EVO\.1G версия 260520/);
+
+        const hdd = json.prices['storage-hdd-tb'];
+        assert.equal(hdd.pricePerUnitGross, 3191.91);
+        assert.equal(hdd.pricePerUnitNet, 2616.32);
+        assert.match(hdd.vendor, /Evolution Compute/);
+        assert.doesNotMatch(hdd.vendor, /Advanced/);
+
+        const waf = json.prices['network-waf'];
+        assert.equal(waf.pricePerUnitGross, 21916.84);
+        assert.equal(waf.pricePerUnitNet, 17964.62);
+        assert.match(waf.priceSource, /1 защищаемый домен \+ 5 правил \+ 1 млн запросов/);
+        assert.doesNotMatch(waf.priceSource, /5 000/);
+
+        const embeddings = json.prices['rag-embeddings-1m'];
+        assert.equal(embeddings.pricePerUnitGross, 0.61);
+        assert.equal(embeddings.pricePerUnitNet, 0.5);
+    });
+});
+
 describe('Phase 3.3: legacy pricePerUnit удалён из всех entries', () => {
     it('ни одна entry не содержит legacy pricePerUnit', () => {
         const offenders = [];

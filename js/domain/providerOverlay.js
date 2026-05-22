@@ -91,7 +91,7 @@ export const PROVIDER_OVERLAYS = Object.freeze({
         id: 'sbercloud',
         label: 'Cloud.ru (бывший SberCloud)',
         active: true,
-        description: 'Платформа Cloud.ru — продолжение SberCloud после ребрендинга 2024. Договорные приложения 2026-Q3 (verified).',
+        description: 'Платформа Cloud.ru — продолжение SberCloud после ребрендинга 2024. Публичные тарифы Evolution/Advanced, проверка 22.05.2026 (verified).',
         prices: SBERCLOUD_PRICES
     }),
     yandex: Object.freeze({

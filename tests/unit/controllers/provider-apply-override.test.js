@@ -41,7 +41,7 @@ function makeMinimalCalc() {
                  * ram-gb (2 deltas); storage-ssd-tb остаётся unchanged. */
                 { id: 'cpu-vcpu-shared', pricePerUnit: 583.61, vendor: 'SberCloud', priceSource: 'bundled net' },
                 { id: 'ram-gb',          pricePerUnit: 152.46, vendor: 'SberCloud', priceSource: 'bundled net' },
-                { id: 'storage-ssd-tb',  pricePerUnit: 9719.67, vendor: 'SberCloud', priceSource: 'bundled net' }
+                { id: 'storage-ssd-tb',  pricePerUnit: 9717.76, vendor: 'SberCloud', priceSource: 'bundled net' }
             ],
             questions: []
         },
@@ -134,10 +134,10 @@ describe('Stage 8.3 applyOverrideToActiveCalc — happy path', () => {
         const ram = calc.dictionaries.items.find(i => i.id === 'ram-gb');
         assert.equal(ram.pricePerUnit, 250);
         /* Phase 4: storage-ssd-tb не в override → перетирается на frozen-default.
-         * После Phase 4 frozen приходит из bundled JSON net: 11858 gross /
-         * 1.22 = 9719.67 (раньше было 12378 из hardcoded SBERCLOUD_PRICES). */
+         * После Phase 4 frozen приходит из bundled JSON net: 11855,67 gross /
+         * 1.22 = 9717,76 (раньше было 12378 из hardcoded SBERCLOUD_PRICES). */
         const ssd = calc.dictionaries.items.find(i => i.id === 'storage-ssd-tb');
-        assert.equal(ssd.pricePerUnit, 9719.67);
+        assert.equal(ssd.pricePerUnit, 9717.76);
     });
 
     it('повторный apply с тем же override → providerVersion остаётся, deltas=[]', () => {

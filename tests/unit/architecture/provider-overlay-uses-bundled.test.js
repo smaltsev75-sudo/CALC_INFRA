@@ -71,9 +71,9 @@ describe('Stage VAT-2 Phase 4: providerOverlay.js НЕ содержит неза
 
     it('нет hardcoded строк "cloud.ru/2026-Q2" / "realistic-stub yandex.cloud" / "realistic-stub vkcloud" (старые priceSource)', () => {
         /* Эти строки были маркерами legacy hardcoded baselines. После Phase 4
-         * priceSource приходит из bundled JSON (с другим текстом — «Cloud.ru
-         * Evolution договорные тарифы 2026-Q3» / «realistic-stub vkcloud.ru
-         * Q3-2026», etc.). */
+         * priceSource приходит из bundled JSON (с другим текстом — например
+         * официальный Cloud.ru Evolution/Advanced baseline или public pricelist
+         * другого провайдера). */
         const src = stripJsComments(readFileSync(OVERLAY_PATH, 'utf8'));
         assert.doesNotMatch(src, /cloud\.ru\/2026-Q2/,
             'legacy literal "cloud.ru/2026-Q2" должен исчезнуть из overlay');

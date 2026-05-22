@@ -2,7 +2,7 @@
 // Build a GitHub Pages artifact that mirrors tracked static files.
 
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
@@ -35,6 +35,7 @@ for (const rel of result.stdout.split('\0').filter(Boolean)) {
     const normalized = rel.replace(/\\/g, '/');
     if (skipPrefixes.some(prefix => normalized.startsWith(prefix))) continue;
     const from = path.join(root, rel);
+    if (!existsSync(from)) continue;
     const to = path.join(outDir, rel);
     mkdirSync(path.dirname(to), { recursive: true });
     cpSync(from, to);
