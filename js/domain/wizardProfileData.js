@@ -261,12 +261,12 @@ export const INDUSTRY_PROFILES = Object.freeze({
             ai_avg_input_tokens: 2000,
             ai_avg_output_tokens: 300,
             ai_caching_share: 30,
-            ai_model_tier: 'medium',
+            ai_model_tier: 'mid',
             rag_needed: false,
             rag_corpus_size_gb: 5,
             rag_refresh_frequency: 'monthly',
             ai_safety_layer: false,
-            ai_data_sensitivity: 'low'
+            ai_data_sensitivity: 'internal'
         })
     }),
 
@@ -279,7 +279,7 @@ export const INDUSTRY_PROFILES = Object.freeze({
             sla_target: 98,
             backup_retention_days: 90,
             seasonal_activity: true,
-            peak_months: '[8, 9, 12]',  // back-to-school + winter session
+            peak_months: Object.freeze(['aug', 'sep', 'dec']),  // back-to-school + winter session
             realtime_required: true,
             file_storage_growth_tb_year: 5
         }),
@@ -297,12 +297,12 @@ export const INDUSTRY_PROFILES = Object.freeze({
             ai_avg_input_tokens: 2500,
             ai_avg_output_tokens: 500,
             ai_caching_share: 40,
-            ai_model_tier: 'medium',
+            ai_model_tier: 'mid',
             rag_needed: true,
             rag_corpus_size_gb_by_scale: Object.freeze({ xs: 10, s: 10, m: 50, l: 200, xl: 500 }),
             rag_refresh_frequency: 'monthly',
             ai_safety_layer: false,
-            ai_data_sensitivity: 'low'
+            ai_data_sensitivity: 'internal'
         })
     }),
 
@@ -336,12 +336,12 @@ export const INDUSTRY_PROFILES = Object.freeze({
             ai_avg_input_tokens: 3000,
             ai_avg_output_tokens: 400,
             ai_caching_share: 25,
-            ai_model_tier: 'large',  // финансы требуют лучшего качества
+            ai_model_tier: 'heavy',  // финансы требуют лучшего качества
             rag_needed: true,
             rag_corpus_size_gb_by_scale: Object.freeze({ xs: 5, s: 5, m: 20, l: 100, xl: 300 }),
             rag_refresh_frequency: 'weekly',  // регламенты меняются быстрее
             ai_safety_layer: true,
-            ai_data_sensitivity: 'high'
+            ai_data_sensitivity: 'pdn'
         })
     }),
 
@@ -373,12 +373,12 @@ export const INDUSTRY_PROFILES = Object.freeze({
             ai_avg_input_tokens: 1500,
             ai_avg_output_tokens: 300,
             ai_caching_share: 50,            // высокий кэш для повторяющихся запросов
-            ai_model_tier: 'medium',
+            ai_model_tier: 'mid',
             rag_needed: true,                // поиск по контенту
             rag_corpus_size_gb_by_scale: Object.freeze({ xs: 20, s: 20, m: 100, l: 1000, xl: 5000 }),
             rag_refresh_frequency: 'daily',  // свежий контент должен индексироваться сразу
             ai_safety_layer: true,           // модерация UGC + AI-output обязательна для масс-аудитории
-            ai_data_sensitivity: 'medium'
+            ai_data_sensitivity: 'confidential'
         })
     })
 });

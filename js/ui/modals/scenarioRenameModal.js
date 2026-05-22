@@ -46,7 +46,10 @@ export function renderScenarioRenameModal(state, ctx) {
         title: 'Имя сценария',
         size: 'sm',
         onClose,
-        children: el('div', { class: 'scenario-rename-body' },
+        children: el('div', {
+            class: 'scenario-rename-body',
+            attrs: { 'data-testid': 'scenario-rename-modal' }
+        },
             el('label', { class: 'field' },
                 el('span', { class: 'field-label-text', text: 'Название' }),
                 el('input', {
@@ -55,6 +58,7 @@ export function renderScenarioRenameModal(state, ctx) {
                     value: draft,
                     attrs: {
                         'data-focus-key': 'scenario-rename-input',
+                        'data-testid': 'scenario-rename-input',
                         'data-autofocus': '',
                         maxlength: '60',
                         placeholder: 'Например: «Базовый», «С GPU», «Без AI»'
@@ -71,10 +75,15 @@ export function renderScenarioRenameModal(state, ctx) {
             el('p', { class: 'field-hint-text', text: 'Имя видно во вкладках сверху и при экспорте расчёта.' })
         ),
         footer: el('div', { class: 'modal-footer-actions' },
-            el('button', { class: 'btn btn-ghost', onClick: onClose }, 'Отмена'),
+            el('button', {
+                class: 'btn btn-ghost',
+                attrs: { type: 'button', 'data-testid': 'scenario-rename-cancel' },
+                onClick: onClose
+            }, 'Отмена'),
             el('button', {
                 class: 'btn btn-primary',
                 title: 'Применить новое имя (Enter)',
+                attrs: { type: 'button', 'data-testid': 'scenario-rename-submit' },
                 onClick: onSubmit
             }, 'Сохранить')
         )

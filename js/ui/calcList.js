@@ -45,6 +45,7 @@ export function renderCalcList(state, ctx) {
                 el('button', {
                     class: 'btn btn-ghost btn-icon-text',
                     title: 'Скачать резервную копию всех расчётов и справочников одним файлом. Полезно для backup и переноса на другой компьютер.',
+                    attrs: { type: 'button', 'data-testid': 'bundle-export' },
                     onClick: (e) => ctx.exportStateBundle(e)
                 },
                     icon('package', { size: 16 }),
@@ -53,6 +54,7 @@ export function renderCalcList(state, ctx) {
                 el('button', {
                     class: 'btn btn-ghost btn-icon-text',
                     title: 'Восстановить все расчёты из ранее сохранённой резервной копии. Внимание: текущие расчёты будут удалены!',
+                    attrs: { type: 'button', 'data-testid': 'bundle-import' },
                     onClick: (e) => ctx.importStateBundle(e)
                 },
                     icon('upload', { size: 16 }),
@@ -106,6 +108,7 @@ function renderEmptyState(ctx) {
             el('button', {
                 class: 'btn btn-ghost btn-large btn-icon-text',
                 title: 'Импорт ранее сохранённого расчёта из JSON-файла (Ctrl+Alt+O)',
+                attrs: { type: 'button', 'data-testid': 'empty-import-json' },
                 onClick: (e) => ctx.importCalc(e)
             },
                 icon('folder-open', { size: 18 }),

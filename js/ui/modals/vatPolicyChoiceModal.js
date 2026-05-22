@@ -36,11 +36,19 @@ export function renderVatPolicyChoiceModal(state, ctx) {
     const choiceBtn = (label, policy, title) =>
         el('button', {
             class: 'btn btn-secondary vat-policy-choice-btn',
-            attrs: { type: 'button', title, 'data-vat-policy': policy },
+            attrs: {
+                type: 'button',
+                title,
+                'data-vat-policy': policy,
+                'data-testid': `vat-policy-${policy}`
+            },
             onClick: choose(policy)
         }, label);
 
-    const body = el('div', { class: 'vat-policy-choice-body' },
+    const body = el('div', {
+        class: 'vat-policy-choice-body',
+        attrs: { 'data-testid': 'vat-policy-choice-modal' }
+    },
         el('p', { class: 'vat-policy-choice-question',
             text: 'Какая политика НДС в этом файле?' }),
         el('p', { class: 'vat-policy-choice-hint',
@@ -63,7 +71,11 @@ export function renderVatPolicyChoiceModal(state, ctx) {
         footer: el('div', { class: 'modal-footer-actions' },
             el('button', {
                 class: 'btn btn-ghost',
-                attrs: { type: 'button', title: 'Отменить импорт без применения прайса (Esc)' },
+                attrs: {
+                    type: 'button',
+                    title: 'Отменить импорт без применения прайса (Esc)',
+                    'data-testid': 'vat-policy-cancel'
+                },
                 onClick: onCancel
             }, 'Отмена')
         )

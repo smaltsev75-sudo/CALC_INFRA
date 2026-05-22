@@ -54,7 +54,10 @@ export function renderProviderField(s, state, ctx) {
                 el('select', {
                     class: 'input',
                     title: tooltipFull,
-                    attrs: { 'data-focus-key': 'setting:provider' },
+                    attrs: {
+                        'data-focus-key': 'setting:provider',
+                        'data-testid': 'setting-provider'
+                    },
                     onChange: e => {
                         const v = e.target.value;
                         /* Disabled-опции отбрасываем (browser обычно не даёт их

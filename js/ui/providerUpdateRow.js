@@ -48,6 +48,7 @@ export function renderProviderUpdateRow(providerId, state, ctx) {
                 isLockedByOther && 'btn-disabled-cross-tab'],
         attrs: {
             type: 'button',
+            'data-testid': `provider-price-json-import-${providerId}`,
             disabled: isDisabled ? 'disabled' : undefined,
             'aria-busy': isLoading ? 'true' : 'false',
             title: 'Импорт прайса провайдера из JSON-файла (file-picker).' + lockTooltip
@@ -264,7 +265,8 @@ export function renderProviderUpdateRow(providerId, state, ctx) {
     }
 
     return el('div', {
-        class: ['provider-update-row', isJustUpdated && 'provider-update-row--just-updated']
+        class: ['provider-update-row', isJustUpdated && 'provider-update-row--just-updated'],
+        attrs: { 'data-testid': `provider-update-row-${providerId}` }
     },
         button,
         statusText,

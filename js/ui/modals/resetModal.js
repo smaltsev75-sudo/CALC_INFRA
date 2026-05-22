@@ -24,7 +24,10 @@ export function renderResetModal(state, ctx) {
         title: 'Сброс приложения',
         size: 'md',
         onClose,
-        children: el('div', { class: 'reset-body' },
+        children: el('div', {
+            class: 'reset-body',
+            attrs: { 'data-testid': 'reset-modal' }
+        },
             el('p', { class: 'reset-lead' }, 'Будет выполнено:'),
             el('ul', { class: 'reset-list' },
                 el('li', { text: 'Удалены все ваши расчёты.' }),
@@ -39,6 +42,7 @@ export function renderResetModal(state, ctx) {
                 el('button', {
                     class: 'btn btn-ghost btn-icon-text',
                     title: 'Сохранить активный расчёт в файл прежде, чем выполнить сброс — на случай, если захотите вернуться',
+                    attrs: { type: 'button', 'data-testid': 'reset-export-active' },
                     onClick: () => {
                         if (state.activeCalc) {
                             ctx.exportCalc();
@@ -52,11 +56,13 @@ export function renderResetModal(state, ctx) {
             el('button', {
                 class: 'btn btn-ghost',
                 title: 'Отменить сброс (Esc)',
+                attrs: { type: 'button', 'data-testid': 'reset-cancel' },
                 onClick: onClose
             }, 'Отмена'),
             el('button', {
                 class: 'btn btn-danger btn-icon-text',
                 title: 'Удалить все расчёты и вернуть исходный набор шаблонов. Действие необратимо.',
+                attrs: { type: 'button', 'data-testid': 'reset-confirm' },
                 onClick: onConfirm
             }, icon('rotate-ccw', { size: 16 }), el('span', { text: 'Сбросить' }))
         )

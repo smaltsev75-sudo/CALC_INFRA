@@ -52,6 +52,58 @@ export class MigrationError extends Error {
     }
 }
 
+function normalizeWizardSelectAnswers(calc) {
+    const MONTH_BY_NUMBER = Object.freeze({
+        1: 'jan', 2: 'feb', 3: 'mar', 4: 'apr', 5: 'may', 6: 'jun',
+        7: 'jul', 8: 'aug', 9: 'sep', 10: 'oct', 11: 'nov', 12: 'dec'
+    });
+    const normalize = (answers) => {
+        if (!answers || typeof answers !== 'object') return;
+
+        if (answers.pdn_category !== undefined && answers.pdn_category !== null) {
+            if (typeof answers.pdn_category === 'number' && Number.isInteger(answers.pdn_category)) {
+                answers.pdn_category = String(answers.pdn_category);
+            } else if (typeof answers.pdn_category === 'string') {
+                const m = /^cat-([1-4])$/.exec(answers.pdn_category);
+                if (m) answers.pdn_category = m[1];
+            }
+        }
+
+        if (answers.audience_geography === 'ru_cis') answers.audience_geography = 'cis';
+
+        if (typeof answers.peak_months === 'string') {
+            try {
+                const parsed = JSON.parse(answers.peak_months);
+                if (Array.isArray(parsed)) {
+                    answers.peak_months = parsed
+                        .map(v => MONTH_BY_NUMBER[Number(v)] || v)
+                        .filter(v => typeof v === 'string');
+                }
+            } catch {
+                // keep original; validation will surface unknown custom strings
+            }
+        } else if (Array.isArray(answers.peak_months)) {
+            answers.peak_months = answers.peak_months
+                .map(v => MONTH_BY_NUMBER[Number(v)] || v)
+                .filter(v => typeof v === 'string');
+        }
+
+        if (answers.ai_model_tier === 'medium') answers.ai_model_tier = 'mid';
+        if (answers.ai_model_tier === 'large') answers.ai_model_tier = 'heavy';
+
+        if (answers.ai_data_sensitivity === 'low') answers.ai_data_sensitivity = 'internal';
+        if (answers.ai_data_sensitivity === 'medium') answers.ai_data_sensitivity = 'confidential';
+        if (answers.ai_data_sensitivity === 'high') answers.ai_data_sensitivity = 'pdn';
+    };
+
+    normalize(calc.answers);
+    if (Array.isArray(calc.scenarios)) {
+        for (const scenario of calc.scenarios) {
+            normalize(scenario?.answers);
+        }
+    }
+}
+
 export const MIGRATIONS = [
     {
         from: 0, to: 1,
@@ -602,6 +654,20 @@ export const MIGRATIONS = [
             if (dict && Array.isArray(dict.questions)) {
                 dict.questions = dict.questions.filter(q => q.id !== 'mau_growth_rate_percent');
             }
+        }
+    },
+    {
+        from: 19, to: 20,
+        description: 'PATCH 2.20.20: нормализация legacy Quick Start select-answer values. ' +
+                     'До фикса wizard писал audience_geography="ru_cis", peak_months как "[8, 9, 12]", pdn_category числом (2/3), ai_model_tier как ' +
+                     '"medium"/"large", ai_data_sensitivity как "low"/"medium"/"high", ' +
+                     'а seed-справочник уже ожидал "cis", month-id массив, "2"/"3", "mid"/"heavy" и ' +
+                     '"internal"/"confidential"/"pdn". Такие расчёты считались и ' +
+                     'отображались, но не проходили validateCalculation, из-за чего ' +
+                     'JSON-import показывал validation modal, а bundle export пропускал calc. ' +
+                     'Миграция чинит root.answers и все scenarios[*].answers.',
+        run(calc) {
+            normalizeWizardSelectAnswers(calc);
         }
     }
 ];

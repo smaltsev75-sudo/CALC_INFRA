@@ -23,6 +23,8 @@ import {
     snapSlaToPreset,
     computeCompliance
 } from '../../../js/domain/wizardProfiles.js';
+import { SEED_QUESTIONS } from '../../../js/domain/seed.js';
+import { validateAnswersConsistency } from '../../../js/domain/validation.js';
 
 const SCALES = ['xs', 's', 'm', 'l', 'xl'];
 const INDUSTRIES = Object.keys(INDUSTRY_PROFILES);  // ['corporate', 'edtech', 'fintech']
@@ -185,6 +187,13 @@ describe('wizardToAnswers — smoke по всем комбинациям', () =>
                                     assert.ok(typeof result.answers.peak_rps === 'number');
                                     assert.ok(typeof result.answers.sla_target === 'number');
                                     assert.ok(result.answers.peak_rps > 0);
+                                    const errors = [];
+                                    validateAnswersConsistency({
+                                        dictionaries: { questions: SEED_QUESTIONS },
+                                        answers: result.answers
+                                    }, errors);
+                                    assert.deepEqual(errors, [],
+                                        `wizard answers должны проходить seed options/range validation для ${product_type}.${industry}.${scale}.${geography}.pdn=${pdn}.activity=${activity}.ai=${ai_used}`);
                                     count++;
                                 }
                             }
@@ -324,14 +333,14 @@ describe('wizardToAnswers — AI блок', () => {
         assert.strictEqual(r.answers.ai_users_share, 40);
     });
 
-    it('ai_used=true × fintech → safety_layer=true, sensitivity=high', () => {
+    it('ai_used=true × fintech → safety_layer=true, sensitivity=pdn', () => {
         const r = wizardToAnswers({
             product_type: 'b2b', industry: 'fintech', scale: 'm',
             geography: 'ru', pdn: true, activity: 'medium', ai_used: true
         });
         assert.strictEqual(r.answers.ai_safety_layer, true);
-        assert.strictEqual(r.answers.ai_data_sensitivity, 'high');
-        assert.strictEqual(r.answers.ai_model_tier, 'large');
+        assert.strictEqual(r.answers.ai_data_sensitivity, 'pdn');
+        assert.strictEqual(r.answers.ai_model_tier, 'heavy');
     });
 });
 

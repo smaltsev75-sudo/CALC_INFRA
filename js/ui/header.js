@@ -41,6 +41,7 @@ export function renderHeader(state, ctx) {
                 label: 'Импорт JSON',
                 title: 'Импорт расчёта из JSON-файла. Файл добавится к списку ваших расчётов (Ctrl+Alt+O)',
                 ariaLabel: 'Импорт расчёта из JSON',
+                testId: 'header-import-json',
                 onClick: (e) => ctx.importCalc(e)
             }),
             iconButton(ctx, {
@@ -48,6 +49,7 @@ export function renderHeader(state, ctx) {
                 label: 'Экспорт JSON',
                 title: 'Экспорт текущего расчёта в JSON-файл — сохранить копию или передать коллеге (Ctrl+Alt+S)',
                 ariaLabel: 'Экспорт текущего расчёта в JSON',
+                testId: 'header-export-json',
                 disabled: !calc,
                 onClick: (e) => ctx.exportCalc(e)
             }),
@@ -55,6 +57,7 @@ export function renderHeader(state, ctx) {
                 iconName: 'printer',
                 label: 'PDF',
                 title: 'Распечатать или сохранить активную вкладку в PDF. На вкладке «Опросник» — таблица «Вопрос → Ответ», сгруппированная по типу. Ctrl+Alt+P',
+                testId: 'header-print-pdf',
                 disabled: !calc,
                 onClick: (e) => ctx.printPdf(e)
             }),
@@ -62,6 +65,7 @@ export function renderHeader(state, ctx) {
                 iconName: 'rotate-ccw',
                 label: 'Сброс',
                 title: 'Удалить все расчёты и восстановить исходный набор шаблонов. Действие необратимо.',
+                testId: 'header-reset',
                 danger: true,
                 onClick: () => ctx.openReset()
             })
@@ -77,6 +81,7 @@ function renderThemeToggle(state, ctx) {
         title: `Переключить на ${nextLabel.toLowerCase()} (текущая: ${isLight ? 'светлая' : 'тёмная'})`,
         attrs: {
             type: 'button',
+            'data-testid': 'theme-toggle',
             'aria-label': `Переключить на ${nextLabel.toLowerCase()}`,
             'aria-pressed': isLight ? 'true' : 'false'
         },
@@ -87,12 +92,16 @@ function renderThemeToggle(state, ctx) {
     );
 }
 
-function iconButton(_ctx, { iconName, label, title, disabled, danger, onClick, ariaLabel }) {
+function iconButton(_ctx, { iconName, label, title, disabled, danger, onClick, ariaLabel, testId }) {
     return el('button', {
         class: ['btn', 'btn-ghost', 'btn-icon-text', danger && 'btn-danger-ghost'],
         title,
         disabled,
-        attrs: { type: 'button', 'aria-label': ariaLabel || label },
+        attrs: {
+            type: 'button',
+            'aria-label': ariaLabel || label,
+            'data-testid': testId
+        },
         onClick
     },
         icon(iconName, { size: 16 }),

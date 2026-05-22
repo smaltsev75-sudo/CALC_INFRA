@@ -57,7 +57,10 @@ export function renderScenarioDuplicateModal(state, ctx) {
         title: 'Дублировать сценарий',
         size: 'sm',
         onClose,
-        children: el('div', { class: 'scenario-rename-body' },
+        children: el('div', {
+            class: 'scenario-rename-body',
+            attrs: { 'data-testid': 'scenario-duplicate-modal' }
+        },
             el('label', { class: 'field' },
                 el('span', { class: 'field-label-text', text: 'Имя копии' }),
                 el('input', {
@@ -66,6 +69,7 @@ export function renderScenarioDuplicateModal(state, ctx) {
                     value: draft,
                     attrs: {
                         'data-focus-key': 'scenario-duplicate-input',
+                        'data-testid': 'scenario-duplicate-input',
                         'data-autofocus': '',
                         maxlength: '60',
                         placeholder: 'Например: «С GPU», «Без AI», «Сценарий заказчика»'
@@ -83,10 +87,15 @@ export function renderScenarioDuplicateModal(state, ctx) {
                 text: 'Копия унаследует все ответы и настройки исходного сценария, включая ваши ручные правки.' })
         ),
         footer: el('div', { class: 'modal-footer-actions' },
-            el('button', { class: 'btn btn-ghost', onClick: onClose }, 'Отмена'),
+            el('button', {
+                class: 'btn btn-ghost',
+                attrs: { type: 'button', 'data-testid': 'scenario-duplicate-cancel' },
+                onClick: onClose
+            }, 'Отмена'),
             el('button', {
                 class: 'btn btn-primary',
                 title: 'Создать копию сценария с этим именем (Enter). Ручные правки сохранятся.',
+                attrs: { type: 'button', 'data-testid': 'scenario-duplicate-submit' },
                 onClick: onSubmit
             }, 'Создать копию')
         )

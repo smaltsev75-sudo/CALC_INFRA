@@ -30,7 +30,11 @@ export function renderScenarioTabs(state, ctx) {
 
     return el('div', {
         class: 'scenario-tabs',
-        attrs: { role: 'tablist', 'aria-label': 'Сценарии расчёта' }
+        attrs: {
+            role: 'tablist',
+            'aria-label': 'Сценарии расчёта',
+            'data-testid': 'scenario-tabs'
+        }
     },
         ...scenarios.map(s => renderTab(s, s.id === activeId, scenarios.length, ctx)),
         renderAddButton(ctx)
@@ -55,11 +59,19 @@ function renderTab(scenario, isActive, totalCount, ctx) {
 
     return el('div', {
         class: ['scenario-tab', isActive && 'is-active'],
-        attrs: { role: 'tab', 'aria-selected': isActive ? 'true' : 'false' }
+        attrs: {
+            role: 'tab',
+            'aria-selected': isActive ? 'true' : 'false',
+            'data-testid': `scenario-tab-${scenario.id}`
+        }
     },
         el('button', {
             class: 'scenario-tab-body',
-            attrs: { type: 'button', title: isActive ? `Активный сценарий: ${scenario.label}` : `Переключиться на сценарий «${scenario.label}»` },
+            attrs: {
+                type: 'button',
+                title: isActive ? `Активный сценарий: ${scenario.label}` : `Переключиться на сценарий «${scenario.label}»`,
+                'data-testid': `scenario-tab-body-${scenario.id}`
+            },
             onClick: onSwitch
         },
             el('span', { class: 'scenario-tab-label', text: scenario.label }),
@@ -79,6 +91,7 @@ function renderTab(scenario, isActive, totalCount, ctx) {
             attrs: {
                 type: 'button',
                 'aria-label': `Действия для сценария ${scenario.label}`,
+                'data-testid': `scenario-tab-menu-${scenario.id}`,
                 title: 'Действия со сценарием: переименовать, дублировать, удалить'
             },
             onClick: onMenu
@@ -101,6 +114,7 @@ function renderAddButton(ctx) {
         class: 'scenario-tabs-add',
         attrs: {
             type: 'button',
+            'data-testid': 'scenario-add',
             /* 2026-05-18: tooltip с конкретным примером — раньше был абстрактный
                текст («альтернативные настройки / сравнить варианты»), пользователь
                не понимал что именно даёт фича. Теперь — 3 контрастных сценария
@@ -117,4 +131,3 @@ function renderAddButton(ctx) {
         el('span', { class: 'scenario-tabs-add-label', text: 'Сценарий' })
     );
 }
-

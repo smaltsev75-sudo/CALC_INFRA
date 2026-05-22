@@ -113,6 +113,61 @@ export async function expectNoHorizontalOverflow(page, selectors) {
     expect(overflow).toEqual([]);
 }
 
+export async function getAppStateSummary(page) {
+    return page.evaluate(async () => {
+        const { store } = await import('/js/state/store.js');
+        const state = store.getState();
+        const activeCalc = state.activeCalc || null;
+        return {
+            activeTab: state.activeTab,
+            activeCalcId: activeCalc?.id || null,
+            activeCalcName: activeCalc?.name || null,
+            calcListLength: state.calcList.length,
+            calcListNames: state.calcList.map(meta => meta.name),
+            scenarioLabels: (activeCalc?.scenarios || []).map(s => s.label),
+            activeScenarioId: activeCalc?.activeScenarioId || null
+        };
+    });
+}
+
+export async function getScenarioSummary(page) {
+    return page.evaluate(async () => {
+        const { store } = await import('/js/state/store.js');
+        const calc = store.getState().activeCalc;
+        if (!calc) throw new Error('No active calculation');
+        const scenarios = Array.isArray(calc.scenarios) ? calc.scenarios : [];
+        const activeScenario = scenarios.find(s => s.id === calc.activeScenarioId) || scenarios[0] || null;
+        return {
+            activeScenarioId: calc.activeScenarioId || activeScenario?.id || null,
+            activeScenarioLabel: activeScenario?.label || null,
+            scenarioLabels: scenarios.map(s => s.label),
+            scenarios: scenarios.map(s => ({ id: s.id, label: s.label }))
+        };
+    });
+}
+
+export async function getProviderOverrideSummary(page, providerId) {
+    return page.evaluate(async (pid) => {
+        const persist = await import('/js/state/persistence.js');
+        const overrides = persist.loadProviderOverrides() || {};
+        const override = overrides[pid] || null;
+        if (!override) return null;
+        const cpu = override.prices?.['cpu-vcpu-shared'] || null;
+        return {
+            version: override.version,
+            providerId: override.providerId,
+            cpu: cpu ? {
+                pricePerUnit: cpu.pricePerUnit,
+                pricePerUnitNet: cpu.pricePerUnitNet,
+                pricePerUnitGross: cpu.pricePerUnitGross,
+                vatRateIncluded: cpu.vatRateIncluded,
+                vatNormalized: cpu.vatNormalized,
+                vatPolicyConfidence: cpu.vatPolicyConfidence
+            } : null
+        };
+    }, providerId);
+}
+
 export async function getCalculationUiModel(page) {
     return page.evaluate(async () => {
         const { store } = await import('/js/state/store.js');

@@ -91,7 +91,7 @@ export function computeCompliance({ product_type, industry, scale, pdn }) {
     return {
         // ФЗ-152
         pdn_152fz: pdn || isFin || isB2G,
-        pdn_category: isFin ? 2 : (isEdu && pdn ? 2 : (pdn ? 3 : null)),
+        pdn_category: isFin ? '2' : (isEdu && pdn ? '2' : (pdn ? '3' : null)),
 
         // Сертификации
         fstec_certification_required: isFin || isB2G,
@@ -188,7 +188,7 @@ export function wizardToAnswers(wizard) {
 
     // --- Wizard inputs themselves (для retroactive перерасчёта)
     set('product_type', product_type, 'wizard');
-    set('audience_geography', geography, 'wizard');
+    set('audience_geography', geography === 'ru_cis' ? 'cis' : geography, 'wizard');
 
     // --- Scale-driven базовые поля
     Object.entries(scaleBase).forEach(([id, value]) => {

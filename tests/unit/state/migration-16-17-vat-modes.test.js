@@ -67,9 +67,7 @@ describe('Migration 16→17: legacy vatRate=0.20 (НДС 2019-2025)', () => {
         assert.equal(out.settings.vatRateMode, 'frozen');
         assert.equal(out.settings.vatEffectiveDate, '2024-06-01');
         assert.equal(out.settings.vatRate, 0.20);  // СУММА НЕ МЕНЯЕТСЯ
-        /* Аудит #3: после VAT-1 (16→17) идёт priceSource-normalize (17→18).
-           MINOR 2.18.0: добавлен шаг 18→19 (mau_growth_rate_percent removal). */
-        assert.equal(out.schemaVersion, 19);
+        assert.equal(out.schemaVersion, LATEST_SCHEMA_VERSION);
     });
 
     it('createdAt=2025-11-30 → mode=frozen (конец 20%-периода)', () => {
@@ -195,7 +193,7 @@ describe('Migration 16→17: идемпотентность', () => {
         }));
         const second = migrateCalculation(first);
         assert.deepEqual(first.settings, second.settings);
-        assert.equal(second.schemaVersion, 19);
+        assert.equal(second.schemaVersion, LATEST_SCHEMA_VERSION);
     });
 
     it('расчёт уже с vatRateMode не перетирается (даже если ранее vatRate=0.20)', () => {
@@ -291,8 +289,8 @@ describe('Migration: LATEST_SCHEMA_VERSION после Phase 2', () => {
      * (удаление dead-вопроса mau_growth_rate_percent). Тесты на промежуточные
      * шаги (16→17 VAT modes, 17→18 priceSource) проверяются как наличие шага
      * в массиве MIGRATIONS, а не как «последний». */
-    it('LATEST_SCHEMA_VERSION = 19 (Stage VAT-1: 16→17, аудит-3: 17→18, MINOR 2.18.0: 18→19)', () => {
-        assert.equal(LATEST_SCHEMA_VERSION, 19);
+    it('LATEST_SCHEMA_VERSION = 20 (Stage VAT-1 + audit migrations + Quick Start select normalization)', () => {
+        assert.equal(LATEST_SCHEMA_VERSION, 20);
     });
 
     it('Шаг 16→17 — VAT modes (Stage VAT-1)', () => {
@@ -307,14 +305,20 @@ describe('Migration: LATEST_SCHEMA_VERSION после Phase 2', () => {
         assert.match(step.description, /аудит #3|priceSource/);
     });
 
-    it('Последний шаг — 18→19 удаление dead-вопроса mau_growth_rate_percent (MINOR 2.18.0)', () => {
-        const last = MIGRATIONS[MIGRATIONS.length - 1];
-        assert.equal(last.from, 18);
-        assert.equal(last.to, 19);
-        assert.match(last.description, /MINOR 2\.18\.0|mau_growth_rate_percent/);
+    it('Шаг 18→19 — удаление dead-вопроса mau_growth_rate_percent (MINOR 2.18.0)', () => {
+        const step = MIGRATIONS.find(m => m.from === 18 && m.to === 19);
+        assert.ok(step, 'Шаг 18→19 должен присутствовать');
+        assert.match(step.description, /MINOR 2\.18\.0|mau_growth_rate_percent/);
     });
 
-    it('Любой v0-расчёт мигрирует до v19 (полная цепочка)', () => {
+    it('Последний шаг — 19→20 нормализация Quick Start select-answer values', () => {
+        const last = MIGRATIONS[MIGRATIONS.length - 1];
+        assert.equal(last.from, 19);
+        assert.equal(last.to, 20);
+        assert.match(last.description, /Quick Start select-answer/);
+    });
+
+    it('Любой v0-расчёт мигрирует до LATEST (полная цепочка)', () => {
         const v0 = {
             version: '1.0', id: 'old', name: 'Old',
             settings: { vatRate: 0.18 },
@@ -322,7 +326,7 @@ describe('Migration: LATEST_SCHEMA_VERSION после Phase 2', () => {
             dictionaries: { items: [], questions: [], categories: [] }
         };
         const out = migrateCalculation(v0);
-        assert.equal(out.schemaVersion, 19);
+        assert.equal(out.schemaVersion, LATEST_SCHEMA_VERSION);
         /* v0 не имел createdAt — итог должен быть frozen с null effective date.
            НО: предыдущие миграции могли что-то добавить. Проверяем главное —
            vatRateMode выставлен. */

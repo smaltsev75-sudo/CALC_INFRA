@@ -53,10 +53,17 @@ export function renderScenarioMenuModal(state, ctx) {
         title: `Сценарий: ${scenario.label}`,
         size: 'sm',
         onClose,
-        children: el('div', { class: 'scenario-menu-body' },
+        children: el('div', {
+            class: 'scenario-menu-body',
+            attrs: { 'data-testid': 'scenario-menu-modal' }
+        },
             el('button', {
                 class: 'scenario-menu-item',
-                attrs: { type: 'button', 'data-autofocus': '' },
+                attrs: {
+                    type: 'button',
+                    'data-autofocus': '',
+                    'data-testid': 'scenario-menu-rename'
+                },
                 onClick: onRename
             },
                 icon('edit-3', { size: 16 }),
@@ -64,7 +71,7 @@ export function renderScenarioMenuModal(state, ctx) {
             ),
             el('button', {
                 class: 'scenario-menu-item',
-                attrs: { type: 'button' },
+                attrs: { type: 'button', 'data-testid': 'scenario-menu-duplicate' },
                 onClick: onDuplicate
             },
                 icon('copy', { size: 16 }),
@@ -72,7 +79,11 @@ export function renderScenarioMenuModal(state, ctx) {
             ),
             el('button', {
                 class: ['scenario-menu-item', 'scenario-menu-item-danger', isOnlyOne && 'is-disabled'],
-                attrs: { type: 'button', disabled: isOnlyOne ? 'disabled' : undefined },
+                attrs: {
+                    type: 'button',
+                    disabled: isOnlyOne ? 'disabled' : undefined,
+                    'data-testid': 'scenario-menu-delete'
+                },
                 title: isOnlyOne ? 'Нельзя удалить единственный сценарий расчёта' : undefined,
                 onClick: onDelete
             },
@@ -83,6 +94,7 @@ export function renderScenarioMenuModal(state, ctx) {
         footer: el('div', { class: 'modal-footer-actions' },
             el('button', {
                 class: 'btn btn-ghost',
+                attrs: { type: 'button', 'data-testid': 'scenario-menu-close' },
                 onClick: onClose
             }, 'Закрыть')
         )

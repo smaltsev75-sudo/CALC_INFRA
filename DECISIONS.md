@@ -8914,3 +8914,68 @@ chain vs full chain.
 `2.20.9 → 2.20.10` (PATCH). Формат расчёта не меняется; runtime-поведение
 полной миграции сохраняется, hardening затрагивает partial migration path и
 документацию.
+
+## PATCH 2.20.20 — CI + desktop data-management E2E + Quick Start schema v20 normalization (2026-05-22)
+
+### Контекст
+
+При расширении Playwright suite на реальные desktop file-flow сценарии вскрылся
+не UI-дефект, а доменная аномалия: расчёты, созданные через Quick Start,
+визуально открывались и считались, но часть wizard-ответов не совпадала с
+актуальными `option.id` из seed-вопросов. Из-за этого `validateCalculation`
+отвергал такие расчёты при активном JSON import, а bundle export пропускал их
+как невалидные.
+
+Проблемные значения: `audience_geography='ru_cis'` вместо `cis`,
+`peak_months` как JSON-строка/числовые месяцы вместо массива option-id,
+numeric `pdn_category`, старые aliases `ai_model_tier=medium|large` и
+`ai_data_sensitivity=low|medium|high`.
+
+### Решение
+
+- Quick Start теперь генерирует ответы строго в терминах seed option-id:
+  `wizardToAnswers` мапит wizard geography в `cis`, compliance отдаёт строковый
+  `pdn_category`, profile data хранит актуальные AI tier/sensitivity и
+  multiselect `peak_months`.
+- Добавлена compatibility-миграция `19→20`, которая нормализует эти поля в
+  `calc.answers` и `scenarios[*].answers`. Это PATCH-миграция: она не вводит
+  новый пользовательский формат, а чинит ранее сохранённые несовместимые
+  значения.
+- `tests/unit/domain/wizard-profiles.test.js` теперь прогоняет всю матрицу
+  Quick Start и валидирует ответы против `SEED_QUESTIONS`, чтобы wizard больше
+  не мог тихо сгенерировать invalid select/multiselect.
+- Добавлен Playwright файл
+  [desktop-data-management.spec.js](tests/e2e/desktop-data-management.spec.js):
+  активный JSON export/import/reset через реальные downloads/file pickers,
+  bundle export/reset/import двух расчётов, scenario tab CRUD кликами, legacy
+  provider JSON import с обязательным VAT-policy выбором и проверкой net prices.
+- Для E2E добавлены стабильные `data-testid` на desktop-контракты header,
+  calculation list, reset/duplicate/confirm modals, scenario tabs/modals,
+  provider update row и VAT policy modal.
+- Добавлен GitHub Actions workflow [ci.yml](.github/workflows/ci.yml):
+  `unit-and-sanity` (`npm test`, `syntax-check`, `sanity:check`,
+  `git diff --check`) и `desktop-smoke` (Playwright Chromium, артефакты failure
+  из `.playwright-mcp/test-results`).
+- Документация синхронизирована с schema v20, desktop-first приоритетом,
+  НТ/LOAD capacity-инвариантом 1.20 и новым составом browser suite.
+
+### Расчётная проверка
+
+- Формула `costBase × riskTotal × vatMul`, прайсы и `BUNDLE_MAJOR=3` не
+  менялись.
+- Исправление устраняет именно invalid-answer аномалию Quick Start; расчётные
+  итоги проверяются существующими golden scenarios и sanity-report guard.
+- Дополнительно подтверждено, что legacy provider v1 gross-прайс после выбора
+  `gross-22` сохраняется как net и не создаёт double-VAT.
+
+### Проверки
+
+- `npm test`: 4990/4990 pass.
+- `npm run smoke:desktop`: 14/14 pass.
+- `npm run syntax-check`: pass.
+
+### Версионирование
+
+`2.20.19 → 2.20.20` (PATCH), schema `19 → 20`. Формат bundle не меняется;
+миграция совместимости чинит сохранённые данные без новой пользовательской
+фичи.

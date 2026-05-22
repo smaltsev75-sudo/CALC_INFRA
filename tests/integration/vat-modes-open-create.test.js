@@ -23,6 +23,7 @@ installLocalStorage();
 const { store } = await import('../../js/state/store.js');
 const calcList = await import('../../js/controllers/calcListController.js');
 const persist = await import('../../js/state/persistence.js');
+const migrations = await import('../../js/state/migrations.js');
 const { calculate, clearCalculationCache } = await import('../../js/domain/calculator.js');
 const { getCurrentVatRate, todayIso } = await import('../../js/domain/vatRateTable.js');
 
@@ -309,7 +310,7 @@ describe('Phase 3 ACCEPTANCE: legacy 20% calc — сумма НЕ меняетс
          * mau_growth_rate_percent), settings им тоже не затрагиваются. */
         assert.equal(reopened.settings.vatRateMode, 'frozen');
         assert.equal(reopened.settings.vatRate, 0.20);
-        assert.equal(reopened.schemaVersion, 19);
+        assert.equal(reopened.schemaVersion, migrations.LATEST_SCHEMA_VERSION);
 
         clearCalculationCache();
         const after = calculate(reopened);

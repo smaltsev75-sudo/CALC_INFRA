@@ -60,22 +60,32 @@ export function renderDuplicateImportModal(state, ctx) {
     return modalShell({
         title: 'Расчёт с таким же id уже существует',
         onClose: onCancel,
-        children: el('div', { class: 'confirm-body', text: message }),
+        children: el('div', {
+            class: 'confirm-body',
+            attrs: { 'data-testid': 'duplicate-import-modal' },
+            text: message
+        }),
         footer: el('div', { class: 'modal-footer-actions' },
             el('button', {
                 class: 'btn btn-ghost',
                 title: 'Отменить импорт (Esc)',
+                attrs: { type: 'button', 'data-testid': 'duplicate-import-cancel' },
                 onClick: onCancel
             }, 'Отмена'),
             el('button', {
                 class: 'btn btn-secondary',
                 title: 'Импортировать как новый расчёт (новый id)',
+                attrs: { type: 'button', 'data-testid': 'duplicate-import-clone' },
                 onClick: onClone
             }, 'Импортировать как копию'),
             el('button', {
                 class: 'btn btn-primary',
                 title: 'Перезаписать сохранённый расчёт данными из файла',
-                attrs: { 'data-autofocus': '' },
+                attrs: {
+                    type: 'button',
+                    'data-autofocus': '',
+                    'data-testid': 'duplicate-import-replace'
+                },
                 onClick: onReplace
             }, 'Обновить существующий')
         )

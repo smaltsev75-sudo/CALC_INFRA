@@ -21,9 +21,9 @@ import assert from 'node:assert/strict';
 import { migrateCalculation, LATEST_SCHEMA_VERSION } from '../../../js/state/migrations.js';
 
 describe('Migration v18 → v19 — удаление mau_growth_rate_percent', () => {
-    it('LATEST_SCHEMA_VERSION = 19 после bump', () => {
-        assert.equal(LATEST_SCHEMA_VERSION, 19,
-            'после добавления шага 18→19 LATEST должна быть 19');
+    it('шаг 18→19 сохраняется в цепочке миграций', () => {
+        assert.ok(LATEST_SCHEMA_VERSION >= 19,
+            'после добавления шага 18→19 LATEST должна быть не ниже 19');
     });
 
     it('answers.mau_growth_rate_percent удаляется', () => {
@@ -34,7 +34,7 @@ describe('Migration v18 → v19 — удаление mau_growth_rate_percent', (
             dictionaries: { items: [], questions: [] }
         };
         const result = migrateCalculation(calc);
-        assert.equal(result.schemaVersion, 19, 'schemaVersion обновлена');
+        assert.equal(result.schemaVersion, LATEST_SCHEMA_VERSION, 'schemaVersion обновлена');
         assert.equal(result.answers.mau_growth_rate_percent, undefined,
             'поле должно быть удалено');
         assert.equal(result.answers.users_total, 1000,
@@ -69,7 +69,7 @@ describe('Migration v18 → v19 — удаление mau_growth_rate_percent', (
             dictionaries: { items: [], questions: [] }
         };
         const result = migrateCalculation(calc);
-        assert.equal(result.schemaVersion, 19);
+        assert.equal(result.schemaVersion, LATEST_SCHEMA_VERSION);
         assert.equal(result.answers.users_total, 500);
     });
 
@@ -82,7 +82,7 @@ describe('Migration v18 → v19 — удаление mau_growth_rate_percent', (
         };
         const once = migrateCalculation(calc);
         const twice = migrateCalculation(once);
-        assert.equal(twice.schemaVersion, 19);
+        assert.equal(twice.schemaVersion, LATEST_SCHEMA_VERSION);
         assert.equal(twice.answers.mau_growth_rate_percent, undefined);
         assert.equal(twice.answers.dau_share_of_registered_percent, 20);
         assert.equal(twice.dictionaries.questions.length, 0);
@@ -99,7 +99,7 @@ describe('Migration v18 → v19 — удаление mau_growth_rate_percent', (
             }
         };
         const result = migrateCalculation(calc);
-        assert.equal(result.schemaVersion, 19);
+        assert.equal(result.schemaVersion, LATEST_SCHEMA_VERSION);
         assert.equal(result.answers.mau_growth_rate_percent, undefined,
             'v18→v19 удалил поле');
         assert.equal(result.dictionaries.items[0].priceSource, 'provider',
@@ -116,7 +116,7 @@ describe('Migration v18 → v19 — удаление mau_growth_rate_percent', (
             // dictionaries намеренно отсутствует
         };
         const result = migrateCalculation(calc);
-        assert.equal(result.schemaVersion, 19);
+        assert.equal(result.schemaVersion, LATEST_SCHEMA_VERSION);
         assert.equal(result.answers.mau_growth_rate_percent, undefined);
     });
 });

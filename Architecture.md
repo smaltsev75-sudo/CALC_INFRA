@@ -2,7 +2,7 @@
 
 Целевая аудитория — архитекторы, разработчики, тестировщики. Здесь только то, что не выводится из чтения README.md / UserManual.md: устройство кода, потоки данных, паттерны защиты целостности и тестовая инфраструктура.
 
-**Версия 2.20.19** (desktop user-flow E2E + stable test hooks). Schema v19.
+**Версия 2.20.20** (CI + desktop data-management E2E + Quick Start schema normalization). Schema v20.
 
 ---
 
@@ -401,7 +401,7 @@ renderModals(state, ctx):
 
 ### Schema migrations
 
-[migrations.js](js/state/migrations.js) — массив `MIGRATIONS` шагов `from → to`. Текущая версия — **19** (`CURRENT_SCHEMA_VERSION` re-export от `LATEST_SCHEMA_VERSION`).
+[migrations.js](js/state/migrations.js) — массив `MIGRATIONS` шагов `from → to`. Текущая версия — **20** (`CURRENT_SCHEMA_VERSION` re-export от `LATEST_SCHEMA_VERSION`).
 
 Применяются:
 - При загрузке из localStorage (boot).
@@ -416,6 +416,14 @@ renderModals(state, ctx):
 
 Downgrade-миграция (`schemaVersion > LATEST`) бросает `MigrationError` (защита от порчи данных при откате версии приложения).
 
+Schema v20 — совместимая нормализация Quick Start-ответов: legacy значения
+select/multiselect (`ru_cis`, numeric `pdn_category`, JSON-строка
+`peak_months`, старые AI tier/sensitivity aliases) приводятся к актуальным
+option-id из seed-вопросов в `calc.answers` и `scenarios[*].answers`. Формулы,
+прайсы и bundle major не меняются; цель шага — чтобы ранее созданные wizard
+расчёты проходили `validateCalculation` и участвовали в active/bundle
+import-export без пропусков.
+
 ### APP_VERSION sync
 
 `APP_VERSION` в [constants.js](js/utils/constants.js) и `package.json` "version" — два источника правды, синхронизируются вручную. Линтер [app-version-sync.test.js](tests/unit/architecture/app-version-sync.test.js) валит CI при расхождении.
@@ -425,8 +433,8 @@ Downgrade-миграция (`schemaVersion > LATEST`) бросает `MigrationE
 | Часть | Когда инкрементируется |
 |---|---|
 | MAJOR | Breaking change формата bundle (= bump `BUNDLE_MAJOR`), удалена вкладка/функция. |
-| MINOR | Новая видимая фича / schema-миграция. |
-| PATCH | Багфиксы, рефакторинг, мелкие UX-правки. |
+| MINOR | Новая видимая фича или новый persistent-контракт расчёта. |
+| PATCH | Багфиксы, рефакторинг, мелкие UX-правки, compatibility-миграции без нового формата данных. |
 
 ---
 
@@ -460,13 +468,18 @@ Defensive линтер [evaluator-no-globals.test.js](tests/unit/architecture/ev
 
 Для item с полем `dashboardResource` (CPU/GPU/RAM/SSD/HDD/S3) `buildContext` подменяет общий `S.standSizeRatio.<STAND>` на per-resource override. Магический подход (вариант B) выбран ради того, чтобы НЕ переписывать 32 формулы в seed.
 
-### Инвариант «стенд ≤ ПРОМ» (Stage 13.U11)
+### Инвариант стендов (Stage 13.U11 + Stage 19)
 
-Все три ratio-настройки (`standSizeRatio`, `resourceRatio`, `aiStandFactor`) ограничены 0–100%. PROD = 1.00 принудительно. Защищён в 4 точках (defense-in-depth):
+PROD = 1.00 принудительно. DEV/IFT/PSI для `standSizeRatio` и
+`resourceRatio` остаются долей от ПРОМ и ограничены 1.00. LOAD/НТ — отдельный
+capacity-стенд для stress testing: он может быть до 1.20, чтобы искать пределы
+системы выше предполагаемой промышленной нагрузки. `aiStandFactor` ограничен
+1.00 для всех стендов, включая LOAD, потому что это доля AI-нагрузки от
+prod-эквивалента, а не capacity-запас. Защита в 4 точках (defense-in-depth):
 - UI-input через `STAND_RATIO_RANGES[stand].max`.
-- Setter `setResourceRatio` через guard.
-- Validator через `VALIDATION.RATIO_MAX = 1.0`.
-- Миграция v11→v12 clamp legacy state.
+- Setter `setResourceRatio` через per-stand guard.
+- Validator через per-stand range, а не общий потолок 1.00.
+- Миграция v11→v12 clamp legacy state по `STAND_RATIO_RANGES`.
 
 Линтеры: [stand-le-prod-invariant.test.js](tests/unit/architecture/stand-le-prod-invariant.test.js), [invariant-load-le-prod.test.js](tests/unit/domain/).
 
@@ -501,7 +514,7 @@ el('div', {
 - Триггер `ctx.openXxxModal(payload)` → `store.openModal(name, payload)`.
 - Закрытие `ctx.closeModal(name)` или `store.closeModal(name)`.
 
-Зарегистрированных модалок 28 (на 2.20.19): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
+Зарегистрированных модалок 28 (на 2.20.20): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
 
 Удалены в Stage 17.2: `recommendedActions` (заменён блоком «Следующие шаги» на Дашборде), `calculationDiff` (UI убран; pure-domain helper остался — см. п. 4.7).
 
@@ -551,13 +564,28 @@ Sanity-check скрипт ([scripts/sanity-report.mjs](scripts/sanity-report.mjs
 | **Unit (UI smoke)** | Все ui/-модули импортируются параллельно под минимальным DOM-mock'ом | [ui-modules-smoke.test.js](tests/unit/ui/) |
 | **Architecture** | Layer-linter, версии, A11y, no-emoji, no-toiso-slice | [layer-imports.test.js](tests/unit/architecture/) |
 | **Integration** | Полный controller-path с installLocalStorage | [calc-persistence-atomicity.test.js](tests/integration/) |
-| **Desktop browser smoke/regression** | Реальный Chromium/Chrome-рендер критичных desktop-сцен, console/overflow checks, UI↔domain сверка Dashboard/Details, реальные user-flow клики Quick Start/Sidebar/Опросник/Dashboard CTA, disabled-стенды, risk/VAT, screenshots | [desktop-smoke.spec.js](tests/e2e/desktop-smoke.spec.js), [desktop-regression.spec.js](tests/e2e/desktop-regression.spec.js), [desktop-user-flow.spec.js](tests/e2e/desktop-user-flow.spec.js) |
+| **Desktop browser smoke/regression** | Реальный Chromium/Chrome-рендер критичных desktop-сцен, console/overflow checks, UI↔domain сверка Dashboard/Details, реальные user-flow клики Quick Start/Sidebar/Опросник/Dashboard CTA, disabled-стенды, risk/VAT, active/bundle JSON import-export-reset, scenario tabs, provider VAT policy import, screenshots | [desktop-smoke.spec.js](tests/e2e/desktop-smoke.spec.js), [desktop-regression.spec.js](tests/e2e/desktop-regression.spec.js), [desktop-user-flow.spec.js](tests/e2e/desktop-user-flow.spec.js), [desktop-data-management.spec.js](tests/e2e/desktop-data-management.spec.js) |
 
 Для Playwright user-flow используются `data-testid` только на стабильных
 desktop-контрактах: навигация, Quick Start, переключатели Dashboard, настройки
-Опросника и CTA модалок. Не привязывать E2E к декоративным CSS-классам, когда
-есть смысловой test id; CSS-классы остаются допустимы для табличных DOM-readers,
-которые сверяют конкретную отрисованную структуру.
+Опросника, scenario tabs, file import/export buttons и CTA модалок. Не
+привязывать E2E к декоративным CSS-классам, когда есть смысловой test id;
+CSS-классы остаются допустимы для табличных DOM-readers, которые сверяют
+конкретную отрисованную структуру.
+
+### CI
+
+GitHub Actions workflow [ci.yml](.github/workflows/ci.yml) разделён на два
+job'а:
+- `unit-and-sanity`: Node 24, `npm ci --ignore-scripts`, `npm test`,
+  `npm run syntax-check`, `npm run sanity:check`, `git diff --check`.
+- `desktop-smoke`: Node 24, `npx playwright install --with-deps chromium`,
+  `npm run smoke:desktop`; на failure загружает `.playwright-mcp/test-results`.
+
+Локально Playwright по умолчанию использует системный Chrome
+(`PLAYWRIGHT_CHANNEL=chrome`), а в CI — bundled Chromium, установленный
+Playwright job'ом. При необходимости канал можно переопределить через
+`PLAYWRIGHT_CHANNEL`.
 
 ### Source-grep helpers (TDD-якорь)
 
@@ -593,7 +621,7 @@ const reduced = extractAtMediaBody(read('css/forms.css'),
 | [a11y-focus.test.js](tests/unit/architecture/) | `outline: none` без замены запрещён (WCAG 2.4.7) |
 | [touch-targets.test.js](tests/unit/architecture/) | На pointer:coarse — кнопки ≥44×44 (WCAG 2.5.5) |
 | [items-wrap-overflow.test.js](tests/unit/ui/) | Запрет `overflow: auto/hidden` на ancestor sticky-thead таблиц (3 жертвы за историю проекта) |
-| [stand-le-prod-invariant.test.js](tests/unit/architecture/) | Все ratio ≤ 1.00 (стенд не превосходит ПРОМ) |
+| [stand-le-prod-invariant.test.js](tests/unit/architecture/) + [invariant-load-le-prod.test.js](tests/unit/domain/) | DEV/IFT/PSI не превосходят ПРОМ; LOAD допускает capacity до 1.20; AI-factor ≤ 1.00 |
 | [app-version-sync.test.js](tests/unit/architecture/) | `APP_VERSION` ↔ `package.json.version` |
 | [seed-formulas.test.js](tests/unit/domain/) | Каждая qty-формула 36 ЭК парсится и вычисляется в финитное ≥0 число |
 | [no-emoji-in-source.test.js](tests/unit/architecture/) | Эмодзи только в .md и комментариях, не в `text:` UI-узлов |
@@ -691,7 +719,7 @@ const reduced = extractAtMediaBody(read('css/forms.css'),
 
 ## 10. Где искать дополнительный контекст
 
-- [DECISIONS.md](DECISIONS.md) — журнал ключевых решений по этапам 1–13.3 (главный источник истины для контекста). Читать перед нетривиальной правкой.
+- [DECISIONS.md](DECISIONS.md) — журнал ключевых решений по этапам (главный источник истины для контекста). Читать перед нетривиальной правкой.
 - [CLAUDE.md](CLAUDE.md) — обзор архитектуры + накопленные ловушки (DOM/CSS, domain, state, A11y).
 - [UI_PRODUCTION_PATTERNS.md](UI_PRODUCTION_PATTERNS.md) — META-обобщение Stage 8 (PDF print, alignment, override-hunt). 8 паттернов с сигналами / анти-паттернами / правильными подходами.
 - [SANITY_REPORT.md](SANITY_REPORT.md) — последние числа калькулятора на 3 профилях.

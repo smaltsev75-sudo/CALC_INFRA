@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 const port = Number(process.env.DESKTOP_SMOKE_PORT || 8765);
 const host = process.env.DESKTOP_SMOKE_HOST || '127.0.0.1';
-const channel = process.env.PLAYWRIGHT_CHANNEL || 'chrome';
+const channel = process.env.PLAYWRIGHT_CHANNEL || (process.env.CI ? undefined : 'chrome');
 
 export default defineConfig({
     testDir: './tests/e2e',
@@ -16,7 +16,8 @@ export default defineConfig({
     use: {
         baseURL: `http://${host}:${port}`,
         browserName: 'chromium',
-        channel,
+        ...(channel ? { channel } : {}),
+        acceptDownloads: true,
         viewport: { width: 1365, height: 768 },
         deviceScaleFactor: 1,
         colorScheme: 'dark',

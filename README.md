@@ -82,7 +82,7 @@ docker run -p 8000:80 -v "$PWD":/usr/share/nginx/html nginx:alpine
 
 - **Браузер**: Chrome 90+ / Yandex / Safari 14+ / Firefox современный.
 - **Один из**: Python 3.7+, Node.js 18+, PHP 7.4+ (только для запуска HTTP-сервера; в коде проекта runtime-зависимостей нет). Node.js 18+ обязателен для `npm test`, Playwright smoke и maintainer-скриптов.
-- **Разрешение экрана**: ≥1280×720 (адаптивная вёрстка работает и на ноутбуках 1366×768).
+- **Разрешение экрана**: ≥1280×720. Приложение desktop-first; ноутбуки 1366×768 являются базовым regression-viewport, мобильная вёрстка поддерживается как fallback, но не является главным продуктовым сценарием.
 
 ---
 
@@ -145,12 +145,21 @@ npm run sanity            # пересобрать SANITY_REPORT.md
 ```
 
 `npm test` включает golden-сценарии Quick Start с закреплёнными итогами и
-разбивкой по категориям. `npm run smoke:desktop` дополнительно проверяет
-реальный desktop-рендер: Dashboard/Details сверяются с `calculate()`, изменение
-ключевого ответа пересчитывает UI, отключённый стенд исключается из totals, а
+разбивкой по категориям; сами wizard-ответы валидируются против seed-вопросов,
+чтобы расчёты из Quick Start были пригодны для JSON-импорта, bundle-экспорта и
+миграций. `npm run smoke:desktop` дополнительно проверяет реальный
+desktop-рендер: Dashboard/Details сверяются с `calculate()`, изменение ключевого
+ответа пересчитывает UI, отключённый стенд исключается из totals, а
 риск-коэффициенты и НДС остаются независимыми. Отдельный user-flow слой проходит
 Quick Start, sidebar-навигацию, Dashboard period/stand controls, настройки
-рисков/НДС в Опроснике и открытие Cost Optimization Planner реальными кликами.
+рисков/НДС, scenario tabs, активный и bundle JSON import/export/reset, legacy
+provider JSON VAT-policy flow и открытие Cost Optimization Planner реальными
+кликами.
+
+В GitHub Actions заведены два обязательных job'а: `unit-and-sanity`
+(`npm test`, `syntax-check`, `sanity:check`, whitespace diff check) и
+`desktop-smoke` (Playwright Chromium, desktop viewport 1365×768). Playwright
+артефакты при падении загружаются из `.playwright-mcp/test-results`.
 
 Архитектура держится на ES-модулях без bundler'а. Исторические entry point'ы вроде `js/app.js`, `js/ui/questionnaire.js`, `js/domain/costOptimizationPlanner.js`, `js/services/providerPriceFetch.js` сохранены как стабильные фасады; узкая логика вынесена в соседние модули (`js/app/*Actions.js`, `questionnaire*`, `dashboard*`, `costOptimizationPlanner*`, `priceImportMapping*`, `providerPriceNormalize.js`, `decisionMemoFormat.js`). Актуальная карта ownership — в [Architecture.md](Architecture.md#фасады-после-модульного-рефакторинга).
 
