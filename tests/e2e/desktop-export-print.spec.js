@@ -162,3 +162,50 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
     await page.emulateMedia({ media: 'screen' });
     expect(consoleErrors).toEqual([]);
 });
+
+test('Native beforeprint on Details enables full-width landscape price table', async ({ page }) => {
+    const consoleErrors = await bootCleanApp(page);
+
+    await createCalculationFromQuickStart(page, {
+        name: 'Native Details PDF layout',
+        presetId: 'high_ai'
+    });
+    await clickSidebarTab(page, 'details');
+    await expect(page.locator('.details-table-cost')).toBeVisible();
+
+    await page.emulateMedia({ media: 'print' });
+    const snapshot = await page.evaluate(async () => {
+        window.dispatchEvent(new Event('beforeprint'));
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+        const table = document.querySelector('.details-table-cost');
+        const wrap = document.querySelector('.details-table-wrap');
+        const main = document.querySelector('.app-main');
+        return {
+            bodyClass: document.body.className,
+            hasStyle: !!document.getElementById('details-print-page-style'),
+            styleText: document.getElementById('details-print-page-style')?.textContent || '',
+            tableLayout: getComputedStyle(table).tableLayout,
+            tableWidth: table.getBoundingClientRect().width,
+            wrapWidth: wrap.getBoundingClientRect().width,
+            mainWidth: main.getBoundingClientRect().width
+        };
+    });
+
+    expect(snapshot.bodyClass).toContain('printing-details');
+    expect(snapshot.hasStyle).toBe(true);
+    expect(snapshot.styleText).toContain('A4 landscape');
+    expect(snapshot.tableLayout).toBe('fixed');
+    expect(snapshot.tableWidth).toBeGreaterThan(snapshot.mainWidth * 0.98);
+    expect(snapshot.wrapWidth).toBeGreaterThan(snapshot.mainWidth * 0.98);
+
+    const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
+    const mediaBox = pdf.toString('latin1').match(/\/MediaBox\s*\[\s*([^\]]+)\]/)?.[1] || '';
+    const [, , width, height] = mediaBox.trim().split(/\s+/).map(Number);
+    expect(width).toBeGreaterThan(height);
+
+    await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+    await expect.poll(() => page.evaluate(() => document.body.classList.contains('printing-details'))).toBe(false);
+    await page.emulateMedia({ media: 'screen' });
+    expect(consoleErrors).toEqual([]);
+});

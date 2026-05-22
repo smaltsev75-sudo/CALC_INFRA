@@ -9323,8 +9323,15 @@ provider prices и bundle format не меняются.
   и print-only `@page { size: A4 landscape; margin: 6mm; }`, а
   [print.css](css/print.css) в этом режиме растягивает обе таблицы на 100%
   ширины листа, переводит их в `table-layout: fixed` и запрещает
-  посимвольный перенос заголовков. Header PDF и `Ctrl+Alt+P` используют один
-  helper.
+  посимвольный перенос заголовков. Header PDF, `Ctrl+Alt+P` и native
+  `beforeprint` используют один helper, поэтому browser print preview на
+  активной вкладке «Детализация» тоже получает A4 landscape.
+- CI на Linux Chromium поймал desktop overflow в Dashboard: risk-card header
+  с суммой наценки мог раздувать `.dashboard-grid` по min-content на 1440×900.
+  Добавлены `.dashboard-grid` / `.dash-card` min-width guards, risk-card header
+  переведён в stacked layout, а
+  [dashboard-desktop-overflow-guards.test.js](tests/unit/ui/dashboard-desktop-overflow-guards.test.js)
+  закрепляет CSS-инварианты.
 - Обновлена документация: README, Architecture, Maintainer Guide, Browser Smoke,
   User Manual, CLAUDE и provider freshness report.
 
@@ -9332,11 +9339,12 @@ provider prices и bundle format не меняются.
 
 - New targeted tests: business/performance/provider quality 11/11 pass,
   Details qty package-unit 5/5 pass, Details PDF print guards 8/8 pass,
-  desktop-regression 6/6 pass, desktop-export-print 3/3 pass.
+  Dashboard desktop overflow guards 3/3 pass, desktop-regression 6/6 pass,
+  desktop-export-print 4/4 pass, desktop-viewports 3/3 pass.
 - Scoped profiles: `test:quick` 1946/1946 pass, performance 15/15 pass,
   `test:architecture` 1106/1106 pass, UserManual TOC 3/3 pass.
-- `npm test`: 5047/5047 pass.
-- `npm run smoke:desktop`: 28/28 pass.
+- `npm test`: 5050/5050 pass.
+- `npm run smoke:desktop`: 29/29 pass.
 - `npm run syntax-check`: pass.
 - `npm run sanity:check`: pass.
 - `npm run prices:freshness:check`: pass.

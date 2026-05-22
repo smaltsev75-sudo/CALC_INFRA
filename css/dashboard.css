@@ -164,6 +164,7 @@
 
 .dashboard-grid {
     display: grid;
+    min-width: 0;
     /* Top row: 3 карточки в одну строку.
        Hero — самая широкая (большая цифра + sparkline + CAPEX/OPEX),
        Categories — donut + bars,
@@ -173,6 +174,10 @@
         'hero       categories risk'
         'stands     stands     stands';
     gap: 18px;
+}
+
+.dashboard-grid > * {
+    min-width: 0;
 }
 
 .dash-card-hero       { grid-area: hero; }
@@ -214,6 +219,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-width: 0;
     transition: border-color var(--t-fast), box-shadow var(--t-fast);
     box-shadow: var(--shadow-sm);
 }
@@ -227,12 +233,15 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
+    min-width: 0;
 }
 
 .dash-card-eyebrow {
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
+    flex-wrap: wrap;
     color: var(--text-muted);
     font-size: 0.78rem;
     text-transform: uppercase;
@@ -264,6 +273,8 @@
     letter-spacing: 0;
     font-weight: 400;
     margin-top: 2px;
+    min-width: 0;
+    max-width: 100%;
     /* 12.U25-fix-9: flex+wrap делает дочерние spans атомарными единицами — при
      * нехватке места целиком переносится «+85.6%» или «· 75 тыс. ₽ / день»,
      * а не середина числа. column-gap для пробела между ними. */
@@ -278,6 +289,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-width: 0;
 }
 
 /* .dash-info-btn / .dash-info-btn-inline удалены — используем общий .info-icon (см. components.css). */
@@ -1414,6 +1426,16 @@
     padding: 24px 0;
 }
 
+.dash-card-risk .dash-card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.dash-card-risk .dash-card-eyebrow-sub {
+    justify-content: flex-start;
+}
+
 .dash-risk-surplus {
     display: inline-block;
     padding: 1px 8px;
@@ -1438,7 +1460,11 @@
     font-size: 0.82rem;
 }
 
-.dash-risk-row-label { color: var(--text-muted); }
+.dash-risk-row-label {
+    color: var(--text-muted);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
 
 .dash-risk-row-bar {
     display: block;

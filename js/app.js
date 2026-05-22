@@ -44,6 +44,7 @@ import { installModalHashNavigation } from './app/modalHashNavigation.js';
 import { subscribeAppPersistence } from './app/uiPersistenceSubscriber.js';
 import { createAppInstanceLockRuntime } from './app/instanceLockRuntime.js';
 import { nextCollapsedIds, nextGlobalExpandedIds } from './app/toggleState.js';
+import { beginDetailsPrintMode } from './utils/printMode.js';
 import {
     importCalcAction,
     exportCalcAction,
@@ -900,6 +901,12 @@ function handleInstanceLockPageshow(e) {
     appInstanceLockRuntime.handlePageshow(e);
 }
 
+function handleBeforePrint() {
+    if (store.getState().activeTab === 'details') {
+        beginDetailsPrintMode();
+    }
+}
+
 function boot() {
     mountUi();
 
@@ -935,6 +942,7 @@ function boot() {
 
     // Глобальные горячие клавиши
     bindHotkeys();
+    window.addEventListener('beforeprint', handleBeforePrint);
 
     // Stage 11.1: cross-tab listener — реагируем на изменения провайдер-стораджа
     // в других вкладках (locks, overrides). В node-окружении (тесты) — no-op.
