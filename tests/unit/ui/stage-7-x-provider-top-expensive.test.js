@@ -3,12 +3,12 @@
  * в блоке «Тарифы провайдера».
  *
  * Renderer-level source-grep тесты:
- *   • renderProviderPriceSummary вычисляет max value по rows runtime
- *     (без мутации module-scope PROVIDER_PRICE_CATEGORIES).
+ *   • renderProviderPriceSummary вычисляет max value по числовым rows runtime
+ *     (без мутации module-scope PROVIDER_PRICE_CATEGORIES и без строк «по запросу»).
  *   • Класс is-top-expensive применяется conditionally к row, чьё
  *     value === maxValue.
- *   • При rows.length < 2 подсветка не применяется (нечего сравнивать —
- *     одиночная позиция не требует scan-anchor).
+ *   • При finiteValues.length < 2 подсветка не применяется (нечего сравнивать —
+ *     одиночная числовая позиция не требует scan-anchor).
  *   • CSS правило использует var(--accent) + font-weight: 600 (адаптация
  *     к dark/light темам автоматическая).
  *   • Подсветка живёт только в expanded-ветке (collapsed early-return
@@ -37,34 +37,38 @@ describe('Stage 7.X / Provider price — top-expensive highlight', () => {
     const js = stripJsComments(read('js/ui/providerPriceSummary.js'));
     const css = stripCssComments(read('css/forms.css'));
 
-    it('renderProviderPriceSummary вычисляет maxValue runtime через Math.max', () => {
+    it('renderProviderPriceSummary вычисляет maxValue runtime через Math.max по числовым rows', () => {
         const body = extractRenderProviderBody(js);
         assert.match(body,
-            /const\s+maxValue\s*=\s*rows\.length\s*>\s*1\s*\?\s*Math\.max\s*\(\s*\.\.\.rows\.map\s*\(\s*r\s*=>\s*r\.value\s*\)\s*\)\s*:\s*null/,
-            'maxValue должен быть Math.max(...rows.map(r=>r.value)) при rows.length>1, иначе null'
+            /const\s+finiteValues\s*=\s*rows\s*\n\s*\.map\s*\(\s*r\s*=>\s*r\.value\s*\)\s*\n\s*\.filter\s*\(\s*Number\.isFinite\s*\)/,
+            'finiteValues должен исключать строки без числовой цены, например "по запросу"'
+        );
+        assert.match(body,
+            /const\s+maxValue\s*=\s*finiteValues\.length\s*>\s*1\s*\?\s*Math\.max\s*\(\s*\.\.\.finiteValues\s*\)\s*:\s*null/,
+            'maxValue должен быть Math.max(...finiteValues) при finiteValues.length>1, иначе null'
         );
     });
 
-    it('isTopExpensive вычисляется корректно (maxValue !== null && r.value === maxValue)', () => {
+    it('isTopExpensive вычисляется корректно (hasValue && maxValue !== null && r.value === maxValue)', () => {
         const body = extractRenderProviderBody(js);
         assert.match(body,
-            /isTopExpensive\s*=\s*maxValue\s*!==\s*null\s*&&\s*r\.value\s*===\s*maxValue/,
-            'формула должна явно проверять non-null maxValue + равенство значений'
+            /isTopExpensive\s*=\s*hasValue\s*&&\s*maxValue\s*!==\s*null\s*&&\s*r\.value\s*===\s*maxValue/,
+            'формула должна явно проверять числовую цену, non-null maxValue и равенство значений'
         );
     });
 
     it('класс is-top-expensive применяется к li через массив-форму class', () => {
         const body = extractRenderProviderBody(js);
         assert.match(body,
-            /class:\s*\[\s*['"]provider-price-row['"]\s*,\s*isTopExpensive\s*&&\s*['"]is-top-expensive['"]\s*\]/,
-            'class должен быть массивом ["provider-price-row", isTopExpensive && "is-top-expensive"]'
+            /class:\s*\[[\s\S]{0,160}?['"]provider-price-row['"][\s\S]{0,160}?isTopExpensive\s*&&\s*['"]is-top-expensive['"]/,
+            'class должен быть массивом с provider-price-row и conditional is-top-expensive'
         );
     });
 
-    it('подсветка не применяется к категориям с одной строкой', () => {
+    it('подсветка не применяется к категориям с одной числовой строкой', () => {
         const body = extractRenderProviderBody(js);
-        assert.match(body, /rows\.length\s*>\s*1\s*\?\s*Math\.max/,
-            'guard rows.length > 1 защищает от подсветки одиночных позиций');
+        assert.match(body, /finiteValues\.length\s*>\s*1\s*\?\s*Math\.max/,
+            'guard finiteValues.length > 1 защищает от подсветки одиночных числовых позиций');
     });
 
     it('CSS правило .provider-price-row.is-top-expensive использует var(--accent)', () => {

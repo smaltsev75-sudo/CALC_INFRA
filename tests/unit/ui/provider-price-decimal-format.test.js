@@ -46,7 +46,7 @@ describe('Provider price summary: decimal price formatting', () => {
     });
 
     it('adds row-level title with value and unit for expanded tariff rows', () => {
-        assert.match(providerSrc, /attrs:\s*\{\s*title:\s*`\$\{r\.label\}:\s*\$\{accessibleValue\}`\s*\}/);
-        assert.match(providerSrc, /const\s+accessibleValue\s*=\s*unitText\s*\?/);
+        assert.match(providerSrc, /attrs:\s*\{\s*title:\s*`\$\{r\.label\}:\s*\$\{accessibleValue\}\.\s*\$\{r\.trust\.description\}`\s*\}/);
+        assert.match(providerSrc, /const\s+accessibleValue\s*=\s*hasValue\s*\?/);
     });
 });

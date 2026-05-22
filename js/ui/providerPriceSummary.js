@@ -22,6 +22,12 @@
 import { el } from './dom.js';
 import { icon } from './icons.js';
 import { PROVIDER_OVERLAYS, getEffectivePrices } from '../domain/providerOverlay.js';
+import {
+    TERM_HINTS,
+    getProviderPriceTrust,
+    getProviderPriceWarnings,
+    getPriceTrustInfo
+} from '../domain/providerPriceTrust.js';
 import { formatNumber, formatPercentPoints } from '../services/format.js';
 
 export { renderProviderUpdateRow } from './providerUpdateRow.js';
@@ -106,6 +112,45 @@ function _renderDeltaPill(frozenValue, effectiveValue) {
     });
 }
 
+function _renderTrustBadge(trust) {
+    if (!trust) return null;
+    return el('span', {
+        class: ['provider-price-trust-badge', `provider-price-trust-badge--${trust.status}`],
+        attrs: { title: `${trust.fullLabel}. ${trust.description}` },
+        text: trust.shortLabel
+    });
+}
+
+function _renderTermAwareName(label) {
+    if (label === 'WAF') {
+        return el('span', { class: 'provider-price-row-name' },
+            el('abbr', {
+                class: 'term-hint',
+                attrs: { title: TERM_HINTS.WAF },
+                text: 'WAF'
+            })
+        );
+    }
+    if (label === 'DDoS') {
+        return el('span', { class: 'provider-price-row-name' },
+            el('abbr', {
+                class: 'term-hint',
+                attrs: { title: TERM_HINTS.DDoS },
+                text: 'DDoS'
+            })
+        );
+    }
+    return el('span', { class: 'provider-price-row-name', text: label });
+}
+
+function _renderTermsHint(text, title) {
+    return el('span', {
+        class: 'term-hint',
+        attrs: { title },
+        text
+    });
+}
+
 
 
 /**
@@ -182,11 +227,28 @@ export function renderProviderPriceSummary(providerId, state, ctx) {
 
     const categoryEls = PROVIDER_PRICE_CATEGORIES.map(cat => {
         const rows = cat.items
-            .map(it => ({ ...it, value: prices[it.id]?.pricePerUnit }))
-            .filter(it => Number.isFinite(it.value))
-            .sort((a, b) => b.value - a.value);
+            .map(it => {
+                const effectiveEntry = prices[it.id] || null;
+                const frozenEntry = frozenPrices[it.id] || null;
+                const trust = getProviderPriceTrust({
+                    providerId,
+                    itemId: it.id,
+                    effectiveEntry,
+                    frozenEntry
+                });
+                return { ...it, value: effectiveEntry?.pricePerUnit, trust };
+            })
+            .filter(it => Number.isFinite(it.value) || it.trust.status === 'by-request')
+            .sort((a, b) => {
+                const av = Number.isFinite(a.value) ? a.value : -Infinity;
+                const bv = Number.isFinite(b.value) ? b.value : -Infinity;
+                return bv - av;
+            });
         if (rows.length === 0) return null;
-        const maxValue = rows.length > 1 ? Math.max(...rows.map(r => r.value)) : null;
+        const finiteValues = rows
+            .map(r => r.value)
+            .filter(Number.isFinite);
+        const maxValue = finiteValues.length > 1 ? Math.max(...finiteValues) : null;
         /* PATCH 2.7.3 hotfix-3: общий unit категории (commonUnit) рендерится
            ОДИН раз в title — приглушённо рядом с лейблом. Per-row unit
            (`r.unit`) используется только для категорий со смешанными единицами
@@ -207,25 +269,35 @@ export function renderProviderPriceSummary(providerId, state, ctx) {
                         cat.dense && 'provider-price-category-list-dense']
             },
                 ...rows.map(r => {
-                    const isTopExpensive = maxValue !== null && r.value === maxValue;
+                    const hasValue = Number.isFinite(r.value);
+                    const isTopExpensive = hasValue && maxValue !== null && r.value === maxValue;
                     const frozen = frozenPrices[r.id]?.pricePerUnit;
-                    const deltaPill = _renderDeltaPill(frozen, r.value);
+                    const deltaPill = hasValue ? _renderDeltaPill(frozen, r.value) : null;
                     /* Если у категории commonUnit задан — выводим только число.
                        Иначе число + per-row unit (license-категория). */
-                    const valueText = commonUnit
+                    const valueText = !hasValue
+                        ? 'по запросу'
+                        : commonUnit
                         ? fmtRub(r.value)
                         : `${fmtRub(r.value)} ${r.unit}`;
                     const unitText = commonUnit || r.unit || '';
-                    const accessibleValue = unitText ? `${fmtRub(r.value)} ${unitText}` : fmtRub(r.value);
+                    const accessibleValue = hasValue
+                        ? (unitText ? `${fmtRub(r.value)} ${unitText}` : fmtRub(r.value))
+                        : r.trust.fullLabel;
                     return el('li', {
-                        class: ['provider-price-row', isTopExpensive && 'is-top-expensive'],
-                        attrs: { title: `${r.label}: ${accessibleValue}` }
+                        class: [
+                            'provider-price-row',
+                            isTopExpensive && 'is-top-expensive',
+                            !hasValue && 'provider-price-row--missing'
+                        ],
+                        attrs: { title: `${r.label}: ${accessibleValue}. ${r.trust.description}` }
                     },
-                        el('span', { class: 'provider-price-row-name', text: r.label }),
+                        _renderTermAwareName(r.label),
                         el('span', { class: 'provider-price-row-value' },
                             el('span', { class: 'provider-price-row-value-num',
                                          text: valueText }),
-                            deltaPill
+                            deltaPill,
+                            _renderTrustBadge(r.trust)
                         )
                     );
                 })
@@ -239,6 +311,7 @@ export function renderProviderPriceSummary(providerId, state, ctx) {
             class: 'provider-price-summary-body',
             attrs: { id: 'provider-price-summary-body' }
         },
+            _renderProviderTrustNotice(providerId, _computeVatMetadata(prices)),
             _renderVatPolicyLabel(_computeVatMetadata(prices)),
             ...categoryEls
         )
@@ -315,5 +388,25 @@ function _renderVatPolicyLabel(meta) {
         ...lines.map(text =>
             el('div', { class: 'provider-price-vat-label-line', text })
         )
+    );
+}
+
+function _renderProviderTrustNotice(providerId, meta) {
+    const status = meta.confidence || 'unknown';
+    const trust = getPriceTrustInfo(status);
+    const warnings = getProviderPriceWarnings(providerId);
+    return el('div', {
+        class: ['provider-price-trust-notice', `provider-price-trust-notice--${trust.status}`],
+        attrs: { role: 'status' }
+    },
+        el('div', { class: 'provider-price-trust-notice-line' },
+            el('span', { text: 'Уровень цен: ' }),
+            _renderTrustBadge(trust),
+            el('span', { text: ` ${trust.fullLabel.toLowerCase()}.` })
+        ),
+        ...warnings.map(w => el('div', { class: 'provider-price-trust-notice-line' },
+            _renderTermsHint(w.label, w.title),
+            el('span', { text: ' — цена по запросу у провайдера; для финального бюджета импортируйте КП или ручной прайс.' })
+        ))
     );
 }

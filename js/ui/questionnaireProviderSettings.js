@@ -29,7 +29,7 @@ export function renderProviderField(s, state, ctx) {
     const tooltipFull = tooltipShort + ' ' +
         'Cloud.ru (бывший SberCloud) — это одна и та же платформа: ребрендинг 2024 года, ' +
         'тарифы и API идентичны. Yandex Cloud — проверенный официальный прайс 22.05.2026. ' +
-        'VK Cloud — публичный price-list subset с явными пробелами WAF/DDoS. Собственная инфраструктура (on-premise) — в следующих обновлениях.';
+        'VK Cloud — публичный прайс с явными пробелами: WAF — защита веб-приложений, DDoS — защита от распределённых атак; эти цены у VK по запросу. Собственная инфраструктура (on-premise) — в следующих обновлениях.';
 
     /* Бейдж источника — рядом с label. Палитра совпадает с .field-source-badge
        из forms.css (этап 14.U2): зелёный для wizard-источника, outlined dashed

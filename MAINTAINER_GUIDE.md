@@ -309,6 +309,12 @@ stub-статус. Колонка `Attention` включает и freshness-фл
 выгрузкой, а провайдеры с `MISSING_CORE` — дополнены КП или ручным override
 перед финальной сметой.
 
+В UI не выводите эти internal-коды напрямую без русского контекста. Для бейджей
+и подсказок используйте [providerPriceTrust.js](js/domain/providerPriceTrust.js):
+он мапит `verified/source-level/assumed`, missing core SKU и ручные override в
+пользовательские статусы «Проверено», «Публичный прайс», «Оценка», «Нет цены»
+и «По запросу».
+
 ---
 
 ### 4.6 Source-grep тесты после модульного рефакторинга
@@ -472,6 +478,6 @@ npm test                      # sync-test проверит, что generated mod
 Coverage у каждого провайдера разная и отражает реальный прайс-лист:
 - **sbercloud** (16 SKU) — Cloud.ru public tariffs verified 2026-05-22: Evolution Compute/Object Storage/Foundation Models/Managed Redis/PostgreSQL/Managed RAG/AI Agents + Advanced L7/WAF where Evolution has no SKU.
 - **yandex** (15 SKU) — Yandex Cloud official docs/prices verified 2026-05-22: compute, storage, VPC egress, ALB, WAF, Postbox, AI Studio and Managed OpenSearch. L7 ALB uses the official one-AZ minimum 2 resource units.
-- **vk** (10 SKU) — cloud.vk.com/pricelist source-level: compute, RAM, disks, Object Storage, load balancer и Microsoft licenses. WAF/DDoS у VK Cloud опубликованы как «по запросу», поэтому не входят в bundled и подсвечиваются как `MISSING_CORE`.
+- **vk** (10 SKU) — cloud.vk.com/pricelist source-level: compute, RAM, disks, Object Storage, load balancer и Microsoft licenses. WAF (защита веб-приложений) / DDoS (защита от распределённых атак) у VK Cloud опубликованы как «по запросу», поэтому не входят в bundled и подсвечиваются как `MISSING_CORE`.
 
 Items, отсутствующие в bundled (например, sbercloud не покрывает licenses) — silent fallback на SEED-цену в `applyProviderOverlay`. Это нормальный сценарий: bundled JSON покрывает provider-specific прайс, остальное берётся из SEED-defaults.

@@ -75,8 +75,10 @@ describe('UserManual.md TOC acceptance', () => {
         assert.match(markdown, /### Быстрая проверка за 5-10 минут/);
         assert.match(markdown, /### Красные флаги/);
         assert.match(markdown, /### Встроенные эталоны проекта/);
-        assert.match(markdown, /STUB/);
-        assert.match(markdown, /ASSUMED_VAT/);
+        assert.match(markdown, /Проверено по официальным тарифам/);
+        assert.match(markdown, /Цена по запросу у провайдера/);
+        assert.match(markdown, /WAF \(защита веб-приложений\)/);
+        assert.match(markdown, /DDoS \(защита от распределённых/);
         assert.match(markdown, /A4 landscape/);
         assert.match(markdown, /AI\/RAG\/agent-support/);
     });

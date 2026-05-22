@@ -12,11 +12,10 @@
  * заданный в PROVIDER_PRICE_CATEGORIES (который алфавитно-семантический,
  * не value-driven). Сортировка по убыванию value не применялась.
  *
- * Fix: добавить .sort((a, b) => b.value - a.value) после .filter() в
- * renderProviderPriceSummary. Применимо к КАЖДОЙ категории; категории
- * с 1 элементом не затрагиваются (no-op). maxValue/isTopExpensive
- * сохраняют корректность (max находится в первой строке после сортировки —
- * scan-anchor на видном месте).
+ * Fix: добавить .sort(...) после .filter() в renderProviderPriceSummary.
+ * Числовые строки идут по убыванию, строки без публичной цены остаются ниже.
+ * Применимо к КАЖДОЙ категории; категории с 1 числовым элементом не затрагиваются
+ * (no-op). maxValue/isTopExpensive сохраняют корректность.
  *
  * Принцип: feedback_sort_descending — числа в столбце/списке внутри
  * категории по убыванию значений. Применяется глобально к dashboard,
@@ -44,20 +43,15 @@ function extractRenderProviderBody(src) {
 describe('PATCH 2.4.34 / provider price rows sorted by value desc', () => {
     const js = stripJsComments(read('js/ui/providerPriceSummary.js'));
 
-    it('renderProviderPriceSummary применяет .sort с descending-сигнатурой', () => {
-        // Backref-проверка: signature (p1, p2), тело — p2.value - p1.value
-        // (т.е. второй параметр МИНУС первый = descending). Не привязываемся
-        // к конкретным именам параметров (a, b или x, y — не важно).
+    it('renderProviderPriceSummary применяет .sort с descending-сигнатурой и non-finite guard', () => {
+        // Backref-проверка: signature (p1, p2), тело возвращает второй
+        // нормализованный value минус первый = descending. Non-finite строки
+        // ("по запросу") сортируются ниже числовых.
         const body = extractRenderProviderBody(js);
         const sortMatch = body.match(
-            /\.sort\s*\(\s*\(([a-z]+),\s*([a-z]+)\)\s*=>\s*([a-z]+)\.value\s*-\s*([a-z]+)\.value\s*\)/
+            /\.sort\s*\(\s*\(([a-z]+),\s*([a-z]+)\)\s*=>\s*\{[\s\S]{0,220}?const\s+av\s*=\s*Number\.isFinite\(\1\.value\)\s*\?\s*\1\.value\s*:\s*-Infinity;[\s\S]{0,220}?const\s+bv\s*=\s*Number\.isFinite\(\2\.value\)\s*\?\s*\2\.value\s*:\s*-Infinity;[\s\S]{0,120}?return\s+bv\s*-\s*av;[\s\S]{0,80}?\}\)/
         );
-        assert.ok(sortMatch, '.sort((p1, p2) => x.value - y.value) должен присутствовать');
-        const [, p1, p2, lhs, rhs] = sortMatch;
-        assert.equal(lhs, p2,
-            `lhs вычитания должен быть второй параметр (получено: ${lhs}, expected: ${p2}) — иначе порядок ASC`);
-        assert.equal(rhs, p1,
-            `rhs вычитания должен быть первый параметр (получено: ${rhs}, expected: ${p1}) — иначе порядок ASC`);
+        assert.ok(sortMatch, '.sort должен считать av/bv с Number.isFinite guard и возвращать bv - av');
     });
 
     it('сортировка применяется ДО maxValue и rows.map', () => {

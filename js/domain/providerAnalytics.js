@@ -10,6 +10,10 @@
  */
 
 import { PROVIDER_OVERLAYS } from './providerOverlay.js';
+import {
+    getProviderPriceTrust,
+    getProviderPriceWarnings
+} from './providerPriceTrust.js';
 
 /**
  * Stage 10.4: какой ЭК взять как «представителя» категории при сравнении
@@ -81,7 +85,8 @@ const CATEGORY_ORDER = Object.freeze(['CPU', 'RAM', 'STORAGE', 'NETWORK', 'LICEN
  *     id: string,
  *     label: string,
  *     active: boolean,
- *     byCategory: Record<string, { effective: number|null, frozen: number|null, deltaPct: number|null }>,
+ *     byCategory: Record<string, { effective: number|null, frozen: number|null, deltaPct: number|null, trust: object }>,
+ *     warnings: Array<{ id: string, label: string, title: string }>,
  *     totalCost: number
  *   }>,
  *   categories: string[]
@@ -108,8 +113,10 @@ export function aggregateProviderPrices(providerIds, effectivePricesByProvider) 
 
         for (const cat of CATEGORY_ORDER) {
             const itemId = CATEGORY_KEY_ITEMS[cat];
-            const effective = Number(effectivePrices[itemId]?.pricePerUnit);
-            const frozen = Number(frozenPrices[itemId]?.pricePerUnit);
+            const effectiveEntry = effectivePrices[itemId] || null;
+            const frozenEntry = frozenPrices[itemId] || null;
+            const effective = Number(effectiveEntry?.pricePerUnit);
+            const frozen = Number(frozenEntry?.pricePerUnit);
 
             const eff = Number.isFinite(effective) ? effective : null;
             const fro = Number.isFinite(frozen) ? frozen : null;
@@ -121,7 +128,17 @@ export function aggregateProviderPrices(providerIds, effectivePricesByProvider) 
                 deltaPct = Math.abs(pct) < 0.1 ? 0 : pct;
             }
 
-            byCategory[cat] = { effective: eff, frozen: fro, deltaPct };
+            byCategory[cat] = {
+                effective: eff,
+                frozen: fro,
+                deltaPct,
+                trust: getProviderPriceTrust({
+                    providerId: id,
+                    itemId,
+                    effectiveEntry,
+                    frozenEntry
+                })
+            };
             if (eff !== null) totalCost += eff;
         }
 
@@ -130,6 +147,7 @@ export function aggregateProviderPrices(providerIds, effectivePricesByProvider) 
             label: overlay.label,
             active: overlay.active,
             byCategory,
+            warnings: getProviderPriceWarnings(id),
             totalCost
         });
     }

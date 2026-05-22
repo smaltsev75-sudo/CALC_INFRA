@@ -1,5 +1,45 @@
 # Журнал решений и допущений
 
+## 22.05.2026 · PATCH 2.20.32 — provider price trust UI + WAF/DDoS hints
+
+**Контекст.** После Yandex refresh пользователю уже видно, что Cloud.ru и
+Yandex проверены по официальным тарифам, а VK остаётся source-level с gaps. Но
+UI всё ещё мог показывать внутренние статусы (`verified/source-level/MISSING_CORE`)
+или просто пустые цены, что создавало ложную точность. Пользователь уточнил, что
+термины WAF и DDoS можно оставлять, если рядом есть русская расшифровка.
+
+**Решение.**
+
+- Добавлен [js/domain/providerPriceTrust.js](js/domain/providerPriceTrust.js) —
+  единый слой для пользовательских статусов доверия к цене: «Проверено»,
+  «Публичный прайс», «Оценка», «Задано вручную», «Нет цены», «По запросу».
+- [providerAnalytics.js](js/domain/providerAnalytics.js) теперь передаёт trust
+  metadata и provider warnings в модалку сравнения провайдеров.
+- [providerPriceSummary.js](js/ui/providerPriceSummary.js) показывает бейджи
+  доверия под ценами, выводит известные gaps как «по запросу» и добавляет
+  хинты для WAF (защита веб-приложений) и DDoS (защита от распределённых атак).
+- Для VK Cloud добавлен явный warning «WAF/DDoS по запросу» вместо молчаливого
+  отсутствия цены.
+- Документация обновлена так, чтобы пользовательские разделы не требовали
+  понимания англоязычных maintainer-кодов.
+
+**Проверки.**
+
+- Targeted trust/provider UI suite: 71/71 pass.
+- Targeted Playwright provider summary check: 1/1 pass.
+- `npm run prices:freshness:check`: pass.
+- `npm run sanity:check`: pass.
+- `npm run syntax-check`: pass.
+- `npm run pages:build`: pass.
+- `npm test`: 5067/5067 pass.
+- `npm run smoke:desktop`: 29/29 pass.
+
+**Версионирование.**
+
+`2.20.31 → 2.20.32` (PATCH). Schema, provider JSON schema и bundle format не
+меняются. Изменение пользовательски видимо как более честная маркировка
+доверия к ценам и gaps.
+
 ## 22.05.2026 · PATCH 2.20.30 — Cloud.ru public tariff refresh
 
 **Контекст.** Пользователь попросил актуализировать прайс Cloud.ru (бывший

@@ -167,11 +167,11 @@ describe('Stage 7 / 2.4.26 / Provider visual refresh — renderProviderPriceSumm
     it('PATCH 2.4.25 invariant: is-top-expensive продолжает применяться (regression check)', () => {
         // 2.4.26 не должно сломать highlight-логику 2.4.25.
         assert.match(body,
-            /isTopExpensive\s*=\s*maxValue\s*!==\s*null\s*&&\s*r\.value\s*===\s*maxValue/,
+            /isTopExpensive\s*=\s*hasValue\s*&&\s*maxValue\s*!==\s*null\s*&&\s*r\.value\s*===\s*maxValue/,
             'формула isTopExpensive из 2.4.25 должна остаться'
         );
         assert.match(body,
-            /class:\s*\[\s*['"]provider-price-row['"]\s*,\s*isTopExpensive\s*&&\s*['"]is-top-expensive['"]\s*\]/,
+            /class:\s*\[[\s\S]{0,160}?['"]provider-price-row['"][\s\S]{0,160}?isTopExpensive\s*&&\s*['"]is-top-expensive['"]/,
             'класс is-top-expensive из 2.4.25 должен остаться'
         );
     });

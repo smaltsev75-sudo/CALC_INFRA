@@ -91,14 +91,14 @@ export const PROVIDER_OVERLAYS = Object.freeze({
         id: 'sbercloud',
         label: 'Cloud.ru (бывший SberCloud)',
         active: true,
-        description: 'Платформа Cloud.ru — продолжение SberCloud после ребрендинга 2024. Публичные тарифы Evolution/Advanced, проверка 22.05.2026 (verified).',
+        description: 'Платформа Cloud.ru — продолжение SberCloud после ребрендинга 2024. Цены проверены по официальным тарифам Evolution/Advanced 22.05.2026.',
         prices: SBERCLOUD_PRICES
     }),
     yandex: Object.freeze({
         id: 'yandex',
         label: 'Yandex Cloud',
         active: true,
-        description: 'Yandex Cloud — official pricing refresh 22.05.2026 (verified: compute/storage/ALB/WAF/AI docs + public price-list).',
+        description: 'Yandex Cloud — цены проверены по официальной документации и публичному прайс-листу 22.05.2026.',
         prices: YANDEX_PRICES
     }),
     /* VK Cloud использует публичный price-list source-level для compute/storage/
@@ -109,7 +109,7 @@ export const PROVIDER_OVERLAYS = Object.freeze({
         id: 'vk',
         label: 'VK Cloud',
         active: true,
-        description: 'VK Cloud — публичный прайс-лист 12.01.2026 (source-level; WAF/DDoS по запросу, fallback на seed).',
+        description: 'VK Cloud — цены взяты из публичного прайс-листа 12.01.2026; WAF/DDoS указаны по запросу и требуют КП или ручного прайса.',
         prices: VK_CLOUD_PRICES
     }),
     /* On-prem НЕ overlay-модель: у on-prem CAPEX (железо + амортизация + DC),

@@ -102,6 +102,22 @@ export function renderProviderAnalyticsModal(state, ctx) {
         ? icon(sortDir === 'asc' ? 'chevron-up' : 'chevron-down', { size: 12 })
         : null;
 
+    const renderTrustBadge = (trust) => trust
+        ? el('span', {
+            class: ['analytics-trust-badge', `analytics-trust-badge--${trust.status}`],
+            attrs: { title: `${trust.fullLabel}. ${trust.description}` },
+            text: trust.shortLabel
+        })
+        : null;
+
+    const renderProviderWarnings = (warnings = []) => warnings.map(w =>
+        el('span', {
+            class: 'analytics-provider-warning',
+            attrs: { title: w.title },
+            text: w.label
+        })
+    );
+
     /* PATCH 2.7.3: каждая колонка имеет 2-line header «КАТЕГОРИЯ + ед.изм.»
        (тот же паттерн что .col-stand в details-table). Tooltip содержит
        «что именно за число в этой колонке» (например, «Цена 1 vCPU shared
@@ -138,22 +154,36 @@ export function renderProviderAnalyticsModal(state, ctx) {
     );
 
     const renderCell = (cell) => {
+        const trustBadge = renderTrustBadge(cell?.trust);
         if (!cell || cell.effective === null) {
-            return el('td', { class: 'analytics-td-cat',
-                text: '—' });
+            const emptyText = cell?.trust?.status === 'by-request' ? 'по запросу' : '—';
+            return el('td', {
+                class: ['analytics-td-cat', 'analytics-td-cat-empty'],
+                attrs: { title: cell?.trust ? `${cell.trust.fullLabel}. ${cell.trust.description}` : undefined }
+            },
+                el('span', { class: 'analytics-td-cat-stack' },
+                    el('span', { class: 'analytics-td-cat-num', text: emptyText }),
+                    trustBadge
+                )
+            );
         }
         const pillText = fmtPct(cell.deltaPct);
         return el('td', { class: 'analytics-td-cat' },
-            el('span', { class: 'analytics-td-cat-num', text: fmtRub(cell.effective) }),
-            pillText
-                ? el('span', {
-                    class: ['delta-pill',
-                            (cell.deltaPct > 0) ? 'delta-pill--up' : 'delta-pill--down'],
-                    /* Stage 14.2: hover-tooltip унифицирован «Старая X → Новая Y (Δ%)». */
-                    title: `Старая ${fmtRub(cell.frozen)} ₽ → Новая ${fmtRub(cell.effective)} ₽ (${pillText})`,
-                    text: pillText
-                })
-                : null
+            el('span', { class: 'analytics-td-cat-stack' },
+                el('span', { class: 'analytics-td-cat-main' },
+                    el('span', { class: 'analytics-td-cat-num', text: fmtRub(cell.effective) }),
+                    pillText
+                        ? el('span', {
+                            class: ['delta-pill',
+                                    (cell.deltaPct > 0) ? 'delta-pill--up' : 'delta-pill--down'],
+                            /* Stage 14.2: hover-tooltip унифицирован «Старая X → Новая Y (Δ%)». */
+                            title: `Старая ${fmtRub(cell.frozen)} ₽ → Новая ${fmtRub(cell.effective)} ₽ (${pillText})`,
+                            text: pillText
+                        })
+                        : null
+                ),
+                trustBadge
+            )
         );
     };
 
@@ -161,7 +191,10 @@ export function renderProviderAnalyticsModal(state, ctx) {
         ...sortedProviders.map(p => {
             const rowTotal = computeRowTotal(p);
             return el('tr', { class: 'analytics-row' },
-                el('td', { class: 'analytics-td-provider', text: p.label }),
+                el('td', { class: 'analytics-td-provider' },
+                    el('span', { class: 'analytics-provider-name', text: p.label }),
+                    ...renderProviderWarnings(p.warnings)
+                ),
                 ...visibleCategories.map(cat => renderCell(p.byCategory[cat])),
                 el('td', { class: 'analytics-td-total',
                     text: fmtRub(rowTotal) })
@@ -208,7 +241,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
         onClose: close,
         children: el('div', { class: 'analytics-body' },
             el('p', { class: 'analytics-hint',
-                text: 'Представительные цены 5 категорий ресурсов: CPU = 1 vCPU shared (₽/мес), RAM = 1 ГБ (₽/мес), STORAGE = 1 ТБ SSD (₽/мес), NETWORK = 1 балансировщик L7 (₽/мес), LICENSE = ОС-лицензия (₽/узел/год). Колонка «Сумма» — индикатор для ранжирования провайдеров (единицы разные, сумма не является денежной величиной). Pill-кнопки — скрыть/показать колонку.' }),
+                text: 'Представительные цены 5 категорий ресурсов: CPU = 1 vCPU shared (₽/мес), RAM = 1 ГБ (₽/мес), STORAGE = 1 ТБ SSD (₽/мес), NETWORK = 1 балансировщик L7 (₽/мес), LICENSE = ОС-лицензия (₽/узел/год). Под каждой ценой показан уровень доверия: проверено, публичный прайс, задано вручную или нет публичной цены. Колонка «Сумма» — индикатор для ранжирования, не денежная величина.' }),
             filterBar,
             noProviders || noCategories || null,
             !noCategories ? table : null

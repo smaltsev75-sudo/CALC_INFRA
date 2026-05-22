@@ -156,6 +156,21 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
     await expect(ssdRowValue).toHaveText(/9\s*717,76/);
     await expect(ssdRowValue).not.toHaveText(/9\s*717\s+76/);
 
+    await expect(summary.locator('.provider-price-trust-badge').first()).toBeVisible();
+    await expect(summary.locator('abbr.term-hint', { hasText: 'WAF' }))
+        .toHaveAttribute('title', /защита веб-приложений/);
+
+    await page.getByTestId('setting-provider').selectOption('vk');
+    await expect(summary.locator('.provider-price-trust-notice'))
+        .toContainText('WAF/DDoS по запросу');
+
+    const vkWafRow = summary
+        .locator('.provider-price-row')
+        .filter({ hasText: 'WAF' });
+    await expect(vkWafRow.locator('.provider-price-row-value-num')).toHaveText('по запросу');
+    await expect(vkWafRow.locator('.provider-price-trust-badge')).toHaveText('По запросу');
+    await expect(vkWafRow.locator('abbr.term-hint')).toHaveAttribute('title', /защита веб-приложений/);
+
     expect(consoleErrors).toEqual([]);
 });
 

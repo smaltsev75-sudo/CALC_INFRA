@@ -191,7 +191,9 @@ gross→net VAT policy, неположительные цены, пустые ve
 summary по verified/source-level, assumed, unknown и stub-провайдерам. `STUB` /
 `ASSUMED_VAT` и quality-флаги вроде `MISSING_CORE` остаются видимыми как
 maintainer findings; `Attention` в summary подсвечивает и freshness, и
-structural quality проблемы до релиза.
+structural quality проблемы до релиза. В пользовательском UI эти статусы
+переведены в русские бейджи доверия к цене: «Проверено», «Публичный прайс»,
+«Задано вручную», «Оценка», «Нет цены» или «По запросу».
 
 В GitHub Actions заведены два обязательных job'а: `unit-and-sanity`
 (`npm test`, `syntax-check`, `sanity:check`, `prices:freshness:check`,
@@ -220,7 +222,7 @@ deploy-from-branch. Playwright артефакты при падении загр
 - Лицензии — Tantor SE, Red OS, Kaspersky EDR.
 - Пентесты, аудиты, сертификация — медианы рынка из публичных источников (anti-malware.ru, RTM Group, BI.ZONE, ibs-qa).
 
-Цены требуют ревизии раз в 6+ месяцев (особенно LLM, SMS и конфигурационные позиции вроде WAF/DDoS). Текущий статус bundled-прайсов — в [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md); регламент обновления — в [MAINTAINER_GUIDE.md](MAINTAINER_GUIDE.md).
+Цены требуют ревизии раз в 6+ месяцев (особенно LLM, SMS и конфигурационные позиции вроде WAF/DDoS; в UI у этих терминов есть русские хинты). Текущий статус bundled-прайсов — в [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md); регламент обновления — в [MAINTAINER_GUIDE.md](MAINTAINER_GUIDE.md).
 
 ### Обновление цен
 
