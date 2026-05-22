@@ -47,7 +47,7 @@ test('provider freshness summary marks fresh, stale, stub and assumed VAT states
 
 test('provider freshness report contains deterministic maintainer flow', () => {
     const report = buildProviderFreshnessReport({
-        yandex: {
+        demo: {
             version: '2026-Q3',
             timestamp: '2026-05-09T19:30:00.000Z',
             vatPolicy: { pricesIncludeVat: true, vatRateIncluded: 0.22, confidence: 'source-level' },
@@ -57,11 +57,11 @@ test('provider freshness report contains deterministic maintainer flow', () => {
 
     assert.match(report, /^# Свежесть provider-прайсов/m);
     assert.match(report, /Дата отчёта: 2026-05-22/);
-    assert.match(report, /\| yandex \| 2026-Q3 \| 09\.05\.2026 \| 0\.4 мес \| 2 \| source-level \| OK \|/);
+    assert.match(report, /\| demo \| 2026-Q3 \| 09\.05\.2026 \| 0\.4 мес \| 2 \| source-level \| OK \|/);
     assert.match(report, /## Quality gates/);
-    assert.match(report, /\| yandex \| 0\/8 \| gross→net OK \| 2 \| 2 \| MISSING_CORE \+ BAD_PRICE \+ MISSING_SOURCE \|/);
+    assert.match(report, /\| demo \| 0\/8 \| gross→net OK \| 2 \| 2 \| MISSING_CORE \+ BAD_PRICE \+ MISSING_SOURCE \|/);
     assert.match(report, /## Confidence summary/);
-    assert.match(report, /\| 1 \| 1 \| 0 \| 0 \| 0 \| yandex \|/);
+    assert.match(report, /\| 1 \| 1 \| 0 \| 0 \| 0 \| demo \|/);
     assert.match(report, /MISSING_CORE.*ручного override по отсутствующим SKU/);
     assert.match(report, /npm run generate:providers/);
     assert.match(report, /npm run prices:freshness:check/);

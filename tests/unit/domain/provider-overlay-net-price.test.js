@@ -71,7 +71,7 @@ describe('Phase 4.2: metadata из bundled сохранена в overlay', () =>
         );
         assert.equal(
             PROVIDER_OVERLAYS.yandex.prices['cpu-vcpu-shared'].vatPolicyConfidence,
-            'source-level'
+            'verified'
         );
         assert.equal(
             PROVIDER_OVERLAYS.vk.prices['cpu-vcpu-shared'].vatPolicyConfidence,

@@ -9,7 +9,7 @@
  * Проверяем:
  *   1. cloud_ru НЕ существует в PROVIDER_OVERLAYS (anti-regression).
  *   2. sbercloud label = «Cloud.ru (бывший SberCloud)».
- *   3. yandex = active с source-level prices (отличаются от Cloud.ru).
+ *   3. yandex = active с verified official prices (отличаются от Cloud.ru).
  *   4. vk = active с публичным source-level price-list subset.
  *   5. onprem = inactive — overlay НЕ применяется (фоллбэк на seed).
  *   6. getActiveProviders возвращает 3 active: sbercloud, vk, yandex.
@@ -55,7 +55,7 @@ describe('Stage 4.5.1 hot-fix: cloud_ru дубль устранён', () => {
     });
 });
 
-describe('14.U8 Yandex Cloud (active source-level prices)', () => {
+describe('14.U8 Yandex Cloud (active verified official prices)', () => {
     it('yandex активен с непустым prices', () => {
         assert.equal(PROVIDER_OVERLAYS.yandex.active, true);
         assert.ok(Object.keys(PROVIDER_OVERLAYS.yandex.prices).length > 0,
@@ -77,10 +77,10 @@ describe('14.U8 Yandex Cloud (active source-level prices)', () => {
         }
     });
 
-    it('priceSource для Yandex непустой и ссылается на yandex.cloud (source-level)', () => {
-        /* Phase 4: bundled yandex имеет confidence='source-level' (публичные
-         * тарифы yandex.cloud/pricing). Раньше overlay был помечен «stub» —
-         * теперь это полноценный source-level прайс. */
+    it('priceSource для Yandex непустой и ссылается на yandex.cloud', () => {
+        /* Bundled yandex verified against official Yandex Cloud docs/prices.
+         * Раньше overlay был помечен «stub» — теперь это полноценный
+         * provider-specific прайс. */
         for (const [, entry] of Object.entries(PROVIDER_OVERLAYS.yandex.prices)) {
             assert.ok(entry.priceSource.length > 0,
                 `priceSource должен быть непустой строкой`);

@@ -98,7 +98,7 @@ export const PROVIDER_OVERLAYS = Object.freeze({
         id: 'yandex',
         label: 'Yandex Cloud',
         active: true,
-        description: 'Yandex Cloud — расчётные ориентиры тарифов 2026-Q3 (source-level: публичные тарифы yandex.cloud/pricing).',
+        description: 'Yandex Cloud — official pricing refresh 22.05.2026 (verified: compute/storage/ALB/WAF/AI docs + public price-list).',
         prices: YANDEX_PRICES
     }),
     /* VK Cloud использует публичный price-list source-level для compute/storage/

@@ -27,7 +27,7 @@ data/providers/vk-latest.json
 | Провайдер | Источник цен |
 |---|---|
 | Cloud.ru (бывший SberCloud, `providerId: sbercloud`) | https://cloud.ru/documents/tariffs/evolution/index + при отсутствии Evolution SKU: https://cloud.ru/documents/tariffs/advanced/index |
-| Yandex Cloud | https://yandex.cloud/ru/prices |
+| Yandex Cloud | https://yandex.cloud/ru/prices + official docs: `/compute/pricing`, `/storage/pricing`, `/vpc/pricing`, `/application-load-balancer/pricing`, `/smartwebsecurity/pricing`, `/postbox/pricing`, `/managed-opensearch/pricing`, `https://aistudio.yandex.ru/docs/ru/ai-studio/pricing` |
 | VK Cloud | https://cloud.vk.com/pricelist |
 | MTS Cloud | https://cloud.mts.ru/calculator/ |
 | On-premises | внутренние прайсы вендора железа / ОС / СУБД |
@@ -449,8 +449,8 @@ stub-статус. Колонка `Attention` включает и freshness-фл
    }
    ```
    `confidence`:
-   - `verified` — данные из официальных договорных приложений / verified API;
-   - `source-level` — публичные тарифы провайдера (price-list page);
+   - `verified` — данные из официальных договорных приложений, официальной документации/прайс-листа или verified API, сверенные на уровне SKU и VAT;
+   - `source-level` — публичные тарифы провайдера, которые ещё не сведены по каждому core SKU или имеют явные gaps;
    - `assumed` — realistic-stub / синтетика, не верифицирована (используйте для placeholder-источников).
 
    Validator также проверяет shape: `pricesIncludeVat` только boolean,
@@ -471,7 +471,7 @@ npm test                      # sync-test проверит, что generated mod
 
 Coverage у каждого провайдера разная и отражает реальный прайс-лист:
 - **sbercloud** (16 SKU) — Cloud.ru public tariffs verified 2026-05-22: Evolution Compute/Object Storage/Foundation Models/Managed Redis/PostgreSQL/Managed RAG/AI Agents + Advanced L7/WAF where Evolution has no SKU.
-- **yandex** (15 SKU) — yandex.cloud/pricing: compute + dedicated + AI tokens + RAG.
+- **yandex** (15 SKU) — Yandex Cloud official docs/prices verified 2026-05-22: compute, storage, VPC egress, ALB, WAF, Postbox, AI Studio and Managed OpenSearch. L7 ALB uses the official one-AZ minimum 2 resource units.
 - **vk** (10 SKU) — cloud.vk.com/pricelist source-level: compute, RAM, disks, Object Storage, load balancer и Microsoft licenses. WAF/DDoS у VK Cloud опубликованы как «по запросу», поэтому не входят в bundled и подсвечиваются как `MISSING_CORE`.
 
 Items, отсутствующие в bundled (например, sbercloud не покрывает licenses) — silent fallback на SEED-цену в `applyProviderOverlay`. Это нормальный сценарий: bundled JSON покрывает provider-specific прайс, остальное берётся из SEED-defaults.

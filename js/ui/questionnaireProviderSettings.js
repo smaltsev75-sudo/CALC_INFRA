@@ -11,10 +11,9 @@ import {
    Хранится в calc.settings.provider; флаг calc.settings.providerSetByWizard
    используется только UI'ем для бейджа источника.
 
-   Активные провайдеры (14.U8): SberCloud (реальный overlay), Cloud.ru
-   (alias на SberCloud — ребрендинг 2024), Yandex Cloud (заглушка с
-   правдоподобными ценами). Inactive (показаны как «(скоро)» в dropdown):
-   VK Cloud (планируется), On-prem (другая модель — CAPEX, а не overlay). */
+   Активные провайдеры (14.U8): Cloud.ru (id sbercloud для совместимости),
+   Yandex Cloud и VK Cloud. Inactive (показаны как «(скоро)» в dropdown):
+   On-prem (другая модель — CAPEX, а не overlay). */
 export function renderProviderField(s, state, ctx) {
     const current  = s.provider || DEFAULT_PROVIDER;
     const setByWiz = !!s.providerSetByWizard;
@@ -22,15 +21,15 @@ export function renderProviderField(s, state, ctx) {
     /* Видимый текст под полем — одна строка ≤90 символов, чтобы поместиться
        в .settings-group-provider .field-description (max-width расширен до 800px).
        Простой язык, без жаргона «подменяет». Полная справка про ребрендинг
-       Cloud.ru, заглушку Yandex и stub'ы VK/On-prem — в hover-tooltip'е (title),
+       Cloud.ru, Yandex/VK и stub On-prem — в hover-tooltip'е (title),
        не на постоянно занятом месте. Scope-фраза «все сценарии» во второй
        части — страховка против ошибочного ожидания «сменю провайдера в
        сценарии Б — сравню с А». */
     const tooltipShort = 'Цены берутся из тарифов выбранного провайдера. Действуют на весь расчёт — все сценарии.';
     const tooltipFull = tooltipShort + ' ' +
         'Cloud.ru (бывший SberCloud) — это одна и та же платформа: ребрендинг 2024 года, ' +
-        'тарифы и API идентичны. Yandex Cloud — заглушка с правдоподобными ценами для ' +
-        'демонстрации эффекта переключения провайдера. VK Cloud и собственная инфраструктура (on-premise) — в следующих обновлениях.';
+        'тарифы и API идентичны. Yandex Cloud — проверенный официальный прайс 22.05.2026. ' +
+        'VK Cloud — публичный price-list subset с явными пробелами WAF/DDoS. Собственная инфраструктура (on-premise) — в следующих обновлениях.';
 
     /* Бейдж источника — рядом с label. Палитра совпадает с .field-source-badge
        из forms.css (этап 14.U2): зелёный для wizard-источника, outlined dashed

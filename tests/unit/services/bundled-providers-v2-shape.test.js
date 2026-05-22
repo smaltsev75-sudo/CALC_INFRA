@@ -36,7 +36,7 @@ const PROVIDER_FILE_RE = /^([a-z0-9_-]+)-latest\.json$/;
 
 const EXPECTED_CONFIDENCE = Object.freeze({
     sbercloud: 'verified',
-    yandex: 'source-level',
+    yandex: 'verified',
     vk: 'source-level'
 });
 
@@ -114,6 +114,38 @@ describe('Cloud.ru public tariff refresh guard', () => {
         const embeddings = json.prices['rag-embeddings-1m'];
         assert.equal(embeddings.pricePerUnitGross, 0.61);
         assert.equal(embeddings.pricePerUnitNet, 0.5);
+    });
+});
+
+describe('Yandex Cloud official pricing refresh guard', () => {
+    it('yandex bundle uses the 2026-05-22 official docs baseline', () => {
+        const json = bundledProviders.yandex;
+        assert.ok(json, 'bundled JSON для yandex не найден');
+        assert.equal(json.version, '2026-05-22-official');
+        assert.equal(json.timestamp, '2026-05-22T00:00:00.000Z');
+        assert.equal(json.vatPolicy.confidence, 'verified');
+
+        const sharedCpu = json.prices['cpu-vcpu-shared'];
+        assert.equal(sharedCpu.pricePerUnitGross, 905.2);
+        assert.equal(sharedCpu.pricePerUnitNet, 741.97);
+        assert.match(sharedCpu.priceSource, /1\.24 ₽\/vCPU·час/);
+
+        const l7 = json.prices['network-lb-l7'];
+        assert.equal(l7.pricePerUnitGross, 3839.8);
+        assert.equal(l7.pricePerUnitNet, 3147.38);
+        assert.match(l7.priceSource, /2 resource units/);
+        assert.match(l7.priceSource, /2\.63 ₽\/час/);
+        assert.match(l7.priceSource, /20\.05\.2026/);
+        assert.doesNotMatch(l7.priceSource, /≈ 1920/);
+
+        const waf = json.prices['network-waf'];
+        assert.equal(waf.pricePerUnitGross, 40667);
+        assert.equal(waf.pricePerUnitNet, 33333.61);
+        assert.match(waf.priceSource, /WAF Start package 40 667 ₽\/мес/);
+
+        const embeddings = json.prices['rag-embeddings-1m'];
+        assert.equal(embeddings.pricePerUnitGross, 10.1);
+        assert.equal(embeddings.pricePerUnitNet, 8.28);
     });
 });
 

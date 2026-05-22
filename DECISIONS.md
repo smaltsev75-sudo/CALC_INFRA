@@ -9469,3 +9469,51 @@ schema не меняются. Изменение seed-unit для уведомл
 
 `2.20.27 → 2.20.28` (PATCH). Schema остаётся v20; расчётная формула,
 bundled provider prices, bundle format и provider JSON schema не меняются.
+
+## PATCH 2.20.31 — Yandex Cloud official pricing refresh (2026-05-22)
+
+### Контекст
+
+После публикации v2.20.30 Cloud.ru уже был доведён до verified-уровня, VK Cloud
+оставался source-level с явным `MISSING_CORE`, а Yandex Cloud был следующим
+кандидатом на глубокую ревизию. Риск: bundle показывал Yandex как свежий
+source-level, но L7 Application Load Balancer считался по одной resource unit,
+хотя официальная документация Yandex Cloud задаёт минимум 2 resource units на
+зону доступности.
+
+### Решение
+
+- [data/providers/yandex-latest.json](data/providers/yandex-latest.json)
+  переведён на `version: 2026-05-22-official`, `timestamp:
+  2026-05-22T00:00:00.000Z` и `vatPolicy.confidence: verified`.
+- `network-lb-l7` пересчитан по официальному one-AZ baseline:
+  `2 × 2.63 ₽/ч × 730 = 3839.80 ₽/мес` gross, `3147.38 ₽/мес` net.
+- Для Yandex SKU убраны округления до целых рублей там, где источник даёт
+  точную ставку: CPU/RAM/storage/VPC egress/Postbox/AI embeddings/OpenSearch
+  теперь хранят gross/net с копеечной согласованностью по VAT 22%.
+- [js/data/providers-bundled.generated.js](js/data/providers-bundled.generated.js)
+  пересобран через `npm run generate:providers`.
+- Provider freshness report теперь показывает Yandex: 15 SKU, `verified`, OK;
+  единственный attention-провайдер остаётся VK Cloud из-за `MISSING_CORE`.
+- Добавлен Yandex refresh guard в
+  [bundled-providers-v2-shape.test.js](tests/unit/services/bundled-providers-v2-shape.test.js):
+  версия, timestamp, confidence, CPU baseline, ALB 2RU и WAF Start.
+- UI/документация больше не называют Yandex заглушкой/source-level: обновлены
+  provider tooltip, Architecture, Maintainer Guide, User Manual, CLAUDE.
+
+### Проверки
+
+- Targeted provider/version/report suite: 69/69 pass.
+- `npm run prices:freshness:check`: pass.
+- `npm run sanity:check`: pass.
+- `npm test`: 5050/5050 pass.
+- `npm run syntax-check`: pass.
+- `npm run pages:build`: pass.
+- `npm run smoke:desktop`: 29/29 pass после `npm ci` для восстановления
+  отсутствующего локального `node_modules/@playwright/test`.
+
+### Версионирование
+
+`2.20.30 → 2.20.31` (PATCH). Schema остаётся v20; provider JSON schema и bundle
+format не меняются. Изменение пользовательски видимо только через обновлённые
+Yandex цены/confidence и более высокий L7 ALB baseline.
