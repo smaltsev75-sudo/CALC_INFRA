@@ -15,7 +15,9 @@ npm run smoke:published   # после публикации релиза на Gi
 
 Локально suite по умолчанию использует системный Chrome. В CI channel не фиксируется: GitHub Actions ставит bundled Chromium через `npx playwright install --with-deps chromium`, чтобы прогон не зависел от браузера на машине runner'а.
 
-`npm run smoke:published` использует тот же Playwright config, но без локального `webServer`: скрипт ставит `PLAYWRIGHT_BASE_URL=https://smaltsev75-sudo.github.io/CALC_INFRA/` и гоняет короткий published-smoke. Это защищает от base-path регрессий GitHub Pages (`/CALC_INFRA/` вместо `/`).
+`npm run smoke:published` использует тот же Playwright config, но без локального `webServer`: скрипт ставит `PLAYWRIGHT_BASE_URL=https://smaltsev75-sudo.github.io/CALC_INFRA/` и гоняет короткий published-smoke. Это защищает от base-path регрессий GitHub Pages (`/CALC_INFRA/` вместо `/`). По умолчанию published smoke делает 1 retry (`PLAYWRIGHT_PUBLISHED_RETRIES=1`) и при сетевых ошибках пишет конкретный `HTTP <status>: <url>`, чтобы отличать CDN/Pages сбой от ошибки приложения.
+
+В Детализации desktop-suite сверяет строки групп ЭК с production-моделью: порядок по `ИТОГО / год`, `ИТОГО / мес`, `ИТОГО / год` и долю группы в колонке `Доля, %`.
 
 На Node 26 upstream Playwright 1.60.0 может выводить `DEP0205 module.register()` warning при прямом `npx playwright ...`. Проектный `npm run smoke:desktop` запускает тот же CLI через `node --no-deprecation`, поэтому релизный прогон остаётся без шумных warning'ов.
 

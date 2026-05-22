@@ -1,11 +1,38 @@
 import { expect } from '@playwright/test';
 
-export async function bootCleanApp(page) {
-    const consoleErrors = [];
+function formatConsoleIssue(msg) {
+    const loc = msg.location?.() || {};
+    const url = loc.url ? ` @ ${loc.url}` : '';
+    const line = loc.lineNumber ? `:${loc.lineNumber}` : '';
+    const column = loc.columnNumber ? `:${loc.columnNumber}` : '';
+    return `console ${msg.type()}: ${msg.text()}${url}${line}${column}`;
+}
+
+function isBrowserResourceConsoleNoise(msg) {
+    return msg.type() === 'error' && /^Failed to load resource:/i.test(msg.text());
+}
+
+export function attachPageIssueCollector(page) {
+    const issues = [];
     page.on('console', (msg) => {
-        if (msg.type() === 'error') consoleErrors.push(msg.text());
+        if (msg.type() === 'error' && !isBrowserResourceConsoleNoise(msg)) {
+            issues.push(formatConsoleIssue(msg));
+        }
     });
-    page.on('pageerror', (err) => consoleErrors.push(err.message));
+    page.on('pageerror', (err) => issues.push(`pageerror: ${err.message}`));
+    page.on('response', (response) => {
+        if (response.status() >= 400) {
+            issues.push(`HTTP ${response.status()} ${response.statusText()}: ${response.url()}`);
+        }
+    });
+    page.on('requestfailed', (request) => {
+        issues.push(`request failed: ${request.failure()?.errorText || 'unknown'}: ${request.url()}`);
+    });
+    return issues;
+}
+
+export async function bootCleanApp(page) {
+    const pageIssues = attachPageIssueCollector(page);
 
     await page.addInitScript(() => {
         localStorage.clear();
@@ -13,7 +40,7 @@ export async function bootCleanApp(page) {
     });
     await page.goto('./index.html');
     await expect(page.locator('.app-layout')).toBeVisible();
-    return consoleErrors;
+    return pageIssues;
 }
 
 export async function seedCalculations(page) {
@@ -174,7 +201,7 @@ export async function getCalculationUiModel(page) {
         const { calculate } = await import(new URL('js/domain/calculator.js', document.baseURI).href);
         const { applyStandFilter } = await import(new URL('js/domain/standsFilter.js', document.baseURI).href);
         const { buildDetailsCategoryOrder } = await import(new URL('js/ui/details.js', document.baseURI).href);
-        const { formatRub, formatRubThousands } = await import(new URL('js/services/format.js', document.baseURI).href);
+        const { formatRub, formatRubThousands, percent } = await import(new URL('js/services/format.js', document.baseURI).href);
         const {
             CATEGORY_IDS,
             CATEGORY_LABELS,
@@ -256,7 +283,8 @@ export async function getCalculationUiModel(page) {
                 monthly,
                 annual: monthly * MONTHS_PER_YEAR,
                 monthlyText: formatRub(monthly),
-                annualText: formatRub(monthly * MONTHS_PER_YEAR)
+                annualText: formatRub(monthly * MONTHS_PER_YEAR),
+                shareText: monthly > 0 && filtered.totalMonthly > 0 ? percent(monthly / filtered.totalMonthly) : '—'
             };
         });
 
@@ -311,7 +339,8 @@ export async function readDetailsCostCategoriesUi(page) {
             return {
                 label: row.querySelector('.category-name')?.textContent?.trim() || '',
                 monthlyText: totalCells[0]?.textContent?.trim() || '',
-                annualText: totalCells[1]?.textContent?.trim() || ''
+                annualText: totalCells[1]?.textContent?.trim() || '',
+                shareText: row.querySelector('td.col-share')?.textContent?.trim() || ''
             };
         });
     });
@@ -336,10 +365,11 @@ export async function expectDashboardMatchesModel(page) {
 export async function expectDetailsCostCategoriesMatchModel(page) {
     const model = await getCalculationUiModel(page);
     const ui = await readDetailsCostCategoriesUi(page);
-    expect(ui).toEqual(model.details.categories.map(({ label, monthlyText, annualText }) => ({
+    expect(ui).toEqual(model.details.categories.map(({ label, monthlyText, annualText, shareText }) => ({
         label,
         monthlyText,
-        annualText
+        annualText,
+        shareText
     })));
     return model;
 }

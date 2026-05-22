@@ -96,6 +96,16 @@ const GOLDEN_SCENARIOS = Object.freeze([
             topCategory: 'AI',
             byCategoryMonthly: { HW: 239_312_063, LICENSE: 12_085_596, TRAFFIC: 1_597_147, SERVICES: 32_361_178, RESERVES: 0, SECURITY: 3_507_244, AI: 292_482_337 }
         }
+    },
+    {
+        id: 'regulated_b2g_fintech_xl_ai_global',
+        wizard: { product_type: 'b2g', industry: 'fintech', scale: 'xl', geography: 'global', pdn: true, activity: 'high', ai_used: true },
+        expected: {
+            totalMonthly: 285_427_191,
+            totalAnnual: 3_425_126_295,
+            topCategory: 'SERVICES',
+            byCategoryMonthly: { HW: 46_020_156, LICENSE: 16_984_903, TRAFFIC: 1_597_147, SERVICES: 112_523_799, RESERVES: 631_981, SECURITY: 4_477_230, AI: 103_191_974 }
+        }
     }
 ]);
 

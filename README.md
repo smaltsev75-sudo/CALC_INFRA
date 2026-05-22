@@ -146,8 +146,11 @@ npm run sanity            # пересобрать SANITY_REPORT.md
 ```
 
 `npm test` включает golden-сценарии Quick Start с закреплёнными итогами и
-разбивкой по категориям; сами wizard-ответы валидируются против seed-вопросов,
-чтобы расчёты из Quick Start были пригодны для JSON-импорта, bundle-экспорта и
+разбивкой по категориям, а также полный invariant-прогон всех 2880 комбинаций
+Quick Start через production `calculate()`: без NaN/Infinity, отрицательных
+сумм, расхождений агрегатов, немонотонного scale/geography и удешевления при
+включении AI. Сами wizard-ответы валидируются против seed-вопросов, чтобы
+расчёты из Quick Start были пригодны для JSON-импорта, bundle-экспорта и
 миграций. `npm run smoke:desktop` дополнительно проверяет реальный
 desktop-рендер: Dashboard/Details сверяются с `calculate()`, изменение ключевого
 ответа пересчитывает UI, отключённый стенд исключается из totals, а
@@ -159,6 +162,8 @@ provider JSON VAT-policy flow, Decision Memo `.md` download, PDF routing из
 `npm run smoke:published` проверяет опубликованную GitHub Pages сборку
 `https://smaltsev75-sudo.github.io/CALC_INFRA/`: shell/version, Quick Start,
 Dashboard, Детализацию и Сравнение на реальном base path `/CALC_INFRA/`.
+Скрипт делает один retry по умолчанию и при сетевых 4xx/5xx выводит точный URL
+ресурса, а не только браузерное `Failed to load resource`.
 
 В GitHub Actions заведены два обязательных job'а: `unit-and-sanity`
 (`npm test`, `syntax-check`, `sanity:check`, whitespace diff check) и

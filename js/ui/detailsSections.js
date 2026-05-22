@@ -368,7 +368,7 @@ export function renderCostSection(byCat, result, ctx, totals, isFiltered, disabl
                         const list = byCat[cat] || [];
                         if (list.length === 0) return [];
                         const collapsed = state ? isCategoryCollapsed(cat, state) : true;
-                        const rows = [renderCostCategoryRow(cat, list, result, disabled, collapsed, ctx, presentCats)];
+                        const rows = [renderCostCategoryRow(cat, list, result, disabled, collapsed, ctx, presentCats, totals.totalMonthly)];
                         if (!collapsed) {
                             for (const it of list) rows.push(renderCostItemRow(it, result, ctx, disabled, totals.totalMonthly));
                         }
@@ -380,7 +380,7 @@ export function renderCostSection(byCat, result, ctx, totals, isFiltered, disabl
     );
 }
 
-function renderCostCategoryRow(cat, list, result, disabled = new Set(), collapsed = true, ctx = null, presentCats = []) {
+function renderCostCategoryRow(cat, list, result, disabled = new Set(), collapsed = true, ctx = null, presentCats = [], denomMonthly = null) {
     // Категория ИТОГО учитывает только активные стенды — иначе строка-сумма в
     // категории не сходилась бы с цифрой в footer'е.
     let totalMonthly = 0;
@@ -432,9 +432,17 @@ function renderCostCategoryRow(cat, list, result, disabled = new Set(), collapse
                 text: sum > 0 ? formatRub(sum) : '—'
             });
         }),
-        el('td', { class: 'col-total', text: formatRub(totalMonthly) }),
-        el('td', { class: 'col-total', text: formatRub(totalMonthly * MONTHS_PER_YEAR) }),
-        el('td', { class: 'col-share' }),
+        el('td', {
+            class: 'col-total',
+            title: `ИТОГО / мес по категории «${CATEGORY_LABELS[cat]}» на активных стендах.`,
+            text: formatRub(totalMonthly)
+        }),
+        el('td', {
+            class: 'col-total',
+            title: `ИТОГО / год по категории «${CATEGORY_LABELS[cat]}» на активных стендах.`,
+            text: formatRub(totalMonthly * MONTHS_PER_YEAR)
+        }),
+        renderCategoryShareCell(totalMonthly, denomMonthly),
         el('td', { class: 'col-risk' }),
         el('td', { class: 'col-risk-amount',
             title: `Суммарный вклад риск-коэффициентов в ₽/мес для этой категории.\n\n` +
@@ -556,6 +564,16 @@ function renderShareCell(itemMonthly, denomMonthly) {
         class: 'col-share',
         title: `Доля строки в общей стоимости расчёта (₽/мес).`
     }, percent(share));
+}
+
+function renderCategoryShareCell(categoryMonthly, denomMonthly) {
+    if (!categoryMonthly || !denomMonthly) {
+        return el('td', { class: 'col-share col-share-empty', text: '—' });
+    }
+    return el('td', {
+        class: 'col-share category-share',
+        title: 'Доля категории в общей стоимости текущей выборки (₽/мес).'
+    }, percent(categoryMonthly / denomMonthly));
 }
 
 function renderRiskCell(riskTotal) {

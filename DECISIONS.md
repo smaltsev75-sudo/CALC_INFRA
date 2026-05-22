@@ -9028,3 +9028,52 @@ root, но не были переносимы на published URL.
 
 `2.20.20 → 2.20.21` (PATCH). Schema остаётся v20; расчётная формула, прайсы и
 bundle format не меняются.
+
+## PATCH 2.20.22 — CI runtime refresh + calculation invariant matrix + Details category share (2026-05-22)
+
+### Контекст
+
+После `v2.20.21` GitHub Actions оставил warning: actions major `v4`
+работали на deprecated Node.js 20 runtime внутри самих actions, хотя job уже
+использовал Node 24 для проекта. Published smoke также однажды упал коротким
+`503` сразу после Pages deploy, но без URL ресурса в сообщении. Параллельно
+оставался полезный доменный hardening: Quick Start валидировал ответы, но не
+прогонял всю матрицу через production `calculate()`.
+
+### Решение
+
+- `.github/workflows/ci.yml`: обновлены action refs на Node 24-aware majors:
+  `actions/checkout@v6`, `actions/setup-node@v6`,
+  `actions/upload-artifact@v7`.
+- `tests/e2e/helpers.js`: общий page issue collector теперь фильтрует
+  generic browser `Failed to load resource`, но собирает `HTTP <status>:
+  <url>` и `request failed: <reason>: <url>`. Следующий published-сбой должен
+  показывать конкретный ресурс.
+- `scripts/smoke-published.mjs`: published smoke печатает URL/число retry и
+  по умолчанию запускается с `PLAYWRIGHT_PUBLISHED_RETRIES=1`; строгий режим
+  доступен через `PLAYWRIGHT_PUBLISHED_RETRIES=0`.
+- Добавлен [wizard-calculation-invariants.test.js](tests/unit/domain/wizard-calculation-invariants.test.js):
+  все 2880 Quick Start комбинаций проходят `calculate()` с проверкой
+  NaN/Infinity, отрицательных денег, aggregate drift по стендам/категориям/
+  cost-type/billing interval, formula errors, monotonic scale/geography и
+  инварианта `AI >= non-AI`.
+- [golden-scenarios.test.js](tests/unit/domain/golden-scenarios.test.js):
+  добавлен snapshot для регулируемого `B2G × FinTech × XL × Global × AI`.
+- Детализация: строка группы ЭК теперь показывает долю группы в колонке
+  `Доля, %`; `ИТОГО / год` группы визуально выделен как ключ сортировки.
+  E2E model сверяет label, `ИТОГО / мес`, `ИТОГО / год` и share.
+
+### Проверки
+
+- Targeted domain/UI tests: 16/16 pass.
+- Targeted desktop Playwright smoke/regression/published specs: 8/8 pass.
+- `npm test`: 4998/4998 pass.
+- `npm run smoke:desktop`: 17/17 pass.
+- `npm run syntax-check`: pass.
+- `npm run sanity:check`: pass.
+- `git diff --check`: pass.
+- CI/Pages/published smoke — после push/release, см. release notes `v2.20.22`.
+
+### Версионирование
+
+`2.20.21 → 2.20.22` (PATCH). Schema остаётся v20; bundle format не меняется.

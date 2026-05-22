@@ -207,7 +207,7 @@ node --test --test-name-pattern="riskFactor" tests/unit/domain/calculator.test.j
 npm run smoke:desktop
 ```
 
-Автоматический Playwright smoke поднимает локальный static server (`scripts/static-server.mjs`) и параллельно проверяет реальные desktop-сцены 1365×768: Dashboard, Cost Optimization Planner, Decision Memo, Детализация, Сравнение, scenario tabs, активный и bundle JSON import/export/reset, provider VAT-policy import, Decision Memo `.md` download и PDF routing из шапки приложения. Скриншоты пишутся в `.playwright-mcp/`; runner не должен создавать артефакты в корне проекта.
+Автоматический Playwright smoke поднимает локальный static server (`scripts/static-server.mjs`) и параллельно проверяет реальные desktop-сцены 1365×768: Dashboard, Cost Optimization Planner, Decision Memo, Детализация, Сравнение, scenario tabs, активный и bundle JSON import/export/reset, provider VAT-policy import, Decision Memo `.md` download и PDF routing из шапки приложения. Для Детализации suite сверяет порядок групп ЭК по `ИТОГО / год` и видимые totals/share группы с production-моделью. Скриншоты пишутся в `.playwright-mcp/`; runner не должен создавать артефакты в корне проекта.
 
 Локально по умолчанию используется системный Chrome (`PLAYWRIGHT_CHANNEL=chrome`). В CI channel не фиксируется: workflow ставит bundled Chromium через `npx playwright install --with-deps chromium`. При необходимости можно переключить канал, например `PLAYWRIGHT_CHANNEL=msedge npm run smoke:desktop`.
 
@@ -218,7 +218,16 @@ GitHub Actions workflow [ci.yml](.github/workflows/ci.yml) запускает д
 
 После релиза полезно отдельно запускать `npm run smoke:published`: он проверяет
 уже опубликованный GitHub Pages URL на base path `/CALC_INFRA/`. Если нужен
-другой URL, задайте `PLAYWRIGHT_PUBLISHED_URL`.
+другой URL, задайте `PLAYWRIGHT_PUBLISHED_URL`. Скрипт делает один retry по
+умолчанию (`PLAYWRIGHT_PUBLISHED_RETRIES=1`) и собирает точные URL для HTTP
+4xx/5xx, чтобы transient Pages/CDN сбой не выглядел как безымянный console
+error.
+
+Расчётная сетка Quick Start покрыта двумя слоями: exact snapshots в
+`tests/unit/domain/golden-scenarios.test.js` и полный invariant-прогон 2880
+комбинаций в `tests/unit/domain/wizard-calculation-invariants.test.js`. При
+правке формул, прайсов, wizard-профилей или риск/VAT-множителей запускать оба
+слоя обязательно; `npm test` делает это автоматически.
 
 ### 4.4 Sanity report (вручную)
 

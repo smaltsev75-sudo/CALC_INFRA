@@ -370,6 +370,16 @@
     letter-spacing: 0;
 }
 
+.details-table .category-row td.col-total,
+.details-table .category-row td.category-share {
+    color: var(--text);
+    font-weight: 800;
+}
+
+.details-table .category-row td.col-total + td.col-total {
+    color: var(--accent);
+}
+
 .category-pill {
     display: inline-block;
     padding: 3px 10px;

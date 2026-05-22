@@ -2,7 +2,7 @@
 
 Целевая аудитория — архитекторы, разработчики, тестировщики. Здесь только то, что не выводится из чтения README.md / UserManual.md: устройство кода, потоки данных, паттерны защиты целостности и тестовая инфраструктура.
 
-**Версия 2.20.21** (export/print E2E + published GitHub Pages smoke). Schema v20.
+**Версия 2.20.22** (CI runtime refresh, published smoke diagnostics, full Quick Start calculation invariants, Details category share). Schema v20.
 
 ---
 
@@ -514,7 +514,7 @@ el('div', {
 - Триггер `ctx.openXxxModal(payload)` → `store.openModal(name, payload)`.
 - Закрытие `ctx.closeModal(name)` или `store.closeModal(name)`.
 
-Зарегистрированных модалок 28 (на 2.20.21): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
+Зарегистрированных модалок 28 (на 2.20.22): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
 
 Удалены в Stage 17.2: `recommendedActions` (заменён блоком «Следующие шаги» на Дашборде), `calculationDiff` (UI убран; pure-domain helper остался — см. п. 4.7).
 
@@ -551,13 +551,13 @@ node --test tests/unit/domain/calculator.test.js                 # один фа
 node --test --test-name-pattern="riskFactor" tests/...            # один тест
 ```
 
-Sanity-check скрипт ([scripts/sanity-report.mjs](scripts/sanity-report.mjs)): прогоняет калькулятор на 3 профилях (Startup / SMB / Enterprise), пишет [SANITY_REPORT.md](SANITY_REPORT.md) через `npm run sanity` или проверяет актуальность через `npm run sanity:check`. Для более жёсткого контроля расчётных цифр есть golden-сценарии Quick Start в [golden-scenarios.test.js](tests/unit/domain/golden-scenarios.test.js): они закрепляют ожидаемые totalMonthly, totalAnnual, topCategory и byCategoryMonthly для 8 профилей. Полезно после правок прайсов или формул.
+Sanity-check скрипт ([scripts/sanity-report.mjs](scripts/sanity-report.mjs)): прогоняет калькулятор на 3 профилях (Startup / SMB / Enterprise), пишет [SANITY_REPORT.md](SANITY_REPORT.md) через `npm run sanity` или проверяет актуальность через `npm run sanity:check`. Для более жёсткого контроля расчётных цифр есть golden-сценарии Quick Start в [golden-scenarios.test.js](tests/unit/domain/golden-scenarios.test.js): они закрепляют ожидаемые totalMonthly, totalAnnual, topCategory и byCategoryMonthly для 9 профилей, включая регулируемый B2G FinTech XL + AI. Инварианты всей Quick Start матрицы живут в [wizard-calculation-invariants.test.js](tests/unit/domain/wizard-calculation-invariants.test.js): 2880 комбинаций проходят production `calculate()` с проверкой aggregate drift, NaN/Infinity, отрицательных сумм, monotonic scale/geography и AI >= non-AI. Полезно после правок прайсов или формул.
 
 ### Виды тестов
 
 | Вид | Назначение | Пример |
 |---|---|---|
-| **Unit (domain)** | Чистая логика без IO и golden snapshots расчётов | [calculator.test.js](tests/unit/domain/calculator.test.js), [golden-scenarios.test.js](tests/unit/domain/golden-scenarios.test.js) |
+| **Unit (domain)** | Чистая логика без IO, golden snapshots и матричные инварианты расчётов | [calculator.test.js](tests/unit/domain/calculator.test.js), [golden-scenarios.test.js](tests/unit/domain/golden-scenarios.test.js), [wizard-calculation-invariants.test.js](tests/unit/domain/wizard-calculation-invariants.test.js) |
 | **Unit (state)** | Migrations, store-mutations | [migrations.test.js](tests/unit/state/migrations.test.js) |
 | **Unit (controller)** | Через mock store, без UI | [calcController.test.js](tests/unit/controllers/) |
 | **Unit (services)** | Storage, json, csv с mock localStorage | [csvImport.test.js](tests/unit/services/) |
@@ -566,7 +566,7 @@ Sanity-check скрипт ([scripts/sanity-report.mjs](scripts/sanity-report.mjs
 | **Architecture** | Layer-linter, версии, A11y, no-emoji, no-toiso-slice | [layer-imports.test.js](tests/unit/architecture/) |
 | **Integration** | Полный controller-path с installLocalStorage | [calc-persistence-atomicity.test.js](tests/integration/) |
 | **Desktop browser smoke/regression** | Реальный Chromium/Chrome-рендер критичных desktop-сцен, console/overflow checks, UI↔domain сверка Dashboard/Details, реальные user-flow клики Quick Start/Sidebar/Опросник/Dashboard CTA, disabled-стенды, risk/VAT, active/bundle JSON import-export-reset, scenario tabs, provider VAT policy import, Decision Memo download, PDF print routing, screenshots | [desktop-smoke.spec.js](tests/e2e/desktop-smoke.spec.js), [desktop-regression.spec.js](tests/e2e/desktop-regression.spec.js), [desktop-user-flow.spec.js](tests/e2e/desktop-user-flow.spec.js), [desktop-data-management.spec.js](tests/e2e/desktop-data-management.spec.js), [desktop-export-print.spec.js](tests/e2e/desktop-export-print.spec.js) |
-| **Published smoke** | GitHub Pages build на base path `/CALC_INFRA/`: версия в sidebar, Quick Start, Dashboard, Детализация, Сравнение, console/overflow checks | [published-smoke.spec.js](tests/e2e/published-smoke.spec.js), [smoke-published.mjs](scripts/smoke-published.mjs) |
+| **Published smoke** | GitHub Pages build на base path `/CALC_INFRA/`: версия в sidebar, Quick Start, Dashboard, Детализация, Сравнение, console/overflow checks, HTTP 4xx/5xx diagnostics with URL | [published-smoke.spec.js](tests/e2e/published-smoke.spec.js), [smoke-published.mjs](scripts/smoke-published.mjs) |
 
 Для Playwright user-flow используются `data-testid` только на стабильных
 desktop-контрактах: навигация, Quick Start, переключатели Dashboard, настройки
@@ -586,12 +586,18 @@ job'а:
 - `desktop-smoke`: Node 24, `npx playwright install --with-deps chromium`,
   `npm run smoke:desktop`; на failure загружает `.playwright-mcp/test-results`.
 
+Workflow использует Node 24-aware action majors: `actions/checkout@v6`,
+`actions/setup-node@v6`, `actions/upload-artifact@v7`. Это убирает warning GitHub
+Actions о deprecated Node.js 20 runtime внутри самих actions.
+
 Локально Playwright по умолчанию использует системный Chrome
 (`PLAYWRIGHT_CHANNEL=chrome`), а в CI — bundled Chromium, установленный
 Playwright job'ом. При необходимости канал можно переопределить через
 `PLAYWRIGHT_CHANNEL`. Для проверки уже опубликованной сборки используется
 `PLAYWRIGHT_BASE_URL` без локального `webServer`; `npm run smoke:published`
-ставит его в `https://smaltsev75-sudo.github.io/CALC_INFRA/`.
+ставит его в `https://smaltsev75-sudo.github.io/CALC_INFRA/`. Published smoke
+по умолчанию запускается с `PLAYWRIGHT_PUBLISHED_RETRIES=1`; для строгого
+одноразового прогона можно задать `PLAYWRIGHT_PUBLISHED_RETRIES=0`.
 
 ### Source-grep helpers (TDD-якорь)
 
