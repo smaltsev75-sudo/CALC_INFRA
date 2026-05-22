@@ -58,6 +58,11 @@ describe('provider price summary — trust badges and term hints', () => {
         assert.match(SUMMARY_SRC, /getProviderPriceTrust/);
     });
 
+    it('does not repeat row trust badges when they duplicate provider-level trust', () => {
+        assert.match(SUMMARY_SRC, /providerTrustStatus/);
+        assert.match(SUMMARY_SRC, /r\.trust\.status\s*===\s*providerTrustStatus[\s\S]{0,120}\?\s*null/);
+    });
+
     it('renders visible price actuality date-only notice', () => {
         assert.match(SUMMARY_SRC, /_renderProviderActualityNotice/);
         assert.match(SUMMARY_SRC, /provider-price-actuality/);

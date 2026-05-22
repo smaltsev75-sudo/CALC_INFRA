@@ -1,7 +1,7 @@
 /**
- * Модальное окно справки (README.md).
+ * Модальное окно справки (UserManual.md).
  *
- * Контент README загружается через ctx.loadReadmeHtml() — обёртка в app.js
+ * Контент UserManual загружается через ctx.loadReadmeHtml() — обёртка в app.js
  * над helpController. Прямой импорт controllers/* из ui/* запрещён
  * (см. tests/unit/architecture/layer-imports.test.js).
  */
@@ -15,7 +15,7 @@ export function renderHelpModal(state, ctx) {
     if (!m.open) return null;
     const onClose = () => ctx.closeModal('help');
 
-    const readmeContent = el('div', {
+    const manualContent = el('div', {
         class: 'help-content',
         trustedHtml: trustedHtml('<p>Загрузка справки…</p>')
     });
@@ -23,7 +23,7 @@ export function renderHelpModal(state, ctx) {
     ctx.loadReadmeHtml().then(html => {
         // `loadReadmeHtml` возвращает уже санитизированный HTML (renderMarkdown),
         // поэтому помечаем как trusted перед вставкой в innerHTML.
-        setTrustedHtml(readmeContent, trustedHtml(html));
+        setTrustedHtml(manualContent, trustedHtml(html));
     });
 
     return modalShell({
@@ -31,7 +31,7 @@ export function renderHelpModal(state, ctx) {
         size: 'xl',
         onClose,
         children: el('div', null,
-            readmeContent,
+            manualContent,
             renderHotkeysSection()
         ),
         footer: el('button', {
@@ -68,4 +68,3 @@ function renderHotkeysSection() {
         )
     );
 }
-

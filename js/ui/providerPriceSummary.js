@@ -237,6 +237,9 @@ export function renderProviderPriceSummary(providerId, state, ctx) {
         );
     }
 
+    const vatMetadata = _computeVatMetadata(prices);
+    const providerTrustStatus = getPriceTrustInfo(vatMetadata.confidence || 'unknown').status;
+
     const categoryEls = PROVIDER_PRICE_CATEGORIES.map(cat => {
         const rows = cat.items
             .map(it => {
@@ -317,7 +320,9 @@ export function renderProviderPriceSummary(providerId, state, ctx) {
                             el('span', { class: 'provider-price-row-value-num',
                                          text: valueText }),
                             deltaPill,
-                            _renderTrustBadge(r.trust)
+                            r.trust.status === providerTrustStatus
+                                ? null
+                                : _renderTrustBadge(r.trust)
                         )
                     );
                 })
@@ -332,8 +337,8 @@ export function renderProviderPriceSummary(providerId, state, ctx) {
             class: 'provider-price-summary-body',
             attrs: { id: 'provider-price-summary-body' }
         },
-            _renderProviderTrustNotice(providerId, _computeVatMetadata(prices)),
-            _renderVatPolicyLabel(_computeVatMetadata(prices)),
+            _renderProviderTrustNotice(providerId, vatMetadata),
+            _renderVatPolicyLabel(vatMetadata),
             ...categoryEls
         )
     );

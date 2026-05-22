@@ -184,7 +184,10 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
     await expect(ssdRowValue).toHaveText(/9\s*717,76/);
     await expect(ssdRowValue).not.toHaveText(/9\s*717\s+76/);
 
-    await expect(summary.locator('.provider-price-trust-badge').first()).toBeVisible();
+    await expect(summary.locator('.provider-price-trust-notice .provider-price-trust-badge'))
+        .toHaveText('Проверено');
+    await expect(summary.locator('.provider-price-category-list .provider-price-trust-badge'))
+        .toHaveCount(0);
     await expect(summary.locator('abbr.term-hint', { hasText: 'WAF' }))
         .toHaveAttribute('title', /защита веб-приложений/);
 
@@ -214,6 +217,26 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
         .not.toHaveAttribute('title', /.+/);
     await expect.poll(async () => analyticsModal.locator('.analytics-trust-matrix-wrap')
         .evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+
+    expect(consoleErrors).toEqual([]);
+});
+
+test('Help modal renders scannable UserManual on desktop', async ({ page }) => {
+    const consoleErrors = await bootCleanApp(page);
+
+    await page.getByTitle('Справка (F1)').click();
+    const modal = page.locator('.modal-overlay').filter({ hasText: 'Справка' });
+    await expect(modal.locator('.modal')).toBeVisible();
+
+    const helpContent = modal.locator('.help-content').first();
+    await expect(helpContent.locator('h2', { hasText: 'С чего начать' })).toBeVisible();
+    await expect(helpContent.locator('table').filter({ hasText: 'Получить первую оценку' })).toBeVisible();
+    await expect(helpContent.locator('h2', { hasText: 'Типовой сценарий использования' })).toBeVisible();
+    await expect(helpContent.locator('pre').filter({ hasText: 'Расчёты → Новый расчёт' })).toHaveCount(0);
+    await expect.poll(async () => helpContent.evaluate(el => getComputedStyle(el).maxWidth))
+        .toBe('940px');
+    await expect.poll(async () => modal.locator('.modal').evaluate(el => el.scrollWidth <= el.clientWidth + 1))
+        .toBe(true);
 
     expect(consoleErrors).toEqual([]);
 });

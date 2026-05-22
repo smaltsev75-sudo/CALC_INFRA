@@ -21,7 +21,7 @@
  *   PATCH (1.1.X) — багфиксы, рефакторинг, мелкие UX-правки, hardening,
  *                   обновления прайсов без новых фич, compatibility-миграции
  *                   без нового формата данных. */
-export const APP_VERSION = '2.20.35';
+export const APP_VERSION = '2.20.36';
 export const APP_NAME = 'Калькулятор инфраструктуры';
 
 /* ============================================================
@@ -1355,7 +1355,7 @@ export const HOTKEYS = Object.freeze([
     { id: 'exportCsv',     keys: 'Ctrl+Alt+E', whenInInput: true,  label: 'Экспорт CSV' },
     { id: 'newItem',       keys: 'Ctrl+Alt+I', whenInInput: true,  label: 'Новый элемент конфигурации' },
     { id: 'newQuestion',   keys: 'Ctrl+Alt+Q', whenInInput: true,  label: 'Новый вопрос' },
-    { id: 'help',          keys: 'F1',         whenInInput: true,  label: 'Справка (README)' },
+    { id: 'help',          keys: 'F1',         whenInInput: true,  label: 'Справка' },
     { id: 'closeModal',    keys: 'Escape',     whenInInput: true,  label: 'Закрыть модалку' },
     { id: 'deleteEntity',  keys: 'Delete',     whenInInput: false, label: 'Удалить выбранное' },
 
