@@ -50,11 +50,42 @@ export async function seedCalculations(page) {
     });
 }
 
+export async function openQuickStart(page) {
+    const trigger = page
+        .locator('[data-testid="quickstart-open-empty"], [data-testid="quickstart-open-toolbar"]')
+        .first();
+    await expect(trigger).toBeVisible();
+    await trigger.click();
+    await expect(page.getByTestId('quickstart-modal')).toBeVisible();
+}
+
+export async function createCalculationFromQuickStart(page, {
+    name = 'Desktop click flow: B2C AI',
+    presetId = 'high_ai',
+    provider = null
+} = {}) {
+    await openQuickStart(page);
+    await page.getByTestId('quickstart-name').fill(name);
+    await page.getByTestId(`quickstart-preset-${presetId}`).click();
+    if (provider) {
+        await page.getByTestId('quickstart-provider').selectOption(provider);
+    }
+    await page.getByTestId('quickstart-submit').click();
+    await expect(page.getByTestId('dashboard-grid')).toBeVisible();
+}
+
 export async function switchTab(page, tabId) {
     await page.evaluate(async (id) => {
         const { store } = await import('/js/state/store.js');
         store.setActiveTab(id);
     }, tabId);
+}
+
+export async function clickSidebarTab(page, tabId) {
+    const item = page.getByTestId(`nav-${tabId}`);
+    await expect(item).toBeVisible();
+    await item.click();
+    await expect(item).toHaveAttribute('aria-selected', 'true');
 }
 
 export async function expectNoHorizontalOverflow(page, selectors) {

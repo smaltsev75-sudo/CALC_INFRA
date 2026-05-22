@@ -284,7 +284,8 @@ function renderCostOptimizationTeaser(nextStep, ctx) {
                     class: 'btn btn-ghost calc-state-summary-optimization-cta',
                     attrs: {
                         type: 'button',
-                        'aria-label': 'Открыть план оптимизации стоимости'
+                        'aria-label': 'Открыть план оптимизации стоимости',
+                        'data-testid': 'open-cost-optimization-planner'
                     },
                     onClick: () => ctx?.openCostOptimizationPlannerModal?.()
                 },
@@ -326,6 +327,7 @@ function renderNextStep(nextStep, ctx) {
                 class: 'btn btn-primary calc-state-summary-next-cta',
                 attrs: {
                     type: 'button',
+                    'data-testid': `next-step-${nextStep.target}`,
                     disabled: disabled ? 'disabled' : null
                 },
                 title: nextStep.actionLabel || 'Открыть',

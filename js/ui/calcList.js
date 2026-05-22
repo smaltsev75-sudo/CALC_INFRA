@@ -35,6 +35,7 @@ export function renderCalcList(state, ctx) {
                 el('button', {
                     class: 'btn btn-primary btn-icon-text',
                     title: 'Открыть Quick Start: заполнить 8 параметров (готовый расчёт за пару минут) — Ctrl+Alt+N.',
+                    attrs: { type: 'button', 'data-testid': 'quickstart-open-toolbar' },
                     onClick: () => ctx.openQuickStart()
                 },
                     icon('sparkles', { size: 16 }),
@@ -96,6 +97,7 @@ function renderEmptyState(ctx) {
             el('button', {
                 class: 'btn btn-primary btn-large btn-icon-text',
                 title: 'Заполнить 8 параметров (готовый расчёт за пару минут) — Quick Start (Ctrl+Alt+N).',
+                attrs: { type: 'button', 'data-testid': 'quickstart-open-empty' },
                 onClick: () => ctx.openQuickStart()
             },
                 icon('sparkles', { size: 18 }),

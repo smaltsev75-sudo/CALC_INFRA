@@ -11,8 +11,15 @@ import assert from 'node:assert/strict';
 
 import * as seed from '../../../js/domain/seed.js';
 import { calculate, clearCalculationCache } from '../../../js/domain/calculator.js';
+import { applyStandFilter } from '../../../js/domain/standsFilter.js';
 import { getVatRateForDate } from '../../../js/domain/vatRateTable.js';
-import { STAND_IDS } from '../../../js/utils/constants.js';
+import {
+    CATEGORY_IDS,
+    COST_TYPE_IDS,
+    DEFAULT_DAYS_PER_MONTH,
+    MONTHS_PER_YEAR,
+    STAND_IDS
+} from '../../../js/utils/constants.js';
 
 const EPS = 0.01;
 const CALC_CREATED_AT = '2026-05-02T00:00:00Z';
@@ -223,4 +230,60 @@ describe('calculation sanity: global multipliers', () => {
         assert.ok(noRisksNoVat < defaultRisksNoVat,
             `Risk-disabled total should be below default-risk total: ${noRisksNoVat} vs ${defaultRisksNoVat}`);
     });
+});
+
+describe('calculation sanity: disabled stand filtering', () => {
+    const disabledCases = [
+        ['LOAD'],
+        ['DEV', 'IFT', 'PSI', 'LOAD'],
+        STAND_IDS
+    ];
+
+    for (const profile of Object.values(profiles)) {
+        for (const disabled of disabledCases) {
+            it(`${profile.label}: disabled [${disabled.join(', ')}] reconciles active totals`, () => {
+                const calc = buildCalc(profile.answers);
+                clearCalculationCache();
+                const result = calculate(calc);
+                const filtered = applyStandFilter(result, disabled);
+                const active = STAND_IDS.filter(stand => !disabled.includes(stand));
+                const days = Number(calc.settings.daysPerMonth) || DEFAULT_DAYS_PER_MONTH;
+
+                close(filtered.totalMonthly, sum(active.map(stand => result.stands[stand].totalMonthly)),
+                    'filtered.totalMonthly = sum(active stands)');
+                close(filtered.totalAnnual, filtered.totalMonthly * MONTHS_PER_YEAR,
+                    'filtered.totalAnnual = monthly * 12');
+                close(filtered.totalDaily, filtered.totalMonthly / days,
+                    'filtered.totalDaily = monthly / days');
+
+                for (const cat of CATEGORY_IDS) {
+                    close(
+                        filtered.byCategory[cat] || 0,
+                        sum(active.map(stand => result.stands[stand].byCategory[cat] || 0)),
+                        `filtered.byCategory.${cat} = sum(active stands)`
+                    );
+                }
+                close(filtered.totalMonthly, sum(CATEGORY_IDS.map(cat => filtered.byCategory[cat] || 0)),
+                    'filtered.totalMonthly = sum(filtered.byCategory)');
+
+                for (const type of COST_TYPE_IDS) {
+                    close(
+                        filtered.byCostType[type] || 0,
+                        sum(active.map(stand => result.stands[stand].byCostType[type] || 0)),
+                        `filtered.byCostType.${type} = sum(active stands)`
+                    );
+                }
+                close(filtered.totalMonthly, sum(COST_TYPE_IDS.map(type => filtered.byCostType[type] || 0)),
+                    'filtered.totalMonthly = sum(filtered.byCostType)');
+
+                const disabledMonthly = sum(disabled.map(stand => result.stands[stand].totalMonthly));
+                close(filtered.totalMonthly + disabledMonthly, result.totalMonthly,
+                    'active + disabled stand totals = original total');
+                assert.deepEqual(filtered.activeStands, active);
+                assert.deepEqual(filtered.disabledStands, disabled);
+                assert.equal(filtered.stands, result.stands, 'stand buckets stay shared for UI rendering');
+                assert.equal(filtered.items, result.items, 'item buckets stay shared for UI rendering');
+            });
+        }
+    }
 });

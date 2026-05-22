@@ -15,13 +15,24 @@ const TOGGLE_HINT = 'Исключить стенд из ИТОГО — стен�
 
 export function renderStandToggles(disabledStands, ctx) {
     const disabled = Array.isArray(disabledStands) ? disabledStands : [];
-    return el('div', { class: 'stand-toggles', attrs: { role: 'group', 'aria-label': 'Включённые стенды' } },
+    return el('div', {
+        class: 'stand-toggles',
+        attrs: {
+            role: 'group',
+            'aria-label': 'Включённые стенды',
+            'data-testid': 'stand-toggles'
+        }
+    },
         el('span', { class: 'stand-toggles-label', text: 'Стенды:' }),
         ...STAND_IDS.map(sid => {
             const isOn = !disabled.includes(sid);
             return el('button', {
                 class: 'stand-toggle',
-                attrs: { 'aria-pressed': isOn ? 'true' : 'false', 'data-stand': sid },
+                attrs: {
+                    'aria-pressed': isOn ? 'true' : 'false',
+                    'data-stand': sid,
+                    'data-testid': `stand-toggle-${sid}`
+                },
                 title: `${STAND_LABELS[sid]} — ${STAND_DESCRIPTIONS[sid] || ''}\n\n${TOGGLE_HINT}`,
                 onClick: () => ctx.toggleStand?.(sid)
             }, STAND_LABELS[sid]);

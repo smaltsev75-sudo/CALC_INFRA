@@ -36,7 +36,7 @@ export function renderSettingsGroupVat(s, ctx, calc) {
         ? launchYearRaw
         : SEED_BY_ID.get('launch_year')?.defaultIfUnknown ?? null;
 
-    return el('div', { class: 'settings-group' },
+    return el('div', { class: 'settings-group', attrs: { 'data-testid': 'setting-vat-group' } },
         el('div', { class: 'settings-group-title', text: 'НДС' }),
         renderVatModeBadgeAndActions(mode, ratePct, effectiveDate, ctx),
         renderVatMultiPeriodWarning(launchYear, planningHorizonYears),
@@ -45,6 +45,7 @@ export function renderSettingsGroupVat(s, ctx, calc) {
                 el('span', { class: 'field-label', text: 'Учитывать НДС' }),
                 el('label', {
                     class: ['switch', s.vatEnabled && 'switch-on'],
+                    attrs: { 'data-testid': 'setting-vatEnabled-toggle' },
                     title: 'Если включено — итоговые суммы вырастут на процент НДС. ' +
                            'НДС применяется независимо от риск-коэффициентов: даже если мастер рисков выключен, ' +
                            'НДС всё равно учитывается в итоге, когда включён этот переключатель.'
@@ -52,7 +53,10 @@ export function renderSettingsGroupVat(s, ctx, calc) {
                     el('input', {
                         type: 'checkbox',
                         checked: !!s.vatEnabled,
-                        attrs: { 'data-focus-key': 'setting:vatEnabled' },
+                        attrs: {
+                            'data-focus-key': 'setting:vatEnabled',
+                            'data-testid': 'setting-vatEnabled'
+                        },
                         onChange: e => {
                             const checked = !!e.target.checked;
                             const sw = e.target.closest('.switch');
@@ -117,21 +121,33 @@ function renderVatModeBadgeAndActions(mode, ratePct, effectiveDate, ctx) {
             el('button', {
                 type: 'button',
                 class: ['vat-mode-action', isAuto && 'vat-mode-action-active'],
-                attrs: { 'aria-pressed': isAuto ? 'true' : 'false' },
+                attrs: {
+                    type: 'button',
+                    'aria-pressed': isAuto ? 'true' : 'false',
+                    'data-testid': 'setting-vatMode-auto'
+                },
                 title: 'Перевести в автоматический режим — ставка из справочника по дате расчёта.',
                 onClick: () => ctx.setVatRateMode('auto-by-date')
             }, 'Авто'),
             el('button', {
                 type: 'button',
                 class: ['vat-mode-action', isManual && 'vat-mode-action-active'],
-                attrs: { 'aria-pressed': isManual ? 'true' : 'false' },
+                attrs: {
+                    type: 'button',
+                    'aria-pressed': isManual ? 'true' : 'false',
+                    'data-testid': 'setting-vatMode-manual'
+                },
                 title: 'Перевести в ручной режим — задать ставку самостоятельно. Текущая ставка сохранится, дата сбросится.',
                 onClick: () => ctx.setVatRateMode('manual')
             }, 'Вручную'),
             el('button', {
                 type: 'button',
                 class: ['vat-mode-action', isFrozen && 'vat-mode-action-active'],
-                attrs: { 'aria-pressed': isFrozen ? 'true' : 'false' },
+                attrs: {
+                    type: 'button',
+                    'aria-pressed': isFrozen ? 'true' : 'false',
+                    'data-testid': 'setting-vatMode-frozen'
+                },
                 title: 'Заморозить текущую ставку. Используйте после согласования бюджета — обновления справочника НДС не повлияют на расчёт.',
                 onClick: () => ctx.freezeVatRate()
             }, 'Заморозить')

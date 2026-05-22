@@ -145,7 +145,7 @@ export function renderDashboard(state, ctx) {
     // ничего не появляется.
     const aiMetrics = aggregateAiMetrics(result, calc.dictionaries?.items || [], disabledStands, applyRisks);
 
-    return el('section', { class: 'tab-pane' },
+    return el('section', { class: 'tab-pane', attrs: { 'data-testid': 'dashboard-tab' } },
 
         /* === Toolbar === */
         el('div', { class: 'tab-toolbar' },
@@ -164,7 +164,7 @@ export function renderDashboard(state, ctx) {
         renderProfileBanner(calc, ctx),
 
         /* === Grid === */
-        el('div', { class: 'dashboard-grid' },
+        el('div', { class: 'dashboard-grid', attrs: { 'data-testid': 'dashboard-grid' } },
             renderHero(filtered, period, ctx, applyRisks, resources.total, calc, aiMetrics.total),
             // Stage 18.2 (PATCH 2.14.12): «Сводка состояния расчёта» —
             // композитный блок, объединяющий бывшие 4 карточки (Готовность /
@@ -191,7 +191,11 @@ function renderPeriodSwitcher(period, ctx) {
             el('button', {
                 class: ['period-btn', p === period && 'period-btn-active'],
                 title: `Показывать суммы ${PERIOD_LABELS[p]}`,
-                attrs: { type: 'button', 'aria-pressed': p === period ? 'true' : 'false' },
+                attrs: {
+                    type: 'button',
+                    'aria-pressed': p === period ? 'true' : 'false',
+                    'data-testid': `dashboard-period-${p}`
+                },
                 onClick: () => { if (p !== period) ctx.setUi?.({ dashboardPeriod: p }); }
             }, PERIOD_LABELS[p])
         )
@@ -263,7 +267,10 @@ function renderHero(result, period, ctx, applyRisks = true, totalResources = nul
     const capexPct = ctSum > 0 ? byCostType.capex / ctSum : 0;
     const opexPct  = ctSum > 0 ? byCostType.opex  / ctSum : 0;
 
-    return el('article', { class: ['dash-card', 'dash-card-hero', !applyRisks && 'dash-card-hero-base'] },
+    return el('article', {
+        class: ['dash-card', 'dash-card-hero', !applyRisks && 'dash-card-hero-base'],
+        attrs: { 'data-testid': 'dashboard-hero' }
+    },
         el('div', { class: 'dash-card-header' },
             el('div', { class: 'dash-card-eyebrow' },
                 icon('trending-up', { size: 14 }),
@@ -288,7 +295,11 @@ function renderHero(result, period, ctx, applyRisks = true, totalResources = nul
                 el('button', {
                     class: 'dash-stand-card-link',
                     title: 'Открыть постатейную детализацию расчёта',
-                    attrs: { type: 'button', 'aria-label': 'Открыть детализацию' },
+                    attrs: {
+                        type: 'button',
+                        'aria-label': 'Открыть детализацию',
+                        'data-testid': 'dashboard-hero-details'
+                    },
                     onClick: () => ctx.openStandDetails?.()
                 }, icon('arrow-up-right', { size: 14 })),
                 el('button', {
@@ -446,7 +457,8 @@ function renderStandCard(sid, result, period, ctx, isDisabled, standResources = 
     const opexPct  = ctSum > 0 ? byCostType.opex  / ctSum : 0;
 
     const cardArticle = el('article', {
-        class: ['dash-stand-card', `stand-card-${sid}`, isDisabled && 'dash-stand-card-disabled']
+        class: ['dash-stand-card', `stand-card-${sid}`, isDisabled && 'dash-stand-card-disabled'],
+        attrs: { 'data-testid': `dashboard-stand-${sid}` }
     },
         /* 12.U24-fix-3: explicit 2-row структура шапки.
          *   row1 (.dash-stand-card-header-top): icon + title-col + arrow
@@ -469,7 +481,11 @@ function renderStandCard(sid, result, period, ctx, isDisabled, standResources = 
                 el('button', {
                     class: 'dash-stand-card-link',
                     title: 'Открыть детализацию',
-                    attrs: { type: 'button', 'aria-label': 'Открыть детализацию' },
+                    attrs: {
+                        type: 'button',
+                        'aria-label': 'Открыть детализацию',
+                        'data-testid': `dashboard-stand-${sid}-details`
+                    },
                     onClick: () => ctx.openStandDetails?.(sid)
                 }, icon('arrow-up-right', { size: 14 }))
             ),

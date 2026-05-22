@@ -239,7 +239,7 @@ vatMul     = vatEnabled ? (1 + vatRate) : 1                          // неза
 
 ## Миграции схемы
 
-[js/state/migrations.js](js/state/migrations.js) содержит массив `MIGRATIONS` шагов `from → to`. Текущая версия вычисляется автоматически из последнего шага `MIGRATIONS`; на PATCH 2.20.18 это **19** (см. `LATEST_SCHEMA_VERSION` в [js/state/migrations.js](js/state/migrations.js) и re-export `CURRENT_SCHEMA_VERSION` в [js/utils/constants.js](js/utils/constants.js)). Не дублировать номер схемы в production-коде.
+[js/state/migrations.js](js/state/migrations.js) содержит массив `MIGRATIONS` шагов `from → to`. Текущая версия вычисляется автоматически из последнего шага `MIGRATIONS`; на PATCH 2.20.19 это **19** (см. `LATEST_SCHEMA_VERSION` в [js/state/migrations.js](js/state/migrations.js) и re-export `CURRENT_SCHEMA_VERSION` в [js/utils/constants.js](js/utils/constants.js)). Не дублировать номер схемы в production-коде.
 
 При добавлении миграции:
 1. Реализовать `step.run(calc)` — мутирует **глубокую копию**, не оригинал.
@@ -267,7 +267,7 @@ Bump делается **синхронно в двух файлах** (`constant
 
 ## Контекст этапов разработки
 
-[DECISIONS.md](DECISIONS.md) — журнал ключевых решений и допущений по этапам, главный source of truth при расхождении с краткими сводками. Короткий срез на PATCH 2.20.18 (2026-05-22): `APP_VERSION=2.20.18`, schema v19, `BUNDLE_MAJOR=3`, `PROVIDER_PRICE_SCHEMA_VERSION=2`; проект production-ready/hardened, с 6-слойной архитектурой, immutable store, sandbox DSL, VAT Rate History + provider JSON VAT Schema v2, сценариями расчёта, composite-сводкой Dashboard, Stage 19 LOAD-capacity моделью, sanity-report guard, golden scenarios, desktop Playwright UI↔domain regression-suite и calculation sanity invariants. Актуальное число тестов брать из `npm test`, не из этого файла.
+[DECISIONS.md](DECISIONS.md) — журнал ключевых решений и допущений по этапам, главный source of truth при расхождении с краткими сводками. Короткий срез на PATCH 2.20.19 (2026-05-22): `APP_VERSION=2.20.19`, schema v19, `BUNDLE_MAJOR=3`, `PROVIDER_PRICE_SCHEMA_VERSION=2`; проект production-ready/hardened, с 6-слойной архитектурой, immutable store, sandbox DSL, VAT Rate History + provider JSON VAT Schema v2, сценариями расчёта, composite-сводкой Dashboard, Stage 19 LOAD-capacity моделью, sanity-report guard, golden scenarios, desktop Playwright UI↔domain regression-suite, real-click user-flow E2E через `data-testid` и calculation sanity invariants. Актуальное число тестов брать из `npm test`, не из этого файла.
 
 ### Накопленный функционал (краткая шкала)
 
@@ -534,6 +534,13 @@ Bump делается **синхронно в двух файлах** (`constant
 **Smoke-тест seed-формул** ([tests/unit/domain/seed-formulas.test.js](tests/unit/domain/seed-formulas.test.js)) — проверяет что каждая qty-формула во всех ЭК парсится и вычисляется в финитное неотрицательное число. Запускать после любых правок [seed.js](js/domain/seed.js) или DSL-парсера.
 
 **Sanity-check скрипт** ([scripts/sanity-report.mjs](scripts/sanity-report.mjs)) — maintainer-команда вне основного runner'а. Прогоняет калькулятор на 3 профилях (Startup MVP / SMB B2B SaaS / Enterprise) и таблицу чувствительности к риск-коэффициентам. Запуск: `npm run sanity` для обновления [SANITY_REPORT.md](SANITY_REPORT.md), `npm run sanity:check` для проверки актуальности без перезаписи. Полезно после правок прайсов или формул.
+
+**Desktop Playwright suite** (`npm run smoke:desktop`) — 10 desktop-first тестов:
+smoke-рендер критичных экранов, UI↔domain сверка Dashboard/Details и реальные
+user-flow клики Quick Start/Sidebar/Опросник/Dashboard CTA. Для устойчивости
+к CSS-refactor'ам критичные элементы получают `data-testid`. На Node 26 скрипт
+запускает Playwright CLI через `node --no-deprecation`, чтобы upstream
+`DEP0205 module.register()` warning не шумел в релизных проверках.
 
 **UI smoke-тест** ([tests/unit/ui/ui-modules-smoke.test.js](tests/unit/ui/ui-modules-smoke.test.js)) — все файлы из `js/ui/` импортируются параллельно (`describe(..., { concurrency: true }, ...)`) под минимальным DOM-mock'ом. Ловит import-time ошибки, отсутствующие именованные экспорты и top-level вызовы `document/window` при загрузке модуля. После Этапа 9.6 в обязательный список добавлены `sidebar.js` и `icons.js`. Обязательно запускать после рефакторинга `constants.js` или удаления полей из домена — `node --check` НЕ ловит несуществующие именованные импорты.
 

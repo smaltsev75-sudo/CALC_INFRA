@@ -10,7 +10,9 @@
 npm run smoke:desktop
 ```
 
-Команда запускает Playwright на 1365×768 и параллельно проверяет Dashboard, Cost Optimization Planner, Decision Memo, Детализацию и Сравнение. Помимо smoke-рендера, suite сверяет Dashboard/Details с production `calculate()`, проверяет пересчёт после изменения ответа, исключение disabled-стенда из totals и независимость риск-коэффициентов от НДС. Скриншоты сохраняются в `.playwright-mcp/`; временные отчёты Playwright тоже уходят туда через `playwright.config.js`.
+Команда запускает Playwright на 1365×768 и параллельно проверяет Dashboard, Cost Optimization Planner, Decision Memo, Детализацию и Сравнение. Помимо smoke-рендера, suite сверяет Dashboard/Details с production `calculate()`, проверяет пересчёт после изменения ответа, исключение disabled-стенда из totals, независимость риск-коэффициентов от НДС и реальные desktop user-flow клики: Quick Start, sidebar, period/stand controls, Опросник risk/VAT и Dashboard CTA планера. Скриншоты сохраняются в `.playwright-mcp/`; временные отчёты Playwright тоже уходят туда через `playwright.config.js`.
+
+На Node 26 upstream Playwright 1.60.0 может выводить `DEP0205 module.register()` warning при прямом `npx playwright ...`. Проектный `npm run smoke:desktop` запускает тот же CLI через `node --no-deprecation`, поэтому релизный прогон остаётся без шумных warning'ов.
 
 Ручной checklist ниже остаётся нужен для сценариев, где важны UX-нюансы, клики и визуальная оценка, но базовые console/overflow regressions теперь должны ловиться автоматикой.
 

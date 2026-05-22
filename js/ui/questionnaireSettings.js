@@ -63,6 +63,7 @@ export function renderSettingsPanel(calc, state, ctx) {
         class: 'settings-panel-header',
         attrs: {
             type: 'button',
+            'data-testid': 'questionnaire-settings-toggle',
             'aria-expanded': isOpen ? 'true' : 'false',
             'aria-controls': 'settings-panel-body'
         },
@@ -76,10 +77,13 @@ export function renderSettingsPanel(calc, state, ctx) {
     );
 
     if (!isOpen) {
-        return el('div', { class: 'settings-panel settings-panel-collapsed' }, header);
+        return el('div', {
+            class: 'settings-panel settings-panel-collapsed',
+            attrs: { 'data-testid': 'questionnaire-settings-panel' }
+        }, header);
     }
 
-    return el('div', { class: 'settings-panel' },
+    return el('div', { class: 'settings-panel', attrs: { 'data-testid': 'questionnaire-settings-panel' } },
         header,
         el('div', { class: 'settings-panel-body', id: 'settings-panel-body' },
             // Срок проекта + НДС — узкие группы, экономим место и кладём в один ряд.
@@ -111,7 +115,10 @@ function renderSettingsGroupPeriod(s, ctx) {
                     type: DECIMAL_INPUT_TYPE,
                     value: formatDecimalInputValue(s.phaseDurationMonths ?? 12),
                     title: SETTINGS_DESCRIPTIONS.phaseDurationMonths,
-                    attrs: decimalInputAttrs({ 'data-focus-key': 'setting:phaseDurationMonths' }),
+                    attrs: decimalInputAttrs({
+                        'data-focus-key': 'setting:phaseDurationMonths',
+                        'data-testid': 'setting-phaseDurationMonths'
+                    }),
                     onInput: e => {
                         const n = parseNumberInput(applyDecimalInputPrecision(e.target));
                         if (Number.isFinite(n) && n > 0) ctx.setSetting('phaseDurationMonths', n);
@@ -131,6 +138,7 @@ function renderSettingsGroupRisks(s, ctx, applyRisks, totalFactor, horizon) {
     const masterRow = el('div', { class: 'settings-master-toggle' },
         el('label', {
             class: ['switch', applyRisks && 'switch-on'],
+            attrs: { 'data-testid': 'setting-applyRiskFactors-toggle' },
             title: 'Если включено — итог считается с буферами, инфляцией, сезонностью, сдвигом расписания и резервом (это сумма, которую видит заказчик). ' +
                    'Если выключено — Дашборд и Детализация показывают «голую» базовую стоимость по прайс-листам поставщиков. ' +
                    'В обоих режимах в карточке «Вклад риск-коэффициентов» видна потенциальная наценка для информации.'
@@ -138,7 +146,10 @@ function renderSettingsGroupRisks(s, ctx, applyRisks, totalFactor, horizon) {
             el('input', {
                 type: 'checkbox',
                 checked: applyRisks,
-                attrs: { 'data-focus-key': 'setting:applyRiskFactors' },
+                attrs: {
+                    'data-focus-key': 'setting:applyRiskFactors',
+                    'data-testid': 'setting-applyRiskFactors'
+                },
                 onChange: e => {
                     const checked = !!e.target.checked;
                     const sw = e.target.closest('.switch');
@@ -202,7 +213,10 @@ function renderSettingsGroupRisks(s, ctx, applyRisks, totalFactor, horizon) {
                         ? `${SETTINGS_DESCRIPTIONS.planningHorizonYears}\n\nПоле неактивно: выключен переключатель «Учитывать риск-коэффициенты в бюджете».`
                         : SETTINGS_DESCRIPTIONS.planningHorizonYears,
                     disabled: !applyRisks,
-                    attrs: decimalInputAttrs({ 'data-focus-key': 'setting:planningHorizonYears' }),
+                    attrs: decimalInputAttrs({
+                        'data-focus-key': 'setting:planningHorizonYears',
+                        'data-testid': 'setting-planningHorizonYears'
+                    }),
                     onInput: e => {
                         const n = parseNumberInput(applyDecimalInputPrecision(e.target));
                         if (Number.isFinite(n) && n >= 0) ctx.setSetting('planningHorizonYears', n);

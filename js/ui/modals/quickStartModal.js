@@ -187,7 +187,7 @@ export function renderQuickStartModal(state, ctx) {
         title: isEdit ? 'Параметры профиля — изменение' : 'Quick Start — расчёт за минуту',
         size: 'lg',
         onClose,
-        children: el('div', { class: 'quickstart-modal-body' },
+        children: el('div', { class: 'quickstart-modal-body', attrs: { 'data-testid': 'quickstart-modal' } },
             !isEdit && renderProgressDots(draft),
 
             !isEdit && el('div', { class: 'quickstart-intro quickstart-intro-soft',
@@ -205,7 +205,12 @@ export function renderQuickStartModal(state, ctx) {
                     class: 'input',
                     value: draft.name,
                     placeholder: 'Например: «Финтех-MVP, оценка 2026»',
-                    attrs: { 'data-autofocus': '', 'data-focus-key': 'qs-name', maxlength: 120 },
+                    attrs: {
+                        'data-autofocus': '',
+                        'data-focus-key': 'qs-name',
+                        'data-testid': 'quickstart-name',
+                        maxlength: 120
+                    },
                     onInput: e => patchName(e.target.value),
                     onKeydown: e => { if (e.key === 'Enter') { e.preventDefault(); onSubmit(); } }
                 })
@@ -229,6 +234,7 @@ export function renderQuickStartModal(state, ctx) {
                         options: PRODUCT_TYPES,
                         info: 'Кому продаётся продукт. От этого зависит размер пиковой аудитории, набор каналов коммуникации (push, SMS, email) и часть требований безопасности.',
                         infoShort: UI_TOOLTIPS_SHORT['qs.product_type'],
+                        testId: 'quickstart-product-type',
                         onChange: v => patchTypeOrIndustry('product_type', v),
                         flash: true
                     }),
@@ -238,6 +244,7 @@ export function renderQuickStartModal(state, ctx) {
                         options: INDUSTRIES,
                         info: 'Отрасль, в которой работает продукт. Влияет на требования к надёжности (целевой SLA), типовые настройки AI и поиска по корпоративной базе знаний, отраслевые требования регуляторов (например, 152-ФЗ и ГОСТ для FinTech).',
                         infoShort: UI_TOOLTIPS_SHORT['qs.industry'],
+                        testId: 'quickstart-industry',
                         onChange: v => patchTypeOrIndustry('industry', v),
                         flash: true
                     }),
@@ -248,6 +255,7 @@ export function renderQuickStartModal(state, ctx) {
                         options: SCALES,
                         info: 'Сколько зарегистрированных пользователей ожидаете. От этого зависит размер базы данных, количество серверов и виртуальных машин, объём оперативной памяти и пропускная способность каналов.',
                         infoShort: UI_TOOLTIPS_SHORT['qs.scale'],
+                        testId: 'quickstart-scale',
                         onChange: v => patch({ scale: v }),
                         flash: true
                     }),
@@ -257,6 +265,7 @@ export function renderQuickStartModal(state, ctx) {
                         options: ACTIVITIES,
                         info: 'Как часто типичный пользователь заходит в продукт. Влияет на ежедневную активную аудиторию и пиковую нагрузку на серверы.',
                         infoShort: UI_TOOLTIPS_SHORT['qs.activity'],
+                        testId: 'quickstart-activity',
                         onChange: v => patch({ activity: v }),
                         flash: true
                     }),
@@ -264,12 +273,14 @@ export function renderQuickStartModal(state, ctx) {
                     renderGeoChipsField({
                         value: draft.geography,
                         infoShort: UI_TOOLTIPS_SHORT['qs.geography'],
+                        testId: 'quickstart-geography',
                         onChange: v => patch({ geography: v })
                     }),
                     !isEdit ? renderProviderField({
                         value: draft.provider,
                         options: providerOptions,
                         infoShort: UI_TOOLTIPS_SHORT['qs.provider'],
+                        testId: 'quickstart-provider',
                         onChange: v => patch({ provider: v })
                     }) : null
                 )
@@ -284,6 +295,7 @@ export function renderQuickStartModal(state, ctx) {
                         label: 'Персональные данные (ФЗ-152)',
                         info: 'Включает в опросник вопросы про шифрование хранимых данных, журналирование действий пользователей и категорию персональных данных по 152-ФЗ. По умолчанию — да (большинство продуктов хранят как минимум ФИО или email).',
                         infoShort: UI_TOOLTIPS_SHORT['qs.pdn'],
+                        testId: 'quickstart-pdn',
                         onChange: v => patch({ pdn: v })
                     }),
                     renderToggleRow({
@@ -291,6 +303,7 @@ export function renderQuickStartModal(state, ctx) {
                         label: 'AI / LLM (чат, поиск, рекомендации)',
                         info: 'Включает в опросник вопросы про модель AI, стоимость токенов, поиск по корпоративной базе знаний и серверы для AI-нагрузки — с типовыми значениями для вашей отрасли. Если выключено — раздел AI пустой, можно заполнить позже вручную.',
                         infoShort: UI_TOOLTIPS_SHORT['qs.ai_used'],
+                        testId: 'quickstart-ai-used',
                         onChange: v => patch({ ai_used: v })
                     })
                 )
@@ -300,6 +313,7 @@ export function renderQuickStartModal(state, ctx) {
             el('button', {
                 class: 'btn btn-ghost',
                 title: 'Отменить (Esc)',
+                attrs: { type: 'button', 'data-testid': 'quickstart-cancel' },
                 onClick: onClose
             }, 'Отмена'),
             el('button', {
@@ -307,6 +321,7 @@ export function renderQuickStartModal(state, ctx) {
                 title: isEdit
                     ? 'Применение изменений в следующем релизе. Пока — ручная правка в Опроснике.'
                     : 'Создать расчёт с заполненным опросником',
+                attrs: { type: 'button', 'data-testid': 'quickstart-submit' },
                 onClick: onSubmit
             }, isEdit ? 'Применить' : 'Создать расчёт')
         )
@@ -349,7 +364,11 @@ function renderPresetGrid(activeId, applyPreset, draft) {
             return el('button', {
                 class: ['qs-preset-card',
                         p.id === activeId && 'qs-preset-card-active'],
-                attrs: { type: 'button', 'aria-pressed': p.id === activeId ? 'true' : 'false' },
+                attrs: {
+                    type: 'button',
+                    'aria-pressed': p.id === activeId ? 'true' : 'false',
+                    'data-testid': `quickstart-preset-${p.id}`
+                },
                 title: formatPresetTooltip(p),
                 onClick: () => applyPreset(p)
             },
@@ -381,11 +400,12 @@ function renderPresetGrid(activeId, applyPreset, draft) {
  * Select-поле с info-tooltip иконкой справа от label. flash=true ставит
  * marker-class .qs-flash-target — на applyPreset поле подсвечивается.
  */
-function renderSelectField({ label, value, options, info, infoShort, onChange, flash }) {
+function renderSelectField({ label, value, options, info, infoShort, testId, onChange, flash }) {
     return el('label', { class: 'field' },
         renderFieldLabel({ label, info }),
         el('select', {
             class: ['input', flash && 'qs-flash-target'],
+            attrs: testId ? { 'data-testid': testId } : undefined,
             onChange: e => onChange(e.target.value)
         },
             ...options.map(o => el('option', {
@@ -403,7 +423,7 @@ function renderSelectField({ label, value, options, info, infoShort, onChange, f
  * География как chip-row из 3 опций. Заменяет старый <select> по ТЗ Stage 4.3.
  * Каждый chip — <button> с aria-pressed для screen-reader'а.
  */
-function renderGeoChipsField({ value, infoShort, onChange }) {
+function renderGeoChipsField({ value, infoShort, testId, onChange }) {
     return el('div', { class: 'field' },
         renderFieldLabel({
             label: 'География',
@@ -415,7 +435,8 @@ function renderGeoChipsField({ value, infoShort, onChange }) {
                 attrs: {
                     type: 'button',
                     role: 'radio',
-                    'aria-checked': o.value === value ? 'true' : 'false'
+                    'aria-checked': o.value === value ? 'true' : 'false',
+                    'data-testid': testId ? `${testId}-${o.value}` : undefined
                 },
                 onClick: () => onChange(o.value)
             }, o.label))
@@ -449,7 +470,7 @@ function openProviderSelectFromFieldClick(e) {
     }
 }
 
-function renderProviderField({ value, options, infoShort, onChange }) {
+function renderProviderField({ value, options, infoShort, testId, onChange }) {
     return el('label', { class: 'field', onClick: openProviderSelectFromFieldClick },
         renderFieldLabel({
             label: 'Облачный провайдер',
@@ -457,6 +478,7 @@ function renderProviderField({ value, options, infoShort, onChange }) {
         }),
         el('select', {
             class: ['input', 'qs-flash-target'],
+            attrs: testId ? { 'data-testid': testId } : undefined,
             onChange: e => onChange(e.target.value)
         },
             ...options.map(o => el('option', {
@@ -494,8 +516,11 @@ function renderFieldLabel({ label, info }) {
  * grid 2-col не разбивал label и описание на разные ряды, оборачиваем оба
  * элемента в .qs-toggle-cell (один grid item).
  */
-function renderToggleRow({ checked, label, info, infoShort, onChange }) {
-    const row = el('label', { class: 'qs-toggle-row qs-flash-target' },
+function renderToggleRow({ checked, label, info, infoShort, testId, onChange }) {
+    const row = el('label', {
+        class: 'qs-toggle-row qs-flash-target',
+        attrs: testId ? { 'data-testid': testId } : undefined
+    },
         el('span', { class: 'qs-toggle-row-text' },
             el('span', { class: 'qs-toggle-row-label', text: label }),
             info ? el('span', {
@@ -507,7 +532,10 @@ function renderToggleRow({ checked, label, info, infoShort, onChange }) {
         el('span', { class: 'switch qs-toggle-row-switch' },
             el('input', {
                 type: 'checkbox',
-                attrs: checked ? { checked: 'checked' } : {},
+                attrs: {
+                    ...(checked ? { checked: 'checked' } : {}),
+                    ...(testId ? { 'data-testid': `${testId}-input` } : {})
+                },
                 onChange: e => onChange(e.target.checked)
             }),
             el('span', { class: 'switch-track' })

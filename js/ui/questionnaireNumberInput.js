@@ -26,7 +26,8 @@ export function renderNumberInput(q, value, isDisabled, focusKey, hoverHint, ctx
         title: hoverHint,
         attrs: decimalInputAttrs({
             disabled: isDisabled ? '' : undefined,
-            'data-focus-key': focusKey
+            'data-focus-key': focusKey,
+            'data-testid': `answer-${q.id}`
         }),
         onInput: e => {
             // Снимаем inline-ошибку при правке — пользователь должен видеть, что поле «жмётся».

@@ -131,14 +131,14 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'
 ### Dev-зависимости
 
 - **Node.js встроенный `node:test`** — основной unit/architecture runner (входит в Node 18+, отдельно ставить не нужно).
-- **Playwright** — desktop browser-smoke для реального рендера критичных экранов.
+- **Playwright** — desktop browser-smoke/regression для реального рендера и пользовательских кликов на критичных экранах.
 - Unit test-runner — собственный (`tests/run.js`), не Jest / Mocha / Vitest.
 
 ### Разработка и проверки
 
 ```bash
 npm test                  # весь test-suite
-npm run smoke:desktop     # Playwright desktop suite: smoke + UI↔domain regression
+npm run smoke:desktop     # Playwright desktop suite: smoke + UI↔domain + real user flows
 npm run syntax-check      # node --check для js/**/*.js
 npm run sanity:check      # проверка актуальности SANITY_REPORT.md
 npm run sanity            # пересобрать SANITY_REPORT.md
@@ -148,7 +148,9 @@ npm run sanity            # пересобрать SANITY_REPORT.md
 разбивкой по категориям. `npm run smoke:desktop` дополнительно проверяет
 реальный desktop-рендер: Dashboard/Details сверяются с `calculate()`, изменение
 ключевого ответа пересчитывает UI, отключённый стенд исключается из totals, а
-риск-коэффициенты и НДС остаются независимыми.
+риск-коэффициенты и НДС остаются независимыми. Отдельный user-flow слой проходит
+Quick Start, sidebar-навигацию, Dashboard period/stand controls, настройки
+рисков/НДС в Опроснике и открытие Cost Optimization Planner реальными кликами.
 
 Архитектура держится на ES-модулях без bundler'а. Исторические entry point'ы вроде `js/app.js`, `js/ui/questionnaire.js`, `js/domain/costOptimizationPlanner.js`, `js/services/providerPriceFetch.js` сохранены как стабильные фасады; узкая логика вынесена в соседние модули (`js/app/*Actions.js`, `questionnaire*`, `dashboard*`, `costOptimizationPlanner*`, `priceImportMapping*`, `providerPriceNormalize.js`, `decisionMemoFormat.js`). Актуальная карта ownership — в [Architecture.md](Architecture.md#фасады-после-модульного-рефакторинга).
 

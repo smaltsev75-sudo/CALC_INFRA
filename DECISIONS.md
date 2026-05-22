@@ -1,5 +1,41 @@
 # Журнал решений и допущений
 
+## 22.05.2026 · PATCH 2.20.19 — Desktop user-flow E2E + стабильные test hooks
+
+**Контекст.** После UI↔domain regression-suite следующим ценным слоем стали
+реальные пользовательские пути: не только программно выставить state, но и
+проверить, что кнопки, переключатели, навигация и модалки работают кликами в
+desktop Chromium. Мобильная вёрстка не является приоритетом; фокус — desktop
+1365×768.
+
+**Что добавлено:**
+
+- стабильные `data-testid` на критичных desktop-точках: Quick Start, sidebar,
+  Dashboard period/stand controls, Questionnaire settings risk/VAT controls,
+  Cost Optimization CTA и основные question inputs;
+- [desktop-user-flow.spec.js](tests/e2e/desktop-user-flow.spec.js) — 3
+  реальные E2E-сценария:
+  - создание расчёта через Quick Start, переключение периода, отключение LOAD,
+    переход в Details и Comparison;
+  - изменение `applyRiskFactors`, `vatEnabled`, ручной ставки НДС 22% через
+    Опросник и сверка rendered Dashboard/Details с production model;
+  - открытие Cost Optimization Planner через Dashboard CTA, без прямого вызова
+    controller'а;
+- [tests/e2e/helpers.js](tests/e2e/helpers.js) расширен user-flow helper'ами
+  `openQuickStart()`, `createCalculationFromQuickStart()` и
+  `clickSidebarTab()`;
+- [calculation-sanity-invariants.test.js](tests/unit/architecture/calculation-sanity-invariants.test.js)
+  теперь проверяет `applyStandFilter()` на reference profiles: active totals,
+  daily/monthly/annual, byCategory/byCostType, all-disabled edge case и
+  сохранение shared `stands/items` для UI;
+- `npm run smoke:desktop` запускает Playwright через `node --no-deprecation`,
+  чтобы не шуметь upstream `DEP0205 module.register()` warning на Node 26.
+  По `npm view @playwright/test version` текущий latest — `1.60.0`, обновлять
+  пакет выше некуда.
+
+**Версионирование.** PATCH `2.20.18 → 2.20.19`: production-расчёт не менялся;
+усилены test hooks, desktop E2E и sanity-инварианты.
+
 ## 22.05.2026 · PATCH 2.20.18 — Desktop E2E regression-suite с UI↔domain сверкой
 
 **Контекст.** После сортировки групп в «Детализации» пользователь согласовал

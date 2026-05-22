@@ -12,9 +12,13 @@ export function renderPercentField(label, value, onChange, hint, key, disabled =
     const pct = (value ?? 0) * 100;
     const sliderValue = Math.max(0, Math.min(100, pct));
     const settingKey = typeof key === 'string' ? key.replace(/^setting:/, '') : null;
+    const testId = settingKey ? `setting-${settingKey}`.replace(/[^a-zA-Z0-9_-]/g, '-') : null;
     const resolvedShort = shortHint ?? (settingKey && UI_TOOLTIPS_SHORT[settingKey]) ?? null;
 
-    return el('label', { class: ['field', 'field-percent', disabled && 'field-disabled'] },
+    return el('label', {
+        class: ['field', 'field-percent', disabled && 'field-disabled'],
+        attrs: testId ? { 'data-testid': `${testId}-field` } : undefined
+    },
         el('span', { class: 'field-label', text: label }),
         el('div', { class: 'percent-input-row' },
             el('div', { class: 'percent-input' },
@@ -26,7 +30,10 @@ export function renderPercentField(label, value, onChange, hint, key, disabled =
                         ? hint + '\n\nПоле неактивно: в Опроснике выключен переключатель «Учитывать риск-коэффициенты в бюджете».'
                         : hint,
                     disabled,
-                    attrs: decimalInputAttrs({ 'data-focus-key': key }),
+                    attrs: decimalInputAttrs({
+                        'data-focus-key': key,
+                        ...(testId ? { 'data-testid': testId } : {})
+                    }),
                     onInput: e => {
                         const n = parseNumberInput(applyDecimalInputPrecision(e.target));
                         if (Number.isFinite(n)) {
@@ -47,6 +54,7 @@ export function renderPercentField(label, value, onChange, hint, key, disabled =
                 disabled,
                 attrs: {
                     min: 0, max: 100, step: 1,
+                    ...(testId ? { 'data-testid': `${testId}-slider` } : {}),
                     'aria-label': `${label} — слайдер 0..100%`
                 },
                 /* Drag-state slider'а. Каждое движение мыши на 1px вызывает

@@ -49,7 +49,10 @@ export function renderSidebar(state, ctx) {
     const hasActive = !!state.activeCalc;
     const advancedMode = !!state.ui?.advancedModeEnabled;
     const visibleSections = NAV_SECTIONS.filter(s => !s.advancedOnly || advancedMode);
-    return el('aside', { class: 'app-sidebar', attrs: { 'aria-label': 'Главное меню' } },
+    return el('aside', {
+        class: 'app-sidebar',
+        attrs: { 'aria-label': 'Главное меню', 'data-testid': 'app-sidebar' }
+    },
         renderBrand(),
         el('nav', { class: 'sidebar-nav', attrs: { role: 'navigation' } },
             ...visibleSections.map(section => renderSection(section, state, ctx, hasActive))
@@ -91,6 +94,7 @@ function renderNavItem(item, state, ctx, hasActive) {
         attrs: {
             type: 'button',
             role: 'tab',
+            'data-testid': `nav-${item.id}`,
             'aria-selected': isActive ? 'true' : 'false',
             'aria-current': isActive ? 'page' : undefined
         },

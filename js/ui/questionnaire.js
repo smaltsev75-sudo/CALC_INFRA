@@ -737,7 +737,11 @@ function renderQuestionField(q, calc, state, ctx) {
             el('input', {
                 type: 'checkbox',
                 checked: !!value,
-                attrs: { disabled: isDisabled ? '' : undefined, 'data-focus-key': focusKey },
+                attrs: {
+                    disabled: isDisabled ? '' : undefined,
+                    'data-focus-key': focusKey,
+                    'data-testid': `answer-${q.id}`
+                },
                 // Оптимистичное обновление локального DOM ДО полного rerender'а —
                 // убирает мигание метки «Да/Нет» и подсветки между событием и rAF.
                 onChange: e => {
@@ -779,7 +783,8 @@ function renderQuestionField(q, calc, state, ctx) {
                             role: 'radio',
                             'aria-checked': isSel ? 'true' : 'false',
                             disabled: isDisabled ? '' : undefined,
-                            'data-focus-key': isSel ? focusKey : undefined
+                            'data-focus-key': isSel ? focusKey : undefined,
+                            'data-testid': `answer-${q.id}-option-${o.value}`
                         },
                         onClick: () => { if (!isDisabled) ctx.setAnswer(q.id, o.value); }
                     }, el('span', { text: o.label }));
@@ -790,7 +795,11 @@ function renderQuestionField(q, calc, state, ctx) {
                 class: 'input',
                 value: value ?? '',
                 title: hoverHint,
-                attrs: { 'data-focus-key': focusKey, disabled: isDisabled ? '' : undefined },
+                attrs: {
+                    'data-focus-key': focusKey,
+                    'data-testid': `answer-${q.id}`,
+                    disabled: isDisabled ? '' : undefined
+                },
                 onChange: e => ctx.setAnswer(q.id, e.target.value)
             },
                 el('option', { value: '' }, '— не выбрано —'),
@@ -863,7 +872,11 @@ function renderQuestionField(q, calc, state, ctx) {
     const unknownToggle = q.allowUnknown
         ? el('button', {
             class: ['field-unknown-toggle', isUnknown && 'field-unknown-toggle-active'],
-            attrs: { type: 'button', 'aria-pressed': isUnknown ? 'true' : 'false' },
+            attrs: {
+                type: 'button',
+                'aria-pressed': isUnknown ? 'true' : 'false',
+                'data-testid': `answer-${q.id}-unknown`
+            },
             title: isUnknown
                 ? 'Калькулятор подставляет значение по умолчанию. Нажмите, чтобы ввести своё.'
                 : 'Если точное значение неизвестно — нажмите, и калькулятор подставит разумное значение по умолчанию.',
@@ -919,7 +932,11 @@ function renderQuestionField(q, calc, state, ctx) {
         ? el('span', { class: 'field-description', text: shortHint })
         : null;
 
-    return el('div', { class: fieldClass, id: `field-${q.id}` },
+    return el('div', {
+        class: fieldClass,
+        id: `field-${q.id}`,
+        attrs: { 'data-testid': `question-field-${q.id}` }
+    },
         labelRow,
         input,
         shortDescription
