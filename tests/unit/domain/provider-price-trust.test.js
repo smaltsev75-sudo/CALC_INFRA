@@ -70,15 +70,15 @@ describe('providerPriceTrust — русские подписи для UI', () =>
         assert.equal(trust.shortLabel, 'Задано вручную');
     });
 
-    it('дата и версия прайса форматируются для UI по-русски', () => {
+    it('для UI показывается только дата актуальности без технической версии', () => {
         const meta = getProviderPriceBundleMeta('yandex');
         const actuality = getProviderPriceActuality(meta);
 
         assert.equal(actuality.date, '22.05.2026');
-        assert.match(actuality.label, /Актуальность прайса: 22\.05\.2026/);
-        assert.match(actuality.label, /версия 2026-05-22-official/);
-        assert.equal(actuality.title, 'Дата актуальности прайса: 22.05.2026.');
-        assert.doesNotMatch(actuality.title, /Источник|https?:\/\//);
+        assert.equal(actuality.label, 'Актуальность прайса: 22.05.2026');
+        assert.equal(actuality.version, '2026-05-22-official');
+        assert.doesNotMatch(actuality.label, /версия|2026-05-22-official/);
+        assert.equal(actuality.title, undefined);
     });
 
     it('для расчёта берётся дата применённого providerVersion, а не текущий latest', () => {
@@ -93,7 +93,8 @@ describe('providerPriceTrust — русские подписи для UI', () =>
 
         assert.equal(actuality.date, '10.04.2026');
         assert.match(actuality.labelWithProvider, /Yandex Cloud/);
-        assert.match(actuality.labelWithProvider, /old-commercial/);
+        assert.match(actuality.labelWithProvider, /10\.04\.2026/);
+        assert.doesNotMatch(actuality.labelWithProvider, /old-commercial/);
     });
 
     it('для расчёта без providerVersion используется bundled-прайс выбранного провайдера', () => {

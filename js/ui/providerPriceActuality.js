@@ -17,7 +17,6 @@ export function renderCalculationProviderPriceActuality(calc, options = {}) {
         class: [className, options.compact && `${className}--compact`],
         attrs: {
             role: 'status',
-            title: info.title,
             'data-testid': options.testId || undefined
         }
     },

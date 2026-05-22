@@ -16,6 +16,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel) => fs.readFileSync(path.resolve(__dirname, '../../..', rel), 'utf8');
 
 const TRUST_SRC = stripJsComments(read('js/domain/providerPriceTrust.js'));
+const PRICE_ACTUALITY_SRC = stripJsComments(read('js/ui/providerPriceActuality.js'));
 const SUMMARY_SRC = stripJsComments(read('js/ui/providerPriceSummary.js'));
 const ANALYTICS_SRC = stripJsComments(read('js/ui/modals/providerAnalyticsModal.js'));
 const PROVIDER_SETTINGS_SRC = stripJsComments(read('js/ui/questionnaireProviderSettings.js'));
@@ -57,7 +58,7 @@ describe('provider price summary — trust badges and term hints', () => {
         assert.match(SUMMARY_SRC, /getProviderPriceTrust/);
     });
 
-    it('renders visible price actuality date/version notice', () => {
+    it('renders visible price actuality date-only notice', () => {
         assert.match(SUMMARY_SRC, /_renderProviderActualityNotice/);
         assert.match(SUMMARY_SRC, /provider-price-actuality/);
         assert.match(SUMMARY_SRC, /getProviderPriceActuality/);
@@ -146,6 +147,15 @@ describe('price actuality appears wherever user sees cost output', () => {
         assert.match(DECISION_MEMO_EXPORT_SRC, /Актуальность прайса/);
         assert.match(CSV_EXPORT_SRC, /Актуальность прайса/);
         assert.match(CSV_EXPORT_SRC, /getCalculationProviderPriceActuality/);
+    });
+
+    it('visible price actuality rows do not duplicate the same date in title tooltips', () => {
+        assert.doesNotMatch(PRICE_ACTUALITY_SRC, /title\s*:\s*info\.title/);
+        assert.doesNotMatch(SUMMARY_SRC, /title\s*:\s*actuality\.title/);
+        assert.doesNotMatch(ANALYTICS_SRC, /title\s*:\s*actuality\.title/);
+        assert.doesNotMatch(SCENARIO_CMP_SRC, /title\s*:\s*actuality\.title/);
+        assert.doesNotMatch(COMPARISON_SRC, /title\s*:\s*info\.title/);
+        assert.doesNotMatch(STATE_SUMMARY_SRC, /title\s*:\s*info\.title/);
     });
 });
 

@@ -46,12 +46,20 @@ test('Dashboard and Details match calculation model for a seeded desktop project
     await expect(page.locator('.dashboard-grid')).toBeVisible();
     await expect(page.getByTestId('dashboard-provider-price-actuality'))
         .toContainText('Актуальность прайса: 22.05.2026');
+    await expect(page.getByTestId('dashboard-provider-price-actuality'))
+        .not.toContainText('версия');
+    await expect(page.getByTestId('dashboard-provider-price-actuality'))
+        .not.toHaveAttribute('title', /.+/);
     await expectDashboardMatchesModel(page);
 
     await switchTab(page, 'details');
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expect(page.locator('.details-provider-price-actuality'))
         .toContainText('Актуальность прайса: 22.05.2026');
+    await expect(page.locator('.details-provider-price-actuality'))
+        .not.toContainText('версия');
+    await expect(page.locator('.details-provider-price-actuality'))
+        .not.toHaveAttribute('title', /.+/);
     await expectDetailsCostCategoriesMatchModel(page);
 
     expect(consoleErrors).toEqual([]);
@@ -154,12 +162,20 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
     await expect(collapsedSummary).toBeVisible();
     await expect(collapsedSummary.locator('.provider-price-actuality'))
         .toContainText('Актуальность прайса: 22.05.2026');
+    await expect(collapsedSummary.locator('.provider-price-actuality'))
+        .not.toContainText('версия');
+    await expect(collapsedSummary.locator('.provider-price-actuality'))
+        .not.toHaveAttribute('title', /.+/);
 
     await page.locator('.provider-price-summary-header').click();
     const summary = page.locator('.provider-price-summary.is-expanded');
     await expect(summary).toBeVisible();
     await expect(summary.locator('.provider-price-actuality'))
         .toContainText('Актуальность прайса: 22.05.2026');
+    await expect(summary.locator('.provider-price-actuality'))
+        .not.toContainText('версия');
+    await expect(summary.locator('.provider-price-actuality'))
+        .not.toHaveAttribute('title', /.+/);
 
     const ssdRowValue = summary
         .locator('.provider-price-row')
@@ -192,6 +208,10 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
     await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta')).toHaveCount(3);
     await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta').first())
         .toContainText('Актуальность прайса:');
+    await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta').first())
+        .not.toContainText('версия');
+    await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta').first())
+        .not.toHaveAttribute('title', /.+/);
     await expect.poll(async () => analyticsModal.locator('.analytics-trust-matrix-wrap')
         .evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
 

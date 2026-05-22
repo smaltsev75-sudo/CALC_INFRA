@@ -157,18 +157,13 @@ export function getProviderPriceActuality(meta = {}) {
     meta = meta && typeof meta === 'object' ? meta : {};
     const date = formatProviderPriceDate(meta.timestamp);
     const version = typeof meta.version === 'string' ? meta.version.trim() : '';
-    const base = date
+    const label = date
         ? `Актуальность прайса: ${date}`
         : 'Актуальность прайса: дата не указана';
-    const label = [base, version ? `версия ${version}` : ''].filter(Boolean).join(' · ');
-    const title = date
-        ? `Дата актуальности прайса: ${date}.`
-        : 'Дата актуальности прайса не указана.';
     return Object.freeze({
         date,
         version,
-        label,
-        title
+        label
     });
 }
 

@@ -2024,7 +2024,6 @@ td.analytics-td-total {
     font-size: 0.72rem;
     line-height: 1.3;
     font-weight: 400;
-    cursor: help;
 }
 .analytics-provider-warning {
     margin-top: 3px;
@@ -2789,7 +2788,6 @@ td.analytics-td-total {
     color: var(--text-muted);
     font-size: var(--font-sm);
     line-height: 1.4;
-    cursor: help;
 }
 .provider-price-actuality .icon {
     flex: 0 0 auto;

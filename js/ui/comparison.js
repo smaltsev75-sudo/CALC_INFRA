@@ -102,7 +102,7 @@ function renderComparisonPriceActuality(calcs) {
             const info = getCalculationPriceActualityInfo(calc);
             return el('div', {
                 class: 'comparison-price-actuality',
-                attrs: { role: 'status', title: info.title }
+                attrs: { role: 'status' }
             },
                 icon('clock', { size: 16 }),
                 el('div', { class: 'comparison-price-actuality-text' },

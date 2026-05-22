@@ -1,5 +1,46 @@
 # Журнал решений и допущений
 
+## 23.05.2026 · PATCH 2.20.35 — price actuality date-only copy
+
+**Контекст.** После сокращения tooltip'а пользователь указал, что строка
+`Актуальность прайса: 22.05.2026 · версия 2026-05-20-public` всё равно дважды
+сообщает дату: напрямую и внутри технической версии provider JSON.
+
+**Решение.**
+
+- Пользовательская строка актуальности прайса теперь date-only:
+  `Актуальность прайса: ДД.ММ.ГГГГ`.
+- Техническая версия provider JSON остаётся в metadata для health/debug/import
+  сценариев, но не выводится рядом с ценами.
+- У строк актуальности убраны дублирующие `title`-tooltip'ы и `cursor: help`;
+  подсказки остаются только там, где добавляют смысл: WAF/DDoS, статусы доверия
+  и источники конкретных цен.
+- README обновлён: пользовательский UI документирован как date-only, без
+  `версия ...`.
+
+**Урок.** Не дублировать в UI одну и ту же информацию. Повтор даты/статуса/
+значения в видимой строке, tooltip'е, бейдже или соседнем тексте не приносит
+пользователю пользы и только отвлекает внимание. Если tooltip повторяет
+видимый текст — tooltip нужно убрать.
+
+**Проверки.**
+
+- Targeted provider trust / analytics modal suite: 68/68 pass.
+- Targeted Playwright desktop regression for Dashboard/Details/Price benchmark: pass.
+- `npm test`: 5095/5095 pass.
+- `npm run smoke:desktop`: 29/29 pass.
+- `npm run pages:build`: pass.
+- `npm run prices:freshness:check`: pass.
+- `npm run sanity:check`: pass.
+- `npm run syntax-check`: pass.
+- `git diff --check`: pass.
+
+**Версионирование.**
+
+`2.20.34 → 2.20.35` (PATCH). Schema, provider JSON schema и bundle format не
+меняются. Изменение пользовательски видимо как строка актуальности прайса без
+технической версии и без бессмысленного tooltip-дубля.
+
 ## 23.05.2026 · PATCH 2.20.34 — price actuality hint + benchmark width
 
 **Контекст.** После вывода даты актуальности прайса во все ценовые UI-точки

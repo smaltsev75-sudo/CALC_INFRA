@@ -69,6 +69,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `tabular-nums` на денежных колонках (выравнивание разрядов)?
 - `aria-live` на статус-сообщениях (persist-indicator, snackbar)?
 - Контраст: `--text` на `--bg-card` ≥4.5:1, `--accent` на `--bg-card` ≥3:1 (UI-component) для обеих тем?
+- Нет ли дубля одной и той же информации в видимой строке, tooltip'е, бейдже
+  или соседнем тексте? Дубли даты/статуса/значения не помогают пользователю,
+  а рассеивают внимание. Если tooltip повторяет видимый текст — tooltip убрать.
 
 ✅ **Стандарт UI/UX-ревью для локальных ванильных веб-приложений интегрирован в рабочую модель и сохранён для всех будущих сессий.**
 
@@ -239,7 +242,7 @@ vatMul     = vatEnabled ? (1 + vatRate) : 1                          // неза
 
 ## Миграции схемы
 
-[js/state/migrations.js](js/state/migrations.js) содержит массив `MIGRATIONS` шагов `from → to`. Текущая версия вычисляется автоматически из последнего шага `MIGRATIONS`; на PATCH 2.20.34 это **20** (см. `LATEST_SCHEMA_VERSION` в [js/state/migrations.js](js/state/migrations.js) и re-export `CURRENT_SCHEMA_VERSION` в [js/utils/constants.js](js/utils/constants.js)). Не дублировать номер схемы в production-коде.
+[js/state/migrations.js](js/state/migrations.js) содержит массив `MIGRATIONS` шагов `from → to`. Текущая версия вычисляется автоматически из последнего шага `MIGRATIONS`; на PATCH 2.20.35 это **20** (см. `LATEST_SCHEMA_VERSION` в [js/state/migrations.js](js/state/migrations.js) и re-export `CURRENT_SCHEMA_VERSION` в [js/utils/constants.js](js/utils/constants.js)). Не дублировать номер схемы в production-коде.
 
 При добавлении миграции:
 1. Реализовать `step.run(calc)` — мутирует **глубокую копию**, не оригинал.
@@ -267,7 +270,7 @@ Bump делается **синхронно в двух файлах** (`constant
 
 ## Контекст этапов разработки
 
-[DECISIONS.md](DECISIONS.md) — журнал ключевых решений и допущений по этапам, главный source of truth при расхождении с краткими сводками. Короткий срез на PATCH 2.20.34 (2026-05-23): `APP_VERSION=2.20.34`, schema v20, `BUNDLE_MAJOR=3`, `PROVIDER_PRICE_SCHEMA_VERSION=2`; проект production-ready/hardened, с provider JSON VAT Schema v2, sanity/freshness quality gates, Cloud.ru public tariff refresh, Yandex Cloud official pricing refresh verified 2026-05-22 (включая ALB minimum 2 resource units baseline), provider price trust UI с русскими бейджами, датой актуальности прайса расчёта (`calc.providerVersion` → bundled provider JSON) на Dashboard/Details/Comparison/CSV/memo/PDF, коротким русским хинтом актуальности и матрицей Cloud.ru vs Yandex vs VK в широком Прайс-бенчмарке без дублирования даты, VK Cloud source-level public pricelist bundle with explicit `MISSING_CORE` for WAF/DDoS by request and Health/Details warnings, 9 golden Quick Start snapshots, 6 manual business golden snapshots, full Quick Start calculation invariants, desktop Playwright UI↔domain regression-suite, Details PDF full-width landscape mode, desktop viewport guards, PNG-signal visual regression, real-click user-flow/data-management/export/print E2E, UserManual validation checklist, strict `vatPolicy` shape validation и source-level guard'ами против ad-hoc форматирования чисел/денег/процентов. Актуальное число тестов брать из `npm test`, не из этого файла.
+[DECISIONS.md](DECISIONS.md) — журнал ключевых решений и допущений по этапам, главный source of truth при расхождении с краткими сводками. Короткий срез на PATCH 2.20.35 (2026-05-23): `APP_VERSION=2.20.35`, schema v20, `BUNDLE_MAJOR=3`, `PROVIDER_PRICE_SCHEMA_VERSION=2`; проект production-ready/hardened, с provider JSON VAT Schema v2, sanity/freshness quality gates, Cloud.ru public tariff refresh, Yandex Cloud official pricing refresh verified 2026-05-22 (включая ALB minimum 2 resource units baseline), provider price trust UI с русскими бейджами, date-only актуальностью прайса расчёта (`calc.providerVersion` → bundled provider JSON) на Dashboard/Details/Comparison/CSV/memo/PDF без tooltip/версии-дубля, матрицей Cloud.ru vs Yandex vs VK в широком Прайс-бенчмарке, VK Cloud source-level public pricelist bundle with explicit `MISSING_CORE` for WAF/DDoS by request and Health/Details warnings, 9 golden Quick Start snapshots, 6 manual business golden snapshots, full Quick Start calculation invariants, desktop Playwright UI↔domain regression-suite, Details PDF full-width landscape mode, desktop viewport guards, PNG-signal visual regression, real-click user-flow/data-management/export/print E2E, UserManual validation checklist, strict `vatPolicy` shape validation и source-level guard'ами против ad-hoc форматирования чисел/денег/процентов. Актуальное число тестов брать из `npm test`, не из этого файла.
 
 ### Накопленный функционал (краткая шкала)
 

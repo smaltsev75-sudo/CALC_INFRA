@@ -230,7 +230,6 @@ function renderProviderPriceActualityRow(calc) {
         el('div', { class: 'calc-state-summary-row-actions' },
             el('span', {
                 class: 'calc-state-summary-row-note',
-                attrs: { title: info.title },
                 text: 'Дата актуальности'
             })
         )

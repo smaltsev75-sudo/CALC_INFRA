@@ -416,7 +416,7 @@ function _renderProviderActualityNotice(meta) {
     const actuality = getProviderPriceActuality(meta);
     return el('div', {
         class: 'provider-price-actuality',
-        attrs: { role: 'status', title: actuality.title }
+        attrs: { role: 'status' }
     },
         icon('clock', { size: 14 }),
         el('span', { text: actuality.label })

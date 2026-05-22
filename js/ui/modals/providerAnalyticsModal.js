@@ -139,7 +139,6 @@ export function renderProviderAnalyticsModal(state, ctx) {
         const actuality = getProviderPriceActuality(providerMetaById[providerId]);
         return el('span', {
             class: 'analytics-provider-meta',
-            attrs: { title: actuality.title },
             text: actuality.label
         });
     };

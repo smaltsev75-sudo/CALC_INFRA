@@ -185,7 +185,6 @@ export function renderProviderScenarioComparisonModal(state, ctx) {
                     actuality
                         ? el('span', {
                             class: 'scenario-cmp-provider-price-date',
-                            attrs: { title: actuality.title },
                             text: actuality.label
                         })
                         : null
