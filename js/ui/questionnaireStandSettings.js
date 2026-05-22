@@ -7,7 +7,7 @@ import {
     AI_STAND_FACTOR_RANGES,
     DASHBOARD_RESOURCE_LABELS
 } from '../utils/constants.js';
-import { parseNumberInput } from '../services/format.js';
+import { formatNumber, parseNumberInput } from '../services/format.js';
 import { DECIMAL_INPUT_TYPE, applyDecimalInputPrecision, decimalInputAttrs, formatDecimalInputValue } from './decimalInput.js';
 import { SEED_ITEMS } from '../domain/seed.js';
 
@@ -56,7 +56,8 @@ export function renderStandSizeRatios(calc, ctx) {
                 value: formatDecimalInputValue(cur),
                 title: isFixed
                     ? 'ПРОМ зафиксирован = 1.00 как эталон. Размеры остальных стендов задаются относительно ПРОМ.'
-                    : `Множитель ресурсов стенда ${STAND_LABELS[stand]} относительно ПРОМ (${range.min.toFixed(2)}…${range.max.toFixed(2)}).`,
+                    : `Множитель ресурсов стенда ${STAND_LABELS[stand]} относительно ПРОМ (` +
+                      `${formatNumber(range.min, { min: 2, max: 2 })}…${formatNumber(range.max, { min: 2, max: 2 })}).`,
                 attrs: decimalInputAttrs({
                     disabled: isFixed ? '' : undefined,
                     'data-focus-key': `setting:standSizeRatio.${stand}`
@@ -302,7 +303,8 @@ export function renderResourceRatios(calc, ctx) {
                 title: `Множитель ${resource} стенда ${STAND_LABELS[stand]} от ПРОМ, %. ` +
                        `Например, ${curPercentLabel}% означает: ${resource} на ${STAND_LABELS[stand]} = ` +
                        `${curPercentLabel}% от объёма ${resource} на ПРОМ. ` +
-                       `Допустимый диапазон: ${(range.min * 100).toFixed(0)}…${(range.max * 100).toFixed(0)}%.`,
+                       `Допустимый диапазон: ${formatNumber(range.min * 100, { min: 0, max: 0 })}…` +
+                       `${formatNumber(range.max * 100, { min: 0, max: 0 })}%.`,
                 attrs: decimalInputAttrs({
                     'data-focus-key': `setting:resourceRatio.${stand}.${resource}`,
                     'aria-label': `${resource} на ${STAND_LABELS[stand]}, % от ПРОМ`

@@ -1,4 +1,4 @@
-import { dateForFilename } from './format.js';
+import { dateForFilename, formatPercentPoints, formatRubShort } from './format.js';
 
 /**
  * Экранирует строку для безопасного включения в Markdown:
@@ -42,21 +42,14 @@ export function sanitizeMemoText(value, opts = {}) {
  * Знак, NaN/null → «—».
  */
 export function formatMemoMoney(value) {
-    if (!Number.isFinite(value)) return '—';
-    const sign = value < 0 ? '−' : '';
-    const abs = Math.abs(value);
-    if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(2)} млн ₽`;
-    if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(1)} тыс. ₽`;
-    return `${sign}${Math.round(abs)} ₽`;
+    return formatRubShort(value, { millionFractionDigits: 2, thousandFractionDigits: 1 });
 }
 
 /**
  * Форматирует процент: «+18.0%», «−5.5%», «—» для NaN.
  */
 export function formatMemoPercent(value) {
-    if (!Number.isFinite(value)) return '—';
-    const sign = value > 0 ? '+' : '';
-    return `${sign}${value.toFixed(1)}%`;
+    return formatPercentPoints(value, { min: 1, max: 1 });
 }
 
 /**

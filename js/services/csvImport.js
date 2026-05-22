@@ -17,6 +17,7 @@
  */
 
 import { pickFile } from './json.js';
+import { formatNumber } from './format.js';
 import { VALIDATION, COST_TYPE_IDS, CSV_IMPORT_MAX_BYTES } from '../utils/constants.js';
 
 /** Множитель «аномального» скачка цены: новая ≥ 10× старой ИЛИ ≤ 1/10 старой → warning. */
@@ -221,7 +222,9 @@ export function diffPricesFromCsv(rows, items) {
         }
         if (newPrice > VALIDATION.PRICE_MAX) {
             rejected.push({ rowIndex: idx + 2, id,
-                reason: `Цена ${newPrice} > ${VALIDATION.PRICE_MAX.toLocaleString('ru-RU')} (максимум). Проверьте размер числа.` });
+                reason: `Цена ${formatNumber(newPrice, { min: 0, max: 2 })} > ` +
+                        `${formatNumber(VALIDATION.PRICE_MAX, { min: 0, max: 0 })} ` +
+                        `(максимум). Проверьте размер числа.` });
             return;
         }
 
@@ -264,14 +267,18 @@ export function diffPricesFromCsv(rows, items) {
             if (ratio >= ANOMALY_MULTIPLIER) {
                 anomalies.push({
                     ...update, ratio,
-                    reason: `Цена выросла в ${ratio.toFixed(1)}× (было ${oldPrice}, стало ${newPrice}). Возможна опечатка.`
+                    reason: `Цена выросла в ${formatNumber(ratio, { min: 1, max: 1 })}× ` +
+                            `(было ${formatNumber(oldPrice, { min: 0, max: 2 })}, ` +
+                            `стало ${formatNumber(newPrice, { min: 0, max: 2 })}). Возможна опечатка.`
                 });
                 return;
             }
             if (ratio <= 1 / ANOMALY_MULTIPLIER) {
                 anomalies.push({
                     ...update, ratio,
-                    reason: `Цена упала в ${(1/ratio).toFixed(1)}× (было ${oldPrice}, стало ${newPrice}). Возможна опечатка.`
+                    reason: `Цена упала в ${formatNumber(1 / ratio, { min: 1, max: 1 })}× ` +
+                            `(было ${formatNumber(oldPrice, { min: 0, max: 2 })}, ` +
+                            `стало ${formatNumber(newPrice, { min: 0, max: 2 })}). Возможна опечатка.`
                 });
                 return;
             }

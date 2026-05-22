@@ -8,6 +8,7 @@ import {
     formatRubPeriod,
     periodMul
 } from './costOptimizationPlannerModalFormat.js';
+import { formatPercentPoints } from '../../services/format.js';
 
 /* ============================================================
  * Summary preview
@@ -35,7 +36,12 @@ export function renderSummary(m, ctx) {
     const range = preview.targetRange;
     const inRange = preview.inTargetRange;
     /* savingPercent — инвариантен относительно period (отношение). */
-    const percentStr = preview.savingPercent.toFixed(1) + '%';
+    const percentStr = formatPercentPoints(preview.savingPercent, {
+        min: 1,
+        max: 1,
+        showPlus: false,
+        negativeSign: '-'
+    });
     const savingStr = formatRubPeriod(preview.savingMonthly * mul, viewPeriod);
     const beforeStr = formatRubPeriod(preview.beforeTotalMonthly * mul, viewPeriod);
     const afterStr  = formatRubPeriod(preview.afterTotalMonthly * mul, viewPeriod);

@@ -12,7 +12,7 @@ import { getAst, isAstError } from '../../domain/formula/cache.js';
 import { evaluate, collectReferences } from '../../domain/formula/evaluator.js';
 import { lintFormulas } from '../../domain/validation.js';
 import { STAND_IDS, STAND_LABELS, BILLING_INTERVAL_LABELS, MONTHS_PER_YEAR, DEFAULT_DAYS_PER_MONTH } from '../../utils/constants.js';
-import { money, num, percent } from '../../services/format.js';
+import { formatNumber, money, num, percent } from '../../services/format.js';
 import { billingIntervalToMonthlyMultiplier, buildContext } from '../../domain/calculator.js';
 
 export function renderFormulaModal(state, ctx) {
@@ -99,7 +99,7 @@ function renderSystemFormula(item, calc) {
             'costFinal(stand) = qty(stand) × pricePerUnit × billingIntervalMul × bufferFactor\n' +
             `qty(stand)        — формула элемента (см. ниже по стендам)\n` +
             `pricePerUnit      = ${num(item.pricePerUnit, 4)}\n` +
-            `billingIntervalMul= ${billingIntervalMul.toFixed(6)} (тариф «${BILLING_INTERVAL_LABELS[item.billingInterval]}»` +
+            `billingIntervalMul= ${formatNumber(billingIntervalMul, { min: 6, max: 6 })} (тариф «${BILLING_INTERVAL_LABELS[item.billingInterval]}»` +
                 (item.billingInterval === 'oneTime'
                     ? `, длительность фазы ${phaseDuration} мес. из S.phaseDurationMonths`
                     : item.billingInterval === 'annual'
@@ -109,7 +109,7 @@ function renderSystemFormula(item, calc) {
                             : '') + `)\n` +
             `bufferFactor      = (1 + ${percent(calc.settings.bufferTask)}) × ` +
                 `(1 + ${percent(calc.settings.bufferProject)}) × ` +
-                `(1 + ${percent(calc.settings.kInflation ?? 0)}) = ${factor.toFixed(4)}\n`
+                `(1 + ${percent(calc.settings.kInflation ?? 0)}) = ${formatNumber(factor, { min: 4, max: 4 })}\n`
         )
     );
 }

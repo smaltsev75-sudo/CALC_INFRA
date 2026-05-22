@@ -20,14 +20,14 @@ import { el } from '../dom.js';
 import { icon } from '../icons.js';
 import { modalShell } from './baseModal.js';
 import { CATEGORY_UNITS, CATEGORY_DESCRIPTIONS_FOR_UI } from '../../domain/providerAnalytics.js';
+import { formatNumber, formatPercentPoints } from '../../services/format.js';
 
-const fmtRub = (n) => Number(n).toLocaleString('ru-RU').replace(/,/g, ' ');
+const fmtRub = (n) => formatNumber(Number(n), { min: 0, max: 2 });
 
 const fmtPct = (pct) => {
     if (!Number.isFinite(pct) || pct === 0) return null;
     const abs = Math.abs(pct);
-    const rounded = abs >= 10 ? abs.toFixed(0) : abs.toFixed(1);
-    return (pct > 0 ? '+' : '−') + rounded + '%';
+    return formatPercentPoints(pct, { min: abs >= 10 ? 0 : 1, max: abs >= 10 ? 0 : 1 });
 };
 
 export function renderProviderAnalyticsModal(state, ctx) {

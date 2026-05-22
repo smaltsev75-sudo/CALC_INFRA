@@ -2,7 +2,7 @@
 
 Целевая аудитория — архитекторы, разработчики, тестировщики. Здесь только то, что не выводится из чтения README.md / UserManual.md: устройство кода, потоки данных, паттерны защиты целостности и тестовая инфраструктура.
 
-**Версия 2.20.24** (provider tariff decimal formatting regression fix). Schema v20.
+**Версия 2.20.25** (shared ru-RU number formatting consolidation + source guards). Schema v20.
 
 ---
 
@@ -514,7 +514,7 @@ el('div', {
 - Триггер `ctx.openXxxModal(payload)` → `store.openModal(name, payload)`.
 - Закрытие `ctx.closeModal(name)` или `store.closeModal(name)`.
 
-Зарегистрированных модалок 28 (на 2.20.24): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
+Зарегистрированных модалок 28 (на 2.20.25): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
 
 Удалены в Stage 17.2: `recommendedActions` (заменён блоком «Следующие шаги» на Дашборде), `calculationDiff` (UI убран; pure-domain helper остался — см. п. 4.7).
 

@@ -27,6 +27,7 @@ import {
     SENSITIVITY_CATEGORY_ORDER,
     DEFAULT_SENSITIVITY_FILTERS
 } from '../../utils/constants.js';
+import { formatPercentPoints, formatRubShort } from '../../services/format.js';
 
 /* ============================================================
  * Кэш анализа (module-scope, keyed by calcRevision)
@@ -50,17 +51,11 @@ function getOrRunAnalysis(calc) {
  * ============================================================ */
 
 function fmtMoney(v) {
-    if (!Number.isFinite(v)) return '—';
-    const abs = Math.abs(v);
-    if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)} млн ₽`;
-    if (abs >= 1_000)    return `${(v / 1_000).toFixed(1)} тыс. ₽`;
-    return `${v.toFixed(0)} ₽`;
+    return formatRubShort(v, { millionFractionDigits: 1, thousandFractionDigits: 1 });
 }
 
 function fmtPercent(v) {
-    if (!Number.isFinite(v)) return '—';
-    const sign = v > 0 ? '+' : '';
-    return `${sign}${v.toFixed(1)} %`;
+    return formatPercentPoints(v, { min: 1, max: 1, spaceBeforePercent: true });
 }
 
 /* ============================================================

@@ -9172,3 +9172,51 @@ bundle format не меняются.
 
 `2.20.23 → 2.20.24` (PATCH). Schema остаётся v20; расчётная модель, прайсы и
 bundle format не меняются.
+
+## PATCH 2.20.25 — shared ru-RU number formatting consolidation (2026-05-22)
+
+### Контекст
+
+После точечного исправления provider summary был проведён глобальный аудит
+пользовательского форматирования чисел в UI/services. Риск был шире одного
+экрана: часть модалок и экспортов собирала деньги/проценты вручную через
+`toLocaleString(...).replace(...)` или `toFixed()`, что могло снова дать
+смешение групп цифр, точку вместо русской запятой или разные знаки минуса.
+
+### Решение
+
+- В [format.js](js/services/format.js) добавлены общие helper'ы:
+  `formatRubShort()` для компактных денег (`2,50 млн ₽`, `150,0 тыс. ₽`) и
+  `formatPercentPoints()` для дельт/процентных пунктов без умножения на 100.
+- Provider-поверхности переведены на общий формат:
+  [providerPriceSummary.js](js/ui/providerPriceSummary.js),
+  [providerAnalyticsModal.js](js/ui/modals/providerAnalyticsModal.js),
+  [providerScenarioComparisonModal.js](js/ui/modals/providerScenarioComparisonModal.js),
+  [deltaHistoryModal.js](js/ui/modals/deltaHistoryModal.js).
+- На общий ru-RU формат переведены плотные desktop-модалки и тексты:
+  sensitivity, budget guardrails, cost optimization planner, calculation
+  state summary, formula modal, print answers, questionnaire settings,
+  resource ratio tooltips, decision memo и CSV import warnings.
+- Добавлен source-level guard
+  [number-formatting-consistency.test.js](tests/unit/ui/number-formatting-consistency.test.js):
+  запрещает `toLocaleString('ru-RU').replace(...)` и
+  `toFixed().replace('.', ',')` в user-facing UI/services.
+- Добавлен helper-test
+  [format-ru-helpers.test.js](tests/unit/services/format-ru-helpers.test.js)
+  для компактных рублей, процентных пунктов и десятичной запятой.
+
+### Проверки
+
+- Targeted formatting/UI tests: 198/198 pass.
+- `npm test`: 5021/5021 pass.
+- `npm run smoke:desktop`: 23/23 pass.
+- `npm run syntax-check`: pass.
+- `npm run sanity:check`: pass.
+- `npm run prices:freshness:check`: pass.
+- `git diff --check`: pass.
+- CI/Pages/published smoke — после push/release, см. release notes `v2.20.25`.
+
+### Версионирование
+
+`2.20.24 → 2.20.25` (PATCH). Schema остаётся v20; расчётная модель, прайсы и
+bundle format не меняются.

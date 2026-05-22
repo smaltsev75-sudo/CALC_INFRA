@@ -15,7 +15,7 @@
  */
 
 import { el } from './dom.js';
-import { formatDateTime, formatNumber } from '../services/format.js';
+import { formatDateTime, formatNumber, percent } from '../services/format.js';
 import { activeScenarioLabelText } from './scenarioBadge.js';
 import {
     SECTION_IDS, SECTION_LABELS, PRINT_TRIGGER_DELAY_MS,
@@ -201,7 +201,7 @@ function renderSettingsTable(settings, { extended = false } = {}) {
     ];
     const ratios = settings.standSizeRatio || {};
     const ratiosText = Object.entries(ratios)
-        .map(([k, v]) => `${k}: ${(v * 100).toFixed(0)}%`)
+        .map(([k, v]) => `${k}: ${percent(v)}`)
         .join(', ');
     items.push(['Размеры стендов (% от ПРОМ)', ratiosText || '—', 'standSizeRatio']);
 
@@ -229,7 +229,7 @@ function renderSettingsTable(settings, { extended = false } = {}) {
 
 function fmtPct(v) {
     if (v === undefined || v === null || Number.isNaN(Number(v))) return '—';
-    return `${(Number(v) * 100).toFixed(1).replace('.', ',')}%`;
+    return percent(Number(v));
 }
 
 /**

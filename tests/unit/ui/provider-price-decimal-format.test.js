@@ -18,7 +18,7 @@ const formsCss = readFileSync(join(ROOT, 'css/forms.css'), 'utf8');
 
 describe('Provider price summary: decimal price formatting', () => {
     it('uses shared formatNumber and does not replace decimal comma with a space', () => {
-        assert.match(providerSrc, /import\s*\{\s*formatNumber\s*\}\s*from\s*['"]\.\.\/services\/format\.js['"]/);
+        assert.match(providerSrc, /import\s*\{[^}]*formatNumber[^}]*\}\s*from\s*['"]\.\.\/services\/format\.js['"]/);
         assert.doesNotMatch(providerSrc, /\.replace\s*\(\s*\/,\s*\/g/);
         assert.doesNotMatch(providerSrc, /toLocaleString\s*\(\s*['"]ru-RU['"]\s*\)\s*\.replace/);
     });

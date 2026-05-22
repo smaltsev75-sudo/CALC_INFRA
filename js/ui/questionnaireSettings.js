@@ -11,7 +11,7 @@ import {
     SETTINGS_DESCRIPTIONS,
     UI_TOOLTIPS_SHORT
 } from '../utils/constants.js';
-import { parseNumberInput, percent } from '../services/format.js';
+import { formatNumber, parseNumberInput, percent } from '../services/format.js';
 import { DECIMAL_INPUT_TYPE, applyDecimalInputPrecision, decimalInputAttrs, formatDecimalInputValue } from './decimalInput.js';
 import { PROVIDER_OVERLAYS } from '../domain/providerOverlay.js';
 import { renderPercentField } from './questionnairePercentField.js';
@@ -50,7 +50,7 @@ export function renderSettingsPanel(calc, state, ctx) {
     const providerId = s.provider || 'sbercloud';
     const providerOverlay = PROVIDER_OVERLAYS[providerId];
     const providerLabel = providerOverlay?.label || providerId;
-    const riskFmt = totalFactor.toFixed(2).replace('.', ',');
+    const riskFmt = formatNumber(totalFactor, { min: 2, max: 2 });
     const summaryParts = [
         `${s.phaseDurationMonths ?? 12} мес`,
         applyRisks ? `риски ×${riskFmt}` : 'без рисков',
@@ -271,7 +271,7 @@ function renderSettingsGroupRisks(s, ctx, applyRisks, totalFactor, horizon) {
             el('span', { class: 'settings-formula-value' },
                 `(1 + ${percent(s.bufferTask)}) × (1 + ${percent(s.bufferProject)}) × ` +
                 `(1 + ${percent(s.kInflation)})^${horizon} × (1 + ${percent(s.kContingency)})` +
-                ` = ×${totalFactor.toFixed(3)}`
+                ` = ×${formatNumber(totalFactor, { min: 3, max: 3 })}`
             )
         ),
         el('div', { class: 'settings-formula-note' },

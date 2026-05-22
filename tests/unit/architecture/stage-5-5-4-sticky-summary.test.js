@@ -46,10 +46,10 @@ describe('Stage 5.5.4 / renderSettingsPanel — расширенная summary',
             'providerLabel должен использовать optional chaining ?.label');
     });
 
-    it('summary использует comma-decimal для риск-множителя (×1,42 не ×1.42)', () => {
+    it('summary использует общий ru-RU formatter для риск-множителя (×1,42 не ×1.42)', () => {
         const body = renderSettingsPanelBody();
-        assert.match(body, /riskFmt\s*=\s*totalFactor\.toFixed\(2\)\.replace\(['"]\.['"],\s*['"],['"]\)/,
-            'риск-множитель должен использовать toFixed(2).replace(".", ",") — ru-locale');
+        assert.match(body, /riskFmt\s*=\s*formatNumber\(\s*totalFactor\s*,\s*\{\s*min:\s*2\s*,\s*max:\s*2\s*\}\s*\)/,
+            'риск-множитель должен использовать общий formatNumber — ru-locale');
     });
 
     it('summary обёрнут в квадратные скобки [...]', () => {

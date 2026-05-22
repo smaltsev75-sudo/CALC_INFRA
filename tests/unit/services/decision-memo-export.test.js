@@ -210,15 +210,15 @@ describe('buildMemoFilename', () => {
 
 describe('formatMemoMoney', () => {
     it('млн ₽ при больших значениях', () => {
-        assert.match(formatMemoMoney(2_500_000), /2\.50 млн/);
+        assert.match(formatMemoMoney(2_500_000), /2,50\s+млн/);
     });
 
     it('тыс. ₽ при средних', () => {
-        assert.match(formatMemoMoney(150_000), /150\.0 тыс/);
+        assert.match(formatMemoMoney(150_000), /150,0\s+тыс/);
     });
 
     it('целые ₽ при малых', () => {
-        assert.match(formatMemoMoney(750), /750 ₽/);
+        assert.match(formatMemoMoney(750), /750\s+₽/);
     });
 
     it('NaN → —', () => {
@@ -233,11 +233,11 @@ describe('formatMemoMoney', () => {
 
 describe('formatMemoPercent', () => {
     it('положительное → префикс +', () => {
-        assert.equal(formatMemoPercent(18), '+18.0%');
+        assert.equal(formatMemoPercent(18), '+18,0%');
     });
 
-    it('отрицательное → без префикса', () => {
-        assert.equal(formatMemoPercent(-5.5), '-5.5%');
+    it('отрицательное → unicode minus', () => {
+        assert.equal(formatMemoPercent(-5.5), '−5,5%');
     });
 
     it('NaN → —', () => {

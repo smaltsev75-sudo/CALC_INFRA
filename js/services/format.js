@@ -78,6 +78,35 @@ export function formatRubThousands(value, opts = {}) {
     return `${sign}${fmt.format(thousands)}${NBSP}тыс.${NBSP}${RUB_SIGN}`;
 }
 
+/**
+ * Компактные деньги: «2,50 млн ₽», «150,0 тыс. ₽», «750 ₽».
+ * Для плотных модалок и markdown/memo, где полный формат «2 500 000 ₽»
+ * хуже сканируется. Десятичный разделитель остаётся русским (запятая).
+ */
+export function formatRubShort(value, opts = {}) {
+    if (!Number.isFinite(value)) return '—';
+    const sign = value < 0 ? '−' : '';
+    const abs = Math.abs(value);
+    const millionFractionDigits = Number.isInteger(opts.millionFractionDigits)
+        ? Math.max(0, opts.millionFractionDigits) : 1;
+    const thousandFractionDigits = Number.isInteger(opts.thousandFractionDigits)
+        ? Math.max(0, opts.thousandFractionDigits) : 1;
+
+    if (abs >= 1_000_000) {
+        return `${sign}${formatNumber(abs / 1_000_000, {
+            min: millionFractionDigits,
+            max: millionFractionDigits
+        })}${NBSP}млн${NBSP}${RUB_SIGN}`;
+    }
+    if (abs >= 1_000) {
+        return `${sign}${formatNumber(abs / 1_000, {
+            min: thousandFractionDigits,
+            max: thousandFractionDigits
+        })}${NBSP}тыс.${NBSP}${RUB_SIGN}`;
+    }
+    return `${sign}${formatNumber(Math.round(abs), { min: 0, max: 0 })}${NBSP}${RUB_SIGN}`;
+}
+
 /** Старое имя — оставлено как алиас для обратной совместимости. */
 export function money(value) {
     return formatRub(value);
@@ -126,6 +155,27 @@ export function integer(value) {
 export function percent(value) {
     if (!Number.isFinite(value)) return '—';
     return `${_percentFmt.format(value * 100)}%`;
+}
+
+/**
+ * Процентные пункты, когда вход уже в процентах: 18 → «+18,0%».
+ * Для дельт/превышений бюджета/чувствительности. В отличие от `percent()`
+ * НЕ умножает значение на 100.
+ */
+export function formatPercentPoints(value, opts = {}) {
+    if (!Number.isFinite(value)) return '—';
+    const abs = Math.abs(value);
+    const max = Number.isInteger(opts.max) ? Math.max(0, opts.max) : 1;
+    const min = Number.isInteger(opts.min) ? Math.max(0, opts.min) : max;
+    const sign = value > 0
+        ? (opts.showPlus === false ? '' : '+')
+        : (value < 0 ? (opts.negativeSign || '−') : '');
+    const space = opts.spaceBeforePercent ? NBSP : '';
+    return `${sign}${formatNumber(abs, {
+        min,
+        max: Math.max(min, max),
+        useGrouping: false
+    })}${space}%`;
 }
 
 /**

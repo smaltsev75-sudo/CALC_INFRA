@@ -28,6 +28,7 @@ import {
 import { evaluateCalculationHealth } from '../domain/calculationHealth.js';
 import { BUDGET_STATUS } from '../domain/budgetGuardrails.js';
 import { PLAN_TIERS } from '../domain/costOptimizationPlanner.js';
+import { formatPercentPoints } from '../services/format.js';
 
 /* ============================================================
  * Vocabulary
@@ -62,9 +63,7 @@ function pluralRu(n, one, few, many) {
 }
 
 function fmtPct(v) {
-    if (!Number.isFinite(v)) return '—';
-    const sign = v > 0 ? '+' : '';
-    return `${sign}${v.toFixed(0)} %`;
+    return formatPercentPoints(v, { min: 0, max: 0, spaceBeforePercent: true });
 }
 
 /**

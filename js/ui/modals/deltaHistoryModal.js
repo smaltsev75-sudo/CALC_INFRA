@@ -32,7 +32,7 @@
 import { el } from '../dom.js';
 import { icon } from '../icons.js';
 import { modalShell } from './baseModal.js';
-import { formatTimeAgo } from '../../services/format.js';
+import { formatNumber, formatPercentPoints, formatTimeAgo } from '../../services/format.js';
 import { computePricesDelta } from '../../domain/calcVersioning.js';
 
 /* Stage 14.2 (PATCH 2.7.1): денежный форматтер для tooltip'а delta-pill —
@@ -40,13 +40,12 @@ import { computePricesDelta } from '../../domain/calcVersioning.js';
 const fmtRub = (n) => {
     const num = Number(n);
     if (!Number.isFinite(num)) return '—';
-    return Math.round(num).toLocaleString('ru-RU').replace(/,/g, ' ');
+    return formatNumber(Math.round(num), { min: 0, max: 0 });
 };
 
 const fmtPct = (pct) => {
     const abs = Math.abs(pct);
-    const rounded = abs >= 10 ? abs.toFixed(0) : abs.toFixed(1);
-    return (pct > 0 ? '+' : '−') + rounded + '%';
+    return formatPercentPoints(pct, { min: abs >= 10 ? 0 : 1, max: abs >= 10 ? 0 : 1 });
 };
 
 /* Per-provider тело accordion-блока: current row + history rows + delta-summary.

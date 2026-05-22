@@ -22,7 +22,7 @@
 import { el } from './dom.js';
 import { icon } from './icons.js';
 import { PROVIDER_OVERLAYS, getEffectivePrices } from '../domain/providerOverlay.js';
-import { formatNumber } from '../services/format.js';
+import { formatNumber, formatPercentPoints } from '../services/format.js';
 
 export { renderProviderUpdateRow } from './providerUpdateRow.js';
 
@@ -80,17 +80,21 @@ function _renderDeltaPill(frozenValue, effectiveValue) {
     if (Math.abs(deltaPct) < 0.1) return null;
     const isUp = deltaPct > 0;
     const arrow = isUp ? '↑' : '↓';
-    const sign = isUp ? '+' : '−';
     const absPct = Math.abs(deltaPct);
-    const rounded = absPct >= 10 ? absPct.toFixed(0) : absPct.toFixed(1);
-    const label = `${arrow} ${sign}${rounded}%`;
+    const pctText = formatPercentPoints(deltaPct, { min: absPct >= 10 ? 0 : 1, max: absPct >= 10 ? 0 : 1 });
+    const absPctText = formatPercentPoints(absPct, {
+        min: absPct >= 10 ? 0 : 1,
+        max: absPct >= 10 ? 0 : 1,
+        showPlus: false
+    });
+    const label = `${arrow} ${pctText}`;
     const aria = isUp
-        ? `Цена выросла на ${rounded}% относительно базовой`
-        : `Цена снизилась на ${rounded}% относительно базовой`;
+        ? `Цена выросла на ${absPctText} относительно базовой`
+        : `Цена снизилась на ${absPctText} относительно базовой`;
     /* Stage 14.2 (PATCH 2.7.1): унифицированный формат tooltip'а для delta-pill
        — «Старая X ₽ → Новая Y ₽ (Δ%)». То же выражение в providerAnalyticsModal,
        deltaHistoryModal. */
-    const titleAttr = `Старая ${fmtRub(frozenValue)} ₽ → Новая ${fmtRub(effectiveValue)} ₽ (${sign}${rounded}%).`;
+    const titleAttr = `Старая ${fmtRub(frozenValue)} ₽ → Новая ${fmtRub(effectiveValue)} ₽ (${pctText}).`;
     return el('span', {
         class: ['delta-pill', isUp ? 'delta-pill--up' : 'delta-pill--down'],
         attrs: {

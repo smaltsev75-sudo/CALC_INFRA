@@ -359,7 +359,8 @@ function renderHero(result, period, ctx, applyRisks = true, totalResources = nul
                 el('div', {
                     class: 'dash-hero-cost-types-bar',
                     attrs: { role: 'img',
-                        'aria-label': `CAPEX ${(capexPct * 100).toFixed(1)}%, OPEX ${(opexPct * 100).toFixed(1)}%` }
+                        'aria-label': `CAPEX ${formatNumber(capexPct * 100, { min: 1, max: 1 })}%, ` +
+                                      `OPEX ${formatNumber(opexPct * 100, { min: 1, max: 1 })}%` }
                 },
                     el('span', {
                         class: 'dash-hero-cost-types-bar-capex',

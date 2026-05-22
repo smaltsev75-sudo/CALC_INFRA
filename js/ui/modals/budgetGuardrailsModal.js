@@ -21,18 +21,14 @@
 import { el } from '../dom.js';
 import { modalShell } from './baseModal.js';
 import { BUDGET_STATUS, formatBudgetStatus } from '../../domain/budgetGuardrails.js';
+import { formatPercentPoints, formatRubShort } from '../../services/format.js';
 
 /* ============================================================
  * Форматирование
  * ============================================================ */
 
 function fmtMoney(v) {
-    if (!Number.isFinite(v)) return '—';
-    const sign = v < 0 ? '−' : '';
-    const abs = Math.abs(v);
-    if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)} млн ₽`;
-    if (abs >= 1_000)    return `${sign}${(abs / 1_000).toFixed(1)} тыс. ₽`;
-    return `${sign}${abs.toFixed(0)} ₽`;
+    return formatRubShort(v, { millionFractionDigits: 1, thousandFractionDigits: 1 });
 }
 
 function fmtMoneyMonthly(v) {
@@ -40,9 +36,7 @@ function fmtMoneyMonthly(v) {
 }
 
 function fmtPercent(v) {
-    if (!Number.isFinite(v)) return '—';
-    const sign = v > 0 ? '+' : '';
-    return `${sign}${v.toFixed(1)} %`;
+    return formatPercentPoints(v, { min: 1, max: 1, spaceBeforePercent: true });
 }
 
 /* ============================================================

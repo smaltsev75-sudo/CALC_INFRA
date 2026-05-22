@@ -1,4 +1,4 @@
-import { formatRubThousands } from '../../services/format.js';
+import { formatNumber, formatRubThousands } from '../../services/format.js';
 import { MONTHS_PER_YEAR } from '../../utils/constants.js';
 
 /* ============================================================
@@ -42,9 +42,8 @@ export function formatRubPeriod(value, period) {
 
 export function formatValueGeneric(v) {
     if (!Number.isFinite(v)) return '—';
-    if (Math.abs(v) >= 100) return Math.round(v).toLocaleString('ru-RU');
-    if (Math.abs(v) >= 1)   return v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
-    return v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    if (Math.abs(v) >= 100) return formatNumber(Math.round(v), { min: 0, max: 0 });
+    return formatNumber(v, { min: 0, max: 2, useGrouping: false });
 }
 
 export function pluralParams(n) {
@@ -93,7 +92,7 @@ export function formatValueShort(v, lever) {
     // Percent editor: storage value 0..1 (ratio/доля) → проценты.
     // unit '% от ПРОМ' / '%' уже несёт ' %' в постфиксе.
     if (editor?.editorType === 'percent') {
-        const formatted = (v * 100).toFixed(0);
+        const formatted = formatNumber(v * 100, { min: 0, max: 0, useGrouping: false });
         // unit '% от ПРОМ' начинается с '%' — не дублируем «%»: подставляем «N% от ПРОМ» или «N %»
         if (unit === '% от ПРОМ')  return `${formatted} % от ПРОМ`;
         return `${formatted} %`;
@@ -102,24 +101,24 @@ export function formatValueShort(v, lever) {
     // Enum: SLA — десятичный процент; backup_retention — целые дни.
     if (editor?.editorType === 'enum') {
         if (unit === 'дн.') return `${Math.round(v)} дн.`;
-        if (unit === '%')   return `${v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')} %`;
+        if (unit === '%')   return `${formatNumber(v, { min: 0, max: 2, useGrouping: false })} %`;
         // Fallback: эвристики прежней реализации.
         if (Math.abs(v) >= 1000) return `${Math.round(v)} дн.`;
         if (Number.isInteger(v) && Math.abs(v) >= 7 && Math.abs(v) <= 9000) return `${v} дн.`;
-        return `${v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')} %`;
+        return `${formatNumber(v, { min: 0, max: 2, useGrouping: false })} %`;
     }
 
     // Integer non-horizon (AI tokens и др.).
     if (editor?.editorType === 'number_int') {
         const n = Math.round(v);
-        const num = n.toLocaleString('ru-RU');
+        const num = formatNumber(n, { min: 0, max: 0 });
         return unit ? `${num} ${unit}` : num;
     }
 
     // number_float (RAG corpus, embeddings).
     let core;
-    if (Math.abs(v) >= 100)      core = Math.round(v).toLocaleString('ru-RU');
-    else if (Math.abs(v) >= 10)  core = v.toFixed(1).replace(/\.0$/, '');
-    else                          core = v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    if (Math.abs(v) >= 100)      core = formatNumber(Math.round(v), { min: 0, max: 0 });
+    else if (Math.abs(v) >= 10)  core = formatNumber(v, { min: 0, max: 1, useGrouping: false });
+    else                         core = formatNumber(v, { min: 0, max: 2, useGrouping: false });
     return unit ? `${core} ${unit}` : core;
 }

@@ -178,7 +178,7 @@ describe('printAnswers: построение DOM', { concurrency: false }, () =>
         const allText = collectText(area);
         assert.match(allText, /Параметры расчёта/);
         assert.match(allText, /НДС/);
-        assert.match(allText, /20,0%/);   // vatRate: 0.20
+        assert.match(allText, /20%/);   // vatRate: 0.20
         assert.match(allText, /Задачный буфер/);
     });
 

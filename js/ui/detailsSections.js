@@ -13,7 +13,7 @@ import {
     CATEGORY_IDS, CATEGORY_LABELS, CATEGORY_COLORS,
     BILLING_INTERVAL_LABELS, COST_TYPE_LABELS, MONTHS_PER_YEAR
 } from '../utils/constants.js';
-import { formatRub, num, percent } from '../services/format.js';
+import { formatNumber, formatPercentPoints, formatRub, num, percent } from '../services/format.js';
 import { getCostType } from '../domain/costType.js';
 import { renderVatBadge, renderVatBreakdownLine } from './vatBadge.js';
 
@@ -391,7 +391,9 @@ function renderCostItemRow(item, result, ctx, disabled = new Set(), denomMonthly
             const cellRisk = cell.riskBreakdown?.total;
             const tooltipParts = [`qty = ${num(cell.qty)} ${item.unit}`];
             if (standMonthly > 0) tooltipParts.push(`Доля в стенде: ${percent(standShare)}`);
-            if (Number.isFinite(cellRisk)) tooltipParts.push(`Риск-фактор ×${cellRisk.toFixed(4)}`);
+            if (Number.isFinite(cellRisk)) {
+                tooltipParts.push(`Риск-фактор ×${formatNumber(cellRisk, { min: 4, max: 4 })}`);
+            }
             if (isDisabled) tooltipParts.push('Стенд исключён из ИТОГО');
             return el('td', {
                 class: ['col-stand', cell.error && 'col-stand-error', isDisabled && 'stand-disabled'],
@@ -463,11 +465,10 @@ function renderRiskCell(riskTotal) {
         return el('td', { class: 'col-risk col-risk-empty', text: '—' });
     }
     const surplus = (riskTotal - 1) * 100;
-    const sign = surplus > 0 ? '+' : '';
     return el('td', {
         class: ['col-risk', surplus > 0 ? 'col-risk-up' : surplus < 0 ? 'col-risk-down' : null],
-        title: `Средневзвешенный риск-фактор по строке: ×${riskTotal.toFixed(4)}.`
-    }, `${sign}${surplus.toFixed(1)}%`);
+        title: `Средневзвешенный риск-фактор по строке: ×${formatNumber(riskTotal, { min: 4, max: 4 })}.`
+    }, formatPercentPoints(surplus, { min: 1, max: 1 }));
 }
 
 /**
