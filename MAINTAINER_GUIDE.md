@@ -28,7 +28,7 @@ data/providers/vk-latest.json
 |---|---|
 | Cloud.ru (бывший SberCloud, `providerId: sbercloud`) | https://cloud.ru/ru/services/pricing |
 | Yandex Cloud | https://yandex.cloud/ru/prices |
-| VK Cloud | https://mcs.mail.ru/pricing/ |
+| VK Cloud | https://cloud.vk.com/pricelist |
 | MTS Cloud | https://cloud.mts.ru/calculator/ |
 | On-premises | внутренние прайсы вендора железа / ОС / СУБД |
 
@@ -302,9 +302,12 @@ CI.
 
 Третья таблица `Confidence summary` агрегирует уровень доверия к bundled-прайсам:
 сколько провайдеров имеют verified/source-level VAT, assumed/unknown VAT и
-stub-статус. Для коммерческого baseline провайдеры с `STUB` или `ASSUMED_VAT`
-должны быть заменены ручной verified/source-level выгрузкой перед финальной
-сметой; для sensitivity-сравнения их можно оставить с явной пометкой.
+stub-статус. Колонка `Attention` включает и freshness-флаги, и проблемы из
+`Quality gates`, поэтому провайдер с публичным VAT source-level всё равно может
+требовать внимания из-за `MISSING_CORE`. Для коммерческого baseline провайдеры
+с `STUB`/`ASSUMED_VAT` должны быть заменены ручной verified/source-level
+выгрузкой, а провайдеры с `MISSING_CORE` — дополнены КП или ручным override
+перед финальной сметой.
 
 ---
 
@@ -469,6 +472,6 @@ npm test                      # sync-test проверит, что generated mod
 Coverage у каждого провайдера разная и отражает реальный прайс-лист:
 - **sbercloud** (16 SKU) — Cloud.ru Evolution: compute + AI agents + LLM tokens + RAG.
 - **yandex** (15 SKU) — yandex.cloud/pricing: compute + dedicated + AI tokens + RAG.
-- **vk** (14 SKU) — realistic-stub: compute + licenses + услуги.
+- **vk** (10 SKU) — cloud.vk.com/pricelist source-level: compute, RAM, disks, Object Storage, load balancer и Microsoft licenses. WAF/DDoS у VK Cloud опубликованы как «по запросу», поэтому не входят в bundled и подсвечиваются как `MISSING_CORE`.
 
 Items, отсутствующие в bundled (например, sbercloud не покрывает licenses) — silent fallback на SEED-цену в `applyProviderOverlay`. Это нормальный сценарий: bundled JSON покрывает provider-specific прайс, остальное берётся из SEED-defaults.

@@ -8,8 +8,8 @@
  *   ровно один раз.
  *
  * Также проверяется:
- *   - SEED fallback для items, отсутствующих в bundled JSON (cpu-vcpu-dedicated,
- *     license-*, service-* — не в bundled v2).
+ *   - SEED fallback для items, отсутствующих в конкретном bundled JSON
+ *     (например, license/service SKU у Cloud.ru).
  *   - Metadata preservation (vendor, priceSource, vatRate, vatPolicyConfidence).
  *   - Идентичность applyProviderOverlay → getEffectivePrices.
  */
@@ -40,10 +40,10 @@ describe('Phase 4.1: pricePerUnit == net для всех активных про
         assert.equal(overlayEntry.pricePerUnit, bundledEntry.pricePerUnitNet);
     });
 
-    it('vk / cpu-vcpu-shared: pricePerUnit ≈ 619.67 (= 756 gross / 1.22)', () => {
+    it('vk / cpu-vcpu-shared: pricePerUnit ≈ 695.90 (= 849 gross / 1.22)', () => {
         const entry = PROVIDER_OVERLAYS.vk.prices['cpu-vcpu-shared'];
-        assert.equal(entry.pricePerUnit, 619.67);
-        assert.notEqual(entry.pricePerUnit, 756);
+        assert.equal(entry.pricePerUnit, 695.9);
+        assert.notEqual(entry.pricePerUnit, 849);
     });
 });
 
@@ -75,14 +75,14 @@ describe('Phase 4.2: metadata из bundled сохранена в overlay', () =>
         );
         assert.equal(
             PROVIDER_OVERLAYS.vk.prices['cpu-vcpu-shared'].vatPolicyConfidence,
-            'assumed'
+            'source-level'
         );
     });
 });
 
 describe('Phase 4.3: SEED fallback для items, отсутствующих в bundled', () => {
-    /* В bundled v2 нет licenses / services / cpu-vcpu-dedicated — они должны
-     * fallback'нуться к SEED-цене (silent fallback в applyProviderOverlay). */
+    /* В bundled.sbercloud нет license/service/cpu-vcpu-dedicated SKU — они
+     * должны fallback'нуться к SEED-цене (silent fallback в applyProviderOverlay). */
     const ITEMS_NOT_IN_BUNDLED = [
         'cpu-vcpu-dedicated',
         'license-db-per-vcpu',
@@ -175,8 +175,8 @@ describe('Phase 4.7: счёт записей по провайдерам', () =>
         assert.equal(Object.keys(PROVIDER_OVERLAYS.yandex.prices).length, 15);
     });
 
-    it('vk: 14 записей', () => {
-        assert.equal(Object.keys(PROVIDER_OVERLAYS.vk.prices).length, 14);
+    it('vk: 10 записей', () => {
+        assert.equal(Object.keys(PROVIDER_OVERLAYS.vk.prices).length, 10);
     });
 
     it('onprem: prices отсутствуют (stub)', () => {

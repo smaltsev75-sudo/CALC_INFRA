@@ -189,8 +189,9 @@ Dashboard, Детализацию и Сравнение на реальном ba
 (timestamp/age/version/VAT confidence), quality gates (core SKU coverage,
 gross→net VAT policy, неположительные цены, пустые vendor/source) и confidence
 summary по verified/source-level, assumed, unknown и stub-провайдерам. `STUB` /
-`ASSUMED_VAT` остаются видимыми как maintainer findings, а structural quality
-ошибки ловятся до релиза.
+`ASSUMED_VAT` и quality-флаги вроде `MISSING_CORE` остаются видимыми как
+maintainer findings; `Attention` в summary подсвечивает и freshness, и
+structural quality проблемы до релиза.
 
 В GitHub Actions заведены два обязательных job'а: `unit-and-sanity`
 (`npm test`, `syntax-check`, `sanity:check`, `prices:freshness:check`,
@@ -219,7 +220,7 @@ deploy-from-branch. Playwright артефакты при падении загр
 - Лицензии — Tantor SE, Red OS, Kaspersky EDR.
 - Пентесты, аудиты, сертификация — медианы рынка из публичных источников (anti-malware.ru, RTM Group, BI.ZONE, ibs-qa).
 
-Цены требуют ревизии раз в 6+ месяцев (особенно LLM, SMS). Текущий статус bundled-прайсов — в [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md); регламент обновления — в [MAINTAINER_GUIDE.md](MAINTAINER_GUIDE.md).
+Цены требуют ревизии раз в 6+ месяцев (особенно LLM, SMS и позиции «по запросу» вроде WAF/DDoS). Текущий статус bundled-прайсов — в [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md); регламент обновления — в [MAINTAINER_GUIDE.md](MAINTAINER_GUIDE.md).
 
 ### Обновление цен
 

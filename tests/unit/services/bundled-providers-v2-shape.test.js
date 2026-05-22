@@ -37,7 +37,7 @@ const PROVIDER_FILE_RE = /^([a-z0-9_-]+)-latest\.json$/;
 const EXPECTED_CONFIDENCE = Object.freeze({
     sbercloud: 'verified',
     yandex: 'source-level',
-    vk: 'assumed'
+    vk: 'source-level'
 });
 
 let svc;

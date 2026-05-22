@@ -30,8 +30,9 @@
  *   vatNormalized). НДС применяется calculator'ом ровно один раз через
  *   `vatMul` поверх net — главный VAT-2 invariant.
  *
- *   Items, отсутствующие в bundled (licenses / services / cpu-vcpu-dedicated),
- *   silent-fallback'ятся к SEED-цене в `applyProviderOverlay`.
+ *   Items, отсутствующие в bundled (например, услуги, WAF или SMS/Email у
+ *   провайдера без публичного тарифа), silent-fallback'ятся к SEED-цене в
+ *   `applyProviderOverlay`.
  *
  * Линтеры:
  *   - [provider-overlay-coverage.test.js]: каждый ключ в `prices` для не-alias
@@ -100,14 +101,15 @@ export const PROVIDER_OVERLAYS = Object.freeze({
         description: 'Yandex Cloud — расчётные ориентиры тарифов 2026-Q3 (source-level: публичные тарифы yandex.cloud/pricing).',
         prices: YANDEX_PRICES
     }),
-    /* Stage 4.7: VK Cloud был переключён с inactive stub на active overlay.
-       После Stage VAT-2 Phase 3 VK source vatPolicy.confidence='assumed' —
-       это realistic-stub, не верифицированный прайс. */
+    /* VK Cloud использует публичный price-list source-level для compute/storage/
+       load balancer/MS license SKU. WAF/DDoS в публичном прайсе "по запросу",
+       поэтому не включены в overlay и видны в freshness quality gates как
+       MISSING_CORE. */
     vk: Object.freeze({
         id: 'vk',
         label: 'VK Cloud',
         active: true,
-        description: 'VK Cloud — realistic-stub Q3-2026 (assumed: не верифицированный публичный прайс).',
+        description: 'VK Cloud — публичный прайс-лист 12.01.2026 (source-level; WAF/DDoS по запросу, fallback на seed).',
         prices: VK_CLOUD_PRICES
     }),
     /* On-prem НЕ overlay-модель: у on-prem CAPEX (железо + амортизация + DC),

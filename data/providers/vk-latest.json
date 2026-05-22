@@ -1,112 +1,84 @@
 {
     "schemaVersion": 2,
     "providerId": "vk",
-    "version": "2026-Q3-stub",
-    "timestamp": "2026-05-09T12:00:00.000Z",
-    "source": "realistic-stub Q3-2026 для VK Cloud — синтетическое смещение от frozen-baseline (~+5%). НЕ верифицированный публичный прайс; замените файлом из реальных тарифов vkcloud.ru при готовности.",
+    "version": "2026-01-12-public",
+    "timestamp": "2026-01-12T00:00:00.000Z",
+    "source": "VK Cloud official public price list https://cloud.vk.com/pricelist (configuration and prices from 12.01.2026, prices include VAT) + tariff docs https://cloud.vk.com/docs/ru/computing/iaas/tariffication. WAF/DDoS are price-by-request and intentionally not bundled.",
     "vatPolicy": {
         "pricesIncludeVat": true,
         "vatRateIncluded": 0.22,
-        "confidence": "assumed"
+        "confidence": "source-level"
     },
     "prices": {
         "cpu-vcpu-shared": {
-            "pricePerUnitGross": 756,
-            "pricePerUnitNet": 619.67,
+            "pricePerUnitGross": 849,
+            "pricePerUnitNet": 695.9,
             "vatRate": 0.22,
             "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
+            "priceSource": "https://cloud.vk.com/pricelist — Virtual servers, CPU Intel Ice Lake, 849 RUB / 30 days incl. VAT"
         },
         "cpu-vcpu-dedicated": {
-            "pricePerUnitGross": 546,
-            "pricePerUnitNet": 447.54,
+            "pricePerUnitGross": 1297,
+            "pricePerUnitNet": 1063.11,
             "vatRate": 0.22,
             "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
+            "priceSource": "https://cloud.vk.com/pricelist — Virtual servers, High-frequency CPU used as premium/dedicated proxy, 1297 RUB / 30 days incl. VAT"
         },
         "ram-gb": {
-            "pricePerUnitGross": 210,
-            "pricePerUnitNet": 172.13,
+            "pricePerUnitGross": 223,
+            "pricePerUnitNet": 182.79,
             "vatRate": 0.22,
             "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
+            "priceSource": "https://cloud.vk.com/pricelist — Virtual servers, RAM, 223 RUB / GB / 30 days incl. VAT"
         },
         "storage-ssd-tb": {
-            "pricePerUnitGross": 11340,
-            "pricePerUnitNet": 9295.08,
+            "pricePerUnitGross": 13312,
+            "pricePerUnitNet": 10911.48,
             "vatRate": 0.22,
             "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
+            "priceSource": "https://cloud.vk.com/pricelist — Virtual servers, SSD, 13 RUB / GB / 30 days incl. VAT × 1024 GB"
         },
         "storage-hdd-tb": {
-            "pricePerUnitGross": 4095,
-            "pricePerUnitNet": 3356.56,
+            "pricePerUnitGross": 4096,
+            "pricePerUnitNet": 3357.38,
             "vatRate": 0.22,
             "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
+            "priceSource": "https://cloud.vk.com/pricelist — Virtual servers, HDD, 4 RUB / GB / 30 days incl. VAT × 1024 GB"
         },
         "storage-object-tb": {
-            "pricePerUnitGross": 1838,
-            "pricePerUnitNet": 1506.56,
+            "pricePerUnitGross": 2334.72,
+            "pricePerUnitNet": 1913.7,
             "vatRate": 0.22,
             "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
+            "priceSource": "https://cloud.vk.com/pricelist — VK Object Storage Hotbox, data storage 2.28 RUB / GB / 30 days incl. VAT × 1024 GB"
         },
         "cpu-vcpu-gpu": {
-            "pricePerUnitGross": 16275,
-            "pricePerUnitNet": 13340.16,
+            "pricePerUnitGross": 7116.66,
+            "pricePerUnitNet": 5833.33,
             "vatRate": 0.22,
             "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
+            "priceSource": "https://cloud.vk.com/pricelist — GPU VM A100 bundle 227733 RUB / 30 days incl. VAT ÷ 32 vCPU"
         },
         "network-lb-l7": {
-            "pricePerUnitGross": 1680,
-            "pricePerUnitNet": 1377.05,
+            "pricePerUnitGross": 2086,
+            "pricePerUnitNet": 1709.84,
             "vatRate": 0.22,
             "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
-        },
-        "network-waf": {
-            "pricePerUnitGross": 5198,
-            "pricePerUnitNet": 4260.66,
-            "vatRate": 0.22,
-            "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
+            "priceSource": "https://cloud.vk.com/pricelist — Standard load balancer HA, 2086 RUB / 30 days incl. VAT; closest public proxy for L7 LB"
         },
         "license-db-per-vcpu": {
-            "pricePerUnitGross": 173250,
-            "pricePerUnitNet": 142008.2,
+            "pricePerUnitGross": 729822,
+            "pricePerUnitNet": 598214.75,
             "vatRate": 0.22,
             "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
+            "priceSource": "https://cloud.vk.com/pricelist — MS SQL Enterprise, 121637 RUB / 30 days per each 2 vCPU incl. VAT × 12 / 2"
         },
         "license-os-per-node": {
-            "pricePerUnitGross": 30975,
-            "pricePerUnitNet": 25389.34,
+            "pricePerUnitGross": 11880,
+            "pricePerUnitNet": 9737.7,
             "vatRate": 0.22,
             "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
-        },
-        "license-siem-edr-per-node": {
-            "pricePerUnitGross": 2604,
-            "pricePerUnitNet": 2134.43,
-            "vatRate": 0.22,
-            "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
-        },
-        "service-email-per-1k": {
-            "pricePerUnitGross": 103,
-            "pricePerUnitNet": 84.43,
-            "vatRate": 0.22,
-            "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
-        },
-        "service-sms-per-1k": {
-            "pricePerUnitGross": 6615,
-            "pricePerUnitNet": 5422.13,
-            "vatRate": 0.22,
-            "vendor": "VK Cloud",
-            "priceSource": "realistic-stub vkcloud.ru/services Q3-2026"
+            "priceSource": "https://cloud.vk.com/pricelist — Windows Server, 990 RUB / 30 days per each 2 vCPU incl. VAT × 12; mapped to one node"
         }
     }
 }

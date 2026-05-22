@@ -9,10 +9,11 @@
  * Проверяем:
  *   1. cloud_ru НЕ существует в PROVIDER_OVERLAYS (anti-regression).
  *   2. sbercloud label = «Cloud.ru (бывший SberCloud)».
- *   3. yandex = active со stub-prices (отличаются от SberCloud).
- *   4. vk / onprem = inactive — overlay НЕ применяется (фоллбэк на seed).
- *   5. getActiveProviders возвращает 2 active: sbercloud, yandex.
- *   6. listProviders возвращает 4 провайдера (sbercloud, yandex, vk, onprem).
+ *   3. yandex = active с source-level prices (отличаются от Cloud.ru).
+ *   4. vk = active с публичным source-level price-list subset.
+ *   5. onprem = inactive — overlay НЕ применяется (фоллбэк на seed).
+ *   6. getActiveProviders возвращает 3 active: sbercloud, vk, yandex.
+ *   7. listProviders возвращает 4 провайдера (sbercloud, yandex, vk, onprem).
  */
 
 import { describe, it } from 'node:test';
@@ -54,7 +55,7 @@ describe('Stage 4.5.1 hot-fix: cloud_ru дубль устранён', () => {
     });
 });
 
-describe('14.U8 Yandex Cloud (active stub с правдоподобными ценами)', () => {
+describe('14.U8 Yandex Cloud (active source-level prices)', () => {
     it('yandex активен с непустым prices', () => {
         assert.equal(PROVIDER_OVERLAYS.yandex.active, true);
         assert.ok(Object.keys(PROVIDER_OVERLAYS.yandex.prices).length > 0,
@@ -118,7 +119,7 @@ describe('Stage 4.7: VK Cloud (active overlay) и onprem (inactive stub)', () =>
        onprem остаётся inactive — у него CAPEX-модель, overlay подменяет
        только pricePerUnit (OPEX). */
 
-    it('vk active=true с непустым набором prices (Phase 4: 14 ЭК из bundled)', () => {
+    it('vk active=true с непустым набором source-level prices', () => {
         assert.equal(PROVIDER_OVERLAYS.vk.active, true,
             'Stage 4.7: vk переключён с inactive stub на active overlay');
         assert.ok(Object.keys(PROVIDER_OVERLAYS.vk.prices).length >= 10,
@@ -131,12 +132,12 @@ describe('Stage 4.7: VK Cloud (active overlay) и onprem (inactive stub)', () =>
         }
     });
 
-    it('priceSource для VK Cloud содержит «realistic-stub» маркер', () => {
-        // Защита от трактовки «верифицированные публичные тарифы». Когда
-        // появится реальный source — убрать маркер из priceSource'ов и из теста.
+    it('priceSource для VK Cloud ссылается на публичный прайс-лист VK Cloud', () => {
         for (const [, entry] of Object.entries(PROVIDER_OVERLAYS.vk.prices)) {
-            assert.match(entry.priceSource, /realistic-stub/i,
-                `priceSource "${entry.priceSource}" должен содержать «realistic-stub» — цены не верифицированы публичным прайсом VK`);
+            assert.doesNotMatch(entry.priceSource, /realistic-stub/i,
+                `priceSource "${entry.priceSource}" не должен содержать legacy realistic-stub marker`);
+            assert.match(entry.priceSource, /cloud\.vk\.com\/pricelist/i,
+                `priceSource "${entry.priceSource}" должен ссылаться на официальный прайс-лист VK Cloud`);
         }
     });
 
@@ -193,9 +194,9 @@ describe('Stage 4.7: VK Cloud (active overlay) и onprem (inactive stub)', () =>
         assert.deepEqual(getEffectivePrices('onprem'), {});
     });
 
-    it('getEffectivePrices для vk возвращает 14 цен (active после Stage 4.7)', () => {
+    it('getEffectivePrices для vk возвращает 10 публичных цен', () => {
         const prices = getEffectivePrices('vk');
-        assert.equal(Object.keys(prices).length, 14);
+        assert.equal(Object.keys(prices).length, 10);
     });
 });
 

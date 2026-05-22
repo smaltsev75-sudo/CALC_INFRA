@@ -6,7 +6,7 @@
 | Провайдер | Версия | Дата сбора | Возраст | Позиций | VAT confidence | Статус |
 |---|---|---:|---:|---:|---|---|
 | sbercloud | 2026-Q3 | 13.05.2026 | 0.3 мес | 16 | verified | OK |
-| vk | 2026-Q3-stub | 09.05.2026 | 0.4 мес | 14 | assumed | STUB + ASSUMED_VAT |
+| vk | 2026-01-12-public | 12.01.2026 | 4.3 мес | 10 | source-level | OK |
 | yandex | 2026-Q3 | 09.05.2026 | 0.4 мес | 15 | source-level | OK |
 
 ## Quality gates
@@ -14,21 +14,21 @@
 | Провайдер | Core SKU coverage | VAT policy | Bad prices | Missing sources | Статус |
 |---|---:|---|---:|---:|---|
 | sbercloud | 8/8 | gross→net OK | 0 | 0 | OK |
-| vk | 8/8 | gross→net OK | 0 | 0 | OK |
+| vk | 7/8 | gross→net OK | 0 | 0 | MISSING_CORE |
 | yandex | 8/8 | gross→net OK | 0 | 0 | OK |
 
 ## Confidence summary
 
 | Провайдеров | Verified/source-level VAT | Assumed VAT | Unknown VAT | Stub providers | Attention |
 |---:|---:|---:|---:|---:|---|
-| 3 | 2 | 1 | 0 | 1 | vk |
+| 3 | 3 | 0 | 0 | 0 | vk |
 
 ## Интерпретация
 
-Требуют внимания: vk (STUB + ASSUMED_VAT).
-`STALE` означает возраст старше порога, `STUB` — реалистичный stub вместо проверенного прайса, `ASSUMED_VAT` — НДС-политика принята по допущению.
-Quality gates: базовые SKU, VAT policy, положительные цены и vendor/source заполнены у всех провайдеров.
-Для коммерческого baseline предпочтительны провайдеры без `STUB` и без `ASSUMED_VAT`. Stub/assumed-прайсы допустимы для sensitivity-сравнения, но требуют ручной замены перед финальным бюджетом.
+Все bundled-прайсы находятся в пределах порога свежести, без stub/assumed-флагов.
+Quality gates требуют внимания: vk (MISSING_CORE).
+`MISSING_CORE` означает отсутствие базового compute/storage/network SKU, `BAD_VAT_POLICY` — неполную gross→net политику, `BAD_PRICE` — неположительную цену, `MISSING_SOURCE` — пустой vendor/source.
+Для коммерческого baseline предпочтительны провайдеры без freshness/quality-флагов. `STUB`/`ASSUMED_VAT` требуют ручной замены, а `MISSING_CORE` — получения КП или ручного override по отсутствующим SKU перед финальным бюджетом.
 
 ## Maintainer flow
 

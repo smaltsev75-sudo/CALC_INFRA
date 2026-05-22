@@ -1,5 +1,30 @@
 # Журнал решений и допущений
 
+## 22.05.2026 · PATCH 2.20.29 — VK Cloud source-level прайс + quality-aware provider readiness
+
+**Контекст.** VK Cloud оставался `realistic-stub`, хотя публичный прайс-лист
+уже даёт проверяемые цены для compute/storage/load balancer и части лицензий.
+Синтетический stub был полезен для сравнения, но создавал ложную точность в
+финальной смете.
+
+**Решение.**
+
+- `data/providers/vk-latest.json` переведён на `source-level` по публичному
+  прайс-листу VK Cloud от 12.01.2026: CPU, RAM, SSD/HDD/Object Storage, GPU VM,
+  load balancer и Microsoft licenses.
+- WAF/DDoS не включены в VK bundled: в публичном прайсе они идут «по запросу».
+  Поэтому `PROVIDER_FRESHNESS_REPORT.md` теперь честно показывает VK как
+  `MISSING_CORE`, а расчёт использует SEED fallback до ручного КП/override.
+- `Confidence summary` в provider report теперь учитывает не только
+  freshness/stub/VAT, но и `Quality gates`; провайдер с `source-level` VAT всё
+  равно попадает в `Attention`, если неполно покрывает core SKU.
+- UserManual, README, Architecture и Maintainer Guide обновлены под новый
+  статус VK и правило: `MISSING_CORE` требует КП или ручного override перед
+  финальным бюджетом.
+
+**Версионирование.** PATCH `2.20.28 → 2.20.29`: обновление bundled-прайса,
+hardening отчёта и документации без изменения схемы расчёта.
+
 ## 22.05.2026 · PATCH 2.20.19 — Desktop user-flow E2E + стабильные test hooks
 
 **Контекст.** После UI↔domain regression-suite следующим ценным слоем стали

@@ -186,6 +186,8 @@ export function summarizeProviderConfidence(providers = BUNDLED_PROVIDER_PRICES,
     asOf = DEFAULT_REPORT_DATE
 } = {}) {
     const rows = summarizeProviderFreshness(providers, { asOf });
+    const qualityRows = summarizeProviderQuality(providers);
+    const qualityByProviderId = new Map(qualityRows.map(row => [row.providerId, row]));
     const providerEntries = Object.entries(providers);
     const trustedVatConfidence = new Set(['verified', 'source-level']);
     const assumedVatProviderIds = [];
@@ -210,7 +212,10 @@ export function summarizeProviderConfidence(providers = BUNDLED_PROVIDER_PRICES,
         unknownVatProviderIds,
         stubProviderIds,
         attentionProviderIds: rows
-            .filter(row => row.status !== 'OK')
+            .filter(row => {
+                const quality = qualityByProviderId.get(row.providerId);
+                return row.status !== 'OK' || quality?.status !== 'OK';
+            })
             .map(row => row.providerId)
     };
 }
@@ -266,7 +271,7 @@ export function buildProviderFreshnessReport(providers = BUNDLED_PROVIDER_PRICES
         print(`Quality gates требуют внимания: ${qualityAttention.map(row => `${row.providerId} (${row.status})`).join(', ')}.`);
         print('`MISSING_CORE` означает отсутствие базового compute/storage/network SKU, `BAD_VAT_POLICY` — неполную gross→net политику, `BAD_PRICE` — неположительную цену, `MISSING_SOURCE` — пустой vendor/source.');
     }
-    print('Для коммерческого baseline предпочтительны провайдеры без `STUB` и без `ASSUMED_VAT`. Stub/assumed-прайсы допустимы для sensitivity-сравнения, но требуют ручной замены перед финальным бюджетом.');
+    print('Для коммерческого baseline предпочтительны провайдеры без freshness/quality-флагов. `STUB`/`ASSUMED_VAT` требуют ручной замены, а `MISSING_CORE` — получения КП или ручного override по отсутствующим SKU перед финальным бюджетом.');
     print('');
     print('## Maintainer flow');
     print('');

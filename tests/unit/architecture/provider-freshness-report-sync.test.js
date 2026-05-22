@@ -61,31 +61,37 @@ test('provider freshness report contains deterministic maintainer flow', () => {
     assert.match(report, /## Quality gates/);
     assert.match(report, /\| yandex \| 0\/8 \| gross→net OK \| 2 \| 2 \| MISSING_CORE \+ BAD_PRICE \+ MISSING_SOURCE \|/);
     assert.match(report, /## Confidence summary/);
-    assert.match(report, /\| 1 \| 1 \| 0 \| 0 \| 0 \| — \|/);
-    assert.match(report, /Stub\/assumed-прайсы допустимы для sensitivity-сравнения/);
+    assert.match(report, /\| 1 \| 1 \| 0 \| 0 \| 0 \| yandex \|/);
+    assert.match(report, /MISSING_CORE.*ручного override по отсутствующим SKU/);
     assert.match(report, /npm run generate:providers/);
     assert.match(report, /npm run prices:freshness:check/);
 });
 
 test('provider confidence summary counts trusted, assumed, unknown and stub providers', () => {
+    const validCorePrices = Object.fromEntries(CORE_PROVIDER_SKU_IDS.map(id => [id, {
+        pricePerUnitGross: 122,
+        pricePerUnitNet: 100,
+        vendor: 'Vendor',
+        priceSource: 'vendor/source'
+    }]));
     const rows = summarizeProviderConfidence({
         verified: {
             version: '2026-Q3',
             timestamp: '2026-05-01T00:00:00.000Z',
-            vatPolicy: { confidence: 'verified' },
-            prices: {}
+            vatPolicy: { pricesIncludeVat: true, vatRateIncluded: 0.22, confidence: 'verified' },
+            prices: validCorePrices
         },
         assumedStub: {
             version: '2026-Q3-stub',
             timestamp: '2026-05-01T00:00:00.000Z',
-            vatPolicy: { confidence: 'assumed' },
-            prices: {}
+            vatPolicy: { pricesIncludeVat: true, vatRateIncluded: 0.22, confidence: 'assumed' },
+            prices: validCorePrices
         },
         unknown: {
             version: '2026-Q3',
             timestamp: '2026-05-01T00:00:00.000Z',
-            vatPolicy: {},
-            prices: {}
+            vatPolicy: { pricesIncludeVat: true, vatRateIncluded: 0.22 },
+            prices: validCorePrices
         }
     }, { asOf: '2026-05-22' });
 
