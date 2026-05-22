@@ -22,6 +22,7 @@ import { el } from '../dom.js';
 import { modalShell } from './baseModal.js';
 import { BUDGET_STATUS, formatBudgetStatus } from '../../domain/budgetGuardrails.js';
 import { formatPercentPoints, formatRubShort } from '../../services/format.js';
+import { renderCalculationProviderPriceActuality } from '../providerPriceActuality.js';
 
 /* ============================================================
  * Форматирование
@@ -206,6 +207,10 @@ export function renderBudgetGuardrailsModal(state, ctx) {
         size: 'lg',
         onClose,
         children: el('div', { class: 'budget-modal-body' },
+            renderCalculationProviderPriceActuality(calc, {
+                className: 'modal-price-actuality',
+                title: 'Прайс расчёта'
+            }),
             renderStalePriceWarning(calc),
             el('div', { class: 'budget-overall-status' },
                 el('span', { class: ['budget-status-chip', overallCls], text: formatBudgetStatus(overall) })

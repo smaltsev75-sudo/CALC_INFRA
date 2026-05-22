@@ -480,4 +480,15 @@ Coverage у каждого провайдера разная и отражает
 - **yandex** (15 SKU) — Yandex Cloud official docs/prices verified 2026-05-22: compute, storage, VPC egress, ALB, WAF, Postbox, AI Studio and Managed OpenSearch. L7 ALB uses the official one-AZ minimum 2 resource units.
 - **vk** (10 SKU) — cloud.vk.com/pricelist source-level: compute, RAM, disks, Object Storage, load balancer и Microsoft licenses. WAF (защита веб-приложений) / DDoS (защита от распределённых атак) у VK Cloud опубликованы как «по запросу», поэтому не входят в bundled и подсвечиваются как `MISSING_CORE`.
 
+UI обязан показывать пользователю не только статус доверия, но и дату
+актуальности прайса. Для бюджетных экранов это дата прайса, по которому
+выполнен конкретный расчёт: `calc.providerVersion` имеет приоритет, затем
+используется bundled provider JSON. Эта дата должна быть видна в Dashboard,
+Details, Comparison, бюджетных/оптимизационных модалках, provider comparison,
+CSV, memo и печатном PDF. Верхнеуровневые `version` и `timestamp` отображаемого
+provider JSON также рендерятся в блоке «Тарифы активного провайдера» и в
+«Прайс-бенчмарке». Если правите формат provider JSON или source-of-truth для
+bundle, проверьте, что дата всё ещё видна во всех этих местах и что
+`priceSource` конкретной строки остаётся доступен в tooltip.
+
 Items, отсутствующие в bundled (например, sbercloud не покрывает licenses) — silent fallback на SEED-цену в `applyProviderOverlay`. Это нормальный сценарий: bundled JSON покрывает provider-specific прайс, остальное берётся из SEED-defaults.

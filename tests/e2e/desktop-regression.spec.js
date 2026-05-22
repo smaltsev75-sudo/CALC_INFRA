@@ -44,10 +44,14 @@ test('Dashboard and Details match calculation model for a seeded desktop project
     await seedCalculations(page);
 
     await expect(page.locator('.dashboard-grid')).toBeVisible();
+    await expect(page.getByTestId('dashboard-provider-price-actuality'))
+        .toContainText('Актуальность прайса: 22.05.2026');
     await expectDashboardMatchesModel(page);
 
     await switchTab(page, 'details');
     await expect(page.locator('.details-table-cost')).toBeVisible();
+    await expect(page.locator('.details-provider-price-actuality'))
+        .toContainText('Актуальность прайса: 22.05.2026');
     await expectDetailsCostCategoriesMatchModel(page);
 
     expect(consoleErrors).toEqual([]);
@@ -142,12 +146,20 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
         store.setActiveTab('questionnaire');
         store.setUi({
             questionnaireSettingsOpen: true,
-            providerOverlayExpanded: true
+            providerOverlayExpanded: false
         });
     });
 
+    const collapsedSummary = page.locator('.provider-price-summary:not(.is-expanded)');
+    await expect(collapsedSummary).toBeVisible();
+    await expect(collapsedSummary.locator('.provider-price-actuality'))
+        .toContainText('Актуальность прайса: 22.05.2026');
+
+    await page.locator('.provider-price-summary-header').click();
     const summary = page.locator('.provider-price-summary.is-expanded');
     await expect(summary).toBeVisible();
+    await expect(summary.locator('.provider-price-actuality'))
+        .toContainText('Актуальность прайса: 22.05.2026');
 
     const ssdRowValue = summary
         .locator('.provider-price-row')
@@ -170,6 +182,13 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
     await expect(vkWafRow.locator('.provider-price-row-value-num')).toHaveText('по запросу');
     await expect(vkWafRow.locator('.provider-price-trust-badge')).toHaveText('По запросу');
     await expect(vkWafRow.locator('abbr.term-hint')).toHaveAttribute('title', /защита веб-приложений/);
+
+    await page.locator('.provider-analytics-btn').click();
+    const analyticsModal = page.locator('.modal-overlay').filter({ hasText: 'Прайс-бенчмарк' });
+    await expect(analyticsModal.locator('.analytics-trust-matrix')).toBeVisible();
+    await expect(analyticsModal.locator('.analytics-trust-matrix')).toContainText('Cloud.ru vs Yandex vs VK');
+    await expect(analyticsModal.locator('.analytics-provider-meta').first())
+        .toContainText('Актуальность прайса:');
 
     expect(consoleErrors).toEqual([]);
 });

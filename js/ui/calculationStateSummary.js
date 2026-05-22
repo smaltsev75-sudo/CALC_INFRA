@@ -28,6 +28,8 @@ import {
 import { evaluateCalculationHealth } from '../domain/calculationHealth.js';
 import { BUDGET_STATUS } from '../domain/budgetGuardrails.js';
 import { PLAN_TIERS } from '../domain/costOptimizationPlanner.js';
+import { getProviderSecurityPriceWarningForCalc } from '../domain/providerPriceTrust.js';
+import { getCalculationPriceActualityInfo } from './providerPriceActuality.js';
 import { formatPercentPoints } from '../services/format.js';
 
 /* ============================================================
@@ -204,7 +206,38 @@ function renderHeader(state, score, healthCounts, gap) {
     );
 }
 
-function renderDiagnostics(score, healthCounts, gap, ctx) {
+function renderProviderPriceWarningRow(warning, ctx) {
+    if (!warning) return null;
+    return el('div', { class: ['calc-state-summary-row', 'calc-state-summary-row-provider-price'] },
+        el('div', { class: 'calc-state-summary-row-title', text: 'Прайс защитных сервисов' }),
+        el('div', { class: 'calc-state-summary-row-body', text: warning.message }),
+        el('div', { class: 'calc-state-summary-row-actions' },
+            el('button', {
+                class: 'btn btn-ghost',
+                attrs: { type: 'button' },
+                title: 'Открыть детальный список проверок',
+                onClick: () => ctx.openCalculationHealthModal?.()
+            }, 'Открыть проверку →')
+        )
+    );
+}
+
+function renderProviderPriceActualityRow(calc) {
+    const info = getCalculationPriceActualityInfo(calc);
+    return el('div', { class: ['calc-state-summary-row', 'calc-state-summary-row-provider-actuality'] },
+        el('div', { class: 'calc-state-summary-row-title', text: 'Прайс расчёта' }),
+        el('div', { class: 'calc-state-summary-row-body', text: info.labelWithProvider }),
+        el('div', { class: 'calc-state-summary-row-actions' },
+            el('span', {
+                class: 'calc-state-summary-row-note',
+                attrs: { title: info.title },
+                text: 'Дата актуальности'
+            })
+        )
+    );
+}
+
+function renderDiagnostics(score, healthCounts, gap, ctx, calc, providerPriceWarning) {
     const hasAnyTarget = gap?.capex?.target != null || gap?.opex?.target != null;
     const budgetCtaLabel = hasAnyTarget ? 'Посмотреть рекомендации →' : 'Указать бюджет →';
     const onBudgetClick = hasAnyTarget
@@ -225,6 +258,8 @@ function renderDiagnostics(score, healthCounts, gap, ctx) {
                 }, 'Открыть проверку →')
             )
         ),
+        renderProviderPriceActualityRow(calc),
+        renderProviderPriceWarningRow(providerPriceWarning, ctx),
         /* Бюджет */
         el('div', { class: ['calc-state-summary-row', 'calc-state-summary-row-budget'] },
             el('div', { class: 'calc-state-summary-row-title', text: 'Бюджет' }),
@@ -360,6 +395,7 @@ export function renderCalculationStateSummary(calc, ctx) {
         : null;
     const state = deriveSummaryState(readiness, health);
     const nextStep = pickTopNextStep(ctx);
+    const providerPriceWarning = getProviderSecurityPriceWarningForCalc(calc);
 
     return el('section', {
         class: [
@@ -371,7 +407,7 @@ export function renderCalculationStateSummary(calc, ctx) {
     },
         renderHeader(state, health.score, health.counts, gap),
         el('p', { class: 'calc-state-summary-verdict', text: verdictText(state, readiness) }),
-        renderDiagnostics(health.score, health.counts, gap, ctx),
+        renderDiagnostics(health.score, health.counts, gap, ctx, calc, providerPriceWarning),
         renderNextStep(nextStep, ctx),
         // Stage 18.2.x: бывшая отдельная карточка «План оптимизации стоимости»
         // встроена как secondary-action. ctx.openCostOptimizationPlannerModal

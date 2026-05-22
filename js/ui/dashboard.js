@@ -44,6 +44,7 @@ import { renderVatBadge, renderVatBreakdownLine } from './vatBadge.js';
 import { renderRiskBreakdownLine } from './riskBreakdown.js';
 import { renderCalculationStateSummary } from './calculationStateSummary.js';
 import { renderScenarioBadge } from './scenarioBadge.js';
+import { renderCalculationProviderPriceActuality } from './providerPriceActuality.js';
 import {
     aggregateResources,
     aggregateAiMetrics,
@@ -159,6 +160,12 @@ export function renderDashboard(state, ctx) {
                 renderAssumptionsBtn(assumptionCount, ctx)
             )
         ),
+
+        renderCalculationProviderPriceActuality(calc, {
+            className: 'dashboard-price-actuality',
+            title: 'Прайс расчёта',
+            testId: 'dashboard-provider-price-actuality'
+        }),
 
         /* === Profile banner (14.U3) — только для wizard-расчётов === */
         renderProfileBanner(calc, ctx),

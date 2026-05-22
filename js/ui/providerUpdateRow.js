@@ -82,7 +82,7 @@ export function renderProviderUpdateRow(providerId, state, ctx) {
         class: ['provider-update-btn', 'btn-ghost', 'provider-analytics-btn'],
         attrs: {
             type: 'button',
-            title: 'Открыть таблицу сравнения цен всех активных провайдеров. Видны 4 ключевых ресурса (CPU/RAM/Storage/Network), сортировка по любой колонке. Можно отметить провайдеров и обновить их прайсы одной кнопкой.'
+            title: 'Открыть таблицу сравнения цен всех активных провайдеров. Видны ключевые ресурсы: процессоры, память, хранилище, сеть и лицензии; сортировка по любой колонке.'
         },
         onClick: () => ctx.openProviderAnalyticsModal && ctx.openProviderAnalyticsModal()
     },

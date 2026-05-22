@@ -144,7 +144,9 @@ describe('buildDecisionMemoContext — integration', () => {
         const ctx = buildDecisionMemoContext(calc);
         assert.ok(ctx.providerInfo, 'providerInfo должен быть установлен через fallback на settings.provider');
         assert.equal(ctx.providerInfo.providerId, 'sbercloud');
-        assert.equal(ctx.providerInfo.version, null, 'версия неизвестна — overlay не применялся');
+        assert.match(ctx.providerInfo.version || '', /official|public/,
+            'версия берётся из bundled-прайса, по которому выполняется расчёт');
+        assert.equal(ctx.providerInfo.updatedAt, '22.05.2026');
     });
 
     it('Stage 18.1.5: providerInfo содержит pretty-label из PROVIDER_OVERLAYS, не raw id', () => {

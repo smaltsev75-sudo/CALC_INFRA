@@ -2,7 +2,7 @@
 
 Целевая аудитория — архитекторы, разработчики, тестировщики. Здесь только то, что не выводится из чтения README.md / UserManual.md: устройство кода, потоки данных, паттерны защиты целостности и тестовая инфраструктура.
 
-**Версия 2.20.32** (provider price trust UI: русские бейджи доверия, WAF/DDoS-хинты, VK by-request warnings). Schema v20.
+**Версия 2.20.33** (provider trust matrix, дата актуальности прайсов в UI, VK WAF/DDoS warnings в Health/Details). Schema v20.
 
 ---
 
@@ -514,7 +514,7 @@ el('div', {
 - Триггер `ctx.openXxxModal(payload)` → `store.openModal(name, payload)`.
 - Закрытие `ctx.closeModal(name)` или `store.closeModal(name)`.
 
-Зарегистрированных модалок 28 (на 2.20.32): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
+Зарегистрированных модалок 28 (на 2.20.33): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
 
 Удалены в Stage 17.2: `recommendedActions` (заменён блоком «Следующие шаги» на Дашборде), `calculationDiff` (UI убран; pure-domain helper остался — см. п. 4.7).
 
@@ -562,7 +562,7 @@ Sanity-check скрипт ([scripts/sanity-report.mjs](scripts/sanity-report.mjs
 
 Provider freshness report ([scripts/provider-freshness-report.mjs](scripts/provider-freshness-report.mjs)): пишет [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md) через `npm run prices:freshness` или проверяет актуальность через `npm run prices:freshness:check`. Отчёт строится из `js/data/providers-bundled.generated.js`, фиксирует timestamp/age/version/SKU-count/VAT confidence и подсвечивает `STALE`, `STUB`, `ASSUMED_VAT`. Вторая таблица `Quality gates` проверяет core SKU coverage, gross→net VAT policy, неположительные net/gross цены и пустые `vendor`/`priceSource`. Третья таблица `Confidence summary` показывает, сколько bundled-провайдеров имеют verified/source-level VAT, assumed/unknown VAT и stub-статус; `Attention` включает как freshness, так и quality-флаги (`MISSING_CORE` и т. п.). Это релизный маркер доверия к прайсам, а не замена ручной верификации коммерческого baseline.
 
-Пользовательские статусы доверия к цене живут отдельно в [providerPriceTrust.js](js/domain/providerPriceTrust.js): модуль переводит internal `vatPolicy.confidence`, missing core SKU и ручные override в русские UI-бейджи («Проверено», «Публичный прайс», «По запросу» и т. п.), а также хранит WAF/DDoS-хинты для интерфейса.
+Пользовательские статусы доверия к цене живут отдельно в [providerPriceTrust.js](js/domain/providerPriceTrust.js): модуль переводит internal `vatPolicy.confidence`, missing core SKU и ручные override в русские UI-бейджи («Проверено», «Публичный прайс», «Частично», «По запросу» и т. п.), хранит WAF/DDoS-хинты для интерфейса, форматирует дату актуальности provider JSON и отдаёт capability-матрицу для сравнения Cloud.ru / Yandex / VK. Для бюджетных экранов дата берётся из прайса, по которому выполнен конкретный расчёт (`calc.providerVersion` → bundled provider JSON), и выводится через [providerPriceActuality.js](js/ui/providerPriceActuality.js) в Dashboard, Details, Comparison, бюджетных/оптимизационных модалках, CSV, memo и печатном PDF. Верхнеуровневые `version`/`timestamp` отображаемого provider JSON выводятся в [providerPriceSummary.js](js/ui/providerPriceSummary.js) и [providerAnalyticsModal.js](js/ui/modals/providerAnalyticsModal.js), а `priceSource` конкретной строки остаётся в tooltip строки цены.
 
 ### Виды тестов
 

@@ -1,5 +1,53 @@
 # Журнал решений и допущений
 
+## 23.05.2026 · PATCH 2.20.33 — price actuality dates + provider trust matrix
+
+**Контекст.** После refresh Cloud.ru/Yandex и source-level VK пользователь должен
+видеть не только статус доверия к цене, но и дату актуальности прайса. Без даты
+UI мог выглядеть точнее, чем фактически подтверждают источники.
+
+**Решение.**
+
+- [providerOverlay.js](js/domain/providerOverlay.js) отдаёт metadata bundled
+  прайса: provider, version, timestamp, source, VAT policy и число цен.
+- [providerPriceTrust.js](js/domain/providerPriceTrust.js) добавляет формат даты
+  `ДД.ММ.ГГГГ`, статус «Частично покрыто прайсом» и матрицу доверия по группам:
+  процессоры, память, блочные диски, объектное хранилище, балансировщик, WAF,
+  трафик и лицензии.
+- Сводка провайдера и price benchmark показывают строку
+  «Актуальность прайса: ДД.ММ.ГГГГ · версия ...»; строки цен сохраняют
+  source-tooltip с источником конкретной цены.
+- Для бюджетных экранов дата берётся из прайса, по которому выполнен конкретный
+  расчёт (`calc.providerVersion` → bundled provider JSON), и выводится в
+  Dashboard, Details, Comparison, бюджетных/оптимизационных модалках, CSV,
+  memo и печатном PDF.
+- Модалка сравнения провайдеров показывает матрицу
+  «Cloud.ru vs Yandex vs VK: доверие к ценам», чтобы verified/source-level/
+  assumed/missing не превращались в ложную точность.
+- Для VK Cloud добавлено предупреждение в Health, Details и краткой сводке
+  расчёта, если включены WAF или DDoS, потому что эти защитные сервисы идут
+  «по запросу».
+- Документация обновлена: пользовательские тексты говорят русскими названиями
+  ресурсов, а WAF/DDoS оставлены как устойчивые термины с русской расшифровкой.
+
+**Проверки.**
+
+- Targeted provider trust/UI/CSV/memo suite: 135/135 pass.
+- `npm run syntax-check`: pass.
+- `npm run prices:freshness:check`: pass.
+- `npm run sanity:check`: pass.
+- `npm test`: 5091/5091 pass.
+- `npm run smoke:desktop`: 29/29 pass.
+- `npm run pages:build`: pass.
+- `git diff --check`: pass.
+
+**Версионирование.**
+
+`2.20.32 → 2.20.33` (PATCH). Schema, provider JSON schema и bundle format не
+меняются. Изменение пользовательски видимо как дата актуальности прайса,
+по которому выполнен расчёт, матрица доверия к ценам и более явные VK WAF/DDoS
+warnings.
+
 ## 22.05.2026 · PATCH 2.20.32 — provider price trust UI + WAF/DDoS hints
 
 **Контекст.** После Yandex refresh пользователю уже видно, что Cloud.ru и

@@ -31,6 +31,7 @@ import { renderConstraintsBlock, renderLevelTabs } from './costOptimizationPlann
 import { formatValueGeneric } from './costOptimizationPlannerModalFormat.js';
 import { renderLeversBlock } from './costOptimizationPlannerModalLevers.js';
 import { renderSummary } from './costOptimizationPlannerModalSummary.js';
+import { renderCalculationProviderPriceActuality } from '../providerPriceActuality.js';
 
 /* ============================================================
  * Public entry — рендер модалки
@@ -69,6 +70,10 @@ function renderBody(calc, m, ctx) {
         );
     }
     return el('div', null,
+        renderCalculationProviderPriceActuality(calc, {
+            className: 'modal-price-actuality',
+            title: 'Прайс расчёта'
+        }),
         renderDisclaimer(),
         renderRollbackBar(m, ctx),
         renderLevelTabs(draft, ctx),

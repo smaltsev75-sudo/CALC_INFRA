@@ -36,7 +36,7 @@ function makeCtx(overrides = {}) {
         providerInfo: {
             providerId: 'sbercloud',
             version: '2025-Q4',
-            updatedAt: '2025-12-15',
+            updatedAt: '15.12.2025',
             status: 'свежий'
         },
         activeScenario: { id: 'main', name: 'Базовый' },
@@ -681,6 +681,8 @@ describe('buildDecisionMemoMarkdown', () => {
         const md = buildDecisionMemoMarkdown(makeCalc(), makeCtx());
         assert.match(md, /sbercloud/);
         assert.match(md, /2025-Q4/);
+        assert.match(md, /Актуальность прайса/);
+        assert.match(md, /15\.12\.2025/);
     });
 
     it('содержит health score', () => {

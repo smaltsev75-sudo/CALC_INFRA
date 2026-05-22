@@ -177,6 +177,23 @@ export function getEffectivePrices(providerId) {
     return resolved?.prices || {};
 }
 
+export function getProviderPriceBundleMeta(providerId) {
+    const requested = PROVIDER_OVERLAYS[providerId];
+    if (!requested || !requested.active) return null;
+    const resolved = resolveOverlay(providerId);
+    const bundle = BUNDLED_PROVIDER_PRICES[resolved?.id || providerId]
+        || BUNDLED_PROVIDER_PRICES[providerId];
+    if (!bundle) return null;
+    return {
+        providerId: bundle.providerId || providerId,
+        version: bundle.version || '',
+        timestamp: bundle.timestamp || '',
+        source: bundle.source || '',
+        vatPolicy: bundle.vatPolicy || null,
+        pricesCount: Object.keys(bundle.prices || {}).length
+    };
+}
+
 export function getActiveProviders() {
     return Object.values(PROVIDER_OVERLAYS).filter(p => p.active).map(p => p.id);
 }

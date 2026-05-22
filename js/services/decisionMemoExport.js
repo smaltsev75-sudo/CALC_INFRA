@@ -277,15 +277,15 @@ function buildProviderSection(ctx) {
     // статус) или fallback «базовые тарифы провайдера».
 
     if (provider.version) {
-        // Applied price-overlay: показываем версию импортированного прайса и его статус.
         lines.push(bulletLine('Версия', sanitizeMemoText(provider.version)));
-        if (provider.updatedAt) lines.push(bulletLine('Дата', sanitizeMemoText(provider.updatedAt)));
-        lines.push(bulletLine('Статус', provider.status ? sanitizeMemoText(provider.status) : 'unknown'));
+        if (provider.updatedAt) lines.push(bulletLine('Актуальность прайса', sanitizeMemoText(provider.updatedAt)));
+        if (provider.status) lines.push(bulletLine('Статус', sanitizeMemoText(provider.status)));
     } else {
         // Без applied overlay — цены берутся из дефолтных PROVIDER_OVERLAYS,
         // они автоматически применяются. Stage 18.1.12: убрана техническая
         // приписка «overlay не импортирован» — пользователь не знает термин.
         lines.push(bulletLine('Источник цен', 'базовые тарифы провайдера'));
+        if (provider.updatedAt) lines.push(bulletLine('Актуальность прайса', sanitizeMemoText(provider.updatedAt)));
     }
     return lines.join('\n');
 }

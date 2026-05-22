@@ -1714,6 +1714,18 @@
     letter-spacing: 0;
     margin-top: 2px;
 }
+.scenario-cmp-provider-price-date {
+    display: block;
+    margin-top: 2px;
+    max-width: 180px;
+    font-size: 0.66rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: 0;
+    line-height: 1.25;
+    white-space: normal;
+}
 .scenario-cmp-td-item {
     text-align: left;
     overflow: hidden;
@@ -2005,6 +2017,15 @@ td.analytics-td-total {
 .analytics-provider-name {
     display: block;
 }
+.analytics-provider-meta {
+    display: block;
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    line-height: 1.3;
+    font-weight: 400;
+    cursor: help;
+}
 .analytics-provider-warning {
     margin-top: 3px;
 }
@@ -2023,6 +2044,57 @@ td.analytics-td-total {
     text-align: center;
     border: 1px dashed var(--border);
     border-radius: var(--radius-sm);
+}
+
+.analytics-section-head {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: var(--space-3) 0 var(--space-2);
+}
+.analytics-section-title {
+    margin: 0;
+    color: var(--text);
+    font-size: 0.95rem;
+    font-weight: 650;
+}
+.analytics-section-note {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    line-height: 1.35;
+}
+.analytics-trust-matrix-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+.analytics-trust-matrix-table {
+    width: 100%;
+    min-width: 780px;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+.analytics-trust-matrix-table th,
+.analytics-trust-matrix-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--border-light);
+    text-align: left;
+    vertical-align: top;
+}
+.analytics-trust-matrix-table th {
+    color: var(--text-muted);
+    font-weight: 600;
+    background: var(--bg-elevated);
+}
+.analytics-trust-provider {
+    min-width: 180px;
+}
+.analytics-trust-cell {
+    min-width: 92px;
+}
+.analytics-trust-cell .analytics-trust-badge {
+    white-space: normal;
 }
 
 /* Stage 14.1 (PATCH 2.7.1): фильтр колонок аналитики. Pill-кнопки toggle. */
@@ -2705,6 +2777,29 @@ td.analytics-td-total {
 }
 
 /* Stage VAT-2 Phase 5: VAT-policy label в provider price summary. */
+.provider-price-actuality {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    line-height: 1.4;
+    cursor: help;
+}
+.provider-price-actuality .icon {
+    flex: 0 0 auto;
+    color: var(--accent);
+}
+.provider-price-summary > .provider-price-actuality {
+    margin: 0 10px 8px;
+    background: var(--bg);
+}
+
 .provider-price-vat-label {
     margin: 0 0 var(--space-3);
     padding: var(--space-2) var(--space-3);

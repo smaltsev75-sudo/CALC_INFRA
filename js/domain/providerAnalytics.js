@@ -9,10 +9,12 @@
  * предотвращает layer violation domain → services.
  */
 
-import { PROVIDER_OVERLAYS } from './providerOverlay.js';
+import { PROVIDER_OVERLAYS, getProviderPriceBundleMeta } from './providerOverlay.js';
 import {
     getProviderPriceTrust,
-    getProviderPriceWarnings
+    getProviderPriceWarnings,
+    getProviderCapabilityTrust,
+    PROVIDER_TRUST_MATRIX_CAPABILITIES
 } from './providerPriceTrust.js';
 
 /**
@@ -54,13 +56,21 @@ export const CATEGORY_UNITS = Object.freeze({
     LICENSE: '₽/узел/год'
 });
 
+export const CATEGORY_LABELS_FOR_UI = Object.freeze({
+    CPU:     'Процессоры',
+    RAM:     'Память',
+    STORAGE: 'SSD-диски',
+    NETWORK: 'Балансировщик',
+    LICENSE: 'ОС-лицензия'
+});
+
 /**
  * Stage 14.5 — короткое описание ЧТО именно измеряется в каждой колонке
  * (для tooltip'а у заголовка). Раскрывает, какой key-item представляет
  * категорию (cpu-vcpu-shared, ram-gb, ...).
  */
 export const CATEGORY_DESCRIPTIONS_FOR_UI = Object.freeze({
-    CPU:     'Цена 1 vCPU shared в месяц',
+    CPU:     'Цена 1 виртуального ядра shared в месяц',
     RAM:     'Цена 1 ГБ оперативной памяти в месяц',
     STORAGE: 'Цена 1 ТБ SSD-хранилища в месяц',
     NETWORK: 'Цена 1 балансировщика HTTP/HTTPS (L7) в месяц',
@@ -68,6 +78,38 @@ export const CATEGORY_DESCRIPTIONS_FOR_UI = Object.freeze({
 });
 
 const CATEGORY_ORDER = Object.freeze(['CPU', 'RAM', 'STORAGE', 'NETWORK', 'LICENSE']);
+
+function buildProviderTrustMatrix(providerIds, effMap) {
+    const providers = [];
+    for (const id of providerIds) {
+        const overlay = PROVIDER_OVERLAYS[id];
+        if (!overlay || !overlay.active) continue;
+
+        const frozenPrices = overlay.prices || {};
+        const effectivePrices = effMap[id] || frozenPrices;
+        const byCapability = {};
+        for (const capability of PROVIDER_TRUST_MATRIX_CAPABILITIES) {
+            byCapability[capability.key] = getProviderCapabilityTrust({
+                providerId: id,
+                itemIds: capability.itemIds,
+                effectivePrices,
+                frozenPrices
+            });
+        }
+
+        providers.push({
+            id,
+            label: overlay.label,
+            priceMeta: getProviderPriceBundleMeta(id),
+            warnings: getProviderPriceWarnings(id),
+            byCapability
+        });
+    }
+    return {
+        capabilities: [...PROVIDER_TRUST_MATRIX_CAPABILITIES],
+        providers
+    };
+}
 
 /**
  * Stage 10.4: построить per-provider × per-category матрицу для модалки
@@ -94,12 +136,17 @@ const CATEGORY_ORDER = Object.freeze(['CPU', 'RAM', 'STORAGE', 'NETWORK', 'LICEN
  */
 export function aggregateProviderPrices(providerIds, effectivePricesByProvider) {
     if (!Array.isArray(providerIds)) {
-        return { providers: [], categories: [...CATEGORY_ORDER] };
+        return {
+            providers: [],
+            categories: [...CATEGORY_ORDER],
+            trustMatrix: { capabilities: [...PROVIDER_TRUST_MATRIX_CAPABILITIES], providers: [] }
+        };
     }
     const effMap = (effectivePricesByProvider && typeof effectivePricesByProvider === 'object')
         ? effectivePricesByProvider : {};
 
     const providers = [];
+    const trustMatrix = buildProviderTrustMatrix(providerIds, effMap);
 
     for (const id of providerIds) {
         const overlay = PROVIDER_OVERLAYS[id];
@@ -147,10 +194,11 @@ export function aggregateProviderPrices(providerIds, effectivePricesByProvider) 
             label: overlay.label,
             active: overlay.active,
             byCategory,
+            priceMeta: getProviderPriceBundleMeta(id),
             warnings: getProviderPriceWarnings(id),
             totalCost
         });
     }
 
-    return { providers, categories: [...CATEGORY_ORDER] };
+    return { providers, categories: [...CATEGORY_ORDER], trustMatrix };
 }

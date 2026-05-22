@@ -26,7 +26,7 @@ import {
 } from '../domain/assumptionsRegister.js';
 import { runSensitivityAnalysis, rankSensitivityDrivers } from '../domain/sensitivityAnalysis.js';
 import { evaluateBudgetGuardrails } from '../domain/budgetGuardrails.js';
-import { PROVIDER_OVERLAYS } from '../domain/providerOverlay.js';
+import { getCalculationProviderPriceActuality } from '../domain/providerPriceTrust.js';
 import { calculate } from '../domain/calculator.js';
 
 /* ============================================================
@@ -104,38 +104,17 @@ export function buildDecisionMemoContext(calc) {
         ctx.budgetGuardrails = evaluateBudgetGuardrails(calc, sensResults);
     } catch (_e) { /* budget недоступен */ }
 
-    // Provider info — приоритет: applied price-overlay (`calc.providerVersion`,
-    // формат `id@version`), иначе fallback на провайдера, выбранного в Опроснике
-    // (`calc.settings.provider` — есть только id, версии нет). Без fallback memo
-    // показывал «не указан» даже когда пользователь явно выбрал Cloud.ru / Yandex
-    // в Опроснике, но не применял price-overlay (Stage 18.1.5 fix).
-    let providerId = null;
-    let providerVersion = null;
-    if (calc.providerVersion) {
-        const raw = String(calc.providerVersion);
-        const m = raw.match(/^([^@]+)@(.+)$/);
-        if (m) { providerId = m[1]; providerVersion = m[2]; }
-        else   { providerVersion = raw; }
-    }
-    if (!providerId && calc.settings && typeof calc.settings.provider === 'string' && calc.settings.provider) {
-        providerId = calc.settings.provider;
-    }
-    if (providerId || providerVersion) {
-        // Pretty-label из PROVIDER_OVERLAYS: 'sbercloud' → 'Cloud.ru (бывший SberCloud)'.
-        // Тот же label, что пользователь видит в селекторе Опросника — единый
-        // identifier для пользователя. Trusted constant — не sanitize при выводе.
-        const overlay = providerId ? PROVIDER_OVERLAYS[providerId] : null;
+    // Provider info — дата/версия именно того прайса, по которому посчитан calc:
+    // calc.providerVersion (если зафиксирован) → bundled provider JSON.
+    const priceActuality = getCalculationProviderPriceActuality(calc);
+    if (priceActuality.providerId || priceActuality.version) {
         ctx.providerInfo = {
-            providerId,
-            providerLabel: overlay?.label || null,
-            version: providerVersion,
-            /* Status имеет смысл только когда applied price-overlay есть (тогда
-               status описывает свежесть/состояние ИМПОРТИРОВАННОГО прайса). Без
-               overlay цены берутся из дефолтов PROVIDER_OVERLAYS (они применяются
-               автоматически — пользователь видит цены в расчёте). Писать в этом
-               случае «не применён прайс-overlay» = вводить в заблуждение: цены
-               применяются, просто версия не зафиксирована импортом. */
-            status: providerVersion ? 'unknown' : null
+            providerId: priceActuality.providerId,
+            providerLabel: priceActuality.providerLabel,
+            version: priceActuality.version || null,
+            updatedAt: priceActuality.date || null,
+            priceActuality: priceActuality.label,
+            status: calc.providerVersion ? 'unknown' : null
         };
     }
 

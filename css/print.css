@@ -146,6 +146,25 @@
         box-shadow: none !important;
     }
 
+    .dashboard-price-actuality,
+    .details-provider-price-actuality,
+    .comparison-price-actuality,
+    .modal-price-actuality,
+    .provider-price-actuality {
+        background: white !important;
+        color: black !important;
+        border-color: #888 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+    }
+    .dashboard-price-actuality .icon,
+    .details-provider-price-actuality .icon,
+    .comparison-price-actuality .icon,
+    .modal-price-actuality .icon,
+    .provider-price-actuality .icon {
+        color: black !important;
+    }
+
     .text-muted, .field-label, .stand-card-subtitle, .stand-card-total-label,
     .calc-card-label, .col-name-sub, .field-description,
     .dash-stand-card-subtitle, .dash-card-eyebrow-sub,

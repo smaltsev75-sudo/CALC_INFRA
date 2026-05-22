@@ -7,6 +7,7 @@ import {
     STALE_BUNDLE_THRESHOLD_MONTHS,
     DEFAULT_THRESHOLD_RATIO
 } from '../utils/constants.js';
+import { getProviderSecurityPriceWarningForCalc } from './providerPriceTrust.js';
 /* ---------- Helpers ---------- */
 
 function ans(calc, id) {
@@ -41,7 +42,7 @@ function makeFinding({ id, severity, category, title, message,
 }
 
 /* ============================================================
- * 21 правило проверки.
+ * 22 правила проверки.
  * Каждая функция получает (calc, options) и возвращает HealthFinding | null.
  * ============================================================ */
 
@@ -389,6 +390,20 @@ function checkBundleNotApplied(calc, options) {
     });
 }
 
+function checkProviderSecurityPricesByRequest(calc) {
+    const warning = getProviderSecurityPriceWarningForCalc(calc);
+    if (!warning) return null;
+    return makeFinding({
+        id: warning.id,
+        severity: 'warning',
+        category: 'pricing',
+        title: 'VK: защитные сервисы по запросу',
+        message: warning.message,
+        fieldIds: warning.fieldIds,
+        suggestedAction: warning.suggestedAction
+    });
+}
+
 /* --- Группа: Полнота данных --- */
 
 function _countAnswerStats(calc) {
@@ -491,6 +506,7 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkStaleBundle,
     checkStubBundle,
     checkBundleNotApplied,
+    checkProviderSecurityPricesByRequest,
     checkTooManyDefaults,
     checkLowAnswerRate,
     checkNoBudgetTarget

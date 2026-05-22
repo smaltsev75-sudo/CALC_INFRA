@@ -29,6 +29,14 @@ describe('CSV: header and structure', () => {
         assert.match(csv, /Test/);
     });
 
+    it('contains provider price actuality in details header', () => {
+        const calc = makeCalc();
+        calc.settings.provider = 'sbercloud';
+        const csv = buildDetailsCsv(calc, calculate(calc));
+        assert.match(csv, /Актуальность прайса/);
+        assert.match(csv, /22\.05\.2026/);
+    });
+
     it('uses ; as default delimiter', () => {
         const calc = makeCalc();
         const csv = buildDetailsCsv(calc, calculate(calc));
@@ -111,16 +119,16 @@ describe('CSV: completeness', () => {
         const csv = buildDetailsCsv(calc, calculate(calc));
         const itemCount = calc.dictionaries.items.length;
         // Структура CSV (schema v2 + CAPEX/OPEX summary):
-        //   4 строки metadata (Расчёт+Валюта / буферы / k* / НДС+горизонт+дни)
+        //   5 строк metadata (Расчёт+Валюта / буферы / k* / НДС+горизонт+дни / прайс)
         //   2 строки CAPEX/OPEX summary
         //   1 пустая
         //   1 header
         //   N data
         //   1 пустая
         //   1 ИТОГО
-        // → overhead = 10.
+        // → overhead = 11.
         const lines = csv.split('\r\n');
-        const dataLines = lines.length - 10;
+        const dataLines = lines.length - 11;
         assert.equal(dataLines, itemCount,
             `Ожидали ${itemCount} data-строк, получили ${dataLines} (всего строк ${lines.length})`);
     });
@@ -182,8 +190,8 @@ describe('buildComparisonCsv', () => {
         const csv = buildComparisonCsv(calcs, results);
 
         const lines = csv.split('\r\n');
-        // [0] = заголовок «Сравнение расчётов;ISO», [1] = пустая, [2] = header «Метрика;...»
-        const headerLine = lines[2];
+        // [0] = заголовок, [1] = актуальность прайсов, [2] = пустая, [3] = header «Метрика;...»
+        const headerLine = lines[3];
         const cells = headerLine.split(';');
         assert.equal(cells.length, calcs.length + 1, `ожидали ${calcs.length + 1} колонок, получили ${cells.length}`);
         assert.equal(cells[0], 'Метрика');
@@ -191,6 +199,20 @@ describe('buildComparisonCsv', () => {
         assert.match(headerLine, /Alpha \(₽\)/);
         assert.match(headerLine, /Beta \(₽\)/);
         assert.match(headerLine, /Gamma \(₽\)/);
+    });
+
+    it('contains provider price actuality row for every compared calc', () => {
+        const calcs = [makeNamedCalc('a', 'Alpha'), makeNamedCalc('b', 'Beta')];
+        calcs[0].settings.provider = 'sbercloud';
+        calcs[1].settings.provider = 'yandex';
+        const results = calcs.map(c => calculate(c));
+        const csv = buildComparisonCsv(calcs, results);
+
+        const actualityLine = csv.split('\r\n')[1];
+        assert.match(actualityLine, /Актуальность прайса/);
+        assert.match(actualityLine, /Cloud\.ru/);
+        assert.match(actualityLine, /Yandex Cloud/);
+        assert.match(actualityLine, /22\.05\.2026/);
     });
 
     it('numeric cells use comma as decimal separator (RU-локаль)', () => {
@@ -219,7 +241,7 @@ describe('buildComparisonCsv', () => {
         // Header содержит имя `=cmd|exec (RUB)` — должно быть префиксовано `'`
         // и обёрнуто в кавычки (csvSafeQuote).
         const lines = csv.split('\r\n');
-        const headerLine = lines[2];
+        const headerLine = lines[3];
         const cells = headerLine.split(';');
         // Ячейка с злонамеренным именем — вторая в header (после «Метрика»).
         const malicious = cells[1];

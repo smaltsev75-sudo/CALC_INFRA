@@ -1,7 +1,7 @@
 /**
  * Unit-тесты Stage 15.1 — Calculation Health Check.
  *
- * Покрывает: 21 правило проверки + getHealthScore + groupHealthFindings +
+ * Покрывает: 22 правила проверки + getHealthScore + groupHealthFindings +
  * edge-cases (null calc, отсутствие answers, scenario absent).
  *
  * Формат findings и шкала score зафиксированы в плане Stage 15:
@@ -422,6 +422,45 @@ describe('rule: pricing-bundle-not-applied (warning)', () => {
             }
         });
         assert.ok(!findById(r.findings, 'pricing-bundle-not-applied'));
+    });
+});
+
+describe('rule: pricing-vk-security-by-request (warning)', () => {
+    it('срабатывает для VK Cloud, если WAF или DDoS включены', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            waf_required: true,
+            ddos_protection_required: true
+        }, {
+            settings: { provider: 'vk' }
+        }));
+        const f = findById(r.findings, 'pricing-vk-security-by-request');
+        assert.ok(f);
+        assert.equal(f.severity, 'warning');
+        assert.equal(f.category, 'pricing');
+        assert.match(f.message, /WAF\/DDoS включены/);
+        assert.match(f.message, /12\.01\.2026/);
+        assert.ok(f.fieldIds.includes('waf_required'));
+        assert.ok(f.fieldIds.includes('ddos_protection_required'));
+    });
+
+    it('НЕ срабатывает для VK Cloud, если WAF и DDoS выключены', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            waf_required: false,
+            ddos_protection_required: false
+        }, {
+            settings: { provider: 'vk' }
+        }));
+        assert.ok(!findById(r.findings, 'pricing-vk-security-by-request'));
+    });
+
+    it('НЕ срабатывает для провайдера с опубликованной WAF-ценой', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            waf_required: true,
+            ddos_protection_required: true
+        }, {
+            settings: { provider: 'yandex' }
+        }));
+        assert.ok(!findById(r.findings, 'pricing-vk-security-by-request'));
     });
 });
 

@@ -6,10 +6,10 @@
  *     (вызывает domain/providerAnalytics + сам собирает effective prices).
  *
  * UX:
- *   - 4–5 столбцов: CPU / RAM / STORAGE / NETWORK / LICENSE (representative-key-item per category).
+ *   - 5 столбцов representative-key-item per category.
  *   - Каждая строка: название провайдера, цены по категориям, итог.
  *   - Бейдж delta-pill (Stage 9.1) если effective != frozen.
- *   - Click на th-категорию → сортировка по этой колонке (asc/desc toggle).
+ *   - Клик на th-категорию → сортировка по этой колонке (asc/desc toggle).
  *   - Фильтр видимых категорий через pill-toggle (Stage 14.1).
  *
  * Read-only: модалка не обновляет прайсы. Единственный путь обновления —
@@ -19,7 +19,13 @@
 import { el } from '../dom.js';
 import { icon } from '../icons.js';
 import { modalShell } from './baseModal.js';
-import { CATEGORY_UNITS, CATEGORY_DESCRIPTIONS_FOR_UI } from '../../domain/providerAnalytics.js';
+import {
+    CATEGORY_UNITS,
+    CATEGORY_LABELS_FOR_UI,
+    CATEGORY_DESCRIPTIONS_FOR_UI
+} from '../../domain/providerAnalytics.js';
+import { getProviderPriceBundleMeta } from '../../domain/providerOverlay.js';
+import { getProviderPriceActuality } from '../../domain/providerPriceTrust.js';
 import { formatNumber, formatPercentPoints } from '../../services/format.js';
 
 const fmtRub = (n) => formatNumber(Number(n), { min: 0, max: 2 });
@@ -55,7 +61,18 @@ export function renderProviderAnalyticsModal(state, ctx) {
 
     const data = ctx.aggregateProviderPrices
         ? ctx.aggregateProviderPrices(allActiveIds, effectiveByProvider)
-        : { providers: [], categories: ['CPU', 'RAM', 'STORAGE', 'NETWORK', 'LICENSE'] };
+        : {
+            providers: [],
+            categories: ['CPU', 'RAM', 'STORAGE', 'NETWORK', 'LICENSE'],
+            trustMatrix: { capabilities: [], providers: [] }
+        };
+
+    const providerMetaById = {};
+    for (const id of allActiveIds) {
+        providerMetaById[id] = ctx.getCurrentProviderOverride?.(id)
+            || data.providers.find(p => p.id === id)?.priceMeta
+            || getProviderPriceBundleMeta(id);
+    }
 
     /* Stage 14.1: фильтр видимых категорий. Дефолт — все. Persist через
        ctx.setProviderAnalyticsVisibleCategories (controller → localStorage). */
@@ -118,6 +135,71 @@ export function renderProviderAnalyticsModal(state, ctx) {
         })
     );
 
+    const renderProviderActuality = (providerId) => {
+        const actuality = getProviderPriceActuality(providerMetaById[providerId]);
+        return el('span', {
+            class: 'analytics-provider-meta',
+            attrs: { title: actuality.title },
+            text: actuality.label
+        });
+    };
+
+    const renderTrustMatrix = (matrix) => {
+        if (!matrix?.providers?.length || !matrix?.capabilities?.length) return null;
+        return el('section', { class: 'analytics-trust-matrix' },
+            el('div', { class: 'analytics-section-head' },
+                el('h3', { class: 'analytics-section-title', text: 'Cloud.ru vs Yandex vs VK: доверие к ценам' }),
+                el('p', {
+                    class: 'analytics-section-note',
+                    text: 'Матрица показывает не стоимость, а качество источника цены: где прайс проверен, где он публичный, где цена отсутствует или выдаётся по запросу.'
+                })
+            ),
+            el('div', { class: 'analytics-trust-matrix-wrap' },
+                el('table', { class: 'analytics-trust-matrix-table' },
+                    el('thead', null,
+                        el('tr', null,
+                            el('th', { text: 'Провайдер' }),
+                            ...matrix.capabilities.map(capability =>
+                                el('th', {
+                                    attrs: { title: capability.title },
+                                    text: capability.label
+                                })
+                            )
+                        )
+                    ),
+                    el('tbody', null,
+                        ...matrix.providers.map(provider =>
+                            el('tr', null,
+                                el('td', { class: 'analytics-trust-provider' },
+                                    el('span', { class: 'analytics-provider-name', text: provider.label }),
+                                    renderProviderActuality(provider.id),
+                                    ...renderProviderWarnings(provider.warnings)
+                                ),
+                                ...matrix.capabilities.map(capability => {
+                                    const trust = provider.byCapability?.[capability.key];
+                                    const coverage = trust?.coverage;
+                                    const coverageText = coverage
+                                        ? `${coverage.covered}/${coverage.total} позиций покрыто`
+                                        : '';
+                                    return el('td', {
+                                        class: ['analytics-trust-cell', `analytics-trust-cell--${trust?.status || 'unknown'}`],
+                                        attrs: {
+                                            title: [
+                                                capability.title,
+                                                trust ? `${trust.fullLabel}. ${trust.description}` : '',
+                                                coverageText
+                                            ].filter(Boolean).join('\n')
+                                        }
+                                    }, renderTrustBadge(trust));
+                                })
+                            )
+                        )
+                    )
+                )
+            )
+        );
+    };
+
     /* PATCH 2.7.3: каждая колонка имеет 2-line header «КАТЕГОРИЯ + ед.изм.»
        (тот же паттерн что .col-stand в details-table). Tooltip содержит
        «что именно за число в этой колонке» (например, «Цена 1 vCPU shared
@@ -129,11 +211,11 @@ export function renderProviderAnalyticsModal(state, ctx) {
             ...visibleCategories.map(cat => el('th', {
                 class: ['analytics-th-cat', effectiveSortBy === cat && 'is-sorted'],
                 attrs: { type: 'button',
-                    title: `${CATEGORY_DESCRIPTIONS_FOR_UI[cat] || cat}. Click — сортировка по этой колонке.` },
+                    title: `${CATEGORY_DESCRIPTIONS_FOR_UI[cat] || cat}. Нажмите, чтобы отсортировать по этой колонке.` },
                 onClick: () => handleSort(cat)
             },
                 el('span', null,
-                    el('span', { class: 'analytics-th-cat-name', text: cat }),
+                    el('span', { class: 'analytics-th-cat-name', text: CATEGORY_LABELS_FOR_UI[cat] || cat }),
                     el('span', { class: 'analytics-th-cat-unit',
                         text: CATEGORY_UNITS[cat] || '' })
                 ),
@@ -193,6 +275,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
             return el('tr', { class: 'analytics-row' },
                 el('td', { class: 'analytics-td-provider' },
                     el('span', { class: 'analytics-provider-name', text: p.label }),
+                    renderProviderActuality(p.id),
                     ...renderProviderWarnings(p.warnings)
                 ),
                 ...visibleCategories.map(cat => renderCell(p.byCategory[cat])),
@@ -218,11 +301,11 @@ export function renderProviderAnalyticsModal(state, ctx) {
                     type: 'button',
                     'aria-pressed': active ? 'true' : 'false',
                     title: active
-                        ? `Скрыть колонку ${cat}`
-                        : `Показать колонку ${cat}`
+                        ? `Скрыть колонку ${CATEGORY_LABELS_FOR_UI[cat] || cat}`
+                        : `Показать колонку ${CATEGORY_LABELS_FOR_UI[cat] || cat}`
                 },
                 onClick: () => toggleCategory(cat)
-            }, cat);
+            }, CATEGORY_LABELS_FOR_UI[cat] || cat);
         })
     );
 
@@ -241,7 +324,8 @@ export function renderProviderAnalyticsModal(state, ctx) {
         onClose: close,
         children: el('div', { class: 'analytics-body' },
             el('p', { class: 'analytics-hint',
-                text: 'Представительные цены 5 категорий ресурсов: CPU = 1 vCPU shared (₽/мес), RAM = 1 ГБ (₽/мес), STORAGE = 1 ТБ SSD (₽/мес), NETWORK = 1 балансировщик L7 (₽/мес), LICENSE = ОС-лицензия (₽/узел/год). Под каждой ценой показан уровень доверия: проверено, публичный прайс, задано вручную или нет публичной цены. Колонка «Сумма» — индикатор для ранжирования, не денежная величина.' }),
+                text: 'Представительные цены: процессоры = 1 виртуальное ядро shared, память = 1 ГБ, SSD-диски = 1 ТБ, балансировщик = HTTP/HTTPS L7, лицензия = ОС на 1 узел. Под каждой ценой показан уровень доверия: проверено, публичный прайс, задано вручную или нет публичной цены. Колонка «Сумма» — индикатор для ранжирования, не денежная величина.' }),
+            renderTrustMatrix(data.trustMatrix),
             filterBar,
             noProviders || noCategories || null,
             !noCategories ? table : null

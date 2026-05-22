@@ -516,6 +516,55 @@
     letter-spacing: 0.4px;
 }
 
+.details-provider-price-warning {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 8px);
+    margin: 0 0 var(--space-3, 12px);
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    border-left: 3px solid var(--warning);
+    border-radius: var(--radius-sm, 6px);
+    background: var(--warning-faint);
+    color: var(--text);
+}
+.details-provider-price-warning .icon {
+    flex: 0 0 auto;
+    color: var(--warning);
+}
+.details-provider-price-warning-text {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-sm, 0.92rem);
+    line-height: 1.4;
+}
+.details-provider-price-warning-action {
+    flex: 0 0 auto;
+}
+
+.details-provider-price-actuality {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 8px);
+    margin: 0 0 var(--space-3, 12px);
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm, 6px);
+    background: var(--bg-elevated);
+    color: var(--text);
+}
+.details-provider-price-actuality .icon {
+    flex: 0 0 auto;
+    color: var(--accent);
+}
+.details-provider-price-actuality-text {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-sm, 0.92rem);
+    line-height: 1.4;
+}
+
 /* Поле «Тип расхода» в форме редактирования ЭК. */
 .cost-type-field { display: flex; flex-direction: column; gap: 4px; }
 .cost-type-hint {

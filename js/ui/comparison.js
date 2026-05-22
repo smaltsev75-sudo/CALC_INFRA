@@ -32,6 +32,7 @@ import { money, percent } from '../services/format.js';
 import { computeRowIndicators, sortRowsByIndicator, nextSortState } from './comparisonIndicators.js';
 import { aggregateAiMetrics, formatResourceQty } from './dashboard.js';
 import { getActiveScenario } from '../domain/scenarios.js';
+import { getCalculationPriceActualityInfo } from './providerPriceActuality.js';
 
 /**
  * Sprint 3.0 Stage 3: scenario-aware Comparison.
@@ -82,6 +83,7 @@ export function renderComparison(state, ctx) {
         calcs.length === 0
             ? renderEmptyState(state, ctx)
             : el('div', { class: 'comparison-content' },
+                renderComparisonPriceActuality(calcs),
                 renderComparisonVatWarning(calcs),
                 renderUnifiedTable(calcs, results, ctx, state),
                 /* Раздел AI-метрик: на каждый выбранный расчёт — мини-таблица
@@ -90,6 +92,25 @@ export function renderComparison(state, ctx) {
                    эмбеддингами 12× против еженедельного 1×). */
                 renderAiMetricsComparisonSection(calcs, results, ctx)
             )
+    );
+}
+
+function renderComparisonPriceActuality(calcs) {
+    if (!Array.isArray(calcs) || calcs.length === 0) return null;
+    return el('div', { class: 'comparison-price-actuality-list' },
+        ...calcs.map(calc => {
+            const info = getCalculationPriceActualityInfo(calc);
+            return el('div', {
+                class: 'comparison-price-actuality',
+                attrs: { role: 'status', title: info.title }
+            },
+                icon('clock', { size: 16 }),
+                el('div', { class: 'comparison-price-actuality-text' },
+                    el('strong', { text: calc.name || 'Расчёт' }),
+                    el('span', { text: ` — ${info.labelWithProvider}` })
+                )
+            );
+        })
     );
 }
 

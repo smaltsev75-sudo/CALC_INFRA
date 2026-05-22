@@ -3697,6 +3697,55 @@
     border-radius: 8px;
 }
 
+.calc-state-summary-row-provider-price {
+    border-left: 3px solid var(--warning);
+}
+.calc-state-summary-row-provider-actuality {
+    border-left: 3px solid var(--accent);
+}
+.calc-state-summary-row-note {
+    color: var(--text-muted);
+    font-size: var(--font-xs, 0.78rem);
+}
+
+.dashboard-price-actuality,
+.comparison-price-actuality,
+.modal-price-actuality {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 8px);
+    margin: 0 0 var(--space-3, 12px);
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm, 6px);
+    background: var(--bg-elevated);
+    color: var(--text);
+}
+.dashboard-price-actuality .icon,
+.comparison-price-actuality .icon,
+.modal-price-actuality .icon {
+    flex: 0 0 auto;
+    color: var(--accent);
+}
+.dashboard-price-actuality-text,
+.comparison-price-actuality-text,
+.modal-price-actuality-text {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-sm, 0.92rem);
+    line-height: 1.4;
+}
+.comparison-price-actuality-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-2, 8px);
+    margin-bottom: var(--space-3, 12px);
+}
+.comparison-price-actuality {
+    margin: 0;
+}
+
 .calc-state-summary-row-title {
     color: var(--text-muted);
     font-weight: 600;

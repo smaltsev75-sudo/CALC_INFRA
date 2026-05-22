@@ -27,6 +27,8 @@ import { el } from '../dom.js';
 import { icon } from '../icons.js';
 import { modalShell } from './baseModal.js';
 import { formatNumber, formatPercentPoints } from '../../services/format.js';
+import { getProviderPriceBundleMeta } from '../../domain/providerOverlay.js';
+import { getProviderPriceActuality } from '../../domain/providerPriceTrust.js';
 
 const fmtRub = (n) => {
     const num = Number(n);
@@ -76,6 +78,13 @@ export function renderProviderScenarioComparisonModal(state, ctx) {
 
     const currentProviderId = data.currentProviderId;
     const visibleProviders = data.providers || [];
+    const priceActualityByProvider = new Map(
+        allActive.map(p => {
+            const meta = ctx.getCurrentProviderOverride?.(p.id)
+                || getProviderPriceBundleMeta(p.id);
+            return [p.id, getProviderPriceActuality(meta)];
+        })
+    );
 
     const toggleProvider = (id) => {
         const next = selectedProviderIds.includes(id)
@@ -164,15 +173,25 @@ export function renderProviderScenarioComparisonModal(state, ctx) {
     const thead = el('thead', null,
         el('tr', { class: 'scenario-cmp-thead-row-headers' },
             el('th', { class: 'scenario-cmp-th-item', text: 'Статья расходов' }),
-            ...visibleProviders.map(p => el('th', {
+            ...visibleProviders.map(p => {
+                const actuality = priceActualityByProvider.get(p.id);
+                return el('th', {
                 class: ['scenario-cmp-th-provider',
                         p.id === currentProviderId && 'is-current']
             },
                 el('span', null,
                     el('span', { class: 'scenario-cmp-th-provider-name', text: p.label }),
-                    el('span', { class: 'scenario-cmp-th-provider-unit', text: '₽/мес' })
+                    el('span', { class: 'scenario-cmp-th-provider-unit', text: '₽/мес' }),
+                    actuality
+                        ? el('span', {
+                            class: 'scenario-cmp-provider-price-date',
+                            attrs: { title: actuality.title },
+                            text: actuality.label
+                        })
+                        : null
                 )
-            ))
+            );
+            })
         ),
         el('tr', { class: 'scenario-cmp-thead-row-totals' },
             el('td', { class: 'scenario-cmp-td-item-total', text: 'ИТОГО / мес' }),

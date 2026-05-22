@@ -12,6 +12,7 @@
 
 import { STAND_IDS, STAND_LABELS, CATEGORY_LABELS, BILLING_INTERVAL_LABELS, COST_TYPE_LABELS, MONTHS_PER_YEAR, URL_REVOKE_DELAY_MS } from '../utils/constants.js';
 import { getCostType } from '../domain/costType.js';
+import { getCalculationProviderPriceActuality } from '../domain/providerPriceTrust.js';
 import { percent, dateForFilename, formatDateTime } from './format.js';
 
 /**
@@ -48,6 +49,12 @@ export function buildDetailsCsv(calc, result, opts = {}) {
         `НДС`, calc.settings?.vatEnabled ? fmtPct(calc.settings?.vatRate ?? 0) : 'выкл.',
         `Горизонт планирования (лет)`, String(calc.settings?.planningHorizonYears ?? 1),
         `Дней в месяце`, String(calc.settings?.daysPerMonth ?? 30)
+    ]);
+    const priceActuality = getCalculationProviderPriceActuality(calc);
+    rows.push([
+        `Прайс расчёта`, priceActuality.providerLabel,
+        `Актуальность прайса`, priceActuality.date || 'дата не указана',
+        `Версия прайса`, priceActuality.version || '—'
     ]);
     // Сводка CAPEX / OPEX (на основе агрегата result.byCostType, который посчитан калькулятором).
     const capexMonthly = result?.byCostType?.capex || 0;
@@ -340,6 +347,10 @@ export function buildComparisonCsv(calcs, results, opts = {}) {
 
     const lines = [];
     lines.push(['Сравнение расчётов', formatDateTime(new Date())]);
+    lines.push(['Актуальность прайса', ...calcs.map(c => {
+        const info = getCalculationProviderPriceActuality(c);
+        return `${info.providerLabel}: ${info.date || 'дата не указана'}${info.version ? ` · ${info.version}` : ''}`;
+    })]);
     lines.push([]);
 
     // Header: Метрика | calc1 | calc2 | ...

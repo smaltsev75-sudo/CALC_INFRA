@@ -21,12 +21,17 @@
 
 import { el } from './dom.js';
 import { icon } from './icons.js';
-import { PROVIDER_OVERLAYS, getEffectivePrices } from '../domain/providerOverlay.js';
+import {
+    PROVIDER_OVERLAYS,
+    getEffectivePrices,
+    getProviderPriceBundleMeta
+} from '../domain/providerOverlay.js';
 import {
     TERM_HINTS,
     getProviderPriceTrust,
     getProviderPriceWarnings,
-    getPriceTrustInfo
+    getPriceTrustInfo,
+    getProviderPriceActuality
 } from '../domain/providerPriceTrust.js';
 import { formatNumber, formatPercentPoints } from '../services/format.js';
 
@@ -36,8 +41,8 @@ const fmtRub = n => formatNumber(n, { min: 0, max: 2 });
 
 /* Stage 4.6: top-5 цен в header сводки (vCPU/RAM/SSD/HDD/ObjectStorage). */
 const PROVIDER_PRICE_SUMMARY_PICKS = [
-    { id: 'cpu-vcpu-shared',  label: 'vCPU',     unit: '₽/мес' },
-    { id: 'ram-gb',           label: 'RAM',      unit: '₽/ГБ/мес' },
+    { id: 'cpu-vcpu-shared',  label: 'Вирт. ядро', unit: '₽/мес' },
+    { id: 'ram-gb',           label: 'Память',      unit: '₽/ГБ/мес' },
     { id: 'storage-ssd-tb',   label: 'SSD',      unit: '₽/ТБ/мес' },
     { id: 'storage-hdd-tb',   label: 'HDD',      unit: '₽/ТБ/мес' },
     { id: 'storage-object-tb', label: 'Объектное хранилище', unit: '₽/ТБ/мес' }
@@ -50,12 +55,12 @@ const PROVIDER_PRICE_SUMMARY_PICKS = [
  * commonUnit отсутствует и unit рендерится per-row как раньше. */
 const PROVIDER_PRICE_CATEGORIES = [
     { key: 'cpu', label: 'Процессоры', icon: 'cpu', commonUnit: '₽/мес', items: [
-        { id: 'cpu-vcpu-shared',    label: 'vCPU shared' },
-        { id: 'cpu-vcpu-dedicated', label: 'vCPU dedicated' },
-        { id: 'cpu-vcpu-gpu',       label: 'vCPU GPU' }
+        { id: 'cpu-vcpu-shared',    label: 'Вирт. ядро shared' },
+        { id: 'cpu-vcpu-dedicated', label: 'Вирт. ядро dedicated' },
+        { id: 'cpu-vcpu-gpu',       label: 'Вирт. ядро GPU' }
     ] },
     { key: 'ram', label: 'Память', icon: 'memory-stick', commonUnit: '₽/ГБ/мес', items: [
-        { id: 'ram-gb',             label: 'RAM' }
+        { id: 'ram-gb',             label: 'Оперативная память' }
     ] },
     { key: 'storage', label: 'Хранилища', icon: 'database', commonUnit: '₽/ТБ/мес', items: [
         { id: 'storage-ssd-tb',     label: 'SSD' },
@@ -167,6 +172,8 @@ export function renderProviderPriceSummary(providerId, state, ctx) {
     const prices = (ctx?.getEffectivePricesForProvider
         ? ctx.getEffectivePricesForProvider(providerId)
         : frozenPrices) || frozenPrices;
+    const priceMeta = ctx?.getCurrentProviderOverride?.(providerId)
+        || getProviderPriceBundleMeta(providerId);
     const totalKeys = Object.keys(prices).length;
     if (totalKeys === 0) return null;
 
@@ -221,8 +228,13 @@ export function renderProviderPriceSummary(providerId, state, ctx) {
         )
     );
 
+    const actualityNotice = _renderProviderActualityNotice(priceMeta);
+
     if (!expanded) {
-        return el('div', { class: 'provider-price-summary' }, header);
+        return el('div', { class: 'provider-price-summary' },
+            header,
+            actualityNotice
+        );
     }
 
     const categoryEls = PROVIDER_PRICE_CATEGORIES.map(cat => {
@@ -236,7 +248,12 @@ export function renderProviderPriceSummary(providerId, state, ctx) {
                     effectiveEntry,
                     frozenEntry
                 });
-                return { ...it, value: effectiveEntry?.pricePerUnit, trust };
+                return {
+                    ...it,
+                    value: effectiveEntry?.pricePerUnit,
+                    trust,
+                    priceSource: effectiveEntry?.priceSource || frozenEntry?.priceSource || ''
+                };
             })
             .filter(it => Number.isFinite(it.value) || it.trust.status === 'by-request')
             .sort((a, b) => {
@@ -284,13 +301,16 @@ export function renderProviderPriceSummary(providerId, state, ctx) {
                     const accessibleValue = hasValue
                         ? (unitText ? `${fmtRub(r.value)} ${unitText}` : fmtRub(r.value))
                         : r.trust.fullLabel;
+                    const sourceTitle = r.priceSource
+                        ? `\nИсточник цены: ${r.priceSource}`
+                        : '';
                     return el('li', {
                         class: [
                             'provider-price-row',
                             isTopExpensive && 'is-top-expensive',
                             !hasValue && 'provider-price-row--missing'
                         ],
-                        attrs: { title: `${r.label}: ${accessibleValue}. ${r.trust.description}` }
+                        attrs: { title: `${r.label}: ${accessibleValue}. ${r.trust.description}${sourceTitle}` }
                     },
                         _renderTermAwareName(r.label),
                         el('span', { class: 'provider-price-row-value' },
@@ -307,6 +327,7 @@ export function renderProviderPriceSummary(providerId, state, ctx) {
 
     return el('div', { class: 'provider-price-summary is-expanded' },
         header,
+        actualityNotice,
         el('div', {
             class: 'provider-price-summary-body',
             attrs: { id: 'provider-price-summary-body' }
@@ -388,6 +409,17 @@ function _renderVatPolicyLabel(meta) {
         ...lines.map(text =>
             el('div', { class: 'provider-price-vat-label-line', text })
         )
+    );
+}
+
+function _renderProviderActualityNotice(meta) {
+    const actuality = getProviderPriceActuality(meta);
+    return el('div', {
+        class: 'provider-price-actuality',
+        attrs: { role: 'status', title: actuality.title }
+    },
+        icon('clock', { size: 14 }),
+        el('span', { text: actuality.label })
     );
 }
 

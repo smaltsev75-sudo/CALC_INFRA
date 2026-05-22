@@ -16,6 +16,8 @@ import { icon } from './icons.js';
 import { CATEGORY_IDS, MONTHS_PER_YEAR } from '../utils/constants.js';
 import { calculate } from '../domain/calculator.js';
 import { applyStandFilter } from '../domain/standsFilter.js';
+import { getProviderSecurityPriceWarningForCalc } from '../domain/providerPriceTrust.js';
+import { renderCalculationProviderPriceActuality } from './providerPriceActuality.js';
 import { renderStandToggles } from './standToggles.js';
 import { renderScenarioBadge } from './scenarioBadge.js';
 import {
@@ -47,6 +49,7 @@ export function renderDetails(state, ctx) {
     const hideZero = !!state.ui?.detailsHideZero;
     // Режим определяется параметром расчёта в Опроснике, а не UI-toggle'ом.
     const applyRisks = calc.settings?.applyRiskFactors !== false;
+    const providerPriceWarning = getProviderSecurityPriceWarningForCalc(calc);
 
     // Сортировка: ВНУТРИ категории — по убыванию ИТОГО ₽/мес
     // (на активных стендах). Сами группы ниже сортируются по ИТОГО / год.
@@ -119,6 +122,13 @@ export function renderDetails(state, ctx) {
             )
         ),
 
+        renderCalculationProviderPriceActuality(calc, {
+            className: 'details-provider-price-actuality',
+            title: 'Прайс расчёта',
+            testId: 'details-provider-price-actuality'
+        }),
+        providerPriceWarning ? renderProviderPriceWarning(providerPriceWarning, ctx) : null,
+
         subTab === 'qty'
             ? renderQtySection(byCat, result, ctx, disabledStands, state, presentCats)
             : renderCostSection(byCat, result, ctx, totalsForFilter, isFiltered, disabledStands, applyRisks, calc, state, presentCats),
@@ -130,6 +140,25 @@ export function renderDetails(state, ctx) {
            Дополнительно скрывается, если в расчёте нет ни одной ненулевой
            AI-метрики — для не-AI проектов блок не возникает вовсе. */
         subTab === 'qty' && renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx)
+    );
+}
+
+function renderProviderPriceWarning(warning, ctx) {
+    return el('div', {
+        class: 'details-provider-price-warning',
+        attrs: { role: 'status', title: warning.title }
+    },
+        icon('alert-triangle', { size: 16 }),
+        el('div', { class: 'details-provider-price-warning-text' },
+            el('strong', { text: warning.label }),
+            el('span', { text: ` — ${warning.message}` })
+        ),
+        el('button', {
+            class: 'btn btn-ghost details-provider-price-warning-action',
+            attrs: { type: 'button' },
+            title: 'Открыть детальную проверку расчёта',
+            onClick: () => ctx.openCalculationHealthModal?.()
+        }, 'Открыть проверку')
     );
 }
 
