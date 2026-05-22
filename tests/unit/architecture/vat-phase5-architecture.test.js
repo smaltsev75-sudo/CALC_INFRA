@@ -60,18 +60,18 @@ describe('VAT-1 Phase 5 / 3: legacy snackbar — session-only, без STORAGE_KE
         assert.doesNotMatch(persistence, /shownLegacyVatBanners/);
     });
 
-    it('app.js maybeShowLegacyVatBanner читает state.ui (session) — не persist', () => {
-        const app = stripJsComments(readFileSync(join(REPO_ROOT, 'js', 'app.js'), 'utf8'));
+    it('vatBanners.js maybeShowLegacyVatBanner читает state.ui (session) — не persist', () => {
+        const app = stripJsComments(readFileSync(join(REPO_ROOT, 'js', 'app', 'vatBanners.js'), 'utf8'));
         /* Источник флага — state.ui.shownLegacyVatBanners. */
         assert.match(app, /state\.ui\?\.shownLegacyVatBanners/);
         /* Запись — через store.setUi (session), не через persist. */
         assert.match(app, /store\.setUi\(\{\s*shownLegacyVatBanners/);
     });
 
-    it('app.js НЕ импортирует persistence для legacy banner', () => {
+    it('vatBanners.js НЕ импортирует persistence для legacy banner', () => {
         /* Это структурный smell: если бы кто-то решил persist'ить banner,
            он бы добавил persist-импорт. Не строгая проверка — текстовая. */
-        const app = stripJsComments(readFileSync(join(REPO_ROOT, 'js', 'app.js'), 'utf8'));
+        const app = stripJsComments(readFileSync(join(REPO_ROOT, 'js', 'app', 'vatBanners.js'), 'utf8'));
         /* Не существует функции saveLegacyVatBanners / loadLegacyVatBanners. */
         assert.doesNotMatch(app, /saveLegacyVatBanners|loadLegacyVatBanners/);
     });
@@ -117,18 +117,21 @@ describe('VAT-1 Phase 5 / 2: UI не содержит hardcoded числовых
 /* ---------- 3. UI vat-блоки используют только ctx-методы ---------- */
 
 describe('VAT-1 Phase 5 / 3: UI vat-блоки используют ctx, не state/controllers напрямую', () => {
-    it('questionnaire.js использует ctx.setVatRateMode/setVatRateManual/freezeVatRate', () => {
+    it('questionnaireVatSettings.js использует ctx.setVatRateMode/setVatRateManual/freezeVatRate', () => {
         const src = stripJsComments(readFileSync(
-            join(REPO_ROOT, 'js', 'ui', 'questionnaire.js'), 'utf8'));
+            join(REPO_ROOT, 'js', 'ui', 'questionnaireVatSettings.js'), 'utf8'));
         /* Покрываются три метода. */
         assert.match(src, /ctx\.setVatRateMode\(/);
         assert.match(src, /ctx\.setVatRateManual\(/);
         assert.match(src, /ctx\.freezeVatRate\(/);
     });
 
-    it('questionnaire.js не импортирует calcController напрямую', () => {
-        const src = readFileSync(
-            join(REPO_ROOT, 'js', 'ui', 'questionnaire.js'), 'utf8');
+    it('questionnaire UI modules не импортируют calcController напрямую', () => {
+        const src = [
+            join(REPO_ROOT, 'js', 'ui', 'questionnaire.js'),
+            join(REPO_ROOT, 'js', 'ui', 'questionnaireSettings.js'),
+            join(REPO_ROOT, 'js', 'ui', 'questionnaireVatSettings.js')
+        ].map(file => readFileSync(file, 'utf8')).join('\n');
         assert.doesNotMatch(src,
             /import\s+[^;]*\s+from\s+['"][^'"]*controllers\/calcController/);
     });

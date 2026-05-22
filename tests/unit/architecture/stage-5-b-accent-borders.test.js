@@ -84,15 +84,15 @@ describe('Stage 5.B / Accent borders унификация для tab/preset/chip
 });
 
 describe('Stage 5.B / Re-apply tooltip mentions «активному сценарию»', () => {
-    it('dashboard.js: re-apply title содержит «активному сценарию» для multi-scenario', () => {
-        const src = read('js/ui/dashboard.js');
+    it('dashboardProfileBanner.js: re-apply title содержит «активному сценарию» для multi-scenario', () => {
+        const src = read('js/ui/dashboardProfileBanner.js');
         // Multi-scenario ветка с scenarioLabel
         assert.match(src, /к\s+активному\s+сценарию\s+«\$\{scenarioLabel\}»/,
             'дашборд должен явно описывать scope re-apply: «к активному сценарию «...»»');
     });
 
-    it('dashboard.js: re-apply title содержит «Другие сценарии не изменятся»', () => {
-        const src = read('js/ui/dashboard.js');
+    it('dashboardProfileBanner.js: re-apply title содержит «Другие сценарии не изменятся»', () => {
+        const src = read('js/ui/dashboardProfileBanner.js');
         assert.match(src, /Другие\s+сценарии\s+не\s+изменятся/,
             'tooltip должен явно сообщать, что re-apply через mirror НЕ затрагивает другие сценарии');
     });

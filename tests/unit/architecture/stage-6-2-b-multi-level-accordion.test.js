@@ -48,12 +48,12 @@ describe('Stage 6.2.B / persistence.js — load/save helpers', () => {
     });
 });
 
-describe('Stage 6.2.B / app.js — subscriber для persistence', () => {
-    const src = stripJsComments(read('js/app.js'));
+describe('Stage 6.2.B / uiPersistenceSubscriber.js — subscriber для persistence', () => {
+    const src = stripJsComments(read('js/app/uiPersistenceSubscriber.js'));
 
-    it('app.js отслеживает state.ui.questionnaireCollapsedSubgroups', () => {
-        assert.match(src, /lastQCollapsedSubs/,
-            'app.js должен иметь lastQCollapsedSubs переменную для diff-detection');
+    it('subscriber отслеживает state.ui.questionnaireCollapsedSubgroups', () => {
+        assert.match(src, /name:\s*['"]questionnaireCollapsedSubgroups['"]/,
+            'subscriber должен иметь rule для questionnaireCollapsedSubgroups');
         assert.match(src, /state\.ui\.questionnaireCollapsedSubgroups/,
             'subscriber должен читать state.ui.questionnaireCollapsedSubgroups');
         assert.match(src, /persist\.saveQuestionnaireCollapsedSubgroups/,

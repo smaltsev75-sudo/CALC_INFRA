@@ -35,12 +35,33 @@
 import { el, trustedHtml } from '../dom.js';
 import { modalShell } from './baseModal.js';
 import {
-    PRODUCT_TYPE_LABELS,
-    INDUSTRY_LABELS,
-    GEOGRAPHY_LABELS,
-    ACTIVITY_LABELS
-} from '../../domain/wizardProfiles.js';
+    ACTIVITIES,
+    GEOGRAPHIES,
+    INDUSTRIES,
+    PRODUCT_TYPES,
+    SCALES,
+    PRESETS,
+    autoName,
+    computePresetDelta,
+    defaultDraft,
+    defaultPdnFor,
+    findActivePresetId,
+    formatPresetParams,
+    formatPresetTooltip,
+    getDefaultProvider,
+    getProviderOptions
+} from './quickStartModel.js';
 import { UI_TOOLTIPS_SHORT } from '../../utils/constants.js';
+
+export {
+    PRESETS,
+    INDUSTRY_SHORT,
+    autoName,
+    computePresetDelta,
+    findActivePresetId,
+    formatPresetParams,
+    formatPresetTooltip
+} from './quickStartModel.js';
 
 /** Inline-SVG info-иконки. 14px подобран под font-xs label'ов. */
 const INFO_SVG_HTML =
@@ -51,306 +72,6 @@ const INFO_SVG_HTML =
     '<path d="M12 16v-4"/>' +
     '<path d="M12 8h.01"/>' +
     '</svg>';
-
-const PRODUCT_TYPES = [
-    { value: 'b2b',      label: 'B2B — продаём бизнесам' },
-    { value: 'b2c',      label: 'B2C — массовый потребительский продукт' },
-    { value: 'internal', label: 'Внутренний инструмент компании' },
-    { value: 'b2g',      label: 'B2G — для госорганов / госуслуги' }
-];
-
-const INDUSTRIES = [
-    { value: 'corporate', label: 'Корпоративные сервисы (CRM / ERP / HR / биллинг)' },
-    { value: 'edtech',    label: 'EdTech — образование, курсы, LMS' },
-    { value: 'fintech',   label: 'FinTech — финансы, банкинг, инвестиции' },
-    { value: 'consumer',  label: 'Потребительские сервисы (соцсети / маркетплейс / медиа)' }
-];
-
-const SCALES = [
-    { value: 'xs', label: 'до 1 тыс. пользователей (MVP, прототип)' },
-    { value: 's',  label: 'до 10 тыс. (стартап, нишевой продукт)' },
-    { value: 'm',  label: 'до 100 тыс. (стандарт SMB)' },
-    { value: 'l',  label: 'до 1 млн (mid-enterprise)' },
-    { value: 'xl', label: 'свыше 1 млн (масштабный продукт)' }
-];
-
-const GEOGRAPHIES = [
-    { value: 'ru',     label: 'Россия' },
-    { value: 'ru_cis', label: 'Россия + СНГ' },
-    { value: 'global', label: 'Глобально' }
-];
-
-const ACTIVITIES = [
-    { value: 'very_low', label: 'Очень низкая (раз в месяц — отчётность, сезонные процессы)' },
-    { value: 'low',      label: 'Низкая (раз в неделю — внутренний CRM, ревью документов)' },
-    { value: 'medium',   label: 'Средняя (ежедневно — корпоративные приложения, рабочие сервисы)' },
-    { value: 'high',     label: 'Высокая (несколько раз в день — соцсети, торговля, мессенджеры)' }
-];
-
-const FALLBACK_PROVIDER_OPTIONS = Object.freeze([
-    Object.freeze({ id: 'sbercloud', label: 'Cloud.ru (бывший SberCloud)' })
-]);
-
-/* ============================================================================
- * PRESETS — 3 преднастройки сверху модалки. Утверждены 2026-05-08.
- *   - Стандартный B2B = классический корпоративный сервис.
- *   - Высокая нагрузка (AI) = масштабный B2C-продукт с AI-нагрузкой.
- *   - Внутренний инструмент = корпоративный для штатных сотрудников.
- * Клик заполняет 7 полей формы целиком. Активный пресет вычисляется в render
- * через сравнение draft с preset.draft (НЕ хранится в state — никаких
- * рассогласований с draft при ручной правке поля).
- * ============================================================================ */
-/* Stage 4.3.3 (3-я UX-итерация): пресет = shortcut, не дубль формы. Labels
-   очищены от Type-префикса (Type сам в селекте формы). Карточки показывают
-   3 различающих параметра — AI / География / ПДн (то, что отделяет пресет
-   от пресета). Type и Размер аудитории НЕ повторяются на карточке.
-
-   Принцип «пресет показывает то, чем отличается от других, всё остальное —
-   в форме». Form = source of truth, preset = shortcut. */
-const PRESETS = Object.freeze([
-    Object.freeze({
-        id: 'std_b2b',
-        label: 'Стандартный',
-        chips: Object.freeze(['Без AI', 'Россия', 'ПДн: да']),
-        draft: Object.freeze({
-            product_type: 'b2b',
-            industry:     'corporate',
-            scale:        'm',
-            geography:    'ru',
-            activity:     'medium',
-            pdn:          true,
-            ai_used:      false
-        })
-    }),
-    Object.freeze({
-        id: 'high_ai',
-        label: 'Высокая нагрузка',
-        chips: Object.freeze(['С AI', 'Глобально', 'ПДн: да']),
-        draft: Object.freeze({
-            product_type: 'b2c',
-            industry:     'consumer',
-            scale:        'l',
-            geography:    'global',
-            activity:     'high',
-            pdn:          true,
-            ai_used:      true
-        })
-    }),
-    Object.freeze({
-        id: 'internal',
-        label: 'Внутренний инструмент',
-        chips: Object.freeze(['Без AI', 'Россия', 'Без ПДн']),
-        draft: Object.freeze({
-            product_type: 'internal',
-            industry:     'corporate',
-            scale:        's',
-            geography:    'ru',
-            activity:     'low',
-            pdn:          false,
-            ai_used:      false
-        })
-    })
-    /* Stage 17.2: 4-й preset (пустой расчёт) удалён. Пустой расчёт создаётся
-       только через «Расчёты → Новый расчёт» — отдельный CRUD-flow, который
-       не дублирует wizard. */
-]);
-
-/**
- * Tooltip для preset-card: показывает 5 параметров — Индустрия, Активность,
- * География, ПДн, AI. **БЕЗ Тип и Размер** — они отображаются в самой форме
- * как отдельные select'ы и дублирование в tooltip создаёт путаницу (Stage 4.3.3).
- *
- * Native title-attr поддерживает \n как разрыв строки в Chrome/Firefox/Safari.
- *
- * Формат:
- *   Этот пресет настраивает:
- *   • Индустрия: Corporate
- *   • Активность: Средняя
- *   • География: Россия
- *   • ПДн (ФЗ-152): да
- *   • AI / LLM: выключен
- */
-function formatPresetTooltip(preset) {
-    const d = preset.draft;
-    const lines = [
-        'Этот пресет настраивает:',
-        `• Индустрия: ${INDUSTRY_LABELS[d.industry] || d.industry}`,
-        `• Активность: ${ACTIVITY_LABELS[d.activity] || d.activity}`,
-        `• География: ${GEOGRAPHY_LABELS[d.geography] || d.geography}`,
-        `• ПДн (ФЗ-152): ${d.pdn ? 'да' : 'нет'}`,
-        `• AI / LLM: ${d.ai_used ? 'включён' : 'выключен'}`
-    ];
-    return lines.join('\n');
-}
-
-/* Короткие теги индустрий для autoName(). Маппинг утверждён 2026-05-08:
-   corporate→CRM, остальные — самоназвание (EdTech/FinTech/Consumer). */
-const INDUSTRY_SHORT = Object.freeze({
-    corporate: 'CRM',
-    edtech:    'EdTech',
-    fintech:   'FinTech',
-    consumer:  'Consumer'
-});
-
-/**
- * Сгенерировать имя расчёта из Type+Industry. Шаблон: «{Type} {Ind-short} расчёт».
- * Примеры: «B2B CRM расчёт», «B2C Consumer расчёт», «Internal CRM расчёт».
- */
-export function autoName(productType, industry) {
-    const pt = PRODUCT_TYPE_LABELS[productType] || '';
-    const ind = INDUSTRY_SHORT[industry] || '';
-    return `${pt} ${ind} расчёт`.replace(/\s+/g, ' ').trim();
-}
-
-/* Stage 5.5.3: компактные labels для delta-pill. Полные labels (PRODUCT_TYPES
-   и т.п.) — длинные «B2C — массовый потребительский продукт» — на pill не
-   умещаются. Используем тег-уровень. */
-const DELTA_SHORT_LABELS = Object.freeze({
-    product_type: { b2b: 'B2B', b2c: 'B2C', internal: 'Внутренний', b2g: 'B2G' },
-    industry:     { corporate: 'Corporate', edtech: 'EdTech', fintech: 'FinTech', consumer: 'Consumer' },
-    scale:        { xs: 'XS', s: 'S', m: 'M', l: 'L', xl: 'XL' },
-    geography:    { ru: 'Россия', ru_cis: 'РФ + СНГ', global: 'Глобально' },
-    activity:     { very_low: 'Очень низкая', low: 'Низкая', medium: 'Средняя', high: 'Высокая' }
-});
-
-const DELTA_FIELD_LABELS = [
-    { key: 'product_type', label: 'Тип' },
-    { key: 'industry',     label: 'Индустрия' },
-    { key: 'scale',        label: 'Размер' },
-    { key: 'geography',    label: 'География' },
-    { key: 'activity',     label: 'Активность' },
-    { key: 'pdn',          label: 'ПДн' },
-    { key: 'ai_used',      label: 'AI' }
-];
-
-function formatDeltaValue(key, val) {
-    if (typeof val === 'boolean') return val ? 'Да' : 'Нет';
-    const map = DELTA_SHORT_LABELS[key];
-    return (map && map[val]) || String(val);
-}
-
-/**
- * PATCH 2.18.1: вернуть АБСОЛЮТНЫЕ параметры пресета — стабильный список,
- * который не зависит от текущего draft и не меняется при кликах.
- *
- * Раньше (Stage 6.3.B / PATCH 2.4.24) использовалась computeChangesForPreset,
- * которая считала diff пресета против draft. Это работало под hover (Stage 6.3.B
- * прятал preview под opacity:0 + max-height:0), но после MINOR 2.18.0
- * preview стал виден всегда → проявилась динамика: при клике по карточке X
- * у неё preview становится null (она = draft, нечего показывать) и блок
- * «Изменится: …» ИСЧЕЗАЕТ; на соседних карточках diff пересчитывается
- * против новой draft → параметры «перепрыгивают». Пользователь жалуется на
- * «бред какой-то».
- *
- * Решение: показывать абсолютные параметры пресета. Список одинаков на
- * каждой карточке всегда, не меняется при кликах между карточками, не
- * исчезает у активной карточки. Возвращает array of { key, label, value },
- * длина = DELTA_FIELD_LABELS.length (7 полей для непустых пресетов).
- */
-export function formatPresetParams(preset) {
-    if (!preset || !preset.draft) return [];
-    return DELTA_FIELD_LABELS.map(field => ({
-        key: field.key,
-        label: field.label,
-        value: formatDeltaValue(field.key, preset.draft[field.key])
-    }));
-}
-
-/**
- * Stage 5.5.3: посчитать различия draft vs ближайший пресет.
- *
- * Возвращает null когда:
- *   - draft пуст / null
- *   - draft точно совпадает с одним из пресетов (findActivePresetId !== null)
- *
- * Иначе сравнивает с ПЕРВЫМ пресетом (Стандартный B2B) и возвращает
- * { presetLabel, diffs: [{ key, label, was, now }] }. Используется как
- * progressive disclosure: пользователь видит, чем его настройка отличается
- * от стандарта, без явного сброса draft при ручной правке поля.
- */
-export function computePresetDelta(draft) {
-    if (!draft) return null;
-    if (findActivePresetId(draft)) return null;
-    const baseline = PRESETS[0];
-    if (!baseline) return null;
-    const ref = baseline.draft;
-    const diffs = [];
-    for (const field of DELTA_FIELD_LABELS) {
-        const draftVal = draft[field.key];
-        const refVal = ref[field.key];
-        const same = typeof refVal === 'boolean'
-            ? !!draftVal === refVal
-            : draftVal === refVal;
-        if (!same) {
-            diffs.push({
-                key: field.key,
-                label: field.label,
-                was: formatDeltaValue(field.key, refVal),
-                now: formatDeltaValue(field.key, draftVal)
-            });
-        }
-    }
-    return diffs.length > 0 ? { presetLabel: baseline.label, diffs } : null;
-}
-
-/**
- * Найти пресет, чьи 7 полей точно совпадают с draft. null — пресет не выбран
- * (либо draft уже отклонён от любого пресета ручной правкой).
- */
-export function findActivePresetId(draft) {
-    if (!draft) return null;
-    for (const p of PRESETS) {
-        const d = p.draft;
-        if (draft.product_type === d.product_type &&
-            draft.industry === d.industry &&
-            draft.scale === d.scale &&
-            draft.geography === d.geography &&
-            draft.activity === d.activity &&
-            !!draft.pdn === d.pdn &&
-            !!draft.ai_used === d.ai_used) {
-            return p.id;
-        }
-    }
-    return null;
-}
-
-/** Стартовый draft (Стандартный B2B по умолчанию — самый частый кейс). */
-function defaultDraft(providerId) {
-    const std = PRESETS[0].draft;
-    return {
-        name: autoName(std.product_type, std.industry),
-        nameLocked: false,
-        provider: providerId,
-        ...std
-    };
-}
-
-/**
- * `wz_pdn` default зависит от product_type:
- *   - internal → false (внутренний сервис может быть без ПДн)
- *   - b2b/b2c/b2g → true (всегда содержат данные клиентов или граждан)
- */
-function defaultPdnFor(productType) {
-    return productType !== 'internal';
-}
-
-function getProviderOptions(ctx) {
-    const fromCtx = typeof ctx.listActiveProvidersForQuickStart === 'function'
-        ? ctx.listActiveProvidersForQuickStart()
-        : [];
-    const safe = Array.isArray(fromCtx)
-        ? fromCtx
-            .filter(p => p && typeof p.id === 'string' && p.id && typeof p.label === 'string' && p.label)
-            .map(p => ({ id: p.id, label: p.label }))
-        : [];
-    return safe.length > 0 ? safe : FALLBACK_PROVIDER_OPTIONS;
-}
-
-function getDefaultProvider(ctx, providerOptions) {
-    const fromCtx = typeof ctx.getDefaultProviderId === 'function' ? ctx.getDefaultProviderId() : '';
-    if (providerOptions.some(p => p.id === fromCtx)) return fromCtx;
-    return providerOptions[0]?.id || FALLBACK_PROVIDER_OPTIONS[0].id;
-}
 
 /**
  * Триггер flash-анимации на полях формы. Двойной rAF гарантирует выполнение
@@ -830,6 +551,3 @@ function renderProgressDots(draft) {
         })
     );
 }
-
-/* Экспорты для тестов и внешнего использования (preset block). */
-export { PRESETS, INDUSTRY_SHORT, formatPresetTooltip };

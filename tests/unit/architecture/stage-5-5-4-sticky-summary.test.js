@@ -27,7 +27,7 @@ const ROOT = path.resolve(__dirname, '../../..');
 const read = rel => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
 describe('Stage 5.5.4 / renderSettingsPanel — расширенная summary', () => {
-    const src = stripJsComments(read('js/ui/questionnaire.js'));
+    const src = stripJsComments(read('js/ui/questionnaireSettings.js'));
 
     function renderSettingsPanelBody() {
         const fnStart = src.indexOf('function renderSettingsPanel(');

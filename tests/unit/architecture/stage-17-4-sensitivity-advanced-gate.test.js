@@ -46,10 +46,16 @@ describe('Stage 17.4 — ADVANCED_ONLY_NEXT_STEP_TARGETS константа', ()
 });
 
 describe('Stage 17.4 — getActiveNextSteps фильтрует advanced-only по умолчанию', () => {
-    const src = stripJsComments(read('js/app.js'));
-    const fnMatch = src.match(/getActiveNextSteps\s*\(\s*\)\s*\{[\s\S]+?\n\s{4}\},/);
-    assert.ok(fnMatch, 'getActiveNextSteps должен существовать в app.js');
+    const appSrc = stripJsComments(read('js/app.js'));
+    const src = stripJsComments(read('js/app/nextStepActions.js'));
+    const fnMatch = src.match(/export function getActiveNextStepsAction\s*\([^)]*\)\s*\{[\s\S]+?\n\}/);
+    assert.ok(fnMatch, 'getActiveNextStepsAction должен существовать в js/app/nextStepActions.js');
     const body = fnMatch[0];
+
+    it('ctx.getActiveNextSteps остаётся в app.js как UI-контракт', () => {
+        assert.match(appSrc, /getActiveNextSteps\s*\(\s*\)\s*\{/);
+        assert.match(appSrc, /getActiveNextStepsAction\s*\(/);
+    });
 
     it('читает state.ui.advancedModeEnabled', () => {
         assert.match(body, /advancedModeEnabled/,
@@ -61,7 +67,7 @@ describe('Stage 17.4 — getActiveNextSteps фильтрует advanced-only п�
             'Фильтр должен использовать константу-whitelist, не хардкод имени target.');
     });
 
-    it('импорт ADVANCED_ONLY_NEXT_STEP_TARGETS добавлен в шапку app.js', () => {
+    it('импорт ADVANCED_ONLY_NEXT_STEP_TARGETS добавлен в nextStepActions.js', () => {
         assert.match(src, /import\s*\{[^}]*ADVANCED_ONLY_NEXT_STEP_TARGETS[^}]*\}\s*from\s*['"][^'"]*constants\.js['"]/);
     });
 });

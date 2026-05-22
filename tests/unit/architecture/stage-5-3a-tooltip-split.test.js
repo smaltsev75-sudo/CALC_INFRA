@@ -82,12 +82,12 @@ describe('Stage 5.3.A / UI_TOOLTIPS_SHORT — наполнение катало�
     });
 });
 
-describe('Stage 5.3.A / questionnaire.js — renderPercentField получает shortHint', () => {
-    const src = stripJsComments(read('js/ui/questionnaire.js'));
+describe('Stage 5.3.A / questionnairePercentField.js — renderPercentField получает shortHint', () => {
+    const src = stripJsComments(read('js/ui/questionnairePercentField.js'));
 
     it('импортирует UI_TOOLTIPS_SHORT из constants', () => {
         assert.match(src, /import\s*\{[^}]*UI_TOOLTIPS_SHORT[^}]*\}\s*from\s*['"]\.\.\/utils\/constants\.js['"]/,
-            'questionnaire.js должен импортировать UI_TOOLTIPS_SHORT');
+            'questionnairePercentField.js должен импортировать UI_TOOLTIPS_SHORT');
     });
 
     it('renderPercentField принимает shortHint параметром', () => {
@@ -107,8 +107,11 @@ describe('Stage 5.3.A / questionnaire.js — renderPercentField получает
     });
 });
 
-describe('Stage 5.3.A / questionnaire.js — inline settings имеют field-description', () => {
-    const src = read('js/ui/questionnaire.js');
+describe('Stage 5.3.A / questionnaireSettings.js — inline settings имеют field-description', () => {
+    const src = [
+        read('js/ui/questionnaireSettings.js'),
+        read('js/ui/questionnaireVatSettings.js')
+    ].join('\n');
 
     it('phaseDurationMonths field содержит UI_TOOLTIPS_SHORT.phaseDurationMonths', () => {
         // Берём ~600 символов вокруг 'phaseDurationMonths' — должен быть рядом field-description

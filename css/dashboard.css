@@ -3025,6 +3025,7 @@
     gap: 8px;
     justify-content: flex-end;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 @media print {
@@ -3854,6 +3855,7 @@
     font-weight: 600;
     border: 1px solid transparent;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 .cop-risk-badge-sm { padding: 1px 6px; font-size: 0.72rem; }
 
@@ -3945,6 +3947,7 @@
     text-align: left;
     transition: border-color 120ms ease, background 120ms ease;
     min-height: var(--touch-target, 44px);
+    min-width: 0;
 }
 .cop-level-tab:hover { border-color: var(--accent); }
 .cop-level-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -3953,7 +3956,7 @@
     background: var(--bg-elevated);
     box-shadow: inset 0 0 0 1px var(--accent);
 }
-.cop-level-tab-title { font-weight: 600; font-size: 0.92rem; }
+.cop-level-tab-title { font-weight: 600; font-size: 0.92rem; overflow-wrap: anywhere; }
 .cop-level-tab-range { font-size: 0.78rem; color: var(--text-muted); }
 
 /* ---------- Constraints grid ---------- */
@@ -3977,9 +3980,10 @@
     cursor: pointer;
     min-height: var(--touch-target, 44px);
     font-size: 0.88rem;
+    min-width: 0;
 }
 .cop-modal-constraint-on { border-color: var(--accent); background: var(--bg-elevated); }
-.cop-modal-constraint-label { flex: 1; }
+.cop-modal-constraint-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .cop-modal-constraint-touched {
     color: var(--accent);
     font-weight: 700;
@@ -4059,10 +4063,11 @@
     border-radius: 10px;
     border: 1px solid var(--border);
     background: var(--bg-card);
+    min-width: 0;
 }
 .cop-summary-card-saving { border-color: var(--accent); background: var(--bg-elevated); }
 .cop-summary-card-label { font-size: 0.78rem; color: var(--text-muted); }
-.cop-summary-card-value { font-size: 1.05rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.cop-summary-card-value { font-size: 1.05rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .cop-summary-card-sub { font-size: 0.78rem; color: var(--text-muted); }
 
 .cop-summary-status {
@@ -4109,6 +4114,7 @@
     font: inherit;
     text-align: left;
     transition: background var(--t-fast);
+    min-width: 0;
 }
 .cop-lever-group-header:hover { background: var(--bg-elevated); }
 .cop-lever-group-header:focus-visible {
@@ -4122,8 +4128,10 @@
     font-size: 0.94rem;
     font-weight: 600;
     color: var(--text);
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-width: 0;
     margin-right: auto;
+    overflow-wrap: anywhere;
 }
 .cop-lever-group-meta {
     display: inline-flex;
@@ -4134,6 +4142,7 @@
     font-size: 0.82rem;
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
+    min-width: 0;
 }
 .cop-lever-group-meta-saving {
     color: var(--accent);
@@ -4193,15 +4202,17 @@
     border-radius: 10px;
     border: 1px solid var(--border);
     background: var(--bg-card);
+    min-width: 0;
 }
 .cop-lever-modified { border-color: var(--accent); }
 .cop-lever-head {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
+    min-width: 0;
 }
-.cop-lever-title { font-weight: 600; font-size: 0.92rem; }
+.cop-lever-title { font-weight: 600; font-size: 0.92rem; min-width: 0; overflow-wrap: anywhere; }
 /* PATCH 2.14.17: одна строка-подпись под title, объясняет что за параметр.
    Берётся из metadata модели (SETTINGS_DESCRIPTIONS / question.description).
    Стиль идентичен .cop-lever-consequence — оба «мелкий приглушённый текст»,
@@ -4242,6 +4253,7 @@
     display: flex;
     gap: 8px;
     justify-content: flex-end;
+    align-items: center;
     flex-wrap: wrap;
 }
 .cop-modal-apply[disabled],
@@ -4266,8 +4278,11 @@
     align-items: center;
     gap: 6px;
     color: var(--text-muted);
+    flex: 1 1 260px;
+    min-width: 0;
 }
 .cop-rollback-icon { display: inline-flex; align-items: center; }
+.cop-rollback-text span:last-child { overflow-wrap: anywhere; }
 .cop-rollback-btn { white-space: nowrap; }
 
 /* ---------- Phase 3: inline high-risk confirmation panel ---------- */

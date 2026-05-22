@@ -62,6 +62,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
     padding: 18px 22px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
@@ -71,6 +72,9 @@
     font-size: 1.05rem;
     font-weight: 600;
     color: var(--text);
+    min-width: 0;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
 }
 .modal-close {
     width: 30px;
@@ -83,6 +87,7 @@
     align-items: center;
     justify-content: center;
     transition: background var(--t-fast), color var(--t-fast);
+    flex-shrink: 0;
 }
 .modal-close:hover {
     background: var(--bg-elevated);
@@ -107,6 +112,8 @@
     display: flex;
     gap: 8px;
     justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 /* === 12.U16: Новый расчёт (выбор шаблона) === */

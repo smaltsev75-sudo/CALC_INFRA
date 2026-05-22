@@ -263,10 +263,10 @@ describe('Audit #17 invariants — root↔scenarios mirror в CRUD', () => {
         );
     });
 
-    it('app.js различает reason="validation" в bundle.errors UI', () => {
-        const src = readFileSync(join(REPO_ROOT, 'js', 'app.js'), 'utf8');
+    it('bundle export UI различает reason="validation"', () => {
+        const src = readFileSync(join(REPO_ROOT, 'js', 'app', 'importExportActions.js'), 'utf8');
         assert.ok(/reasons\.validation/.test(src),
-            'app.js bundle export UI должен явно группировать по reason=validation (audit-17 P3)');
+            'bundle export UI должен явно группировать по reason=validation (audit-17 P3)');
     });
 });
 

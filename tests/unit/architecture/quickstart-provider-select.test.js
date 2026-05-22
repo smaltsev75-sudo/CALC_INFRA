@@ -36,9 +36,10 @@ function functionBody(source, name) {
 }
 
 test('Quick Start provider field uses ctx providers and is not disabled', () => {
-    const src = read('js/ui/modals/quickStartModal.js');
-    const clean = stripJsComments(src);
-    const body = functionBody(src, 'renderProviderField');
+    const modalSrc = read('js/ui/modals/quickStartModal.js');
+    const modelSrc = read('js/ui/modals/quickStartModel.js');
+    const clean = stripJsComments(`${modalSrc}\n${modelSrc}`);
+    const body = functionBody(modalSrc, 'renderProviderField');
 
     assert.match(clean, /listActiveProvidersForQuickStart/,
         'Quick Start должен брать список активных провайдеров через ctx.');
@@ -75,7 +76,9 @@ test('Quick Start provider field opens picker from field label area on first cli
 
 test('app ctx exposes Quick Start provider methods without UI importing controllers', () => {
     const app = stripJsComments(read('js/app.js'));
-    const quickStart = stripJsComments(read('js/ui/modals/quickStartModal.js'));
+    const quickStart = stripJsComments(
+        `${read('js/ui/modals/quickStartModal.js')}\n${read('js/ui/modals/quickStartModel.js')}`
+    );
 
     assert.match(app, /listActiveProvidersForQuickStart\(\)\s*\{\s*return\s+providerCtl\.listActiveProvidersForQuickStart\(\)/,
         'app.js должен прокидывать список провайдеров через ctx.');

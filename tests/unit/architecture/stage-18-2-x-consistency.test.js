@@ -61,7 +61,7 @@ test('C1: store.js setComparisonIds / addComparisonId используют MAX_C
 /* ----------------- C2: openSummaryFormula — НДС отдельно ----------------- */
 
 test('C2: openSummaryFormula не называет НДС риск-коэффициентом', () => {
-    const src = read('js/app.js');
+    const src = read('js/app/printActions.js');
     // Найти message текста openSummaryFormula по фрагменту-якорю
     const anchor = src.indexOf('«Итого по расчёту» — общая стоимость');
     assert.ok(anchor > 0, 'не нашёл якорь текста openSummaryFormula');
@@ -206,12 +206,12 @@ test('U4: index.html содержит meta[name="theme-color"]', () => {
 });
 
 test('U4: applyThemeAttribute обновляет meta[name="theme-color"] под выбранную тему', () => {
-    const src = stripJsComments(read('js/app.js'));
+    const src = stripJsComments(read('js/app/theme.js'));
     // карта цветов
     assert.match(
         src,
-        /THEME_COLOR_BY_THEME\s*=\s*\{[\s\S]*dark\s*:\s*['"]#[0-9a-fA-F]+['"][\s\S]*light\s*:\s*['"]#[0-9a-fA-F]+['"]/,
-        'app.js должен содержать карту THEME_COLOR_BY_THEME для dark/light'
+        /THEME_COLOR_BY_THEME\s*=\s*Object\.freeze\(\s*\{[\s\S]*dark\s*:\s*['"]#[0-9a-fA-F]+['"][\s\S]*light\s*:\s*['"]#[0-9a-fA-F]+['"]/,
+        'theme.js должен содержать карту THEME_COLOR_BY_THEME для dark/light'
     );
     // setAttribute('content', ...) внутри applyThemeAttribute
     const start = src.indexOf('function applyThemeAttribute');

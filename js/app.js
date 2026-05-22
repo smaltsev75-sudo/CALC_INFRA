@@ -8,9 +8,7 @@
 
 import { store } from './state/store.js';
 import * as persist from './state/persistence.js';
-import { debounce } from './utils/debounce.js';
-import { STORAGE_KEYS, CALC_LIST_REFRESH_DEBOUNCE_MS, STAND_IDS, ADVANCED_ONLY_NEXT_STEP_TARGETS } from './utils/constants.js';
-import { loadPdfHintShown, markPdfHintShown } from './services/storage.js';
+import { STORAGE_KEYS, STAND_IDS } from './utils/constants.js';
 import * as calcList from './controllers/calcListController.js';
 import * as calc from './controllers/calcController.js';
 import { flushPendingCommit } from './controllers/calcController.js';
@@ -22,7 +20,6 @@ import * as budgetCtl from './controllers/budgetGuardrailsController.js';
 import * as memoCtl from './controllers/decisionMemoController.js';
 import * as guidedCompletionCtl from './controllers/guidedCompletionController.js';
 import * as priceImportCtl from './controllers/priceImportMappingController.js';
-import { buildRecommendedActions } from './domain/recommendedActions.js';
 import * as costOptimizationCtl from './controllers/costOptimizationPlannerController.js';
 import * as healthScoreTrendCtl from './controllers/healthScoreTrendController.js';
 import { startCrossTabSync } from './state/crossTabSync.js';
@@ -31,215 +28,96 @@ import { loadReadmeHtml } from './controllers/helpController.js';
 import { bindHotkeys } from './controllers/keyboardController.js';
 import { mountUi, renderApp } from './ui/index.js';
 import * as snackbar from './ui/snackbar.js';
-import { setButtonLoading } from './ui/dom.js';
 import { findQuestionUsages, lintFormulas } from './domain/validation.js';
-import { VAT_RATE_HISTORY } from './domain/vatRateTable.js';
 import {
     acquireAppInstanceLock,
     releaseAppInstanceLock,
     startAppInstanceHeartbeat
 } from './services/appInstanceLock.js';
 import { renderInstanceBlockedScreen } from './ui/instanceBlockedScreen.js';
+import { withLoadingButton } from './app/loadingButton.js';
+import { handleUpdateProviderResult, showOptimizationApplyResult } from './app/toastResults.js';
+import { applyThemeAttribute } from './app/theme.js';
+import { maybeShowLegacyVatBanner, maybeShowLegacyProviderVatBanner } from './app/vatBanners.js';
+import { createRenderScheduler } from './app/renderScheduler.js';
+import { installModalHashNavigation } from './app/modalHashNavigation.js';
+import { subscribeAppPersistence } from './app/uiPersistenceSubscriber.js';
+import { createAppInstanceLockRuntime } from './app/instanceLockRuntime.js';
+import { nextCollapsedIds, nextGlobalExpandedIds } from './app/toggleState.js';
+import {
+    importCalcAction,
+    exportCalcAction,
+    exportStateBundleAction,
+    importStateBundleAction,
+    exportCsvAction,
+    exportComparisonCsvAction
+} from './app/importExportActions.js';
+import {
+    handlePriceImportFileAction,
+    applyPriceImportAction,
+    importItemPricesAction
+} from './app/priceImportActions.js';
+import {
+    deleteItemAction,
+    duplicateItemAction,
+    deleteQuestionAction,
+    duplicateQuestionAction
+} from './app/crudActions.js';
+import {
+    applyProviderOverrideToActiveCalcAction,
+    openProviderHistoryModalAction,
+    setDeltaHistoryProviderExpandedAction,
+    openProviderAnalyticsModalAction,
+    setProviderAnalyticsVisibleCategoriesAction,
+    openScenarioComparisonModalAction,
+    setScenarioComparisonSelectedProvidersAction,
+    restoreProviderOverrideAtAction,
+    rollbackProviderOverrideAction,
+    applyProviderOverrideToAllCalcsAction
+} from './app/providerActions.js';
+import {
+    printPdfAction,
+    printAnswersAction,
+    openSummaryFormulaAction
+} from './app/printActions.js';
+import { focusQuestionAction } from './app/focusQuestionAction.js';
+import {
+    createCalcAction,
+    createCalcFromWizardAction,
+    duplicateCalcAction,
+    renameCalcAction,
+    deleteCalcAction
+} from './app/calcListActions.js';
+import { chooseVatPolicyAction, cancelVatPolicyChoiceAction } from './app/vatPolicyActions.js';
+import {
+    switchScenarioAction,
+    addScenarioAction,
+    duplicateScenarioAction,
+    deleteScenarioAction,
+    renameScenarioAction,
+    openScenarioMenuAction,
+    openScenarioRenameAction,
+    openScenarioDuplicateAction
+} from './app/scenarioActions.js';
+import {
+    openQuickStartAction,
+    openQuickStartForEditAction,
+    openQuickStartForActiveScenarioProfileAction,
+    openReapplyConfirmAction,
+    applyReapplyAction
+} from './app/quickStartActions.js';
+import {
+    getActiveNextStepsAction,
+    setHealthLastTabAction,
+    resetAnswersAction
+} from './app/nextStepActions.js';
 
-/* ---------- Защита от двойных кликов ---------- */
-
-let _lastCreateAt = 0;
-let _lastDuplicateAt = 0;
-
-/* ---------- Loading-state обёртка ----------
- * Helper для длительных async-операций (импорт/экспорт/печать).
- * Если onClick прокинул Event как первый аргумент, currentTarget
- * получает класс .btn-loading на время выполнения (CSS-spinner +
- * disabled). По завершении (включая throw) состояние снимается.
- */
-/* Общий handler результата обновления прайса (snackbar success/info/error по reason). */
 function _handleUpdateProviderResult(result) {
-    if (result.ok) {
-        const ver = result.applied?.version || '';
-        snackbar.success(`Прайс провайдера обновлён${ver ? ' до ' + ver : ''}.`);
-    } else if (result.reason === 'in-progress') {
-        snackbar.info('Обновление уже выполняется.');
-    } else if (result.reason === 'cancelled') {
-        /* Тихая отмена — без toast'а. */
-    } else if (result.reason === 'vat-policy-required') {
-        /* Stage VAT-2 Phase 5: v1 JSON без vatPolicy → модалка уже открыта
-         * контроллером; toast'а не показываем (модалка сама объясняет flow). */
-    } else {
-        snackbar.error(result.message || 'Не удалось обновить прайс.');
-    }
-    return result;
+    return handleUpdateProviderResult(result, snackbar);
 }
 
-async function withLoadingButton(triggerEvent, asyncFn) {
-    const target = triggerEvent && typeof triggerEvent === 'object'
-        ? triggerEvent.currentTarget : null;
-    const btn = target && typeof target.classList !== 'undefined' &&
-                target.tagName === 'BUTTON'
-                ? target : null;
-    if (btn) setButtonLoading(btn, true);
-    try {
-        return await asyncFn();
-    } finally {
-        if (btn) setButtonLoading(btn, false);
-    }
-}
-
-/* ---------- Тема приложения (12.U33) ---------- */
-
-import { THEME_IDS, DEFAULT_THEME } from './utils/constants.js';
-
-/**
- * Применить тему как атрибут data-theme на <html>. Невалидное значение
- * игнорируется и заменяется DEFAULT_THEME, чтобы не оставить страницу
- * без палитры. Идемпотентно.
- */
-/* Phase 3: показать snackbar по result-объекту от applyOptimizationDraftAction/
-   confirmOptimizationApply. Controller возвращает форму
-   { ok: true, applied, failed, savingPercent } или
-   { ok: false, reason: 'high_risk_pending'|'no_changes'|'recompute_failed'|... }.
-   high_risk_pending — это нормальная промежуточная ветка (UI открыл confirm-
-   panel), snackbar не показываем. */
 function _showOptimizationApplyResult(r) {
-    if (!r) return;
-    if (r.ok) {
-        const pct = Number.isFinite(r.savingPercent) ? r.savingPercent : 0;
-        const word = _pluralizeParamRu(r.applied);
-        const partial = r.failed > 0 ? ` (${r.failed} не прошло)` : '';
-        snackbar.success(
-            `Изменения применены: ${r.applied} ${word}, экономия −${pct.toFixed(1)}%.${partial}`
-        );
-        return;
-    }
-    switch (r.reason) {
-        case 'high_risk_pending':
-            /* Inline-confirmation открыта, snackbar не нужен. */
-            return;
-        case 'no_changes':
-            snackbar.warning('Нет изменений для применения.');
-            return;
-        case 'recompute_failed':
-            snackbar.error('Не удалось применить: ошибка пересчёта.');
-            return;
-        case 'invalid_total':
-            snackbar.error('Не удалось применить: невалидная итоговая стоимость.');
-            return;
-        case 'no_draft':
-        case 'no_calc':
-        case 'not_confirming':
-        case 'modal_closed':
-            return; /* defensive — UI до этого не должен пускать */
-        default:
-            snackbar.warning('Не удалось применить изменения.');
-    }
-}
-
-function _pluralizeParamRu(n) {
-    const m10 = n % 10, m100 = n % 100;
-    if (m10 === 1 && m100 !== 11) return 'параметр';
-    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'параметра';
-    return 'параметров';
-}
-
-/* Цвета meta[name=theme-color] для mobile browser-chrome / PWA frame.
-   Соответствуют --bg-panel в base.css (#0a0f1a в dark, #f5e9cb в light).
-   При расхождении токенов в base.css — обновить здесь синхронно. */
-const THEME_COLOR_BY_THEME = {
-    dark: '#0a0f1a',
-    light: '#f5e9cb'
-};
-
-function applyThemeAttribute(theme) {
-    const safe = THEME_IDS.includes(theme) ? theme : DEFAULT_THEME;
-    if (typeof document !== 'undefined' && document.documentElement) {
-        if (safe === DEFAULT_THEME) {
-            // Дефолт — без атрибута, чтобы CSS :root применялся напрямую
-            // (минус один матч в каскаде, мелочь, но ОК).
-            document.documentElement.removeAttribute('data-theme');
-        } else {
-            document.documentElement.setAttribute('data-theme', safe);
-        }
-        // Stage 18.2.x: синхронизация <meta name="theme-color"> с выбранной
-        // темой — пользовательский выбор может расходиться с системным
-        // prefers-color-scheme, поэтому media-варианты meta недостаточно.
-        const meta = document.querySelector('meta[name="theme-color"]');
-        if (meta && THEME_COLOR_BY_THEME[safe]) {
-            meta.setAttribute('content', THEME_COLOR_BY_THEME[safe]);
-        }
-    }
-}
-
-/* ---------- VAT-1 Phase 5: legacy frozen snackbar ----------
- * Один раз за сессию показывает info-snackbar для расчёта, который был создан
- * по исторической ставке НДС (например, 20% до 2026-01-01). Триггерится из
- * ctx.openCalc после загрузки calc. Session-only — state.ui.shownLegacyVatBanners
- * НЕ сохраняется в localStorage и обнуляется на следующей сессии (так и задумано:
- * пользователь должен видеть это напоминание после каждого reboot приложения,
- * пока не примет решение — frozen оставить или сменить на manual / auto). */
-function maybeShowLegacyVatBanner() {
-    const state = store.getState();
-    const calc = state.activeCalc;
-    if (!calc || !calc.settings) return;
-    const s = calc.settings;
-    if (s.vatRateMode !== 'frozen') return;
-    /* Granularly: показываем ТОЛЬКО для legacy-frozen — где createdAt раньше
-       начала текущего периода справочника НДС. frozen-расчёт, созданный
-       в 2026, и заморожённый осознанно — не legacy, snackbar не нужен. */
-    const currentPeriod = VAT_RATE_HISTORY[VAT_RATE_HISTORY.length - 1];
-    const createdAt = typeof calc.createdAt === 'string' ? calc.createdAt.slice(0, 10) : null;
-    if (!createdAt || createdAt >= currentPeriod.from) return;
-    /* Session-only: проверка флага в state.ui (НЕ в localStorage). */
-    const shown = state.ui?.shownLegacyVatBanners || {};
-    if (shown[calc.id]) return;
-    const ratePct = Math.round((s.vatRate || 0) * 100);
-    snackbar.info(
-        `Расчёт создан при ставке НДС ${ratePct}%. Ставка зафиксирована, ` +
-        `чтобы не изменить согласованные цифры. Сменить режим можно в Опроснике.`
-    );
-    store.setUi({ shownLegacyVatBanners: { ...shown, [calc.id]: true } });
-}
-
-/* ---------- VAT-2 Phase 5: legacy provider double-VAT warning ----------
- * Расчёт, который был создан до Phase 4 (нет `vatNormalized` на items.
- * dictionaries), мог содержать gross-price snapshot. Calculator применит
- * VAT поверх → потенциальный двойной учёт. Banner — non-blocking warning
- * с CTA «Перейти к тарифам» (раскрывает provider summary, где пользователь
- * увидит маркер «v1, политика неизвестна» и сможет переимпортировать прайс).
- *
- * Не auto-apply: только напоминание + path к ручному действию.
- *
- * Session-only — `state.ui.shownLegacyProviderVatBanners[calcId]` НЕ
- * сохраняется в localStorage (Q4 решение: после reboot показывается снова,
- * пока пользователь не переимпортирует прайс с явной vatPolicy). */
-function maybeShowLegacyProviderVatBanner() {
-    const state = store.getState();
-    const calc = state.activeCalc;
-    if (!calc || !calc.settings) return;
-    /* НДС выключен → нет риска двойного учёта. */
-    if (!calc.settings.vatEnabled) return;
-    /* Items без `vatNormalized` = legacy snapshot до Phase 4. */
-    const items = calc.dictionaries?.items;
-    if (!Array.isArray(items) || items.length === 0) return;
-    const hasLegacySnapshot = items.some(item =>
-        typeof item.priceSource === 'string' && item.priceSource.length > 0
-        && item.vatNormalized !== true
-        && Number.isFinite(item.pricePerUnit) && item.pricePerUnit > 0
-    );
-    if (!hasLegacySnapshot) return;
-    /* Session-only flag — отдельный от VAT-1 banner. */
-    const shown = state.ui?.shownLegacyProviderVatBanners || {};
-    if (shown[calc.id]) return;
-    snackbar.showSnackbar({
-        type: 'warning',
-        message: 'Старые расчёты могли учитывать НДС дважды. ' +
-                 'Проверьте применённый прайс и при необходимости импортируйте JSON с явной политикой НДС.',
-        action: 'Перейти к тарифам',
-        onAction: () => {
-            /* Раскрываем provider summary — там же доступна кнопка
-             * «Обновить прайс из файла». */
-            store.setUi({ providerOverlayExpanded: true });
-        }
-    });
-    store.setUi({ shownLegacyProviderVatBanners: { ...shown, [calc.id]: true } });
+    return showOptimizationApplyResult(r, snackbar);
 }
 
 /* ---------- Контекст для UI: набор всех действий ---------- */
@@ -257,75 +135,17 @@ const ctx = {
        .field-recent + .section-recent CSS-glow и одновременно раскрывает
        секцию-владельца вопроса (читается в openedSections). */
     focusQuestion(questionId) {
-        if (!questionId || typeof questionId !== 'string') return;
-        const calc = store.getState().activeCalc;
-        if (!calc) return;
-        store.setActiveTab('questionnaire');
-        const q = (calc.dictionaries?.questions || []).find(x => x.id === questionId);
-        if (q?.section) {
-            const cur = store.getState().ui.questionnaireOpenSections || [];
-            if (!cur.includes(q.section)) {
-                store.setUi({ questionnaireOpenSections: [...cur, q.section] });
-            }
-        }
-        store.setUi({ recentlyChangedKey: `answer:${questionId}` });
-        // Прокрутка и фокус после рендера. Двойной rAF: первый дожидается
-        // scheduleRender(), второй гарантирует, что DOM уже обновлён.
-        //
-        // Фокус-семантика «Перейти к полю» — это НАВИГАЦИЯ, не мутация:
-        //   1) editable input → курсор в input.
-        //   2) поле в режиме «Не знаю» (input disabled) → фокус на кнопку
-        //      «Не знаю» + info-подсказка. Никакого автоклика — пользователь
-        //      сам Enter/Space разблокирует ввод. Иначе навигация молча
-        //      меняла бы answer (null → defaultValue) и source расчёта.
-        if (typeof requestAnimationFrame === 'function') {
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-                const node = document.getElementById(`field-${questionId}`);
-                if (!node) return;
-                try {
-                    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } catch { /* старые браузеры без smooth scroll — игнорируем */ }
-                const editable = node.querySelector(
-                    'input:not([disabled]):not([type="hidden"]):not([type="checkbox"]),' +
-                    'select:not([disabled]),textarea:not([disabled])'
-                );
-                if (editable) {
-                    try { editable.focus({ preventScroll: true }); } catch {}
-                    return;
-                }
-                const unknownToggle = node.querySelector('.field-unknown-toggle');
-                if (unknownToggle) {
-                    try { unknownToggle.focus({ preventScroll: true }); } catch {}
-                    snackbar.info('Нажмите «Не знаю», чтобы включить ручной ввод');
-                }
-            }));
-        }
+        return focusQuestionAction({ questionId, store, snackbar });
     },
     createCalc(name, templateId = null) {
-        // Защита от двойного клика: если предыдущий вызов выполнился < 500 мс назад,
-        // игнорируем повторный — иначе быстрый double-click создаст два расчёта.
-        const now = Date.now();
-        if (_lastCreateAt && (now - _lastCreateAt) < 500) return null;
-        _lastCreateAt = now;
-        const c = calcList.createCalc(name, templateId);
-        /* Внешний аудит #3 (2026-05-18, P2): null = quota-fail в commitNewCalc,
-         * показываем error вместо лживого success. */
-        if (!c) {
-            snackbar.error('Не удалось создать расчёт. Возможно, переполнено локальное хранилище браузера. Скачайте JSON-снимок и удалите старые расчёты.');
-            return null;
-        }
-        store.setActiveTab('questionnaire');
-        snackbar.success(templateId
-            ? 'Расчёт создан из шаблона'
-            : 'Расчёт создан');
-        return c;
+        return createCalcAction({ name, templateId, calcList, store, snackbar });
     },
     /* Stage 4.9/4.14: ctx.openNewCalc удалён вместе с newCalcModal. Создание
        нового расчёта идёт через Quick Start (3 preset'а после Stage 17.2)
        или напрямую через ctx.createCalc(name, null) для пустого расчёта. */
     /* 14.U1: Quick Start Wizard — открыть модалку с 7 макро-вопросами. */
     openQuickStart() {
-        store.openModal('quickStart');
+        return openQuickStartAction({ store });
     },
     listActiveProvidersForQuickStart() {
         return providerCtl.listActiveProvidersForQuickStart();
@@ -337,12 +157,7 @@ const ctx = {
        расчёта. Draft предзаполнен из calc.wizard, поле «Название» скрыто, submit
        пока no-op (re-apply придёт в Sprint 2.2 пункте 3 с диалогом сохранения правок). */
     openQuickStartForEdit() {
-        const calc = store.getState().activeCalc;
-        if (!calc || !calc.wizard) return;
-        store.openModal('quickStart', {
-            mode: 'edit',
-            draft: { ...calc.wizard, provider: calc.settings?.provider, name: calc.name }
-        });
+        return openQuickStartForEditAction({ store });
     },
     /* Stage 18.2 (v2.13.1): открыть Quick Start, чтобы задать профиль активного
        сценария, у которого его сейчас нет (`calc.wizard === null` — обычно
@@ -351,12 +166,7 @@ const ctx = {
        контракт edit-mode'а. draft предзаполнен defaultDraft внутри модалки
        (модалка сама подставит PRESETS[0].draft, если draft пустой). */
     openQuickStartForActiveScenarioProfile() {
-        const calc = store.getState().activeCalc;
-        if (!calc) return;
-        const draft = calc.wizard
-            ? { ...calc.wizard, provider: calc.settings?.provider, name: calc.name }
-            : { provider: calc.settings?.provider, name: calc.name };  /* модалка сама использует defaultDraft() */
-        store.openModal('quickStart', { mode: 'edit', draft });
+        return openQuickStartForActiveScenarioProfileAction({ store });
     },
     /* 14.U3: helper-обёртка над snackbar.info для UI-слоя — UI не импортирует snackbar
        напрямую (layer purity), а зовёт через ctx. */
@@ -369,36 +179,14 @@ const ctx = {
        overwrite (manual-полей нет значит preserve и overwrite эквивалентны).
        При N>0 — модалка с тремя вариантами (см. reapplyConfirmModal.js). */
     openReapplyConfirm(draftWizard) {
-        /* Stage 18.2: guard `|| !c.wizard` убран. Empty-state «Задать профиль
-           сценария» вызывает openQuickStartForActiveScenarioProfile → submit QS
-           → этот метод. Для сценария без wizard'а manualCount=0 (answersMeta
-           пустой), сразу идём в overwrite — applyReapply запишет wizard перед
-           reapplyProfile. Семантика «edit» сохранена для wizard-ful сценариев. */
-        const c = store.getState().activeCalc;
-        if (!c) return;
-        let manualCount = 0;
-        const meta = c.answersMeta || {};
-        for (const m of Object.values(meta)) {
-            if (m && m.source === 'manual') manualCount++;
-        }
-        if (manualCount === 0) {
-            this.applyReapply('overwrite', draftWizard);
-            return;
-        }
-        store.openModal('reapplyConfirm', { manualCount, draftWizard });
+        return openReapplyConfirmAction({
+            draftWizard,
+            store,
+            applyReapply: (mode, draft) => ctx.applyReapply(mode, draft)
+        });
     },
     applyReapply(mode, explicitDraftWizard) {
-        /* Если в state.modals.reapplyConfirm есть draftWizard (юзер шёл через QS edit
-           с изменёнными макропараметрами) — сначала обновляем calc.wizard,
-           потом re-apply. Иначе reapplyProfile использует existing calc.wizard. */
-        const fromModal = store.getState().modals.reapplyConfirm.draftWizard;
-        const draftWizard = explicitDraftWizard ?? fromModal;
-        if (draftWizard) {
-            store.updateActiveCalc({ wizard: { ...draftWizard } });
-        }
-        const result = calc.reapplyProfile(mode);
-        const noun = mode === 'preserve' ? 'с сохранением правок' : 'полная перезапись';
-        snackbar.success(`Профиль применён (${noun}). Изменено полей: ${result.changed}.`);
+        return applyReapplyAction({ mode, explicitDraftWizard, store, calc, snackbar });
     },
     /* 14.U1: создание расчёта по итогам Quick Start. Вызывается из QuickStart-модалки.
        Аргументы: name (string), wizardInput (объект 7 ответов).
@@ -408,256 +196,53 @@ const ctx = {
        на полях опросника). Старый текст «Расчёт создан из профиля «<industry>»»
        перекрывал footer Cost Optimization Planner. */
     createCalcFromWizard(name, wizardInput) {
-        const now = Date.now();
-        if (_lastCreateAt && (now - _lastCreateAt) < 500) return null;
-        _lastCreateAt = now;
-        const c = calcList.createCalcFromWizard(name, wizardInput);
-        /* Внешний аудит #3 (2026-05-18, P2): null = quota-fail. */
-        if (!c) {
-            snackbar.error('Не удалось создать расчёт. Возможно, переполнено локальное хранилище. Скачайте JSON-снимок и удалите старые расчёты.');
-            return null;
-        }
-        store.setActiveTab('dashboard');
-        return c;
+        return createCalcFromWizardAction({ name, wizardInput, calcList, store, snackbar });
     },
     openCalc(id) {
         calcList.openCalc(id);
         store.setActiveTab('questionnaire');
-        maybeShowLegacyVatBanner();
-        maybeShowLegacyProviderVatBanner();
+        maybeShowLegacyVatBanner(store, snackbar);
+        maybeShowLegacyProviderVatBanner(store, snackbar);
     },
     duplicateCalc(id) {
-        const now = Date.now();
-        if (_lastDuplicateAt && (now - _lastDuplicateAt) < 500) return;
-        _lastDuplicateAt = now;
-        const c = calcList.duplicateCalc(id);
-        /* Внешний аудит #3 (2026-05-18, P2): null = quota-fail в commitNewCalc. */
-        if (!c) {
-            snackbar.error('Не удалось скопировать расчёт. Возможно, переполнено локальное хранилище.');
-            return;
-        }
-        snackbar.success('Расчёт скопирован');
+        return duplicateCalcAction({ id, calcList, snackbar });
     },
     renameCalc(id, currentName) {
-        ctx.input({
-            title: 'Переименовать расчёт',
-            label: 'Название',
-            defaultValue: currentName || '',
-            placeholder: 'Например: SaaS-платформа MVP',
-            confirmLabel: 'Сохранить',
-            onConfirm: next => {
-                const trimmed = (next || '').trim();
-                if (trimmed) {
-                    /* Внешний аудит #6 (2026-05-18, P2-2): persist-fail → имя
-                     * не изменено (storage и in-memory consistent), snackbar.error. */
-                    const r = calcList.renameCalc(id, trimmed);
-                    if (r && r.ok === false) {
-                        snackbar.error(r.message || 'Не удалось переименовать расчёт');
-                    }
-                }
-            }
+        return renameCalcAction({
+            id, currentName, calcList, snackbar,
+            input: opts => ctx.input(opts)
         });
     },
     deleteCalc(id, name) {
-        ctx.confirm({
-            title: 'Удалить расчёт',
-            message: `Удалить расчёт «${name}»?\n\nДействие можно отменить в течение нескольких секунд через кнопку «Отменить» в уведомлении.`,
-            danger: true,
-            confirmLabel: 'Удалить',
-            onConfirm: () => {
-                // Backup перед удалением — для undo
-                const backup = calcList.snapshotCalc(id);
-                /* Внешний аудит #6 (2026-05-18, P3-1): deleteCalc возвращает
-                 * {ok, reason}. При persist-fail НЕ показываем undo-snackbar
-                 * (расчёт не удалён) — показываем error. */
-                const r = calcList.deleteCalc(id);
-                if (r && r.ok === false) {
-                    snackbar.error(r.message || 'Не удалось удалить расчёт');
-                    return;
-                }
-                if (backup) {
-                    snackbar.showUndoableSnackbar(
-                        `Расчёт «${name}» удалён`,
-                        () => {
-                            /* Внешний аудит #6 (2026-05-18, P2-3): restoreCalc
-                             * возвращает boolean — игнорировался, лживо
-                             * показывали «Расчёт восстановлен» при quota. */
-                            if (calcList.restoreCalc(backup)) {
-                                snackbar.success('Расчёт восстановлен');
-                            } else {
-                                snackbar.error('Не удалось восстановить расчёт (quota?). Откройте JSON-экспорт и импортируйте вручную.');
-                            }
-                        }
-                    );
-                }
-            }
+        return deleteCalcAction({
+            id, name, calcList, snackbar,
+            confirm: opts => ctx.confirm(opts)
         });
     },
     importCalc(triggerEvent) {
-        // Обёртка: запускаем импорт и обрабатываем все возможные исходы.
-        // Выделена в функцию, чтобы duplicate-цикл (open modal → повторный
-        // вызов с onDuplicate) не дублировал обработку success/validation/parse.
-        // triggerEvent — опциональный Event от onClick для loading-state кнопки.
-        const runImport = (opts) =>
-            withLoadingButton(triggerEvent, () =>
-                calcList.importCalcFromFile(opts).then(res => handleImportResult(res))
-            );
-        const handleImportResult = (res) => {
-            if (res?.ok) {
-                store.setActiveTab('questionnaire');
-                snackbar.success(res.replaced ? 'Расчёт обновлён' : 'Расчёт загружен');
-
-                // После загрузки — прогоняем линтер: если есть висящие ссылки
-                // (Q.<id> на отсутствующие вопросы), показываем сводку.
-                const calc = store.getState().activeCalc;
-                if (calc) {
-                    const warnings = lintFormulas(calc.dictionaries.items, calc.dictionaries.questions);
-                    if (warnings.length > 0) {
-                        const sample = warnings.slice(0, 6).map(w => {
-                            const item = calc.dictionaries.items.find(i => i.id === w.itemId);
-                            const itemName = item?.name || w.itemId;
-                            return `  • ${itemName} (${w.stand}): ${w.message}`;
-                        }).join('\n');
-                        const more = warnings.length > 6 ? `\n  … и ещё ${warnings.length - 6}` : '';
-                        store.openModal('message', {
-                            title: `Замечания к формулам (${warnings.length})`,
-                            message:
-                                'В загруженном расчёте обнаружены формулы со ссылками на ' +
-                                'отсутствующие вопросы или ошибками парсинга. Затронутые ЭК ' +
-                                'будут возвращать qty=0 на соответствующих стендах.\n\n' +
-                                sample + more + '\n\n' +
-                                'Откройте «Элементы» → «Изменить» → «Формулы количества» для исправления.'
-                        });
-                    }
-                }
-            } else if (res?.reason === 'cancelled') {
-                /* пользователь отменил */
-            } else if (res?.reason === 'duplicate') {
-                // 11.1.4: коллизия id — спрашиваем пользователя явно.
-                // preloaded прокидываем обратно в контроллер, чтобы повторный
-                // вызов не открывал file picker заново.
-                store.openModal('duplicateImport', {
-                    existingName: res.existingName,
-                    importedName: res.importedName,
-                    onReplace: () => runImport({ onDuplicate: 'replace', preloaded: res.preloaded }),
-                    onClone:   () => runImport({ onDuplicate: 'clone',   preloaded: res.preloaded }),
-                    onCancel:  () => { /* пользователь отменил */ }
-                });
-            } else if (res?.reason === 'validation') {
-                snackbar.error('Файл не прошёл валидацию');
-                store.openModal('message', {
-                    title: 'Ошибки валидации',
-                    message: res.errors.slice(0, 5).map(e => `${e.path || ''}: ${e.message}`).join('\n')
-                });
-            } else {
-                snackbar.error('Не удалось загрузить: ' + (res?.message || 'неизвестная ошибка'));
-            }
-        };
-        runImport();
+        return importCalcAction({
+            triggerEvent, store, calcList, snackbar, withLoadingButton, lintFormulas
+        });
     },
     exportCalc(triggerEvent) {
-        return withLoadingButton(triggerEvent, async () => {
-            const ok = calcList.exportActiveCalc();
-            if (ok) snackbar.success('Файл сохранён');
-            else snackbar.warning('Нет активного расчёта');
-        });
+        return exportCalcAction({ triggerEvent, calcList, snackbar, withLoadingButton });
     },
 
     /* Полный экспорт/импорт всего состояния (bundle) */
     exportStateBundle(triggerEvent) {
-        return withLoadingButton(triggerEvent, async () => {
-            try {
-                /* Внешний аудит #13 (P1#2, 2026-05-19): exportStateBundle возвращает
-                 * { exported, errors } чтобы UI мог честно сообщить о потерянных calc'ах. */
-                const result = await calcList.exportStateBundle();
-                if (result && Array.isArray(result.errors) && result.errors.length > 0) {
-                    /* Внешний аудит #17 (PATCH 2.19.4, P3): различаем причины
-                     * пропуска. После audit-16 в errors появилось reason='validation'
-                     * (calc прошёл migrate но не прошёл validateCalculation), и UI
-                     * лгал что это «миграция/чтение». Пользователь не понимает,
-                     * что делать. Группируем по reason для точной диагностики. */
-                    const reasons = result.errors.reduce((acc, e) => {
-                        const key = e.reason || 'unknown';
-                        acc[key] = (acc[key] || 0) + 1;
-                        return acc;
-                    }, {});
-                    const parts = [];
-                    if (reasons.migration) parts.push(`${reasons.migration} миграц.`);
-                    if (reasons.pipeline)  parts.push(`${reasons.pipeline} pipeline`);
-                    if (reasons.validation) parts.push(`${reasons.validation} невалид.`);
-                    if (reasons.missing)    parts.push(`${reasons.missing} не найдено`);
-                    if (reasons.unknown)    parts.push(`${reasons.unknown} прочих`);
-                    snackbar.warning(
-                        `Snapshot сохранён (${result.exported} расч.); ` +
-                        `${result.errors.length} пропущено: ${parts.join(', ')}. ` +
-                        `Откройте проблемные расчёты для исправления.`
-                    );
-                } else {
-                    snackbar.success(`Полный snapshot сохранён (${result?.exported ?? store.getState().calcList.length} расч.)`);
-                }
-            } catch (e) {
-                snackbar.error('Не удалось экспортировать: ' + e.message);
-            }
+        return exportStateBundleAction({
+            triggerEvent, store, calcList, snackbar, withLoadingButton
         });
     },
 
     importStateBundle(triggerEvent) {
-        const currentList = store.getState().calcList;
-        const proceed = () => withLoadingButton(triggerEvent, async () => {
-            const result = await calcList.importStateBundleFromFile();
-            if (result.ok) {
-                const a = result.applied;
-                snackbar.success(
-                    `Состояние заменено: ${a.calculations} расч., ` +
-                    `${a.items} ЭК, ${a.questions} вопр.`
-                );
-                store.setActiveTab('calculations');
-            } else if (result.reason === 'cancelled') {
-                /* пользователь отменил */
-            } else if (result.reason === 'validation') {
-                store.openModal('message', {
-                    title: 'Файл не прошёл валидацию',
-                    message:
-                        'Bundle-файл содержит ошибки структуры. Состояние не изменено.\n\n' +
-                        result.errors.slice(0, 6).map(e => `• ${e.path || ''}: ${e.message}`).join('\n')
-                });
-            } else if (result.reason === 'parse') {
-                snackbar.error('Файл не является корректным JSON: ' + (result.message || ''));
-            } else {
-                snackbar.error('Ошибка импорта: ' + (result.error || result.reason));
-            }
+        return importStateBundleAction({
+            triggerEvent, store, calcList, snackbar, withLoadingButton,
+            confirm: opts => ctx.confirm(opts)
         });
-
-        // Если в хранилище уже есть данные — спросить подтверждение.
-        if (currentList.length === 0) {
-            proceed();
-        } else {
-            ctx.confirm({
-                title: 'Заменить состояние полностью?',
-                message:
-                    `Текущие данные (${currentList.length} расч.) будут УДАЛЕНЫ и заменены ` +
-                    `содержимым выбранного bundle-файла. Действие необратимо.\n\n` +
-                    `Совет: перед импортом сделайте «Полный экспорт» для backup.`,
-                danger: true,
-                confirmLabel: 'Заменить',
-                onConfirm: proceed
-            });
-        }
     },
     exportCsv(triggerEvent) {
-        const calc = store.getState().activeCalc;
-        if (!calc) { snackbar.warning('Нет активного расчёта'); return; }
-        // Динамический импорт — чтобы не тянуть csvExport до первого использования.
-        return withLoadingButton(triggerEvent, async () => {
-            const [{ calculate }, csvMod] = await Promise.all([
-                import('./domain/calculator.js'),
-                import('./services/csvExport.js')
-            ]);
-            const result = calculate(calc, store.getState().calcRevision);
-            const content = csvMod.buildDetailsCsv(calc, result);
-            csvMod.downloadCsv(csvMod.buildCalcCsvFilename(calc), content);
-            snackbar.success('CSV сохранён');
-        });
+        return exportCsvAction({ triggerEvent, store, snackbar, withLoadingButton });
     },
     /* Активный расчёт */
     setName(name)             { calc.setName(name); },
@@ -676,41 +261,24 @@ const ctx = {
      * modal → закрываем модалку и повторно вызываем validate+save с явной
      * `userVatPolicy`. Допустимые значения: 'net' | 'gross-20' | 'gross-22'. */
     chooseVatPolicy(userVatPolicy) {
-        const state = store.getState();
-        const m = state.modals.vatPolicyChoice;
-        if (!m || !m.open) return;
-        const { providerId, preloaded } = m;
-        store.closeModal('vatPolicyChoice');
-        return providerCtl.applyProviderPricesWithVatPolicy(providerId, preloaded, userVatPolicy)
-            .then(_handleUpdateProviderResult);
+        return chooseVatPolicyAction({
+            userVatPolicy,
+            store,
+            providerCtl,
+            handleUpdateProviderResult: _handleUpdateProviderResult
+        });
     },
     /* Stage VAT-2 Phase 5: пользователь отменил импорт legacy v1 → закрываем
      * модалку, prices без изменений. Никакого toast'а — тихая отмена. */
     cancelVatPolicyChoice() {
-        store.closeModal('vatPolicyChoice');
+        return cancelVatPolicyChoiceAction({ store });
     },
     /* Stage 8.3: применить применённый override к активному расчёту
        (swap dictionary.items + запись calc.providerVersion). Вызывается из
        UI кнопки «Пересчитать на новом прайсе» в блоке провайдера. */
     applyProviderOverrideToActiveCalc(triggerEvent) {
-        return withLoadingButton(triggerEvent, async () => {
-            const result = providerCtl.applyOverrideToActiveCalc();
-            if (result.ok) {
-                const n = result.deltas?.length || 0;
-                snackbar.success(
-                    n > 0
-                        ? `Расчёт пересчитан на прайс ${result.version}: изменено цен — ${n}.`
-                        : `Расчёт уже на прайсе ${result.version}.`
-                );
-            } else if (result.reason === 'no-override') {
-                snackbar.info('Сначала загрузите обновление прайса.');
-            } else if (result.reason === 'locked-by-other-tab') {
-                /* Stage 11.3: conflict с update в другой вкладке — warning, не error. */
-                snackbar.warning(result.message);
-            } else {
-                snackbar.error(result.message || 'Не удалось применить прайс.');
-            }
-            return result;
+        return applyProviderOverrideToActiveCalcAction({
+            triggerEvent, providerCtl, snackbar, withLoadingButton
         });
     },
     /* Stage 8.3: read-only геттеры для UI — UI не импортирует controllers
@@ -745,11 +313,7 @@ const ctx = {
        провайдеров с историей. expandedIds восстанавливается из localStorage;
        null = «не сохранено» → дефолт = [providerId]. */
     openProviderHistoryModal(providerId) {
-        const persistedExpanded = persist.loadDeltaHistoryExpandedProviders();
-        store.openModal('deltaHistory', {
-            providerId: providerId || null,
-            expandedIds: persistedExpanded
-        });
+        return openProviderHistoryModalAction({ providerId, store, persist });
     },
     /* Stage 14.4: список всех активных провайдеров с историей (current override
        и/или непустая history) для рендера accordion'а. */
@@ -760,54 +324,26 @@ const ctx = {
        клик по toggle-кнопке провайдера. expandedIds === null означает «снять
        сохранение» (вернуться к дефолту = [providerId]). */
     setDeltaHistoryProviderExpanded(providerId, isExpanded) {
-        if (!providerId) return;
-        const m = store.getState().modals.deltaHistory;
-        const current = Array.isArray(m.expandedIds)
-            ? m.expandedIds
-            : (m.providerId ? [m.providerId] : []);
-        const next = isExpanded
-            ? (current.includes(providerId) ? current : [...current, providerId])
-            : current.filter(id => id !== providerId);
-        store.patchModal('deltaHistory', { expandedIds: next });
-        /* best-effort: UI-state persist (accordion state). На сбое следующий
-         * клик повторит запись; дефолт после reboot — приемлемый fallback. */
-        persist.saveDeltaHistoryExpandedProviders(next);
+        return setDeltaHistoryProviderExpandedAction({ providerId, isExpanded, store, persist });
     },
     /* Открыть модалку «Прайс-бенчмарк» (read-only сравнение цен провайдеров).
        visibleCategories восстанавливается из localStorage; null = UI применит
        дефолт (все 5 категорий). */
     openProviderAnalyticsModal() {
-        const persistedVisible = persist.loadProviderAnalyticsVisibleCategories();
-        store.openModal('providerAnalytics', {
-            sortBy: 'total',
-            sortDir: 'asc',
-            visibleCategories: persistedVisible
-        });
+        return openProviderAnalyticsModalAction({ store, persist });
     },
     /* Stage 14.1: persist фильтра категорий в localStorage. Вызывается из UI
        при каждом toggle, чтобы F5 не сбрасывал выбор. */
     setProviderAnalyticsVisibleCategories(categories) {
-        /* best-effort: UI-state filter persist. */
-        persist.saveProviderAnalyticsVisibleCategories(categories);
+        return setProviderAnalyticsVisibleCategoriesAction({ categories, persist });
     },
     /* Stage 14.5 (PATCH 2.7.3): cross-provider scenario сравнение — модалка
        items × providers для активного calc. */
     openScenarioComparisonModal() {
-        const calc = store.getState().activeCalc;
-        if (!calc) {
-            snackbar.warning('Сначала откройте расчёт.');
-            return;
-        }
-        const persistedSelected = persist.loadScenarioComparisonSelectedProviders();
-        const persistedCats = persist.loadProviderAnalyticsVisibleCategories();
-        store.openModal('scenarioComparison', {
-            selectedProviderIds: persistedSelected,
-            visibleCategories: persistedCats
-        });
+        return openScenarioComparisonModalAction({ store, persist, snackbar });
     },
     setScenarioComparisonSelectedProviders(providerIds) {
-        /* best-effort: UI-state filter persist. */
-        persist.saveScenarioComparisonSelectedProviders(providerIds);
+        return setScenarioComparisonSelectedProvidersAction({ providerIds, persist });
     },
     /* Список active провайдеров для UI чекбоксов. */
     listActiveProvidersForComparison() {
@@ -846,24 +382,8 @@ const ctx = {
        После rollback — toast + refresh calcList (totalMonthly могут поменяться,
        если у calc'ов привязан старый providerVersion). */
     restoreProviderOverrideAt(triggerEvent, providerId, idx) {
-        return withLoadingButton(triggerEvent, async () => {
-            const result = providerCtl.restoreProviderOverrideFromHistory(providerId, idx);
-            if (result.ok) {
-                snackbar.success(
-                    `Прайс восстановлен: ${result.restored.version}.`
-                    + (result.hasMoreHistory ? ' В истории есть ещё точки.' : '')
-                );
-                calcList.refreshCalcList();
-            } else if (result.reason === 'no-history') {
-                snackbar.info('Нет истории для отката.');
-            } else if (result.reason === 'invalid-index') {
-                snackbar.error('Некорректный индекс истории.');
-            } else if (result.reason === 'locked-by-other-tab') {
-                snackbar.warning(result.message);
-            } else {
-                snackbar.error(result.message || 'Не удалось восстановить прайс.');
-            }
-            return result;
+        return restoreProviderOverrideAtAction({
+            triggerEvent, providerId, idx, providerCtl, calcList, snackbar, withLoadingButton
         });
     },
     /* Stage 9.5: rollback override → предыдущий прайс из history. После
@@ -871,58 +391,16 @@ const ctx = {
        но calc'и с providerVersion остаются на их применённой версии (могут
        стать stale → появится «Старый прайс» badge). */
     rollbackProviderOverride(triggerEvent, providerId) {
-        return withLoadingButton(triggerEvent, async () => {
-            const result = providerCtl.rollbackProvider(providerId);
-            if (result.ok) {
-                if (result.restored) {
-                    snackbar.success(
-                        `Прайс возвращён к версии ${result.restored.version}.`
-                        + (result.hasMoreHistory ? ' В истории есть ещё одна версия.' : '')
-                    );
-                } else {
-                    snackbar.success('Применённый прайс снят. Используются базовые цены провайдера.');
-                }
-            } else if (result.reason === 'no-override') {
-                snackbar.info('Нет применённого прайса для отката.');
-            } else if (result.reason === 'locked-by-other-tab') {
-                snackbar.warning(result.message);
-            } else {
-                snackbar.error(result.message || 'Не удалось откатить прайс.');
-            }
-            return result;
+        return rollbackProviderOverrideAction({
+            triggerEvent, providerId, providerCtl, snackbar, withLoadingButton
         });
     },
     /* Stage 8.5: применить current override ко ВСЕМ расчётам с этим провайдером.
        После операции — toast c summary («Обновлено N, без изменений M, ошибок K»).
        Использует best-effort iteration: ошибка на одном calc'е не прерывает остальные. */
     applyProviderOverrideToAllCalcs(triggerEvent, providerId) {
-        return withLoadingButton(triggerEvent, async () => {
-            const result = providerCtl.applyOverrideToAllCalcsForProvider(providerId);
-            if (!result.ok) {
-                if (result.reason === 'no-override') {
-                    snackbar.info('Сначала загрузите обновление прайса.');
-                } else if (result.reason === 'locked-by-other-tab') {
-                    snackbar.warning(result.message);
-                } else {
-                    snackbar.error(result.message || 'Не удалось применить прайс ко всем расчётам.');
-                }
-                return result;
-            }
-            const parts = [];
-            if (result.applied > 0) parts.push(`обновлено ${result.applied}`);
-            if (result.alreadyFresh > 0) parts.push(`уже на новом прайсе ${result.alreadyFresh}`);
-            if (result.errors.length > 0) parts.push(`ошибок ${result.errors.length}`);
-            const message = parts.length > 0
-                ? `Расчётов ${parts.join(', ')}.`
-                : `Нет расчётов на провайдере ${providerId}.`;
-            if (result.errors.length > 0) {
-                snackbar.warning(message);
-            } else {
-                snackbar.success(message);
-            }
-            /* Refresh calcList — обновляются totalMonthly после применения. */
-            calcList.refreshCalcList();
-            return result;
+        return applyProviderOverrideToAllCalcsAction({
+            triggerEvent, providerId, providerCtl, calcList, snackbar, withLoadingButton
         });
     },
     setResourceRatio(stand, resource, value) { calc.setResourceRatio(stand, resource, value); },
@@ -957,67 +435,32 @@ const ctx = {
     /* Sprint 3.0 Stage 2: Scenario CRUD — обёртки над calcController с UI-side
        побочными эффектами (auto-open rename modal после Add, snackbar'ы и пр.). */
     switchScenario(scenarioId) {
-        const r = calc.switchScenario(scenarioId);
-        if (r && r.switched) {
-            snackbar.info('Сценарий переключён');
-        }
+        return switchScenarioAction({ scenarioId, calc, snackbar });
     },
     addScenario(label) {
-        const r = calc.addScenario(label);
-        if (r && r.scenarioId) {
-            /* UX-выбор пользователя (3а): сразу после Add открываем модалку
-               Rename — пользователь обычно хочет назвать сценарий. */
-            store.openModal('scenarioRename', { scenarioId: r.scenarioId, draft: '' });
-        }
+        return addScenarioAction({ label, calc, store });
     },
     duplicateScenario(scenarioId, customLabel = null) {
-        const r = calc.duplicateScenario(scenarioId, customLabel);
-        if (r && r.scenarioId) {
-            snackbar.success('Сценарий дублирован');
-        }
+        return duplicateScenarioAction({ scenarioId, customLabel, calc, snackbar });
     },
     deleteScenario(scenarioId) {
-        /* Перед удалением — confirm-модалка. Берём label для понятного текста. */
-        const c = store.getState().activeCalc;
-        const sc = c?.scenarios?.find(s => s.id === scenarioId);
-        if (!sc) return;
-        const label = sc.label || 'без названия';
-        store.openModal('confirm', {
-            title: 'Удалить сценарий?',
-            message: `Сценарий «${label}» и его ответы будут удалены безвозвратно. Глобальные настройки расчёта (НДС, провайдер, риски) сохранятся.`,
-            confirmLabel: 'Удалить',
-            danger: true,
-            onConfirm: () => {
-                const result = calc.deleteScenario(scenarioId);
-                if (result && result.removed) {
-                    snackbar.success('Сценарий удалён');
-                }
-            }
-        });
+        return deleteScenarioAction({ scenarioId, store, calc, snackbar });
     },
     renameScenario(scenarioId, newLabel) {
-        const r = calc.renameScenario(scenarioId, newLabel);
-        if (r && r.renamed) {
-            snackbar.success('Сценарий переименован');
-        }
+        return renameScenarioAction({ scenarioId, newLabel, calc, snackbar });
     },
     openScenarioMenu(scenarioId) {
-        store.openModal('scenarioMenu', { scenarioId });
+        return openScenarioMenuAction({ scenarioId, store });
     },
     openScenarioRename(scenarioId) {
-        const c = store.getState().activeCalc;
-        const sc = c?.scenarios?.find(s => s.id === scenarioId);
-        store.openModal('scenarioRename', {
-            scenarioId,
-            draft: sc?.label || ''
-        });
+        return openScenarioRenameAction({ scenarioId, store });
     },
     /* Stage 4.8: открыть модалку «Дублировать сценарий». draft='' — модалка сама
        подставит default «<label> (копия)» при первом render'е (см.
        scenarioDuplicateModal.js). Это позволяет пользователю либо принять
        default'ный label кликом «Создать копию», либо переписать на своё имя. */
     openScenarioDuplicate(scenarioId) {
-        store.openModal('scenarioDuplicate', { scenarioId, draft: '' });
+        return openScenarioDuplicateAction({ scenarioId, store });
     },
     /* Toggle блока «По категориям» в стенд-карточках дашборда.
      *
@@ -1040,9 +483,7 @@ const ctx = {
      * безопасно: UI просто использует тот же `includes(sid)`. */
     toggleStandCatsExpanded(_standId) {
         const current = store.getState().ui.standCardsCatsExpanded || [];
-        const allExpanded = STAND_IDS.every(s => current.includes(s));
-        const next = allExpanded ? [] : [...STAND_IDS];
-        store.setUi({ standCardsCatsExpanded: next });
+        store.setUi({ standCardsCatsExpanded: nextGlobalExpandedIds(current, STAND_IDS) });
     },
     /* 12.U27: toggle категории-аккордеона в «Детализации».
      * Хранится как массив СВЁРНУТЫХ category-id в state.ui.detailsCollapsedCats.
@@ -1055,20 +496,7 @@ const ctx = {
      * первой инициализации массива из null. */
     toggleDetailsCategory(catId, presentCats = null) {
         const current = store.getState().ui.detailsCollapsedCats;
-        let next;
-        if (current === null) {
-            // Первая инициализация: всё было свёрнуто (дефолт), пользователь
-            // раскрыл одну категорию → массив = все остальные категории.
-            const all = Array.isArray(presentCats) ? presentCats : [];
-            next = all.filter(c => c !== catId);
-        } else if (current.includes(catId)) {
-            // Свёрнута → раскрыть.
-            next = current.filter(c => c !== catId);
-        } else {
-            // Раскрыта → свернуть.
-            next = [...current, catId];
-        }
-        store.setUi({ detailsCollapsedCats: next });
+        store.setUi({ detailsCollapsedCats: nextCollapsedIds(current, catId, presentCats) });
     },
     openAssumptionsModal()    {
         // 12.U35: модалка «Реестр допущений» подключена к MODAL_RENDERERS
@@ -1216,11 +644,7 @@ const ctx = {
         priceImportCtl.setPriceImportProvider(providerId);
     },
     async handlePriceImportFile(file = null) {
-        const result = await priceImportCtl.handlePriceImportFile(file);
-        if (!result.ok && result.reason === 'parse') {
-            snackbar.error('Не удалось разобрать файл — проверьте формат.');
-        }
-        return result;
+        return handlePriceImportFileAction({ file, priceImportCtl, snackbar });
     },
     proceedToMappingStep() {
         priceImportCtl.proceedToMappingStep();
@@ -1232,39 +656,7 @@ const ctx = {
         priceImportCtl.validatePriceImport();
     },
     applyPriceImport() {
-        const result = priceImportCtl.applyPriceImport();
-        if (result.ok) {
-            const s = result.summary;
-            /* Внешний аудит #7 (2026-05-18, P3) + #8 (P2-1): refresh-фаза
-             * могла оставить partial-state — либо per-calc quota (refreshErrors),
-             * либо full refresh-failure (refreshReason='locked-by-other-tab' /
-             * 'no-override'). Показываем warning с конкретной причиной. */
-            if (s.partial) {
-                if (s.refreshReason === 'locked-by-other-tab') {
-                    snackbar.warning(
-                        `Прайс ${s.providerId} сохранён (${s.priceCount} тарифов), ` +
-                        `но расчёты не обновлены: ${s.refreshMessage || 'обновляются в другой вкладке'}. ` +
-                        `Закройте параллельную вкладку и повторите «Пересчитать на новый прайс».`
-                    );
-                } else if (s.refreshErrors.length > 0) {
-                    snackbar.warning(
-                        `Прайс ${s.providerId} применён (${s.priceCount} тарифов), ` +
-                        `но ${s.refreshErrors.length} расчёт(ов) не обновлено — освободите место и повторите ` +
-                        `«Пересчитать на новый прайс».`
-                    );
-                } else {
-                    snackbar.warning(
-                        `Прайс ${s.providerId} сохранён (${s.priceCount} тарифов), ` +
-                        `но расчёты не обновлены: ${s.refreshMessage || s.refreshReason || 'неизвестная причина'}.`
-                    );
-                }
-            } else {
-                snackbar.success(`Прайс применён: ${s.priceCount} тарифов для ${s.providerId}.`);
-            }
-        } else {
-            snackbar.error('Apply не удался: ' + (result.message || result.reason));
-        }
-        return result;
+        return applyPriceImportAction({ priceImportCtl, snackbar });
     },
     closePriceImportMappingModal() {
         priceImportCtl.closePriceImportMappingModal();
@@ -1283,79 +675,22 @@ const ctx = {
     // настройками» в sidebar. Модалка остаётся доступной из Advanced-IA —
     // фильтр здесь гейтит ТОЛЬКО suggestion-flow в Next Steps.
     getActiveNextSteps() {
-        const calc = store.getState().activeCalc;
-        if (!calc) return [];
-        const all = buildRecommendedActions(calc);
-        const advancedMode = !!store.getState().ui.advancedModeEnabled;
-        if (advancedMode) return all;
-        return all.filter(a => !ADVANCED_ONLY_NEXT_STEP_TARGETS.includes(a.target));
+        return getActiveNextStepsAction({ store });
     },
     setHealthLastTab(tab) {
-        // 'error' | 'warning' | 'recommendation' | 'info'. Persist через subscriber.
-        if (typeof tab !== 'string') return;
-        store.setUi({ healthLastTab: tab });
+        return setHealthLastTabAction({ tab, store });
     },
     resetAnswers() {
-        calc.resetAnswers();
-        snackbar.success('Ответы сброшены к значениям по умолчанию');
+        return resetAnswersAction({ calc, snackbar });
     },
 
     /* CRUD ЭК */
     openItemEditor(it)        { itemCtl.openItemEditor(it); },
     deleteItem(id) {
-        const calc = store.getState().activeCalc;
-        const backup = calc?.dictionaries?.items?.find(i => i.id === id);
-        const res = itemCtl.deleteItem(id);
-        /* Внешний аудит #5 (2026-05-18, P2): при persist-fail НЕ показываем
-         * undo-snackbar — он лжёт, что элемент сохранён в хранилище. Показываем
-         * error-snackbar и НЕ закрываем правку (она в store, но F5 вернёт). */
-        if (res && res.ok === false) {
-            snackbar.error(res.message || 'Не удалось удалить элемент');
-            return;
-        }
-        if (backup) {
-            snackbar.showUndoableSnackbar(
-                `Элемент «${backup.name}» удалён`,
-                () => {
-                    /* Внешний аудит #6 (2026-05-18, P2-3): saveItem возвращает
-                     * {ok, errors} — игнорировалось, лживо «Восстановлено» при
-                     * persist-fail. */
-                    const r = itemCtl.saveItem(backup);
-                    if (r && r.ok === false) {
-                        snackbar.error(r.errors?.[0]?.message || 'Не удалось восстановить элемент');
-                        return;
-                    }
-                    // После undo проверим, не осталось ли висящих ссылок Q.<id>:
-                    // справочник вопросов мог измениться за время snackbar'а.
-                    const cur = store.getState().activeCalc;
-                    if (cur) {
-                        const w = lintFormulas([backup], cur.dictionaries.questions);
-                        if (w.length > 0) {
-                            snackbar.warning(
-                                `Восстановлено, но в формулах ${w.length} висящих ссылок — ` +
-                                `проверьте в детализации (кнопка-подсказка рядом со значением).`
-                            );
-                            return;
-                        }
-                    }
-                    snackbar.success('Восстановлено');
-                }
-            );
-        }
+        return deleteItemAction({ id, store, itemCtl, snackbar, lintFormulas });
     },
     duplicateItem(id) {
-        /* Внешний аудит #8 (2026-05-18, P1-2): duplicateItem теперь возвращает
-         * {ok, id?, reason?, message?}. Раньше при quota caller получал
-         * copy.id и лживо рапортовал «Элемент дублирован», хотя ничего не
-         * сохранилось ни в store, ни в storage. */
-        const res = itemCtl.duplicateItem(id);
-        if (res && res.ok === true) {
-            snackbar.success('Элемент дублирован');
-        } else if (res && res.reason === 'persist') {
-            snackbar.error(res.message || 'Не удалось дублировать элемент (quota?)');
-        }
-        /* reason='noActiveCalc'/'notFound' — пользователь видит, что ничего
-         * не произошло (кнопка должна была быть disabled, race). Молча. */
+        return duplicateItemAction({ id, itemCtl, snackbar });
     },
     exportItems(triggerEvent) {
         return withLoadingButton(triggerEvent, async () => {
@@ -1379,169 +714,31 @@ const ctx = {
         });
     },
     importItemPrices(triggerEvent) {
-        // Этап 11.2.1: аномалии (× ≥ 10) НЕ применяются автоматически — спрашиваем
-        // пользователя через 2-кнопочную confirm-модалку (confirmAsync).
-        // Безопасные обновления применяются сразу, до confirm.
-        const confirmAnomalies = (anomalies) => {
-            const sample = anomalies.slice(0, 10)
-                .map(a => `  • ${a.name} (${a.id}): ${a.reason}`)
-                .join('\n');
-            const more = anomalies.length > 10
-                ? `\n  …и ещё ${anomalies.length - 10}`
-                : '';
-            return ctx.confirmAsync({
-                title: `Аномальные цены: ${anomalies.length}`,
-                message:
-                    `Найдено ${anomalies.length} цен, изменённых более чем в 10×. ` +
-                    `Это часто опечатки (лишний ноль, не та запятая). Применить их?\n\n` +
-                    sample + more,
-                danger: true,
-                confirmLabel: 'Применить'
-            });
-        };
-
-        return withLoadingButton(triggerEvent, () => itemCtl.importItemPrices({ confirmAnomalies }).then(res => {
-            if (!res?.ok) {
-                if (res?.reason === 'cancelled') return;
-                if (res?.reason === 'noActiveCalc') { snackbar.warning(res.message); return; }
-                if (res?.reason === 'invalid')     { snackbar.error('Файл не подходит: ' + res.message); return; }
-                if (res?.reason === 'parse')       { snackbar.error('Не удалось разобрать CSV: ' + res.message); return; }
-                /* Внешний аудит #5 (2026-05-18, P2): persist-fail в applyPriceUpdates —
-                 * цены применены в store, но не сохранены. UI должен сообщить честно. */
-                if (res?.reason === 'persist')     { snackbar.error(res.message || 'Цены не сохранены в хранилище (quota?)'); return; }
-                snackbar.error('Импорт не выполнен');
-                return;
-            }
-            // Сводка
-            const safeCount = res.safeUpdatesCount ?? 0;
-            const anomaliesTotal = res.anomalies?.length ?? 0;
-            const anomaliesApplied = res.anomaliesApplied ?? 0;
-            const anomaliesSkipped = anomaliesTotal - anomaliesApplied;
-
-            const lines = [];
-            lines.push(`Файл: ${res.fileName}`);
-            lines.push(`Обновлено цен: ${res.updatesCount}` +
-                (anomaliesApplied > 0 ? ` (включая аномалий: ${anomaliesApplied})` : ''));
-            lines.push(`Без изменений: ${res.unchanged}`);
-            if (res.rejected?.length) lines.push(`Отклонено строк: ${res.rejected.length}`);
-            if (anomaliesSkipped > 0) {
-                lines.push(`Аномальные изменения, не применены (отказ пользователя): ${anomaliesSkipped}`);
-            }
-            const anomaliesText = anomaliesSkipped > 0
-                ? '\n\nАНОМАЛЬНЫЕ ИЗМЕНЕНИЯ (НЕ применены — пользователь отказался):\n' +
-                  res.anomalies.slice(0, 10).map(a => `  • ${a.name} (${a.id}): ${a.reason}`).join('\n') +
-                  (res.anomalies.length > 10 ? `\n  …и ещё ${res.anomalies.length - 10}` : '')
-                : '';
-            const rejectedText = res.rejected?.length
-                ? '\n\nОТКЛОНЁННЫЕ СТРОКИ:\n' +
-                  res.rejected.slice(0, 10).map(r => `  • строка ${r.rowIndex}${r.id ? ` (${r.id})` : ''}: ${r.reason}`).join('\n') +
-                  (res.rejected.length > 10 ? `\n  …и ещё ${res.rejected.length - 10}` : '')
-                : '';
-            const summary = lines.join('\n') + anomaliesText + rejectedText;
-            // Если есть пропущенные аномалии или отклонения — показываем модалку, иначе только snackbar.
-            if (anomaliesSkipped > 0 || res.rejected?.length) {
-                store.openModal('message', {
-                    title: anomaliesSkipped > 0
-                        ? 'Импорт цен — аномалии пропущены'
-                        : 'Импорт цен — есть отклонённые строки',
-                    message: summary
-                });
-            }
-            if (res.updatesCount > 0) {
-                snackbar.success(`Обновлено цен: ${res.updatesCount}` +
-                    (anomaliesApplied > 0 ? ` (вкл. аномалий: ${anomaliesApplied})` : ''));
-            } else if (anomaliesSkipped > 0 && safeCount === 0) {
-                snackbar.info('Аномальные цены не применены');
-            } else if (res.unchanged > 0) {
-                snackbar.info('Цены в файле совпадают с текущими — обновлять нечего');
-            }
-        }));
+        return importItemPricesAction({
+            triggerEvent,
+            itemCtl,
+            store,
+            snackbar,
+            withLoadingButton,
+            confirmAsync: opts => ctx.confirmAsync(opts)
+        });
     },
 
     /* CRUD вопросов */
     openQuestionEditor(q)     { questionCtl.openQuestionEditor(q); },
     deleteQuestion(id) {
-        const calc = store.getState().activeCalc;
-        const backup = calc?.dictionaries?.questions?.find(q => q.id === id);
-        const backupAnswer = calc?.answers?.[id];
-        if (!backup) return;
-
-        const usages = findQuestionUsages(id, calc.dictionaries.items);
-
-        const proceed = () => {
-            const res = questionCtl.deleteQuestion(id);
-            /* Внешний аудит #5 (2026-05-18, P2): persist-fail — error-snackbar
-             * без undo (см. deleteItem). */
-            if (res && res.ok === false) {
-                snackbar.error(res.message || 'Не удалось удалить вопрос');
-                return;
-            }
-            snackbar.showUndoableSnackbar(
-                `Вопрос «${backup.title}» удалён`,
-                () => {
-                    /* Внешний аудит #6 (2026-05-18, P1): saveQuestion persist'ит
-                     * вопрос с default answer; восстановление прежнего ответа
-                     * требует ОТДЕЛЬНОГО commit'а — без него store покажет
-                     * backupAnswer, но F5 вернёт default. */
-                    const r = questionCtl.saveQuestion(backup);
-                    if (r && r.ok === false) {
-                        snackbar.error(r.errors?.[0]?.message || 'Восстановление не сохранено');
-                        return;
-                    }
-                    if (backupAnswer !== undefined) {
-                        const cur = store.getState().activeCalc;
-                        if (cur) {
-                            /* Внешний аудит #8 (2026-05-18, P3-1): inverse
-                             * pattern — построить newCalc, commit ПЕРВЫМ,
-                             * только при ok мутировать store. Раньше:
-                             * store.updateActiveCalc → потом commit. При quota
-                             * UI показывал backupAnswer, в storage оставался
-                             * default-answer от saveQuestion(backup) — F5
-                             * терял прежний ответ без visible warning. */
-                            const restored = {
-                                ...cur,
-                                answers: { ...cur.answers, [id]: backupAnswer }
-                            };
-                            if (!commitActiveCalc(restored)) {
-                                snackbar.error('Вопрос восстановлен, но прежний ответ не сохранён в хранилище (quota?).');
-                                return;
-                            }
-                            store.setActiveCalc(restored);
-                        }
-                    }
-                    snackbar.success('Восстановлено');
-                }
-            );
-        };
-
-        if (usages.length === 0) {
-            proceed();
-            return;
-        }
-
-        // Есть формулы, ссылающиеся на этот вопрос — предупреждаем явно.
-        const lines = usages.slice(0, 8).map(u => `  • ${u.itemName} (${u.stand})`).join('\n');
-        const more = usages.length > 8 ? `\n  … и ещё ${usages.length - 8}` : '';
-        ctx.confirm({
-            title: 'Вопрос используется в формулах',
-            message:
-                `На вопрос «${backup.title}» (id=${id}) ссылаются формулы ` +
-                `следующих элементов конфигурации:\n\n${lines}${more}\n\n` +
-                `После удаления Q.${id} будет возвращать 0, что приведёт к занижению qty в этих формулах.\n` +
-                `Удалить вопрос всё равно?`,
-            danger: true,
-            confirmLabel: 'Удалить',
-            onConfirm: proceed
+        return deleteQuestionAction({
+            id,
+            store,
+            questionCtl,
+            snackbar,
+            findQuestionUsages,
+            commitActiveCalc,
+            confirm: opts => ctx.confirm(opts)
         });
     },
     duplicateQuestion(id) {
-        /* Внешний аудит #8 (2026-05-18, P1-2): см. duplicateItem. */
-        const res = questionCtl.duplicateQuestion(id);
-        if (res && res.ok === true) {
-            snackbar.success('Вопрос дублирован');
-        } else if (res && res.reason === 'persist') {
-            snackbar.error(res.message || 'Не удалось дублировать вопрос (quota?)');
-        }
+        return duplicateQuestionAction({ id, questionCtl, snackbar });
     },
     exportQuestions(triggerEvent) {
         return withLoadingButton(triggerEvent, async () => {
@@ -1571,16 +768,7 @@ const ctx = {
      * для сравнения расчётах. Используется только при первой инициализации из null. */
     toggleComparisonCategory(catId, presentCats = null) {
         const current = store.getState().ui.comparisonCollapsedCats;
-        let next;
-        if (current === null) {
-            const all = Array.isArray(presentCats) ? presentCats : [];
-            next = all.filter(c => c !== catId);
-        } else if (current.includes(catId)) {
-            next = current.filter(c => c !== catId);
-        } else {
-            next = [...current, catId];
-        }
-        store.setUi({ comparisonCollapsedCats: next });
+        store.setUi({ comparisonCollapsedCats: nextCollapsedIds(current, catId, presentCats) });
     },
     /* 12.U29: toggle категории-аккордеона во вкладке «Элементы конфигурации».
      * Хранится как массив СВЁРНУТЫХ category-id в state.ui.itemsCollapsedCats.
@@ -1593,49 +781,18 @@ const ctx = {
      * инициализации массива из null. */
     toggleItemsCategory(catId, presentCats = null) {
         const current = store.getState().ui.itemsCollapsedCats;
-        let next;
-        if (current === null) {
-            const all = Array.isArray(presentCats) ? presentCats : [];
-            next = all.filter(c => c !== catId);
-        } else if (current.includes(catId)) {
-            next = current.filter(c => c !== catId);
-        } else {
-            next = [...current, catId];
-        }
-        store.setUi({ itemsCollapsedCats: next });
+        store.setUi({ itemsCollapsedCats: nextCollapsedIds(current, catId, presentCats) });
     },
     /* 12.U29: toggle секции-аккордеона во вкладке «Вопросы».
      * Хранится как массив СВЁРНУТЫХ section-id в state.ui.questionsCollapsedSecs.
      * Дефолт null = ВСЕ секции свёрнуты. Симметрично itemsCategory выше. */
     toggleQuestionsSection(sectionId, presentSecs = null) {
         const current = store.getState().ui.questionsCollapsedSecs;
-        let next;
-        if (current === null) {
-            const all = Array.isArray(presentSecs) ? presentSecs : [];
-            next = all.filter(s => s !== sectionId);
-        } else if (current.includes(sectionId)) {
-            next = current.filter(s => s !== sectionId);
-        } else {
-            next = [...current, sectionId];
-        }
-        store.setUi({ questionsCollapsedSecs: next });
+        store.setUi({ questionsCollapsedSecs: nextCollapsedIds(current, sectionId, presentSecs) });
     },
     exportComparisonCsv(triggerEvent) {
-        const ids = store.getState().comparisonIds || [];
-        if (ids.length === 0) { snackbar.warning('Нечего экспортировать'); return; }
-        return withLoadingButton(triggerEvent, async () => {
-            /* Внешний аудит #13 (P1#1, 2026-05-19): берём calc через
-             * calcList.loadCalcPrepared (full pipeline) вместо raw persistMod.loadCalc.
-             * Иначе CSV для auto-by-date legacy calc'а содержал stale vatRate. */
-            const [{ calculate }, csvMod] = await Promise.all([
-                import('./domain/calculator.js'),
-                import('./services/csvExport.js')
-            ]);
-            const calcs = ids.map(i => calcList.loadCalcPrepared(i)).filter(Boolean);
-            if (calcs.length === 0) return;
-            const content = csvMod.buildComparisonCsv(calcs, calcs.map(c => calculate(c)));
-            csvMod.downloadCsv(csvMod.buildComparisonCsvFilename(), content);
-            snackbar.success('Сравнение экспортировано');
+        return exportComparisonCsvAction({
+            triggerEvent, store, calcList, snackbar, withLoadingButton
         });
     },
 
@@ -1679,43 +836,10 @@ const ctx = {
         });
     },
     printPdf(triggerEvent) {
-        /* 12.U26-fix: единая кнопка PDF в шапке заменяет дублирующую «Печать
-           ответов (PDF)» внизу Опросника. Маршрутизация по активной вкладке:
-           - questionnaire → табличный PDF опросника (printAnswers)
-           - все остальные → window.print() с print.css (skрытие sidebar/topbar). */
-        // 12.U31 (E.4): через storage helpers — graceful fallback в Safari Private.
-        if (!loadPdfHintShown()) {
-            snackbar.info('В диалоге печати выберите «Сохранить как PDF» в качестве принтера.');
-            markPdfHintShown();
-        }
-        const activeTab = store.getState().activeTab;
-        if (activeTab === 'questionnaire') {
-            return this.printAnswers(triggerEvent);
-        }
-        window.print();
+        return printPdfAction({ triggerEvent, store, snackbar, withLoadingButton });
     },
     printAnswers(triggerEvent) {
-        const calc = store.getState().activeCalc;
-        if (!calc) { snackbar.warning('Нет активного расчёта'); return; }
-        if (!loadPdfHintShown()) {
-            snackbar.info('В диалоге печати выберите «Сохранить как PDF» в качестве принтера.');
-            markPdfHintShown();
-        }
-        /* Этап 13.U4: перед запуском печати спрашиваем формат и ориентацию.
-           Modal возвращает { extended, landscape } или null при отмене.
-           Esc/X закрывают модалку без печати. */
-        return withLoadingButton(triggerEvent, async () => {
-            const choice = await new Promise(resolve => {
-                store.openModal('printAnswersOptions', {
-                    draft: { format: 'compact', landscape: true },
-                    onChoose: (selection) => resolve(selection),
-                    onCancel: () => resolve(null)  // null = пользователь отменил
-                });
-            });
-            if (!choice) return;  // отмена — печать не запускаем
-            const m = await import('./ui/printAnswers.js');
-            m.printAnswers(calc, choice);
-        });
+        return printAnswersAction({ triggerEvent, store, snackbar, withLoadingButton });
     },
     /* 13.U6: универсальная обёртка для открытия message-модалки. Используется,
        например, info-кнопками в карточке «Метрики AI / RAG / агентов» — каждая
@@ -1724,35 +848,7 @@ const ctx = {
         store.openModal('message', { title, message });
     },
     openSummaryFormula() {
-        store.openModal('message', {
-            title: 'Итого по расчёту — что это и как считается',
-            message:
-                '«Итого по расчёту» — общая стоимость всей инфраструктуры за выбранный период ' +
-                '(день / месяц / год). Период переключается кнопками вверху Дашборда.\n\n' +
-                'Из чего складывается:\n' +
-                '  1. Берутся все элементы конфигурации (vCPU, оперативная память, ' +
-                'хранилище, лицензии, трафик, сервисы и т.д.) на всех 5 стендах ' +
-                '(DEV, ИФТ, ПСИ, ПРОМ, Нагрузка).\n' +
-                '  2. По каждому элементу считается базовая стоимость: ' +
-                'количество × цена за единицу × длительность периода.\n' +
-                '  3. Базовая стоимость умножается на пять риск-коэффициентов: ' +
-                'буферы, инфляция, сезонность, сдвиг расписания, резерв на риски.\n' +
-                '  4. Отдельно применяется НДС — это налог, а не риск. Он включается ' +
-                'независимым переключателем в Параметрах расчёта и не входит в пилюлю «+X% от базы».\n' +
-                '  5. Если включён ai_agent_mode (см. Опросник, раздел AI/LLM), стоимость токенов LLM и ' +
-                'количество vCPU sandbox дополнительно умножаются на агентский множитель ×3..×45 ' +
-                '(сложность пайплайна × число параллельных специалистов в multi-agent).\n' +
-                '  6. Сумма всех получившихся стоимостей и есть «Итого по расчёту».\n\n' +
-                'Пилюля «+X% от базы» сверху Hero — это наценка от пяти риск-коэффициентов ' +
-                'вместе, без НДС. НДС показан отдельным голубым бейджем рядом.\n\n' +
-                'Подробная разбивка:\n' +
-                '  • По стендам — 5 карточек снизу.\n' +
-                '  • По категориям (Аппаратные ресурсы / Лицензии / Сервисы и т.д.) — ' +
-                'центральная карточка «Распределение по категориям ИТОГО».\n' +
-                '  • По риск-коэффициентам — карточка справа «Вклад риск-коэффициентов» ' +
-                '(там же — детали по каждому коэффициенту во всплывающих подсказках).\n' +
-                '  • Постатейно — вкладка «Детализация» в левом меню.'
-        });
+        return openSummaryFormulaAction({ store });
     },
     openStandDetails() {
         store.setActiveTab('details');
@@ -1763,15 +859,7 @@ const ctx = {
 
 /* ---------- Render scheduler (rAF) ---------- */
 
-let _frameScheduled = false;
-function scheduleRender() {
-    if (_frameScheduled) return;
-    _frameScheduled = true;
-    requestAnimationFrame(() => {
-        _frameScheduled = false;
-        renderApp(store.getState(), ctx);
-    });
-}
+const scheduleRender = createRenderScheduler(() => renderApp(store.getState(), ctx));
 
 /* ---------- Bootstrapping ---------- */
 
@@ -1784,34 +872,21 @@ function scheduleRender() {
  * Lock-проверка ОБЯЗАНА быть до initFromStorage и любых persist-подписок,
  * иначе заблокированный экземпляр успеет прочитать calc.* и закрепить
  * stale-state в собственном in-memory store. */
-let _instanceOwnerId = null;
-let _heartbeatHandle = null;
-
-function enterBlockedState(lockResult) {
-    /* Остановить heartbeat, если он успел запуститься. */
-    if (_heartbeatHandle && typeof _heartbeatHandle.stop === 'function') {
-        try { _heartbeatHandle.stop(); } catch { /* no-op */ }
-        _heartbeatHandle = null;
-    }
-    _instanceOwnerId = null;
-    renderInstanceBlockedScreen(lockResult);
-}
+const appInstanceLockRuntime = createAppInstanceLockRuntime({
+    storageKey: STORAGE_KEYS.APP_INSTANCE_LOCK,
+    acquireAppInstanceLock,
+    releaseAppInstanceLock,
+    startAppInstanceHeartbeat,
+    renderInstanceBlockedScreen
+});
 
 /* Внешний аудит «Жёсткая проверка» (2026-05-20, P1#2): storage-listener
  * вешается ОДИН раз и до acquire — закрывает gap между existing-check и
  * write-then-readback (если другая вкладка успеет вставить свой ownerId
- * сразу после нашего read-back). До acquire _instanceOwnerId=null,
+ * сразу после нашего read-back). До acquire runtime ещё без ownerId и
  * listener silent-no-op'ит; после acquire — реагирует на overtake. */
 function handleInstanceLockStorageEvent(e) {
-    if (e.key !== STORAGE_KEYS.APP_INSTANCE_LOCK) return;
-    if (!_instanceOwnerId) return;
-    let parsed = null;
-    try { parsed = e.newValue ? JSON.parse(e.newValue) : null; }
-    catch { /* битый JSON — игнорируем */ }
-    if (!parsed) return;
-    if (parsed.ownerId && parsed.ownerId !== _instanceOwnerId) {
-        enterBlockedState({ ok: false, reason: 'occupied', existing: parsed });
-    }
+    appInstanceLockRuntime.handleStorageEvent(e);
 }
 
 /* Внешний аудит «Жёсткая проверка» (2026-05-20, P1#1): pagehide
@@ -1822,27 +897,7 @@ function handleInstanceLockStorageEvent(e) {
  * считаться владельцами после BFCache-restore. Re-acquire здесь
  * восстанавливает инвариант. */
 function handleInstanceLockPageshow(e) {
-    if (!e || !e.persisted) return;
-    /* Возможно lock уже передан другому процессу — останавливаем старый
-     * heartbeat (он указывал на освобождённый ownerId) и пытаемся
-     * захватить заново. */
-    if (_heartbeatHandle && typeof _heartbeatHandle.stop === 'function') {
-        try { _heartbeatHandle.stop(); } catch { /* no-op */ }
-        _heartbeatHandle = null;
-    }
-    _instanceOwnerId = null;
-
-    const r = acquireAppInstanceLock();
-    if (!r.ok) {
-        enterBlockedState(r);
-        return;
-    }
-    _instanceOwnerId = r.ownerId;
-    _heartbeatHandle = startAppInstanceHeartbeat(_instanceOwnerId, {
-        onLost: existing => {
-            enterBlockedState({ ok: false, reason: 'occupied', existing });
-        }
-    });
+    appInstanceLockRuntime.handlePageshow(e);
 }
 
 function boot() {
@@ -1860,153 +915,22 @@ function boot() {
         renderInstanceBlockedScreen(lockResult);
         return;
     }
-    _instanceOwnerId = lockResult.ownerId;
 
     // Heartbeat: обновляем lastSeenAt, чтобы lock не считался stale.
     // Если другой экземпляр перехватил lock (reason='lost') — переходим
     // в blocked-state и прекращаем рабочий UX.
-    _heartbeatHandle = startAppInstanceHeartbeat(_instanceOwnerId, {
-        onLost: existing => {
-            enterBlockedState({ ok: false, reason: 'occupied', existing });
-        }
-    });
+    appInstanceLockRuntime.start(lockResult.ownerId);
 
     // Загрузить состояние из localStorage
     calcList.initFromStorage();
 
-    // Подписка на изменения store
-    let lastPersistStatus  = store.getState().persistStatus;
-    let lastActiveTab      = store.getState().activeTab;
-    let lastPersistedRev   = store.getState().calcRevision;
-    let lastQOpenSections  = store.getState().ui.questionnaireOpenSections;
-    let lastQSettingsOpen  = store.getState().ui.questionnaireSettingsOpen;
-    let lastQCollapsedSubs = store.getState().ui.questionnaireCollapsedSubgroups;
-    let lastComparisonSort = store.getState().ui.comparisonSort;
-    let lastStandCats      = store.getState().ui.standCardsCatsExpanded;
-    let lastDetailsCats    = store.getState().ui.detailsCollapsedCats;
-    let lastCmpCollapsedCats = store.getState().ui.comparisonCollapsedCats;
-    let lastItemsCats      = store.getState().ui.itemsCollapsedCats;
-    let lastQuestionsSecs  = store.getState().ui.questionsCollapsedSecs;
-    let lastTheme          = store.getState().ui.theme;
-    let lastProviderOverlayExpanded = store.getState().ui.providerOverlayExpanded;
-    let lastHealthLastTab  = store.getState().ui.healthLastTab;
-    let lastAdvancedMode   = store.getState().ui.advancedModeEnabled;
-    // 12.U33: применяем тему сразу на boot, не дожидаясь первого рендера —
-    // иначе flash-of-wrong-theme при F5 в светлой теме (страница вспыхивает тёмной).
-    applyThemeAttribute(lastTheme);
-    // Когда после save'а проходит debounce и persistStatus → 'saved', пересчитываем
-    // calcList: сортировка по updatedAt, обновление totalMonthly и applyRiskFactors
-    // в карточке. Иначе порядок и сумма в Расчётах остаются устаревшими до F5.
-    const refreshAfterSave = debounce(() => {
-        calcList.refreshCalcList();
-    }, CALC_LIST_REFRESH_DEBOUNCE_MS);
-    store.subscribe(state => {
-        scheduleRender();
-        // Уведомление об ошибках сохранения — реактивно через snackbar.
-        if (state.persistStatus !== lastPersistStatus) {
-            if (state.persistStatus === 'error' && lastPersistStatus !== 'error') {
-                snackbar.error(state.persistMessage || 'Не удалось сохранить расчёт');
-            }
-            // После успешного save (saved) — обновить карточки в списке Расчётов.
-            if (state.persistStatus === 'saved' && lastPersistStatus !== 'saved') {
-                refreshAfterSave();
-            }
-            lastPersistStatus = state.persistStatus;
-        }
-        // Persist активной вкладки — чтобы при F5 пользователь оставался на той же странице.
-        if (state.activeTab !== lastActiveTab) {
-            persist.saveActiveTab(state.activeTab);
-            lastActiveTab = state.activeTab;
-        }
-        // Persist accordion-состояний опросника (12.U1).
-        const qOpen = state.ui.questionnaireOpenSections;
-        if (qOpen !== lastQOpenSections && Array.isArray(qOpen)) {
-            persist.saveQuestionnaireOpenSections(qOpen);
-            lastQOpenSections = qOpen;
-        }
-        const qSettings = state.ui.questionnaireSettingsOpen;
-        /* best-effort group (ниже): все persist.save* UI-state subscriber'ов.
-         * Это не критические данные расчёта — на сбое quota: следующий tick
-         * subscriber повторит запись (state не меняется ↔ lastX не равно
-         * текущему), а после reboot UI возьмёт дефолты. persistStatus='error'
-         * сигнализируется через CRUD-вызовы calc'ов (commitActiveCalc и др.). */
-        if (qSettings !== lastQSettingsOpen && typeof qSettings === 'boolean') {
-            persist.saveQuestionnaireSettingsOpen(qSettings); // best-effort
-            lastQSettingsOpen = qSettings;
-        }
-        // Stage 6.2.B (PATCH 2.4.23): persist свёрнутых подгрупп.
-        const qCollapsedSubs = state.ui.questionnaireCollapsedSubgroups;
-        if (qCollapsedSubs !== lastQCollapsedSubs
-            && qCollapsedSubs && typeof qCollapsedSubs === 'object') {
-            persist.saveQuestionnaireCollapsedSubgroups(qCollapsedSubs); // best-effort
-            lastQCollapsedSubs = qCollapsedSubs;
-        }
-        // Persist сортировки сравнения (12.U25) — переживает F5.
-        const cmpSort = state.ui.comparisonSort;
-        if (cmpSort !== lastComparisonSort) {
-            persist.saveComparisonSort(cmpSort); // best-effort
-            lastComparisonSort = cmpSort;
-        }
-        // Persist раскрытых «По категориям» в стенд-карточках (12.U25-fix-17).
-        const standCats = state.ui.standCardsCatsExpanded;
-        if (standCats !== lastStandCats && Array.isArray(standCats)) {
-            persist.saveStandCardsCatsExpanded(standCats); // best-effort
-            lastStandCats = standCats;
-        }
-        // Persist свёрнутых категорий «Детализации» (12.U27).
-        const detailsCats = state.ui.detailsCollapsedCats;
-        if (detailsCats !== lastDetailsCats && Array.isArray(detailsCats)) {
-            persist.saveDetailsCollapsedCats(detailsCats); // best-effort
-            lastDetailsCats = detailsCats;
-        }
-        // Persist свёрнутых категорий объединённой таблицы «Сравнение» (12.U28).
-        const cmpCats = state.ui.comparisonCollapsedCats;
-        if (cmpCats !== lastCmpCollapsedCats && Array.isArray(cmpCats)) {
-            persist.saveComparisonCollapsedCats(cmpCats); // best-effort
-            lastCmpCollapsedCats = cmpCats;
-        }
-        // Persist свёрнутых категорий вкладки «Элементы конфигурации» (12.U29).
-        const itemsCats = state.ui.itemsCollapsedCats;
-        if (itemsCats !== lastItemsCats && Array.isArray(itemsCats)) {
-            persist.saveItemsCollapsedCats(itemsCats); // best-effort
-            lastItemsCats = itemsCats;
-        }
-        // Persist свёрнутых секций вкладки «Вопросы» (12.U29).
-        const questionsSecs = state.ui.questionsCollapsedSecs;
-        if (questionsSecs !== lastQuestionsSecs && Array.isArray(questionsSecs)) {
-            persist.saveQuestionsCollapsedSecs(questionsSecs); // best-effort
-            lastQuestionsSecs = questionsSecs;
-        }
-        // 12.U33: тема — применяем атрибут на <html> и сохраняем в storage.
-        // applyThemeAttribute идемпотентен; persist через writeJson (graceful).
-        const theme = state.ui.theme;
-        if (theme !== lastTheme) {
-            applyThemeAttribute(theme);
-            persist.saveTheme(theme); // best-effort
-            lastTheme = theme;
-        }
-        // 14.U9: persist раскрытости сводки тарифов overlay в Опроснике.
-        const providerOverlayExpanded = state.ui.providerOverlayExpanded;
-        if (providerOverlayExpanded !== lastProviderOverlayExpanded
-            && typeof providerOverlayExpanded === 'boolean') {
-            persist.saveProviderOverlayExpanded(providerOverlayExpanded); // best-effort
-            lastProviderOverlayExpanded = providerOverlayExpanded;
-        }
-        // Stage 15.1: persist последней открытой вкладки severity в модалке Health.
-        const healthLastTab = state.ui.healthLastTab;
-        if (healthLastTab !== lastHealthLastTab && typeof healthLastTab === 'string') {
-            persist.saveHealthLastTab(healthLastTab);
-            lastHealthLastTab = healthLastTab;
-        }
-        // Stage 17.2 Phase 3c: persist режима «Расширенные настройки».
-        const advancedMode = state.ui.advancedModeEnabled;
-        if (advancedMode !== lastAdvancedMode && typeof advancedMode === 'boolean') {
-            persist.saveAdvancedModeEnabled(advancedMode);
-            lastAdvancedMode = advancedMode;
-        }
-        // Защита от бесконечного цикла: refreshCalcList сам делает store.setCalcList
-        // → новый rev — НЕ триггерит persistStatus, поэтому всё ОК.
-        lastPersistedRev = state.calcRevision;
+    subscribeAppPersistence({
+        store,
+        persist,
+        calcList,
+        snackbar,
+        scheduleRender,
+        applyThemeAttribute
     });
 
     // Глобальные горячие клавиши
@@ -2045,16 +969,7 @@ function boot() {
 
     /* Stage 19.x: на закрытие окна освобождаем single-instance lock и
      * останавливаем heartbeat — чтобы следующий запуск не ждал TTL=90с. */
-    const releaseOnExit = () => {
-        if (_heartbeatHandle && typeof _heartbeatHandle.stop === 'function') {
-            try { _heartbeatHandle.stop(); } catch { /* no-op */ }
-            _heartbeatHandle = null;
-        }
-        if (_instanceOwnerId) {
-            try { releaseAppInstanceLock(_instanceOwnerId); } catch { /* no-op */ }
-            _instanceOwnerId = null;
-        }
-    };
+    const releaseOnExit = () => appInstanceLockRuntime.release();
     window.addEventListener('beforeunload', releaseOnExit);
     window.addEventListener('pagehide', releaseOnExit);
 
@@ -2062,38 +977,7 @@ function boot() {
      * handleInstanceLockStorageEvent и подписывается ДО acquire — см.
      * P1#2 fix выше. Здесь раньше было дублирующее addEventListener. */
 
-    /* PATCH 2.20.3: Anchor links внутри модалок (например, TOC в F1-справке
-     * UserManual.md `[Термины и сокращения](#термины-и-сокращения)`) по
-     * default-навигации пишут hash в location.href. После F5 hash остаётся в
-     * URL вида `#%D1%82%D0%B5%D1%80%D0%BC%D0%B8%D0%BD%D1%8B...` — выглядит
-     * как утечка локального состояния модалки в глобальный URL приложения.
-     *
-     * Делегированный handler перехватывает все клики по `a[href^="#"]` внутри
-     * `#app-modals`, prevent-default'ит default-навигацию и сам скроллит к
-     * нужному заголовку через scrollIntoView. Skip-link `#main-content` живёт
-     * вне #app-modals — он не пойдёт сюда. */
-    document.addEventListener('click', e => {
-        const anchor = e.target.closest && e.target.closest('a[href^="#"]');
-        if (!anchor) return;
-        const modalsRoot = anchor.closest('#app-modals');
-        if (!modalsRoot) return;
-        const href = anchor.getAttribute('href');
-        if (!href || href === '#') return;
-        e.preventDefault();
-        try {
-            const rawId = decodeURIComponent(href.slice(1));
-            if (!rawId) return;
-            /* CSS.escape нужен для id, содержащих кириллицу или дефисы — без
-             * него querySelector упадёт на нестандартных символах. */
-            const escapedId = (typeof CSS !== 'undefined' && CSS.escape)
-                ? CSS.escape(rawId)
-                : rawId.replace(/([\W])/g, '\\$1');
-            const target = modalsRoot.querySelector('#' + escapedId);
-            if (target && typeof target.scrollIntoView === 'function') {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        } catch { /* malformed href — игнорируем */ }
-    });
+    installModalHashNavigation(document);
 }
 
 if (document.readyState === 'loading') {

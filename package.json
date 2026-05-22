@@ -1,7 +1,7 @@
 {
     "name": "infrastructure-calculator",
-    "version": "2.20.14",
-    "description": "Локальное web-приложение для расчёта инфраструктуры и стоимости программных продуктов по 5 стендам (DEV / ИФТ / ПСИ / ПРОМ / НТ). Работает offline, без зависимостей.",
+    "version": "2.20.15",
+    "description": "Локальное web-приложение для расчёта инфраструктуры и стоимости программных продуктов по 5 стендам (DEV / ИФТ / ПСИ / ПРОМ / НТ). Работает offline, без runtime-зависимостей.",
     "type": "module",
     "private": true,
     "license": "MIT",
@@ -10,6 +10,8 @@
         "start:node": "npx --yes http-server -p 8000 -c-1",
         "test": "node tests/run.js",
         "test:watch": "node --watch tests/run.js",
+        "smoke:desktop": "playwright test --config=playwright.config.js",
+        "smoke:desktop:headed": "playwright test --config=playwright.config.js --headed",
         "sanity": "node scripts/sanity-report.mjs --write",
         "sanity:check": "node scripts/sanity-report.mjs --check",
         "generate:providers": "node scripts/generate-providers-bundled.js",
@@ -18,5 +20,8 @@
     },
     "engines": {
         "node": ">=18"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.60.0"
     }
 }

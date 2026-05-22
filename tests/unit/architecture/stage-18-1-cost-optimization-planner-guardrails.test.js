@@ -26,13 +26,26 @@ import { stripJsComments } from '../../_helpers/source.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..', '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf-8');
+const COP_MODAL_FILES = [
+    'js/ui/modals/costOptimizationPlannerModal.js',
+    'js/ui/modals/costOptimizationPlannerModalControls.js',
+    'js/ui/modals/costOptimizationPlannerModalFormat.js',
+    'js/ui/modals/costOptimizationPlannerModalLevers.js',
+    'js/ui/modals/costOptimizationPlannerModalSummary.js'
+];
+const readCopModalSources = () => COP_MODAL_FILES.map(read).join('\n');
 
 /* ============================================================
  * 1. Domain purity
  * ============================================================ */
 
 describe('Stage 18.1 — domain pure (без UI/store/services)', () => {
-    const src = stripJsComments(read('js/domain/costOptimizationPlanner.js'));
+    const src = [
+        'js/domain/costOptimizationPlanner.js',
+        'js/domain/costOptimizationPlannerConfig.js',
+        'js/domain/costOptimizationPlannerPlans.js',
+        'js/domain/costOptimizationPlannerShared.js'
+    ].map(f => stripJsComments(read(f))).join('\n');
 
     it('не импортирует store', () => {
         assert.doesNotMatch(src, /from\s+['"][^'"]*state\/store/);
@@ -67,7 +80,7 @@ describe('Stage 18.1 — domain pure (без UI/store/services)', () => {
 describe('Stage 18.1 — UI layer-purity', () => {
     /* Stage 18.2.x: teaser встроен в composite-сводку (calculationStateSummary.js). */
     const cardSrc  = stripJsComments(read('js/ui/calculationStateSummary.js'));
-    const modalSrc = stripJsComments(read('js/ui/modals/costOptimizationPlannerModal.js'));
+    const modalSrc = stripJsComments(readCopModalSources());
 
     it('UI не импортирует controllers/ напрямую', () => {
         assert.doesNotMatch(cardSrc, /from\s+['"][^'"]*controllers\//);
@@ -149,8 +162,11 @@ describe('Stage 18.1 — нет восстановленных удалённы�
         it(`не появляется "${term}" в новых файлах Stage 18.1 / 18.2.x`, () => {
             const files = [
                 'js/domain/costOptimizationPlanner.js',
+                'js/domain/costOptimizationPlannerConfig.js',
+                'js/domain/costOptimizationPlannerPlans.js',
+                'js/domain/costOptimizationPlannerShared.js',
                 'js/ui/calculationStateSummary.js',
-                'js/ui/modals/costOptimizationPlannerModal.js'
+                ...COP_MODAL_FILES
             ];
             for (const f of files) {
                 const src = read(f);
@@ -362,7 +378,7 @@ describe('Stage 18.1 Phase 3 — controller mutation surface', () => {
  * ============================================================ */
 
 describe('Stage 18.1 Phase 3 — Apply / Rollback / Confirm in modal', () => {
-    const modalSrc = stripJsComments(read('js/ui/modals/costOptimizationPlannerModal.js'));
+    const modalSrc = stripJsComments(readCopModalSources());
 
     it('кнопка «Применить изменения» имеет ОПЦИОНАЛЬНЫЙ disabled (applyEnabled-driven)', () => {
         assert.match(modalSrc,
@@ -400,7 +416,7 @@ describe('Stage 18.1 Phase 3 — Apply / Rollback / Confirm in modal', () => {
 
 describe('Stage 18.1 Phase 3 — draft / snapshot не persist\'ятся', () => {
     const ctlSrc = stripJsComments(read('js/controllers/costOptimizationPlannerController.js'));
-    const modalSrc = stripJsComments(read('js/ui/modals/costOptimizationPlannerModal.js'));
+    const modalSrc = stripJsComments(readCopModalSources());
 
     it('controller НЕ обращается к localStorage / persistence helpers', () => {
         assert.ok(!/localStorage/.test(ctlSrc));

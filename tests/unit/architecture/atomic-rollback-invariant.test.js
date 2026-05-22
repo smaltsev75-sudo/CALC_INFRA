@@ -669,9 +669,9 @@ describe('audit #8 P2-2: importItemPrices anomaly-ветка формирует 
 });
 
 describe('audit #8 P3-1: undo deleteQuestion answer restore — inverse pattern (commit ДО store)', () => {
-    const src = readFileSync(join(REPO_ROOT, 'js/app.js'), 'utf8');
+    const src = readFileSync(join(REPO_ROOT, 'js/app/crudActions.js'), 'utf8');
 
-    it('app.js: восстановление backupAnswer через commitActiveCalc(restored) → store.setActiveCalc', () => {
+    it('crudActions: восстановление backupAnswer через commitActiveCalc(restored) → store.setActiveCalc', () => {
         /* Ищем undo-callback по литералу 'Вопрос «${backup.title}» удалён'.
          * Это уникальная якорная строка undo-deletion вопроса. */
         const anchorIdx = src.indexOf('Вопрос «${backup.title}» удалён');

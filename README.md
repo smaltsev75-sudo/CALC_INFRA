@@ -23,6 +23,7 @@
 - **Постатейная детализация** по каждому элементу × стенду.
 - **Сравнение расчётов** до 4 штук side-by-side.
 - **Анализ расчёта**: Качество (Health Check + динамика), Реестр допущений, Анализ чувствительности, Бюджетные ограничения, Decision Memo.
+- **Планер оптимизации стоимости**: черновик изменений, preview экономии/рисков, явное применение и откат последнего apply.
 - **36 элементов конфигурации** (включая 7 AI-позиций) и формульный движок qty с собственным безопасным DSL.
 - **Импорт прайса JSON** (provider-JSON, CSV или JSON-массив через мастер маппинга), история откатов, прайс-бенчмарк (read-only сравнение прайсов провайдеров).
 - **Кросс-табная синхронизация**: одновременно открытые вкладки видят чужие обновления и блокируют конфликты.
@@ -129,8 +130,21 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'
 
 ### Dev-зависимости
 
-- **Node.js встроенный `node:test`** — единственное необходимое для тестов (входит в Node 18+, отдельно ставить не нужно).
-- Test-runner — собственный (`tests/run.js`), не Jest / Mocha / Vitest.
+- **Node.js встроенный `node:test`** — основной unit/architecture runner (входит в Node 18+, отдельно ставить не нужно).
+- **Playwright** — desktop browser-smoke для реального рендера критичных экранов.
+- Unit test-runner — собственный (`tests/run.js`), не Jest / Mocha / Vitest.
+
+### Разработка и проверки
+
+```bash
+npm test                  # весь test-suite
+npm run smoke:desktop     # Playwright desktop-smoke: Dashboard / Planner / Memo / Details / Comparison
+npm run syntax-check      # node --check для js/**/*.js
+npm run sanity:check      # проверка актуальности SANITY_REPORT.md
+npm run sanity            # пересобрать SANITY_REPORT.md
+```
+
+Архитектура держится на ES-модулях без bundler'а. Исторические entry point'ы вроде `js/app.js`, `js/ui/questionnaire.js`, `js/domain/costOptimizationPlanner.js`, `js/services/providerPriceFetch.js` сохранены как стабильные фасады; узкая логика вынесена в соседние модули (`js/app/*Actions.js`, `questionnaire*`, `dashboard*`, `costOptimizationPlanner*`, `priceImportMapping*`, `providerPriceNormalize.js`, `decisionMemoFormat.js`). Актуальная карта ownership — в [Architecture.md](Architecture.md#фасады-после-модульного-рефакторинга).
 
 ### Встроенные ресурсы
 

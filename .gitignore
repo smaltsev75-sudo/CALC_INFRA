@@ -35,6 +35,9 @@ tests/unit/architecture/stage-14-7-json-linter.test.js
 tests/unit/architecture/stage-17-2-phase-5-cleanup.test.js
 tests/unit/architecture/stage-17-2-phase-6-final-sweep.test.js
 tests/unit/architecture/vat-rate-no-literals.test.js
+# Playwright desktop smoke (отдельный runner; файлы *.spec.js не подхватываются node:test).
+!tests/e2e/
+!tests/e2e/**
 # scripts/ tracked (используется npm scripts: bump, generate:providers, migrate)
 
 # Provider price sources (maintainer-only; runtime uses js/data/providers-bundled.generated.js)
