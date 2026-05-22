@@ -182,11 +182,45 @@ export function summarizeProviderQuality(providers = BUNDLED_PROVIDER_PRICES) {
         });
 }
 
+export function summarizeProviderConfidence(providers = BUNDLED_PROVIDER_PRICES, {
+    asOf = DEFAULT_REPORT_DATE
+} = {}) {
+    const rows = summarizeProviderFreshness(providers, { asOf });
+    const providerEntries = Object.entries(providers);
+    const trustedVatConfidence = new Set(['verified', 'source-level']);
+    const assumedVatProviderIds = [];
+    const unknownVatProviderIds = [];
+    const trustedVatProviderIds = [];
+    const stubProviderIds = [];
+
+    for (const [providerId, provider] of providerEntries) {
+        const confidence = provider.vatPolicy?.confidence || 'unknown';
+        if (trustedVatConfidence.has(confidence)) trustedVatProviderIds.push(providerId);
+        else if (confidence === 'assumed') assumedVatProviderIds.push(providerId);
+        else unknownVatProviderIds.push(providerId);
+
+        const freshness = rows.find(row => row.providerId === providerId);
+        if (freshness?.status.split(' + ').includes('STUB')) stubProviderIds.push(providerId);
+    }
+
+    return {
+        totalProviders: providerEntries.length,
+        trustedVatProviderIds,
+        assumedVatProviderIds,
+        unknownVatProviderIds,
+        stubProviderIds,
+        attentionProviderIds: rows
+            .filter(row => row.status !== 'OK')
+            .map(row => row.providerId)
+    };
+}
+
 export function buildProviderFreshnessReport(providers = BUNDLED_PROVIDER_PRICES, {
     asOf = DEFAULT_REPORT_DATE
 } = {}) {
     const rows = summarizeProviderFreshness(providers, { asOf });
     const qualityRows = summarizeProviderQuality(providers);
+    const confidence = summarizeProviderConfidence(providers, { asOf });
     const attention = rows.filter(row => row.status !== 'OK');
     const qualityAttention = qualityRows.filter(row => row.status !== 'OK');
     const lines = [];
@@ -212,6 +246,12 @@ export function buildProviderFreshnessReport(providers = BUNDLED_PROVIDER_PRICES
         print(`| ${row.providerId} | ${row.coreCoverage} | ${vatStatus} | ${row.badPriceCount} | ${row.missingSourceCount} | ${row.status} |`);
     }
     print('');
+    print('## Confidence summary');
+    print('');
+    print('| Провайдеров | Verified/source-level VAT | Assumed VAT | Unknown VAT | Stub providers | Attention |');
+    print('|---:|---:|---:|---:|---:|---|');
+    print(`| ${confidence.totalProviders} | ${confidence.trustedVatProviderIds.length} | ${confidence.assumedVatProviderIds.length} | ${confidence.unknownVatProviderIds.length} | ${confidence.stubProviderIds.length} | ${confidence.attentionProviderIds.join(', ') || '—'} |`);
+    print('');
     print('## Интерпретация');
     print('');
     if (attention.length === 0) {
@@ -226,6 +266,7 @@ export function buildProviderFreshnessReport(providers = BUNDLED_PROVIDER_PRICES
         print(`Quality gates требуют внимания: ${qualityAttention.map(row => `${row.providerId} (${row.status})`).join(', ')}.`);
         print('`MISSING_CORE` означает отсутствие базового compute/storage/network SKU, `BAD_VAT_POLICY` — неполную gross→net политику, `BAD_PRICE` — неположительную цену, `MISSING_SOURCE` — пустой vendor/source.');
     }
+    print('Для коммерческого baseline предпочтительны провайдеры без `STUB` и без `ASSUMED_VAT`. Stub/assumed-прайсы допустимы для sensitivity-сравнения, но требуют ручной замены перед финальным бюджетом.');
     print('');
     print('## Maintainer flow');
     print('');

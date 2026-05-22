@@ -69,4 +69,15 @@ describe('UserManual.md TOC acceptance', () => {
         assert.ok(tocIdx < firstSectionIdx,
             'Оглавление должно идти ДО первого содержательного раздела');
     });
+
+    it('раздел проверки реалистичности содержит practical validation checklist', () => {
+        assert.match(markdown, /## Как проверить реалистичность результата/);
+        assert.match(markdown, /### Быстрая проверка за 5-10 минут/);
+        assert.match(markdown, /### Красные флаги/);
+        assert.match(markdown, /### Встроенные эталоны проекта/);
+        assert.match(markdown, /STUB/);
+        assert.match(markdown, /ASSUMED_VAT/);
+        assert.match(markdown, /A4 landscape/);
+        assert.match(markdown, /AI\/RAG\/agent-support/);
+    });
 });

@@ -9357,3 +9357,56 @@ provider prices и bundle format не меняются.
 `2.20.26 → 2.20.27` (PATCH). Schema остаётся v20; bundle format и provider JSON
 schema не меняются. Изменение seed-unit для уведомлений — UI/каталожное
 уточнение: qty остаётся в пакетах, pricePerUnit остаётся за пакет.
+
+## PATCH 2.20.28 — validation checklist, provider confidence summary, expanded business golden profiles (2026-05-22)
+
+### Контекст
+
+После `2.20.27` пользователь попросил продолжать все крупные полезные куски,
+актуализировать документацию и не создавать отдельный `QUICK_VALIDATION.md`, а
+встроить быструю проверку результата в User Manual. Также оставался риск, что
+провайдерский отчёт показывает freshness/quality, но не даёт быстрого ответа
+"какому прайсу можно доверять для baseline", а ручные golden-сценарии
+закрепляли только 3 sanity-профиля.
+
+### Решение
+
+- [business-golden-scenarios.test.js](tests/unit/domain/business-golden-scenarios.test.js)
+  расширен до 6 ручных профилей: Startup MVP, SMB B2B SaaS, Enterprise,
+  internal ops tool, regulated fintech high-security и AI/RAG/agent support.
+  Новые профили закрывают low-security/internal, regulated/high-security и
+  AI-heavy режимы по totals, стендам, категориям и top PROD drivers.
+- [provider-freshness-report.mjs](scripts/provider-freshness-report.mjs)
+  получил `summarizeProviderConfidence()` и третью таблицу
+  `Confidence summary`: verified/source-level VAT, assumed VAT, unknown VAT,
+  stub providers и attention-провайдеры. В отчёт добавлена явная рекомендация:
+  `STUB` / `ASSUMED_VAT` допустимы для sensitivity, но перед финальным
+  бюджетом требуют ручной verified/source-level замены.
+- [UserManual.md](UserManual.md) получил раздел
+  "Как проверить реалистичность результата" с быстрой проверкой за 5-10 минут,
+  красными флагами и ссылкой на встроенные эталоны проекта. Отдельный
+  `QUICK_VALIDATION.md` не создавался.
+- [desktop-export-print.spec.js](tests/e2e/desktop-export-print.spec.js)
+  усилен: native `beforeprint` проверяет full-width A4 landscape не только для
+  таблицы стоимости, но и для таблицы объёмов Детализации.
+- Обновлены README, Architecture, Maintainer Guide, Browser Smoke, CLAUDE,
+  User Manual и [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md).
+
+### Проверки
+
+- Targeted unit/integration: business golden + provider report + UserManual TOC
+  18/18 pass.
+- Targeted Playwright Details PDF: desktop-export-print 4/4 pass.
+- `npm test`: 5056/5056 pass.
+- `npm run smoke:desktop`: 29/29 pass.
+- `npm run sanity:check`: pass.
+- `npm run prices:freshness:check`: pass.
+- `npm run syntax-check`: pass.
+- `npm run pages:build`: pass.
+- `git diff --check`: pass.
+- CI/Pages/published smoke — после push/release, см. release notes `v2.20.28`.
+
+### Версионирование
+
+`2.20.27 → 2.20.28` (PATCH). Schema остаётся v20; расчётная формула,
+bundled provider prices, bundle format и provider JSON schema не меняются.

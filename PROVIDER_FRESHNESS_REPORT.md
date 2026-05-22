@@ -17,11 +17,18 @@
 | vk | 8/8 | gross→net OK | 0 | 0 | OK |
 | yandex | 8/8 | gross→net OK | 0 | 0 | OK |
 
+## Confidence summary
+
+| Провайдеров | Verified/source-level VAT | Assumed VAT | Unknown VAT | Stub providers | Attention |
+|---:|---:|---:|---:|---:|---|
+| 3 | 2 | 1 | 0 | 1 | vk |
+
 ## Интерпретация
 
 Требуют внимания: vk (STUB + ASSUMED_VAT).
 `STALE` означает возраст старше порога, `STUB` — реалистичный stub вместо проверенного прайса, `ASSUMED_VAT` — НДС-политика принята по допущению.
 Quality gates: базовые SKU, VAT policy, положительные цены и vendor/source заполнены у всех провайдеров.
+Для коммерческого baseline предпочтительны провайдеры без `STUB` и без `ASSUMED_VAT`. Stub/assumed-прайсы допустимы для sensitivity-сравнения, но требуют ручной замены перед финальным бюджетом.
 
 ## Maintainer flow
 

@@ -163,7 +163,7 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
     expect(consoleErrors).toEqual([]);
 });
 
-test('Native beforeprint on Details enables full-width landscape price table', async ({ page }) => {
+test('Native beforeprint on Details enables full-width landscape price and qty tables', async ({ page }) => {
     const consoleErrors = await bootCleanApp(page);
 
     await createCalculationFromQuickStart(page, {
@@ -206,6 +206,35 @@ test('Native beforeprint on Details enables full-width landscape price table', a
 
     await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
     await expect.poll(() => page.evaluate(() => document.body.classList.contains('printing-details'))).toBe(false);
+
+    await page.emulateMedia({ media: 'screen' });
+    await page.getByRole('button', { name: 'Объём (qty)' }).click();
+    await expect(page.locator('.details-table-qty')).toBeVisible();
+    await page.emulateMedia({ media: 'print' });
+
+    const qtySnapshot = await page.evaluate(async () => {
+        window.dispatchEvent(new Event('beforeprint'));
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+        const table = document.querySelector('.details-table-qty');
+        const wrap = document.querySelector('.details-table-wrap');
+        const main = document.querySelector('.app-main');
+        return {
+            bodyClass: document.body.className,
+            tableLayout: getComputedStyle(table).tableLayout,
+            tableWidth: table.getBoundingClientRect().width,
+            wrapWidth: wrap.getBoundingClientRect().width,
+            mainWidth: main.getBoundingClientRect().width
+        };
+    });
+
+    expect(qtySnapshot.bodyClass).toContain('printing-details');
+    expect(qtySnapshot.tableLayout).toBe('fixed');
+    expect(qtySnapshot.tableWidth).toBeGreaterThan(qtySnapshot.mainWidth * 0.98);
+    expect(qtySnapshot.wrapWidth).toBeGreaterThan(qtySnapshot.mainWidth * 0.98);
+    await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+    await expect.poll(() => page.evaluate(() => document.body.classList.contains('printing-details'))).toBe(false);
+
     await page.emulateMedia({ media: 'screen' });
     expect(consoleErrors).toEqual([]);
 });

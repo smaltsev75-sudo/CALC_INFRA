@@ -153,8 +153,9 @@ npm run pages:build       # собрать .pages-dist для GitHub Pages workf
 ```
 
 `npm test` включает golden-сценарии Quick Start с закреплёнными итогами и
-разбивкой по категориям, ручные бизнес-профили Startup / SMB / Enterprise из
-sanity report, а также полный invariant-прогон всех 2880 комбинаций Quick Start
+разбивкой по категориям, 6 ручных бизнес-профилей (Startup / SMB / Enterprise /
+internal ops / regulated fintech / AI agent support), а также полный
+invariant-прогон всех 2880 комбинаций Quick Start
 через production `calculate()`: без NaN/Infinity, отрицательных сумм,
 расхождений агрегатов, немонотонного scale/geography и удешевления при
 включении AI. Отдельный performance guard проверяет большой пользовательский
@@ -184,9 +185,10 @@ Dashboard, Детализацию и Сравнение на реальном ba
 Скрипт делает один retry по умолчанию и при сетевых 4xx/5xx выводит точный URL
 ресурса, а не только браузерное `Failed to load resource`.
 
-`PROVIDER_FRESHNESS_REPORT.md` содержит две таблицы: freshness
-(timestamp/age/version/VAT confidence) и quality gates (core SKU coverage,
-gross→net VAT policy, неположительные цены, пустые vendor/source). `STUB` /
+`PROVIDER_FRESHNESS_REPORT.md` содержит три таблицы: freshness
+(timestamp/age/version/VAT confidence), quality gates (core SKU coverage,
+gross→net VAT policy, неположительные цены, пустые vendor/source) и confidence
+summary по verified/source-level, assumed, unknown и stub-провайдерам. `STUB` /
 `ASSUMED_VAT` остаются видимыми как maintainer findings, а structural quality
 ошибки ловятся до релиза.
 
@@ -234,5 +236,5 @@ deploy-from-branch. Playwright артефакты при падении загр
 - Архитектурный обзор для разработчиков и тестировщиков — в [Architecture.md](Architecture.md).
 - Журнал ключевых решений по этапам — в [DECISIONS.md](DECISIONS.md).
 - Все способы запуска и troubleshooting — в [HOW_TO_START.md](HOW_TO_START.md).
-- Sanity-check цифр на 3 типовых профилях продукта — в [SANITY_REPORT.md](SANITY_REPORT.md).
+- Sanity-check цифр на 3 типовых профилях продукта — в [SANITY_REPORT.md](SANITY_REPORT.md); расширенные business-эталоны описаны в [UserManual.md](UserManual.md#как-проверить-реалистичность-результата).
 - Свежесть bundled provider-прайсов — в [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md).

@@ -239,7 +239,7 @@ vatMul     = vatEnabled ? (1 + vatRate) : 1                          // неза
 
 ## Миграции схемы
 
-[js/state/migrations.js](js/state/migrations.js) содержит массив `MIGRATIONS` шагов `from → to`. Текущая версия вычисляется автоматически из последнего шага `MIGRATIONS`; на PATCH 2.20.27 это **20** (см. `LATEST_SCHEMA_VERSION` в [js/state/migrations.js](js/state/migrations.js) и re-export `CURRENT_SCHEMA_VERSION` в [js/utils/constants.js](js/utils/constants.js)). Не дублировать номер схемы в production-коде.
+[js/state/migrations.js](js/state/migrations.js) содержит массив `MIGRATIONS` шагов `from → to`. Текущая версия вычисляется автоматически из последнего шага `MIGRATIONS`; на PATCH 2.20.28 это **20** (см. `LATEST_SCHEMA_VERSION` в [js/state/migrations.js](js/state/migrations.js) и re-export `CURRENT_SCHEMA_VERSION` в [js/utils/constants.js](js/utils/constants.js)). Не дублировать номер схемы в production-коде.
 
 При добавлении миграции:
 1. Реализовать `step.run(calc)` — мутирует **глубокую копию**, не оригинал.
@@ -267,7 +267,7 @@ Bump делается **синхронно в двух файлах** (`constant
 
 ## Контекст этапов разработки
 
-[DECISIONS.md](DECISIONS.md) — журнал ключевых решений и допущений по этапам, главный source of truth при расхождении с краткими сводками. Короткий срез на PATCH 2.20.27 (2026-05-22): `APP_VERSION=2.20.27`, schema v20, `BUNDLE_MAJOR=3`, `PROVIDER_PRICE_SCHEMA_VERSION=2`; проект production-ready/hardened, с 6-слойной архитектурой, immutable store, sandbox DSL, VAT Rate History + provider JSON VAT Schema v2, сценариями расчёта, composite-сводкой Dashboard, Stage 19 LOAD-capacity моделью, sanity-report guard, provider freshness + quality gates report, 9 golden Quick Start snapshots, manual Startup/SMB/Enterprise business golden snapshots, full Quick Start calculation invariants на 2880 комбинаций, calculate() large-data performance budget, Node 24-aware GitHub Actions, explicit GitHub Pages workflow на `.pages-dist`, scoped `tests/run.js` профилями, desktop Playwright UI↔domain regression-suite, Details PDF full-width landscape mode через header PDF / `Ctrl+Alt+P` / native `beforeprint`, Details qty package-unit guard (`тыс. SMS` / `тыс. писем` / `млн PUSH`), desktop viewport guard 1365×768/1440×900/1920×1080 с Dashboard grid min-content guard, PNG-signal visual regression, real-click user-flow/data-management/export/print E2E через `data-testid`, published GitHub Pages smoke с HTTP URL diagnostics/retry, Details category share, выделенными Details-модулями (`detailsSections` / `detailsAiSummary` / `detailsTotals`), strict `vatPolicy` shape validation и source-level guard'ами против ad-hoc форматирования чисел/денег/процентов. Актуальное число тестов брать из `npm test`, не из этого файла.
+[DECISIONS.md](DECISIONS.md) — журнал ключевых решений и допущений по этапам, главный source of truth при расхождении с краткими сводками. Короткий срез на PATCH 2.20.28 (2026-05-22): `APP_VERSION=2.20.28`, schema v20, `BUNDLE_MAJOR=3`, `PROVIDER_PRICE_SCHEMA_VERSION=2`; проект production-ready/hardened, с 6-слойной архитектурой, immutable store, sandbox DSL, VAT Rate History + provider JSON VAT Schema v2, сценариями расчёта, composite-сводкой Dashboard, Stage 19 LOAD-capacity моделью, sanity-report guard, provider freshness + quality gates + confidence summary report, 9 golden Quick Start snapshots, 6 manual business golden snapshots (Startup / SMB / Enterprise / internal ops / regulated fintech / AI agent support), full Quick Start calculation invariants на 2880 комбинаций, calculate() large-data performance budget, Node 24-aware GitHub Actions, explicit GitHub Pages workflow на `.pages-dist`, scoped `tests/run.js` профилями, desktop Playwright UI↔domain regression-suite, Details PDF full-width landscape mode для cost/qty таблиц через header PDF / `Ctrl+Alt+P` / native `beforeprint`, Details qty package-unit guard (`тыс. SMS` / `тыс. писем` / `млн PUSH`), desktop viewport guard 1365×768/1440×900/1920×1080 с Dashboard grid min-content guard, PNG-signal visual regression, real-click user-flow/data-management/export/print E2E через `data-testid`, published GitHub Pages smoke с HTTP URL diagnostics/retry, Details category share, UserManual validation checklist, выделенными Details-модулями (`detailsSections` / `detailsAiSummary` / `detailsTotals`), strict `vatPolicy` shape validation и source-level guard'ами против ad-hoc форматирования чисел/денег/процентов. Актуальное число тестов брать из `npm test`, не из этого файла.
 
 ### Накопленный функционал (краткая шкала)
 
@@ -533,15 +533,16 @@ Bump делается **синхронно в двух файлах** (`constant
 
 **Smoke-тест seed-формул** ([tests/unit/domain/seed-formulas.test.js](tests/unit/domain/seed-formulas.test.js)) — проверяет что каждая qty-формула во всех ЭК парсится и вычисляется в финитное неотрицательное число. Запускать после любых правок [seed.js](js/domain/seed.js) или DSL-парсера.
 
-**Sanity-check скрипт** ([scripts/sanity-report.mjs](scripts/sanity-report.mjs)) — maintainer-команда вне основного runner'а. Прогоняет калькулятор на 3 профилях (Startup MVP / SMB B2B SaaS / Enterprise) и таблицу чувствительности к риск-коэффициентам. Запуск: `npm run sanity` для обновления [SANITY_REPORT.md](SANITY_REPORT.md), `npm run sanity:check` для проверки актуальности без перезаписи. Полезно после правок прайсов или формул.
+**Sanity-check скрипт** ([scripts/sanity-report.mjs](scripts/sanity-report.mjs)) — maintainer-команда вне основного runner'а. Прогоняет калькулятор на 3 профилях (Startup MVP / SMB B2B SaaS / Enterprise) и таблицу чувствительности к риск-коэффициентам. Расширенный business-golden слой добавляет internal ops, regulated fintech и AI agent support. Запуск: `npm run sanity` для обновления [SANITY_REPORT.md](SANITY_REPORT.md), `npm run sanity:check` для проверки актуальности без перезаписи. Полезно после правок прайсов или формул.
 
-**Provider freshness report** ([scripts/provider-freshness-report.mjs](scripts/provider-freshness-report.mjs)) — maintainer-команда для bundled provider-прайсов. Запуск: `npm run prices:freshness` обновляет [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md), `npm run prices:freshness:check` сверяет отчёт с `js/data/providers-bundled.generated.js`. Фиксирует version/timestamp/age/SKU-count/VAT confidence и статусы `STALE`, `STUB`, `ASSUMED_VAT`; отдельная таблица `Quality gates` проверяет core SKU coverage, gross→net VAT policy, положительные net/gross цены и vendor/source. Входит в CI.
+**Provider freshness report** ([scripts/provider-freshness-report.mjs](scripts/provider-freshness-report.mjs)) — maintainer-команда для bundled provider-прайсов. Запуск: `npm run prices:freshness` обновляет [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md), `npm run prices:freshness:check` сверяет отчёт с `js/data/providers-bundled.generated.js`. Фиксирует version/timestamp/age/SKU-count/VAT confidence и статусы `STALE`, `STUB`, `ASSUMED_VAT`; таблица `Quality gates` проверяет core SKU coverage, gross→net VAT policy, положительные net/gross цены и vendor/source, а `Confidence summary` агрегирует verified/source-level, assumed/unknown VAT и stub-провайдеров. Входит в CI.
 
-**Desktop Playwright suite** (`npm run smoke:desktop`) — 28 desktop-first тестов:
+**Desktop Playwright suite** (`npm run smoke:desktop`) — 29 desktop-first тестов:
 smoke-рендер критичных экранов, UI↔domain сверка Dashboard/Details и реальные
 user-flow клики Quick Start/Sidebar/Опросник/Dashboard CTA, scenario tabs,
 active/bundle JSON import-export-reset, provider VAT-policy import, Decision
-Memo `.md` download, PDF routing, Details PDF full-width landscape guard,
+Memo `.md` download, PDF routing, Details PDF full-width landscape guard для
+таблиц стоимости и объёмов,
 Details qty package-unit guard и PNG-signal visual regression для Dashboard,
 Details, Comparison, Questionnaire и Decision Memo. Для устойчивости к
 CSS-refactor'ам критичные элементы получают `data-testid`. На Node 26 скрипт
@@ -568,7 +569,7 @@ CSS-refactor'ам критичные элементы получают `data-tes
    - `CLAUDE.md` (этот файл) — обзор архитектуры и текущий статус.
    - [DECISIONS.md](DECISIONS.md) — журнал ключевых решений и допущений по этапам 1–6. **Главный источник истины для контекста проекта** — читать перед нетривиальными правками.
    - [UI_PRODUCTION_PATTERNS.md](UI_PRODUCTION_PATTERNS.md) — META-обобщение опыта Stage 8 (PDF print, alignment, override-hunt). 8 паттернов с сигналами / анти-паттернами / правильными подходами. Quick-reference для будущих UI-fixes.
-   - [SANITY_REPORT.md](SANITY_REPORT.md) — последние числа калькулятора на 3 профилях, чувствительность к коэффициентам.
+   - [SANITY_REPORT.md](SANITY_REPORT.md) — последние числа калькулятора на 3 sanity-профилях, чувствительность к коэффициентам; расширенные 6 business-профилей закреплены в unit golden snapshots.
    - [ТЗ.md](ТЗ.md), [README.md](README.md), [HOW_TO_START.md](HOW_TO_START.md), [skill.md](skill.md) — исходное ТЗ, обзор для пользователя, запуск, проектные принципы.
 
 2. **Память Claude** (`C:\Users\Сергей\.claude\projects\d--DATA------------------------------------------\memory\`) — автоматически загружается через `MEMORY.md` в каждой новой сессии:

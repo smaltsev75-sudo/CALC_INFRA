@@ -94,8 +94,9 @@ npm run prices:freshness
 
 `generate:providers` обновляет runtime-источник `js/data/providers-bundled.generated.js`.
 `prices:freshness` обновляет [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md):
-возраст прайса, число SKU, VAT confidence и флаги `STALE` / `STUB` /
-`ASSUMED_VAT`.
+возраст прайса, число SKU, VAT confidence, флаги `STALE` / `STUB` /
+`ASSUMED_VAT`, structural quality gates и confidence summary по уровню доверия
+к bundled-провайдерам.
 
 #### Шаг 4. Прогнать тесты
 
@@ -261,7 +262,8 @@ error.
 Расчётная сетка Quick Start покрыта двумя слоями: exact snapshots в
 `tests/unit/domain/golden-scenarios.test.js` и полный invariant-прогон 2880
 комбинаций в `tests/unit/domain/wizard-calculation-invariants.test.js`.
-Ручные business-профили Startup / SMB / Enterprise дополнительно закреплены в
+Ручные business-профили Startup / SMB / Enterprise / internal ops / regulated
+fintech / AI agent support дополнительно закреплены в
 `tests/unit/domain/business-golden-scenarios.test.js`: totals, стенды,
 категории и top PROD drivers должны совпадать с maintainer sanity-моделью.
 Performance guard `tests/unit/performance/calculate-large-data-budget.test.js`
@@ -275,7 +277,7 @@ Performance guard `tests/unit/performance/calculate-large-data-budget.test.js`
 npm run sanity
 ```
 
-Прогоняет калькулятор на 3 типовых профилях (Startup MVP / SMB B2B SaaS / Enterprise) и таблицу чувствительности к риск-коэффициентам. Запускать после правок прайсов или формул. В CI/перед коммитом удобнее `npm run sanity:check`: он не переписывает файл, а проверяет, что [SANITY_REPORT.md](SANITY_REPORT.md) актуален.
+Прогоняет калькулятор на 3 типовых sanity-профилях (Startup MVP / SMB B2B SaaS / Enterprise) и таблицу чувствительности к риск-коэффициентам. Ещё 3 ручных business-профиля (internal ops, regulated fintech, AI agent support) закреплены golden-тестом, чтобы ловить аномалии для low-security, regulated/high-security и AI-heavy сценариев. Запускать после правок прайсов или формул. В CI/перед коммитом удобнее `npm run sanity:check`: он не переписывает файл, а проверяет, что [SANITY_REPORT.md](SANITY_REPORT.md) актуален.
 
 ---
 
@@ -297,6 +299,12 @@ core SKU coverage для compute/storage/network, gross→net `vatPolicy`,
 неположительные net/gross цены и пустые `vendor`/`priceSource`. `--check`
 сравнивает отчёт с текущим `js/data/providers-bundled.generated.js` и входит в
 CI.
+
+Третья таблица `Confidence summary` агрегирует уровень доверия к bundled-прайсам:
+сколько провайдеров имеют verified/source-level VAT, assumed/unknown VAT и
+stub-статус. Для коммерческого baseline провайдеры с `STUB` или `ASSUMED_VAT`
+должны быть заменены ручной verified/source-level выгрузкой перед финальной
+сметой; для sensitivity-сравнения их можно оставить с явной пометкой.
 
 ---
 
