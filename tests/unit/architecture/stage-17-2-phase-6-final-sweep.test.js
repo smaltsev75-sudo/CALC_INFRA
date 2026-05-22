@@ -4,7 +4,7 @@
  * Закрывает финальную приёмку Stage 17.2:
  *   1. Forbidden patterns в live-коде (js/, css/, index.html) отсутствуют.
  *   2. Live UI содержит все целевые labels (Stage 17.2 rename'ов).
- *   3. User-facing документация (UserManual.md, ReadMe.md) не упоминает
+ *   3. User-facing документация (UserManual.md, README.md) не упоминает
  *      удалённые workflow.
  *   4. data/providers/<id>-latest.json фикстуры остались (maintainer reference).
  *
@@ -167,9 +167,9 @@ describe('Phase 6 — Целевые UI labels присутствуют', () => 
  * 3. User-facing docs не обещают удалённое
  * ============================================================ */
 
-describe('Phase 6 — UserManual.md / ReadMe.md hygiene', { skip: SKIP_USER_DOCS }, () => {
+describe('Phase 6 — UserManual.md / README.md hygiene', { skip: SKIP_USER_DOCS }, () => {
     const um = read('UserManual.md');
-    const rm = read('ReadMe.md');
+    const rm = read('README.md');
 
     const FORBIDDEN_IN_USER_DOCS = [
         'Обновить с сервера',
@@ -190,9 +190,9 @@ describe('Phase 6 — UserManual.md / ReadMe.md hygiene', { skip: SKIP_USER_DOCS
             assert.equal(um.includes(p), false,
                 `UserManual.md обещает удалённый функционал «${p}».`);
         });
-        it(`ReadMe.md не содержит "${p}"`, () => {
+        it(`README.md не содержит "${p}"`, () => {
             assert.equal(rm.includes(p), false,
-                `ReadMe.md обещает удалённый функционал «${p}».`);
+                `README.md обещает удалённый функционал «${p}».`);
         });
     }
 

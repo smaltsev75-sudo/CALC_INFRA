@@ -19,7 +19,7 @@ const REPORT_PATH = process.env.SANITY_REPORT_PATH
     ? resolve(process.env.SANITY_REPORT_PATH)
     : resolve(__dirname, '..', 'SANITY_REPORT.md');
 
-const REPORT_DATE = '2026-05-21';
+const REPORT_DATE = '2026-05-22';
 const CALC_CREATED_AT = '2026-05-02T00:00:00Z';
 const VAT_RATE_2026 = getVatRateForDate('2026-01-01');
 
@@ -184,7 +184,7 @@ if (mode === '--write') {
     console.log(`SANITY_REPORT.md updated (${lines.length} lines)`);
 } else if (mode === '--check') {
     if (!existsSync(REPORT_PATH)) {
-        console.warn('SANITY_REPORT.md отсутствует (maintainer-only документ); проверка пропущена.');
+        console.warn('SANITY_REPORT.md отсутствует; проверка пропущена для урезанного архива.');
         process.exit(0);
     }
     const current = readFileSync(REPORT_PATH, 'utf8');

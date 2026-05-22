@@ -29,13 +29,12 @@ php -S localhost:8000            # PHP
 3. `http://<IP>:8000` на устройстве.
 4. Firewall: `sudo ufw allow 8000` (Linux); netsh (Win). ⚠️ 0.0.0.0 публичный — не используйте в недоверенных сетях.
 
-## IDE/Docker/PWA
+## IDE / Docker
 
 | Способ | Команда |
 |--------|---------|
 | VS Code | Live Server → правый клик index.html |
 | Docker | `docker run -p 8000:80 -v .:/usr/share/nginx/html nginx:alpine` |
-| PWA (Chrome) | ⊕ в адресной строке → Установить |
 
 ## Автозапуск
 
@@ -63,7 +62,7 @@ php -S localhost:8000            # PHP
 
 ## Требования
 
-- Python 3.7+ / Node 14+ / PHP 7.4+
+- Python 3.7+ / Node 18+ / PHP 7.4+
 - Chrome 90+ / Yandex / Safari 14+
 - ≥1280×720
 

@@ -81,7 +81,7 @@ docker run -p 8000:80 -v "$PWD":/usr/share/nginx/html nginx:alpine
 ### Системные требования
 
 - **Браузер**: Chrome 90+ / Yandex / Safari 14+ / Firefox современный.
-- **Один из**: Python 3.7+, Node.js 14+, PHP 7.4+ (только для запуска HTTP-сервера; в коде проекта runtime-зависимостей нет).
+- **Один из**: Python 3.7+, Node.js 18+, PHP 7.4+ (только для запуска HTTP-сервера; в коде проекта runtime-зависимостей нет). Node.js 18+ обязателен для `npm test`, Playwright smoke и maintainer-скриптов.
 - **Разрешение экрана**: ≥1280×720 (адаптивная вёрстка работает и на ноутбуках 1366×768).
 
 ---
@@ -154,7 +154,7 @@ npm run sanity            # пересобрать SANITY_REPORT.md
 
 ### Источники цен
 
-Все 36 элементов конфигурации в `js/domain/seed.js` имеют `pricePerUnit > 0` с inline-комментарием-источником:
+Все 36 элементов конфигурации в `js/domain/seed.js` имеют источник цены в inline-комментарии: 35 позиций с `pricePerUnit > 0` и 1 явно бесплатная позиция `traffic-ingress-tb` (входящий трафик, 0 ₽/ТБ):
 
 - Cloud-инфраструктура (CPU/RAM/Storage/LB/WAF/Traffic) — **Cloud.ru**.
 - LLM-токены и embeddings — **GigaChat 2 Pro** (Сбер).
@@ -167,7 +167,7 @@ npm run sanity            # пересобрать SANITY_REPORT.md
 
 ### Обновление цен
 
-Калькулятор **не делает сетевых запросов к сайтам провайдеров** (CSP `connect-src 'self'`). Все цены поставляются вместе с приложением в `data/providers/*.json`. Раз в квартал maintainer обновляет эти файлы вручную; пользователи получают новые цены через **Импорт прайса JSON** в Опроснике (пользовательский workflow — в [UserManual.md → Прайс](UserManual.md#прайс)) либо автоматически после `git pull` нового bundle.
+Калькулятор **не делает сетевых запросов к сайтам провайдеров** (CSP `connect-src 'self'`). Runtime-цены поставляются в `js/data/providers-bundled.generated.js`; maintainer-источники лежат в `data/providers/*.json` и пересобираются командой `npm run generate:providers`. Раз в квартал maintainer обновляет эти файлы вручную; пользователи получают новые цены через **Импорт прайса JSON** в Опроснике (пользовательский workflow — в [UserManual.md → Прайс](UserManual.md#прайс)) либо автоматически после `git pull` нового bundle.
 
 Полный регламент обновления + причины, почему автоматический парсинг сайтов провайдеров не реализован — в [MAINTAINER_GUIDE.md → Provider Price Update Workflow](MAINTAINER_GUIDE.md#1-provider-price-update-workflow).
 
