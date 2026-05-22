@@ -1,5 +1,42 @@
 # Журнал решений и допущений
 
+## 22.05.2026 · PATCH 2.20.17 — Детализация по убыванию ИТОГО/год + golden scenarios
+
+**Контекст.** Пользователь уточнил продуктовую логику таблицы:
+в «Детализации» группы ЭК должны идти не в техническом порядке
+`CATEGORY_IDS`, а по убыванию суммы в столбце **«ИТОГО / год»**. Пример:
+если «Лицензии» дают 22 млн ₽/год, а «Услуги» 17 млн ₽/год, первой должна
+идти группа «Лицензии».
+
+**Изменения UI-логики:**
+
+- [details.js](js/ui/details.js) теперь строит `presentCats` через
+  `buildDetailsCategoryOrder(byCat, result, disabledStands)`;
+- порядок групп считается по годовому итогу на активных стендах:
+  `detailsCategoryAnnualOnActiveStands(...) = monthly(active stands) × 12`;
+- выключенные стенды не влияют на порядок, потому что они не входят в
+  пользовательский столбец «ИТОГО / год»;
+- при равной сумме сохраняется канонический порядок `CATEGORY_IDS` как
+  стабильный tie-break;
+- [detailsSections.js](js/ui/detailsSections.js) использует переданный порядок
+  и в «Бюджет (₽)», и в «Объём (qty)», чтобы группы не прыгали между
+  подвкладками.
+
+**Новые проверки:**
+
+- [details-category-order.test.js](tests/unit/ui/details-category-order.test.js)
+  проверяет сортировку групп, исключение disabled-стендов и tie-break;
+- [desktop-smoke.spec.js](tests/e2e/desktop-smoke.spec.js) теперь в реальном
+  Chromium проверяет, что видимые category-rows в «Детализации» отсортированы
+  по убыванию DOM-значений из «ИТОГО / год»;
+- [golden-scenarios.test.js](tests/unit/domain/golden-scenarios.test.js)
+  добавляет 8 snapshot-сценариев Quick Start с ожидаемыми totalMonthly,
+  totalAnnual, topCategory и byCategoryMonthly. Это фиксирует не только
+  отсутствие NaN/Infinity, но и конкретные эталонные цифры продукта.
+
+**Версионирование.** PATCH `2.20.16 → 2.20.17`: схема данных не менялась;
+изменено пользовательское ранжирование групп в Details и усилен test-suite.
+
 ## 22.05.2026 · PATCH 2.20.16 — документация в clean checkout + расчётные sanity-инварианты
 
 **Контекст.** После релиза 2.20.15 пользователь отдельно спросил, проверены ли

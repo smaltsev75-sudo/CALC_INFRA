@@ -13,7 +13,7 @@
 
 import { el } from './dom.js';
 import { icon } from './icons.js';
-import { CATEGORY_IDS } from '../utils/constants.js';
+import { CATEGORY_IDS, MONTHS_PER_YEAR } from '../utils/constants.js';
 import { calculate } from '../domain/calculator.js';
 import { applyStandFilter } from '../domain/standsFilter.js';
 import { renderStandToggles } from './standToggles.js';
@@ -48,8 +48,8 @@ export function renderDetails(state, ctx) {
     // Режим определяется параметром расчёта в Опроснике, а не UI-toggle'ом.
     const applyRisks = calc.settings?.applyRiskFactors !== false;
 
-    // Сортировка: категории — в фиксированном порядке CATEGORY_IDS;
-    // ВНУТРИ категории — по убыванию ИТОГО ₽/мес (на активных стендах).
+    // Сортировка: ВНУТРИ категории — по убыванию ИТОГО ₽/мес
+    // (на активных стендах). Сами группы ниже сортируются по ИТОГО / год.
     // См. memory/feedback_sort_descending — числа в столбце идут по убыванию.
     const items = [...calc.dictionaries.items];
     items.sort((a, b) => {
@@ -84,9 +84,10 @@ export function renderDetails(state, ctx) {
     const totalsForFilter = computeTotalsForItems(filtered, result, disabledStands);
     const isFiltered = !!search || hideZero;
 
-    // 12.U27: список category-id, у которых ЕСТЬ items в текущей выборке —
-    // нужен контроллеру при первом раскрытии (инициализация массива из null).
-    const presentCats = CATEGORY_IDS.filter(c => (byCat[c] || []).length > 0);
+    // Список category-id, у которых ЕСТЬ items в текущей выборке.
+    // Порядок — по убыванию суммы группы в столбце «ИТОГО / год».
+    // Нужен и рендеру, и контроллеру при первом раскрытии accordion'а.
+    const presentCats = buildDetailsCategoryOrder(byCat, result, disabledStands);
 
     return el('section', { class: 'tab-pane' },
         el('div', { class: 'tab-toolbar' },
@@ -130,6 +131,26 @@ export function renderDetails(state, ctx) {
            AI-метрики — для не-AI проектов блок не возникает вовсе. */
         subTab === 'qty' && renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx)
     );
+}
+
+export function detailsCategoryAnnualOnActiveStands(list, result, disabledStands = []) {
+    const monthly = (list || []).reduce(
+        (acc, it) => acc + itemMonthlyOnActiveStands(it.id, result, disabledStands),
+        0
+    );
+    return monthly * MONTHS_PER_YEAR;
+}
+
+export function buildDetailsCategoryOrder(byCat, result, disabledStands = []) {
+    const canonicalIndex = new Map(CATEGORY_IDS.map((cat, index) => [cat, index]));
+    return CATEGORY_IDS
+        .filter(cat => (byCat?.[cat] || []).length > 0)
+        .sort((a, b) => {
+            const aAnnual = detailsCategoryAnnualOnActiveStands(byCat[a], result, disabledStands);
+            const bAnnual = detailsCategoryAnnualOnActiveStands(byCat[b], result, disabledStands);
+            if (bAnnual !== aAnnual) return bAnnual - aAnnual;
+            return canonicalIndex.get(a) - canonicalIndex.get(b);
+        });
 }
 
 function renderSubTabSwitcher(active, ctx) {

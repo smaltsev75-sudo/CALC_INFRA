@@ -77,6 +77,34 @@ async function expectNoHorizontalOverflow(page, selectors) {
     expect(overflow).toEqual([]);
 }
 
+async function expectDetailsCategoriesSortedByAnnualTotal(page) {
+    const rows = await page.locator('.details-table-cost tbody tr.category-row').evaluateAll((nodes) => {
+        const parseRub = (text) => {
+            const normalized = String(text || '')
+                .replace(/[^\d,.-]/g, '')
+                .replace(',', '.');
+            const value = Number(normalized);
+            return Number.isFinite(value) ? value : 0;
+        };
+        return nodes.map((row) => {
+            const name = row.querySelector('.category-name')?.textContent?.trim() || '';
+            const totalCells = row.querySelectorAll('td.col-total');
+            return {
+                name,
+                annual: parseRub(totalCells[1]?.textContent || '')
+            };
+        });
+    });
+
+    expect(rows.length).toBeGreaterThan(1);
+    for (let i = 1; i < rows.length; i += 1) {
+        expect(
+            rows[i - 1].annual,
+            `${rows[i - 1].name} must be >= ${rows[i].name} by ИТОГО / год`
+        ).toBeGreaterThanOrEqual(rows[i].annual);
+    }
+}
+
 test('dashboard and cost optimization planner render cleanly on desktop', async ({ page }) => {
     const consoleErrors = await bootCleanApp(page);
     await seedCalculations(page);
@@ -143,6 +171,7 @@ test('details and comparison desktop tables render with seeded calculations', as
     });
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expect(page.locator('.details-table-cost tbody tr').first()).toBeVisible();
+    await expectDetailsCategoriesSortedByAnnualTotal(page);
     await page.screenshot({ path: '.playwright-mcp/desktop-smoke-details.png', fullPage: true });
 
     await page.evaluate(async () => {

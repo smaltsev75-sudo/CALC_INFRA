@@ -176,6 +176,7 @@ function unitPeriodSuffix(item) {
 
 export function renderQtySection(byCat, result, ctx, disabledStands = [], state = null, presentCats = []) {
     const disabled = new Set(disabledStands);
+    const categoryOrder = presentCats.length > 0 ? presentCats : CATEGORY_IDS;
     return el('div', { class: 'details-section' },
         el('h3', { class: 'details-section-title', text: 'Объём (qty)' }),
         el('div', { class: 'details-table-wrap' },
@@ -204,7 +205,7 @@ export function renderQtySection(byCat, result, ctx, disabledStands = [], state 
                     )
                 ),
                 el('tbody', null,
-                    ...CATEGORY_IDS.flatMap(cat => {
+                    ...categoryOrder.flatMap(cat => {
                         const list = byCat[cat] || [];
                         if (list.length === 0) return [];
                         const collapsed = state ? isCategoryCollapsed(cat, state) : true;
@@ -314,6 +315,7 @@ function renderQtyItemRow(item, result, ctx, disabled = new Set()) {
 
 export function renderCostSection(byCat, result, ctx, totals, isFiltered, disabledStands = [], applyRisks = true, calc = null, state = null, presentCats = []) {
     const disabled = new Set(disabledStands);
+    const categoryOrder = presentCats.length > 0 ? presentCats : CATEGORY_IDS;
     return el('div', { class: 'details-section' },
         el('h3', { class: 'details-section-title' },
             el('span', { text: 'Стоимость, ₽' }),
@@ -362,7 +364,7 @@ export function renderCostSection(byCat, result, ctx, totals, isFiltered, disabl
                     ...renderCostTotalsRows(totals, isFiltered, disabled)
                 ),
                 el('tbody', null,
-                    ...CATEGORY_IDS.flatMap(cat => {
+                    ...categoryOrder.flatMap(cat => {
                         const list = byCat[cat] || [];
                         if (list.length === 0) return [];
                         const collapsed = state ? isCategoryCollapsed(cat, state) : true;

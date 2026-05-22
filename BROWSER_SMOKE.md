@@ -10,7 +10,7 @@
 npm run smoke:desktop
 ```
 
-Команда запускает Playwright на 1365×768 и параллельно проверяет Dashboard, Cost Optimization Planner, Decision Memo, Детализацию и Сравнение. Скриншоты сохраняются в `.playwright-mcp/`; временные отчёты Playwright тоже уходят туда через `playwright.config.js`.
+Команда запускает Playwright на 1365×768 и параллельно проверяет Dashboard, Cost Optimization Planner, Decision Memo, Детализацию и Сравнение. Для «Детализации» автоматический smoke также проверяет порядок групп ЭК по убыванию «ИТОГО / год». Скриншоты сохраняются в `.playwright-mcp/`; временные отчёты Playwright тоже уходят туда через `playwright.config.js`.
 
 Ручной checklist ниже остаётся нужен для сценариев, где важны UX-нюансы, клики и визуальная оценка, но базовые console/overflow regressions теперь должны ловиться автоматикой.
 

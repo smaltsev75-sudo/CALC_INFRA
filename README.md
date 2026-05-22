@@ -144,6 +144,10 @@ npm run sanity:check      # проверка актуальности SANITY_REP
 npm run sanity            # пересобрать SANITY_REPORT.md
 ```
 
+`npm test` включает golden-сценарии Quick Start с закреплёнными итогами и
+разбивкой по категориям. `npm run smoke:desktop` дополнительно проверяет, что
+группы ЭК в «Детализации» отрисованы по убыванию «ИТОГО / год».
+
 Архитектура держится на ES-модулях без bundler'а. Исторические entry point'ы вроде `js/app.js`, `js/ui/questionnaire.js`, `js/domain/costOptimizationPlanner.js`, `js/services/providerPriceFetch.js` сохранены как стабильные фасады; узкая логика вынесена в соседние модули (`js/app/*Actions.js`, `questionnaire*`, `dashboard*`, `costOptimizationPlanner*`, `priceImportMapping*`, `providerPriceNormalize.js`, `decisionMemoFormat.js`). Актуальная карта ownership — в [Architecture.md](Architecture.md#фасады-после-модульного-рефакторинга).
 
 ### Встроенные ресурсы

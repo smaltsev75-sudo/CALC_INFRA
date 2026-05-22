@@ -2,7 +2,7 @@
 
 Целевая аудитория — архитекторы, разработчики, тестировщики. Здесь только то, что не выводится из чтения README.md / UserManual.md: устройство кода, потоки данных, паттерны защиты целостности и тестовая инфраструктура.
 
-**Версия 2.20.16** (docs/test publishing + calculation sanity invariants). Schema v19.
+**Версия 2.20.17** (Details annual ordering + golden scenarios). Schema v19.
 
 ---
 
@@ -501,7 +501,7 @@ el('div', {
 - Триггер `ctx.openXxxModal(payload)` → `store.openModal(name, payload)`.
 - Закрытие `ctx.closeModal(name)` или `store.closeModal(name)`.
 
-Зарегистрированных модалок 28 (на 2.20.16): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
+Зарегистрированных модалок 28 (на 2.20.17): message, confirm, duplicateImport, input, quickStart, reset, help, printAnswersOptions, assumptions, assumptionsRegister, calculationHealth, sensitivity, budgetGuardrails, decisionMemo, costOptimizationPlanner, guidedCompletion, formula, itemEdit, questionEdit, reapplyConfirm, scenarioMenu, scenarioRename, scenarioDuplicate, deltaHistory, providerAnalytics, priceImportMapping, scenarioComparison, vatPolicyChoice. Helper-файлы рядом с модалками (`baseModal`, `quickStartModel`, `costOptimizationPlannerModal*`) не входят в `MODAL_ORDER`.
 
 Удалены в Stage 17.2: `recommendedActions` (заменён блоком «Следующие шаги» на Дашборде), `calculationDiff` (UI убран; pure-domain helper остался — см. п. 4.7).
 
@@ -531,19 +531,19 @@ tests/
 ```bash
 npm test                  # все тесты, параллельно через node:test, spec-репортер
 npm run test:watch        # watch-режим (node --watch)
-npm run smoke:desktop     # Playwright desktop smoke (Dashboard/Planner/Memo/Details/Comparison)
+npm run smoke:desktop     # Playwright desktop smoke (Dashboard/Planner/Memo/Details/Comparison + Details annual order)
 npm run syntax-check      # node --check на всех js/**/*.js
 node --test tests/unit/domain/calculator.test.js                 # один файл
 node --test --test-name-pattern="riskFactor" tests/...            # один тест
 ```
 
-Sanity-check скрипт ([scripts/sanity-report.mjs](scripts/sanity-report.mjs)): прогоняет калькулятор на 3 профилях (Startup / SMB / Enterprise), пишет [SANITY_REPORT.md](SANITY_REPORT.md) через `npm run sanity` или проверяет актуальность через `npm run sanity:check`. Полезно после правок прайсов или формул.
+Sanity-check скрипт ([scripts/sanity-report.mjs](scripts/sanity-report.mjs)): прогоняет калькулятор на 3 профилях (Startup / SMB / Enterprise), пишет [SANITY_REPORT.md](SANITY_REPORT.md) через `npm run sanity` или проверяет актуальность через `npm run sanity:check`. Для более жёсткого контроля расчётных цифр есть golden-сценарии Quick Start в [golden-scenarios.test.js](tests/unit/domain/golden-scenarios.test.js): они закрепляют ожидаемые totalMonthly, totalAnnual, topCategory и byCategoryMonthly для 8 профилей. Полезно после правок прайсов или формул.
 
 ### Виды тестов
 
 | Вид | Назначение | Пример |
 |---|---|---|
-| **Unit (domain)** | Чистая логика без IO | [calculator.test.js](tests/unit/domain/calculator.test.js), [calculation-diff.test.js](tests/unit/domain/) |
+| **Unit (domain)** | Чистая логика без IO и golden snapshots расчётов | [calculator.test.js](tests/unit/domain/calculator.test.js), [golden-scenarios.test.js](tests/unit/domain/golden-scenarios.test.js) |
 | **Unit (state)** | Migrations, store-mutations | [migrations.test.js](tests/unit/state/migrations.test.js) |
 | **Unit (controller)** | Через mock store, без UI | [calcController.test.js](tests/unit/controllers/) |
 | **Unit (services)** | Storage, json, csv с mock localStorage | [csvImport.test.js](tests/unit/services/) |
@@ -551,7 +551,7 @@ Sanity-check скрипт ([scripts/sanity-report.mjs](scripts/sanity-report.mjs
 | **Unit (UI smoke)** | Все ui/-модули импортируются параллельно под минимальным DOM-mock'ом | [ui-modules-smoke.test.js](tests/unit/ui/) |
 | **Architecture** | Layer-linter, версии, A11y, no-emoji, no-toiso-slice | [layer-imports.test.js](tests/unit/architecture/) |
 | **Integration** | Полный controller-path с installLocalStorage | [calc-persistence-atomicity.test.js](tests/integration/) |
-| **Desktop browser smoke** | Реальный Chromium/Chrome-рендер критичных desktop-сцен, console/overflow checks, screenshots | [desktop-smoke.spec.js](tests/e2e/desktop-smoke.spec.js) |
+| **Desktop browser smoke** | Реальный Chromium/Chrome-рендер критичных desktop-сцен, console/overflow checks, порядок Details-групп, screenshots | [desktop-smoke.spec.js](tests/e2e/desktop-smoke.spec.js) |
 
 ### Source-grep helpers (TDD-якорь)
 
