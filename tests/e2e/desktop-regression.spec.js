@@ -224,7 +224,20 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
 test('Help modal renders scannable UserManual on desktop', async ({ page }) => {
     const consoleErrors = await bootCleanApp(page);
 
-    await page.getByTitle('Справка (F1)').click();
+    const advancedToggle = page.getByTestId('sidebar-advanced-toggle');
+    const helpButton = page.getByTestId('sidebar-help-button');
+    await expect(advancedToggle).not.toHaveAttribute('title', /.+/);
+    await expect(helpButton).not.toHaveAttribute('title', /.+/);
+
+    const advancedBox = await advancedToggle.boundingBox();
+    const helpBox = await helpButton.boundingBox();
+    expect(advancedBox).not.toBeNull();
+    expect(helpBox).not.toBeNull();
+    expect(helpBox.y).toBeGreaterThanOrEqual(advancedBox.y + advancedBox.height - 1);
+
+    await helpButton.hover();
+    await expect(helpButton).not.toHaveAttribute('title', /.+/);
+    await helpButton.click();
     const modal = page.locator('.modal-overlay').filter({ hasText: 'Справка' });
     await expect(modal.locator('.modal')).toBeVisible();
 
@@ -232,6 +245,9 @@ test('Help modal renders scannable UserManual on desktop', async ({ page }) => {
     await expect(helpContent.locator('h2', { hasText: 'С чего начать' })).toBeVisible();
     await expect(helpContent.locator('table').filter({ hasText: 'Получить первую оценку' })).toBeVisible();
     await expect(helpContent.locator('h2', { hasText: 'Типовой сценарий использования' })).toBeVisible();
+    await expect(helpContent).toContainText('без технического словаря');
+    await expect(helpContent).toContainText('WAF (защита веб-приложений)');
+    await expect(helpContent).toContainText('DDoS (защита от распределённых атак)');
     await expect(helpContent.locator('pre').filter({ hasText: 'Расчёты → Новый расчёт' })).toHaveCount(0);
     await expect.poll(async () => helpContent.evaluate(el => getComputedStyle(el).maxWidth))
         .toBe('940px');

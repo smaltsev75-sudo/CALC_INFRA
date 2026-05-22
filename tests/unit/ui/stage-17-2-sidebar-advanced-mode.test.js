@@ -95,6 +95,13 @@ describe('Phase 3c — Sidebar footer toggle', () => {
     it('aria-label явно указан (a11y, screen-reader)', () => {
         assert.match(src, /aria-label/);
     });
+
+    it('footer-кнопки не используют title-tooltip, который перекрывает соседние пункты', () => {
+        assert.doesNotMatch(src, /title:\s*advancedMode/);
+        assert.doesNotMatch(src, /title:\s*['"]Справка \(F1\)['"]/);
+        assert.match(src, /data-testid['"]?:\s*['"]sidebar-help-button['"]/);
+        assert.match(src, /aria-label['"]?:\s*['"]Открыть справку['"]/);
+    });
 });
 
 describe('Phase 3c — CSS: sidebar-advanced-toggle-on (visual indicator)', () => {

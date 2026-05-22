@@ -22,7 +22,7 @@ describe('Help modal readability', () => {
     it('UserManual.md starts with a scannable quick-start section', () => {
         assert.match(manual, /- \[С чего начать\]\(#с-чего-начать\)/);
         assert.match(manual, /## С чего начать/);
-        assert.match(manual, /\| Задача \| Где открыть \| Что проверить \|/);
+        assert.match(manual, /\| Задача \| Где открыть \| Что сделать \|/);
         assert.match(manual, /\| Получить первую оценку \| \*\*Расчёты → Новый расчёт\*\*/);
     });
 
@@ -31,12 +31,29 @@ describe('Help modal readability', () => {
         assert.doesNotMatch(scenario, /```/);
         assert.match(
             scenario,
-            /3\. \*\*Опросник\*\* — уточните пользователей, нагрузку, данные, уведомления, безопасность, тестирование и ИИ, если он нужен\./
+            /3\. Перейдите в \*\*Опросник\*\* и уточните ответы под свой продукт\./
         );
         assert.match(
             scenario,
-            /9\. \*\*Сравнение расчётов\*\* — сопоставьте несколько вариантов рядом\./
+            /9\. Создайте второй сценарий или второй расчёт, если нужно сравнить варианты\./
         );
+    });
+
+    it('uses plain Russian for non-obvious technical terms', () => {
+        for (const forbidden of [
+            /\bCAPEX\b/, /\bOPEX\b/, /Product Owner/, /\bLLM\b/, /\bRAG\b/,
+            /\bDAU\b/, /\bRPS\b/, /\bPCU\b/, /\bMVP\b/, /\bSaaS\b/,
+            /source-level/i, /\bstub\b/i, /\bbundle\b/i, /\bbaseline\b/i,
+            /\bgross\b/i, /\bnet\b/i, /\boverride\b/i, /\btooltip\b/i,
+            /\bruntime\b/i, /\brollback\b/i, /\binline\b/i, /\bSKU\b/i,
+            /\bDashboard\b/, /\bAI\b/, /\bExcel\b/
+        ]) {
+            assert.doesNotMatch(manual, forbidden);
+        }
+        assert.match(manual, /WAF \(защита веб-приложений\)/);
+        assert.match(manual, /DDoS \(защита от распределённых атак\)/);
+        assert.match(manual, /CPU.*Процессорные ядра/);
+        assert.match(manual, /RAM.*Оперативная память/);
     });
 
     it('does not document duplicated price actuality version next to the date', () => {

@@ -113,11 +113,9 @@ function renderFooter(ctx, advancedMode) {
         el('button', {
             class: ['sidebar-footer-btn', 'sidebar-advanced-toggle',
                     advancedMode && 'sidebar-advanced-toggle-on'],
-            title: advancedMode
-                ? 'Скрыть административные вкладки (Элементы, Вопросы)'
-                : 'Показать административные вкладки (Элементы, Вопросы) — для архитектора',
             attrs: {
                 type: 'button',
+                'data-testid': 'sidebar-advanced-toggle',
                 'aria-pressed': advancedMode ? 'true' : 'false',
                 'aria-label': advancedMode
                     ? 'Выключить расширенные настройки'
@@ -132,8 +130,11 @@ function renderFooter(ctx, advancedMode) {
         ),
         el('button', {
             class: 'sidebar-footer-btn',
-            title: 'Справка (F1)',
-            attrs: { type: 'button' },
+            attrs: {
+                type: 'button',
+                'data-testid': 'sidebar-help-button',
+                'aria-label': 'Открыть справку'
+            },
             onClick: () => ctx.openHelp?.()
         },
             el('span', { class: 'sidebar-nav-item-icon' }, icon('help-circle', { size: 16 })),

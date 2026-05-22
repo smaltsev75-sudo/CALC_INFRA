@@ -79,7 +79,7 @@ describe('UserManual.md TOC acceptance', () => {
         assert.match(markdown, /Цена по запросу у провайдера/);
         assert.match(markdown, /WAF \(защита веб-приложений\)/);
         assert.match(markdown, /DDoS \(защита от распределённых/);
-        assert.match(markdown, /A4 landscape/);
-        assert.match(markdown, /AI\/RAG\/agent-support/);
+        assert.match(markdown, /ИИ/);
+        assert.match(markdown, /без технического словаря/);
     });
 });

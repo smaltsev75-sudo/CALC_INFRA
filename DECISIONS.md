@@ -1,5 +1,48 @@
 # Журнал решений и допущений
 
+## 23.05.2026 · PATCH 2.20.37 — simpler Help copy + sidebar footer hover fix
+
+**Контекст.** Пользователь указал две проблемы:
+
+- при наведении на кнопку «Справка» нативная hover-подсказка перекрывала
+  соседнюю кнопку «Расширенные настройки»;
+- F1-справка всё ещё читалась тяжело: слишком много сложных, технических и
+  англоязычных терминов без пользы для пользователя.
+
+**Решение.**
+
+- В [sidebar.js](js/ui/sidebar.js) у footer-кнопок «Расширенные настройки» и
+  «Справка» убраны `title`-подсказки. Текст кнопок уже виден, а доступность
+  сохраняется через `aria-label`. Добавлены стабильные `data-testid`.
+- [UserManual.md](UserManual.md) переписан как короткая пользовательская
+  справка: сначала маршрут действий, затем простые определения и проверки
+  результата. Технические термины вроде `CAPEX`, `OPEX`, `RAG`, `SKU`,
+  `baseline`, `override` убраны из видимого текста.
+- Устоявшиеся сокращения оставлены только с русской расшифровкой: WAF, DDoS,
+  CPU, RAM, SSD, HDD, PDF, CSV, JSON.
+- Playwright regression проверяет, что footer-кнопки не имеют `title`, не
+  наезжают друг на друга и F1-справка показывает простую русскую версию.
+- Unit-тесты закрепляют отсутствие необъяснённых англоязычных терминов в
+  `UserManual.md`.
+
+**Проверки.**
+
+- Targeted Help/sidebar suite: 27/27 pass.
+- Targeted Playwright F1 Help/sidebar regression: pass.
+- `npm test`: 5103/5103 pass.
+- `npm run smoke:desktop`: 30/30 pass.
+- `npm run pages:build`: pass.
+- `npm run prices:freshness:check`: pass.
+- `npm run sanity:check`: pass.
+- `npm run syntax-check`: pass.
+- `git diff --check`: pass.
+
+**Версионирование.**
+
+`2.20.36 → 2.20.37` (PATCH). Schema, provider JSON schema и bundle format не
+меняются. Изменение пользовательски видимо как отсутствие перекрывающей
+hover-подсказки в footer левого меню и более понятная F1-справка.
+
 ## 23.05.2026 · PATCH 2.20.36 — suppress duplicate row trust badges + Help readability
 
 **Контекст.** В карточке «Тарифы активного провайдера» общий статус
