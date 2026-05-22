@@ -1,5 +1,42 @@
 # Журнал решений и допущений
 
+## 23.05.2026 · PATCH 2.20.34 — price actuality hint + benchmark width
+
+**Контекст.** После вывода даты актуальности прайса во все ценовые UI-точки
+пользователь обнаружил два UX-дефекта: hover-хинт «Актуальность прайса» был
+слишком длинным и повторял аудиторские source-данные, а окно «Прайс-бенчмарк»
+на desktop оставляло горизонтальный скролл и дублировало дату прайса в матрице
+доверия и основной таблице.
+
+**Решение.**
+
+- [providerPriceTrust.js](js/domain/providerPriceTrust.js) теперь формирует
+  короткий title: только дату актуальности прайса, без URL/source.
+- [providerAnalyticsModal.js](js/ui/modals/providerAnalyticsModal.js) выводит
+  дату актуальности в Прайс-бенчмарке один раз — в основной таблице цен; матрица
+  доверия остаётся про качество источника цены.
+- [modals.css](css/modals.css) добавляет отдельный размер `modal-analytics`
+  для desktop-бенчмарка, чтобы матрица доверия помещалась без горизонтального
+  скролла на штатном desktop viewport.
+
+**Проверки.**
+
+- Targeted provider trust / analytics modal suite: 67/67 pass.
+- Targeted Playwright desktop regression for provider benchmark: pass.
+- `npm test`: 5094/5094 pass.
+- `npm run smoke:desktop`: 29/29 pass.
+- `npm run pages:build`: pass.
+- `npm run prices:freshness:check`: pass.
+- `npm run sanity:check`: pass.
+- `npm run syntax-check`: pass.
+- `git diff --check`: pass.
+
+**Версионирование.**
+
+`2.20.33 → 2.20.34` (PATCH). Schema, provider JSON schema и bundle format не
+меняются. Изменение пользовательски видимо как более короткий хинт актуальности
+прайса и более широкое окно «Прайс-бенчмарк» без дублирования даты.
+
 ## 23.05.2026 · PATCH 2.20.33 — price actuality dates + provider trust matrix
 
 **Контекст.** После refresh Cloud.ru/Yandex и source-level VK пользователь должен

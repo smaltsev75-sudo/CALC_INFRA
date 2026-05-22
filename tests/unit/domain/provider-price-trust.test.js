@@ -77,6 +77,8 @@ describe('providerPriceTrust — русские подписи для UI', () =>
         assert.equal(actuality.date, '22.05.2026');
         assert.match(actuality.label, /Актуальность прайса: 22\.05\.2026/);
         assert.match(actuality.label, /версия 2026-05-22-official/);
+        assert.equal(actuality.title, 'Дата актуальности прайса: 22.05.2026.');
+        assert.doesNotMatch(actuality.title, /Источник|https?:\/\//);
     });
 
     it('для расчёта берётся дата применённого providerVersion, а не текущий latest', () => {

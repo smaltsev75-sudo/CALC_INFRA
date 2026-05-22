@@ -37,6 +37,7 @@ const PROVIDER_UI    = stripJsComments(read('js/ui/providerUpdateRow.js'));
 const DOMAIN_SRC     = stripJsComments(read('js/domain/providerAnalytics.js'));
 const ICONS_SRC      = read('js/ui/icons.js');
 const FORMS_CSS      = stripCssComments(read('css/forms.css'));
+const MODALS_CSS     = stripCssComments(read('css/modals.css'));
 
 describe('Stage 10.4 — providerAnalyticsModal.js файл-модуль', () => {
     it('export renderProviderAnalyticsModal', () => {
@@ -63,6 +64,17 @@ describe('Stage 10.4 — providerAnalyticsModal.js файл-модуль', () =>
 
     it('Stage 17.2: checkbox bulk-выборки удалён — нет analytics-th-check / analytics-td-check', () => {
         assert.doesNotMatch(MODAL_SRC, /analytics-th-check|analytics-td-check/);
+    });
+
+    it('использует широкий размер modal-analytics для desktop-бенчмарка', () => {
+        assert.match(MODAL_SRC, /size:\s*['"]analytics['"]/);
+    });
+
+    it('дата актуальности прайса не дублируется в матрице доверия', () => {
+        const m = MODAL_SRC.match(/const\s+renderTrustMatrix\s*=[\s\S]+?const\s+thead\s*=/);
+        assert.ok(m, 'не нашёл renderTrustMatrix');
+        assert.doesNotMatch(m[0], /renderProviderActuality/,
+            'в матрице доверия не нужно повторять дату: она остаётся в основной таблице цен');
     });
 
     it('Stage 17.2: sort работает через ctx.patchModal (категория → sortBy)', () => {
@@ -159,6 +171,7 @@ describe('Stage 10.4 — CSS .analytics-* + .provider-analytics-btn', () => {
     it('.analytics-th-cat', () => assert.match(FORMS_CSS, /\.analytics-th-cat\b/));
     it('.analytics-td-cat', () => assert.match(FORMS_CSS, /\.analytics-td-cat\b/));
     it('.provider-analytics-btn', () => assert.match(FORMS_CSS, /\.provider-analytics-btn\s*\{/));
+    it('.modal-analytics', () => assert.match(MODALS_CSS, /\.modal-analytics\s*\{[^}]*max-width\s*:\s*min\(1280px,\s*calc\(100vw - 48px\)\)/));
     /* Stage 17.2: .analytics-row--unchecked + .analytics-bulk-update-btn — bulk-only классы.
        JS-callsite удалён, CSS будет убран в Phase 4 cleanup. Для текущей фазы только
        проверяем, что bulk не рендерится. */

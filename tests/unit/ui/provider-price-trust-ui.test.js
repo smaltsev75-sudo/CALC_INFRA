@@ -83,9 +83,10 @@ describe('provider analytics modal — trust metadata is visible', () => {
         assert.match(ANALYTICS_SRC, /p\.warnings/);
     });
 
-    it('renders provider trust matrix with price actuality metadata', () => {
+    it('renders provider trust matrix and price actuality in the price table', () => {
         assert.match(ANALYTICS_SRC, /analytics-trust-matrix/);
         assert.match(ANALYTICS_SRC, /Cloud\.ru vs Yandex vs VK/);
+        assert.match(ANALYTICS_SRC, /analytics-table/);
         assert.match(ANALYTICS_SRC, /analytics-provider-meta/);
         assert.match(ANALYTICS_SRC, /getProviderPriceActuality/);
     });

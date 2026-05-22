@@ -185,10 +185,15 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
 
     await page.locator('.provider-analytics-btn').click();
     const analyticsModal = page.locator('.modal-overlay').filter({ hasText: 'Прайс-бенчмарк' });
+    await expect(analyticsModal.locator('.modal')).toHaveClass(/modal-analytics/);
     await expect(analyticsModal.locator('.analytics-trust-matrix')).toBeVisible();
     await expect(analyticsModal.locator('.analytics-trust-matrix')).toContainText('Cloud.ru vs Yandex vs VK');
-    await expect(analyticsModal.locator('.analytics-provider-meta').first())
+    await expect(analyticsModal.locator('.analytics-trust-matrix .analytics-provider-meta')).toHaveCount(0);
+    await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta')).toHaveCount(3);
+    await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta').first())
         .toContainText('Актуальность прайса:');
+    await expect.poll(async () => analyticsModal.locator('.analytics-trust-matrix-wrap')
+        .evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
 
     expect(consoleErrors).toEqual([]);
 });

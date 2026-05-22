@@ -172,7 +172,6 @@ export function renderProviderAnalyticsModal(state, ctx) {
                             el('tr', null,
                                 el('td', { class: 'analytics-trust-provider' },
                                     el('span', { class: 'analytics-provider-name', text: provider.label }),
-                                    renderProviderActuality(provider.id),
                                     ...renderProviderWarnings(provider.warnings)
                                 ),
                                 ...matrix.capabilities.map(capability => {
@@ -320,7 +319,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
 
     return modalShell({
         title: 'Прайс-бенчмарк',
-        size: 'lg',
+        size: 'analytics',
         onClose: close,
         children: el('div', { class: 'analytics-body' },
             el('p', { class: 'analytics-hint',
