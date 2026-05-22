@@ -138,15 +138,17 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'
 
 ```bash
 npm test                  # весь test-suite
-npm run smoke:desktop     # Playwright desktop-smoke: Dashboard / Planner / Memo / Details / Comparison
+npm run smoke:desktop     # Playwright desktop suite: smoke + UI↔domain regression
 npm run syntax-check      # node --check для js/**/*.js
 npm run sanity:check      # проверка актуальности SANITY_REPORT.md
 npm run sanity            # пересобрать SANITY_REPORT.md
 ```
 
 `npm test` включает golden-сценарии Quick Start с закреплёнными итогами и
-разбивкой по категориям. `npm run smoke:desktop` дополнительно проверяет, что
-группы ЭК в «Детализации» отрисованы по убыванию «ИТОГО / год».
+разбивкой по категориям. `npm run smoke:desktop` дополнительно проверяет
+реальный desktop-рендер: Dashboard/Details сверяются с `calculate()`, изменение
+ключевого ответа пересчитывает UI, отключённый стенд исключается из totals, а
+риск-коэффициенты и НДС остаются независимыми.
 
 Архитектура держится на ES-модулях без bundler'а. Исторические entry point'ы вроде `js/app.js`, `js/ui/questionnaire.js`, `js/domain/costOptimizationPlanner.js`, `js/services/providerPriceFetch.js` сохранены как стабильные фасады; узкая логика вынесена в соседние модули (`js/app/*Actions.js`, `questionnaire*`, `dashboard*`, `costOptimizationPlanner*`, `priceImportMapping*`, `providerPriceNormalize.js`, `decisionMemoFormat.js`). Актуальная карта ownership — в [Architecture.md](Architecture.md#фасады-после-модульного-рефакторинга).
 

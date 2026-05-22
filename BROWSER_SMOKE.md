@@ -2,7 +2,7 @@
 
 Ручной regression-чек для подтверждения текущей UX-модели. Запускать после **Ctrl+Shift+R** (hard-reload — иначе ESM-кэш браузера держит старые модули).
 
-## Автоматический desktop smoke
+## Автоматический desktop suite
 
 Для desktop-first проверки перед ручным проходом:
 
@@ -10,7 +10,7 @@
 npm run smoke:desktop
 ```
 
-Команда запускает Playwright на 1365×768 и параллельно проверяет Dashboard, Cost Optimization Planner, Decision Memo, Детализацию и Сравнение. Для «Детализации» автоматический smoke также проверяет порядок групп ЭК по убыванию «ИТОГО / год». Скриншоты сохраняются в `.playwright-mcp/`; временные отчёты Playwright тоже уходят туда через `playwright.config.js`.
+Команда запускает Playwright на 1365×768 и параллельно проверяет Dashboard, Cost Optimization Planner, Decision Memo, Детализацию и Сравнение. Помимо smoke-рендера, suite сверяет Dashboard/Details с production `calculate()`, проверяет пересчёт после изменения ответа, исключение disabled-стенда из totals и независимость риск-коэффициентов от НДС. Скриншоты сохраняются в `.playwright-mcp/`; временные отчёты Playwright тоже уходят туда через `playwright.config.js`.
 
 Ручной checklist ниже остаётся нужен для сценариев, где важны UX-нюансы, клики и визуальная оценка, но базовые console/overflow regressions теперь должны ловиться автоматикой.
 

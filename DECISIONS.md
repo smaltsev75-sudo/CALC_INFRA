@@ -1,5 +1,35 @@
 # Журнал решений и допущений
 
+## 22.05.2026 · PATCH 2.20.18 — Desktop E2E regression-suite с UI↔domain сверкой
+
+**Контекст.** После сортировки групп в «Детализации» пользователь согласовал
+следующий шаг: закрепить реальные desktop-пути через Playwright, чтобы UI и
+расчётная модель не расходились незаметно. До этого `npm run smoke:desktop`
+проверял базовый рендер критичных экранов; новый слой проверяет уже числовую
+согласованность.
+
+**Что добавлено:**
+
+- общий Playwright helper [tests/e2e/helpers.js](tests/e2e/helpers.js):
+  boot clean app, seed двух расчётов, tab switch, DOM-readers и
+  `getCalculationUiModel()` — модель ожидаемых UI-значений строится в браузере
+  через production `calculate()`, `applyStandFilter()`,
+  `buildDetailsCategoryOrder()`, `formatRub()` и `formatRubThousands()`;
+- [desktop-regression.spec.js](tests/e2e/desktop-regression.spec.js) — 4
+  desktop E2E-регрессии:
+  - Dashboard и Details совпадают с расчётной моделью для seeded проекта;
+  - изменение ключевого ответа `peak_rps` пересчитывает Dashboard и Details;
+  - отключение стенда `LOAD` исключает его из активных totals и переносит
+    disabled-карточку вниз;
+  - `applyRiskFactors` и `vatEnabled` остаются независимыми в отрендеренных
+    totals и бейджах (`БЕЗ РИСКОВ` + `С НДС 22%`);
+- [desktop-smoke.spec.js](tests/e2e/desktop-smoke.spec.js) переведён на общий
+  helper, а проверка порядка Details-групп стала строгой сверкой всех category
+  row с моделью, включая форматированные monthly/annual totals.
+
+**Версионирование.** PATCH `2.20.17 → 2.20.18`: production-логика не менялась;
+усилен Playwright regression-suite и обновлена документация.
+
 ## 22.05.2026 · PATCH 2.20.17 — Детализация по убыванию ИТОГО/год + golden scenarios
 
 **Контекст.** Пользователь уточнил продуктовую логику таблицы:
