@@ -117,7 +117,7 @@ export function renderDetails(state, ctx) {
                     title: 'Открыть анализ факторов, влияющих на расчёт и бюджет',
                     attrs: { type: 'button', 'data-testid': 'details-root-cause-open' },
                     onClick: () => ctx.openRootCauseReportModal?.()
-                }, icon('bar-chart-3', { size: 16 }), el('span', { text: 'Анализ факторов' })),
+                }, icon('git-branch', { size: 16 }), el('span', { text: 'Анализ факторов' })),
                 el('button', {
                     class: 'btn btn-ghost btn-icon-text',
                     title: 'Скачать детализацию в Excel-совместимом формате CSV — для отчёта или передачи коллегам',

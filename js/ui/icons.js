@@ -179,6 +179,11 @@ const ICONS = Object.freeze({
         '<path d="M18 17V9"/>' +
         '<path d="M13 17V5"/>' +
         '<path d="M8 17v-3"/>',
+    'git-branch':
+        '<line x1="6" x2="6" y1="3" y2="15"/>' +
+        '<circle cx="18" cy="6" r="3"/>' +
+        '<circle cx="6" cy="18" r="3"/>' +
+        '<path d="M18 9a9 9 0 0 1-9 9"/>',
     scale:
         '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>' +
         '<path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>' +

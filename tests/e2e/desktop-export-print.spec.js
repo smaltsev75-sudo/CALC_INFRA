@@ -154,78 +154,101 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
         store.setUi({ detailsSubTab: 'cost' });
         await new Promise(resolve => requestAnimationFrame(resolve));
 
-        let duringPrint = null;
-        let withoutQuantity = null;
-        printWithDetailsMode(
-            () => {
-                const table = document.querySelector('.details-table-cost');
-                const wrap = document.querySelector('.details-table-wrap');
-                const main = document.querySelector('.app-main');
-                const rootCause = document.querySelector('.root-cause-report, .root-cause-modal-body');
-                const quantitySummary = document.querySelector('.details-quantity-print-summary');
-                const vendorHeader = [...document.querySelectorAll('.details-table-cost thead th')]
-                    .find(th => th.textContent.trim() === 'Поставщик');
-                const tableStyle = getComputedStyle(table);
-                const vendorStyle = getComputedStyle(vendorHeader);
-                duringPrint = {
-                    bodyClass: document.body.className,
-                    hasStyle: !!document.getElementById('details-print-page-style'),
-                    styleText: document.getElementById('details-print-page-style')?.textContent || '',
-                    tableLayout: tableStyle.tableLayout,
-                    tableWidth: table.getBoundingClientRect().width,
-                    wrapWidth: wrap.getBoundingClientRect().width,
-                    mainWidth: main.getBoundingClientRect().width,
-                    tabContain: getComputedStyle(document.querySelector('.tab-pane')).contain,
-                    hasRootCause: !!rootCause,
-                    rootCauseText: rootCause?.textContent || '',
-                    quantitySummaryDisplay: getComputedStyle(quantitySummary).display,
-                    quantitySummaryText: quantitySummary.textContent,
-                    vendorWidth: vendorHeader.getBoundingClientRect().width,
-                    vendorWordBreak: vendorStyle.wordBreak,
-                    vendorOverflowWrap: vendorStyle.overflowWrap
-                };
-                window.dispatchEvent(new Event('afterprint'));
-            },
-            { includeQuantitySummary: true }
-        );
-        printWithDetailsMode(
-            () => {
-                const quantitySummary = document.querySelector('.details-quantity-print-summary');
-                withoutQuantity = {
-                    bodyClass: document.body.className,
-                    quantitySummaryDisplay: getComputedStyle(quantitySummary).display
-                };
-                window.dispatchEvent(new Event('afterprint'));
-            },
-            { includeQuantitySummary: false }
-        );
+        const byTheme = [];
+        for (const theme of ['dark', 'light']) {
+            document.documentElement.dataset.theme = theme;
+            await new Promise(resolve => requestAnimationFrame(resolve));
+
+            let duringPrint = null;
+            let withoutQuantity = null;
+            printWithDetailsMode(
+                () => {
+                    const table = document.querySelector('.details-table-cost');
+                    const wrap = document.querySelector('.details-table-wrap');
+                    const main = document.querySelector('.app-main');
+                    const rootCause = document.querySelector('.root-cause-report, .root-cause-modal-body');
+                    const quantitySummary = document.querySelector('.details-quantity-print-summary');
+                    const vendorHeader = [...document.querySelectorAll('.details-table-cost thead th')]
+                        .find(th => th.textContent.trim() === 'Поставщик');
+                    const tableStyle = getComputedStyle(table);
+                    const vendorStyle = getComputedStyle(vendorHeader);
+                    const wrapStyle = getComputedStyle(wrap);
+                    duringPrint = {
+                        bodyClass: document.body.className,
+                        hasStyle: !!document.getElementById('details-print-page-style'),
+                        styleText: document.getElementById('details-print-page-style')?.textContent || '',
+                        tableLayout: tableStyle.tableLayout,
+                        tableWidth: table.getBoundingClientRect().width,
+                        wrapWidth: wrap.getBoundingClientRect().width,
+                        mainWidth: main.getBoundingClientRect().width,
+                        wrapBackground: wrapStyle.backgroundColor,
+                        wrapBorderRadius: wrapStyle.borderRadius,
+                        wrapBoxShadow: wrapStyle.boxShadow,
+                        wrapTransitionDuration: wrapStyle.transitionDuration,
+                        tabContain: getComputedStyle(document.querySelector('.tab-pane')).contain,
+                        hasRootCause: !!rootCause,
+                        rootCauseText: rootCause?.textContent || '',
+                        quantitySummaryDisplay: getComputedStyle(quantitySummary).display,
+                        quantitySummaryText: quantitySummary.textContent,
+                        vendorWidth: vendorHeader.getBoundingClientRect().width,
+                        vendorWordBreak: vendorStyle.wordBreak,
+                        vendorOverflowWrap: vendorStyle.overflowWrap
+                    };
+                    window.dispatchEvent(new Event('afterprint'));
+                },
+                { includeQuantitySummary: true }
+            );
+            printWithDetailsMode(
+                () => {
+                    const quantitySummary = document.querySelector('.details-quantity-print-summary');
+                    withoutQuantity = {
+                        bodyClass: document.body.className,
+                        quantitySummaryDisplay: getComputedStyle(quantitySummary).display
+                    };
+                    window.dispatchEvent(new Event('afterprint'));
+                },
+                { includeQuantitySummary: false }
+            );
+            byTheme.push({
+                theme,
+                duringPrint,
+                withoutQuantity,
+                afterClass: document.body.className,
+                afterStyleExists: !!document.getElementById('details-print-page-style')
+            });
+        }
 
         return {
-            duringPrint,
-            withoutQuantity,
-            afterClass: document.body.className,
-            afterStyleExists: !!document.getElementById('details-print-page-style')
+            byTheme
         };
     });
 
-    expect(snapshot.duringPrint.bodyClass).toContain('printing-details');
-    expect(snapshot.duringPrint.hasStyle).toBe(true);
-    expect(snapshot.duringPrint.styleText).toContain('A4 landscape');
-    expect(snapshot.duringPrint.tableLayout).toBe('fixed');
-    expect(snapshot.duringPrint.tabContain).toBe('none');
-    expect(snapshot.duringPrint.tableWidth).toBeGreaterThan(snapshot.duringPrint.mainWidth * 0.98);
-    expect(snapshot.duringPrint.wrapWidth).toBeGreaterThan(snapshot.duringPrint.mainWidth * 0.98);
-    expect(snapshot.duringPrint.hasRootCause).toBe(false);
-    expect(snapshot.duringPrint.rootCauseText).not.toContain('Анализ факторов');
-    expect(snapshot.duringPrint.quantitySummaryDisplay).toBe('block');
-    expect(snapshot.duringPrint.quantitySummaryText).toContain('Почему столько? Проверка количества ЭК');
-    expect(snapshot.withoutQuantity.bodyClass).toContain('printing-details-no-quantity-summary');
-    expect(snapshot.withoutQuantity.quantitySummaryDisplay).toBe('none');
-    expect(snapshot.duringPrint.vendorWidth).toBeGreaterThan(60);
-    expect(snapshot.duringPrint.vendorWordBreak).toBe('keep-all');
-    expect(snapshot.duringPrint.vendorOverflowWrap).toBe('normal');
-    expect(snapshot.afterClass).not.toContain('printing-details');
-    expect(snapshot.afterStyleExists).toBe(false);
+    expect(snapshot.byTheme.map(item => item.theme)).toEqual(['dark', 'light']);
+    for (const themeSnapshot of snapshot.byTheme) {
+        const { duringPrint, withoutQuantity } = themeSnapshot;
+        expect(duringPrint.bodyClass).toContain('printing-details');
+        expect(duringPrint.hasStyle).toBe(true);
+        expect(duringPrint.styleText).toContain('A4 landscape');
+        expect(duringPrint.tableLayout).toBe('fixed');
+        expect(duringPrint.tabContain).toBe('none');
+        expect(duringPrint.tableWidth).toBeGreaterThan(duringPrint.mainWidth * 0.98);
+        expect(duringPrint.wrapWidth).toBeGreaterThan(duringPrint.mainWidth * 0.98);
+        expect(duringPrint.wrapBackground).toBe('rgb(255, 255, 255)');
+        expect(duringPrint.wrapBorderRadius).toBe('0px');
+        expect(duringPrint.wrapBoxShadow).toBe('none');
+        expect(duringPrint.wrapTransitionDuration).toBe('0s');
+        expect(duringPrint.hasRootCause).toBe(false);
+        expect(duringPrint.rootCauseText).not.toContain('Анализ факторов');
+        expect(duringPrint.quantitySummaryDisplay).toBe('block');
+        expect(duringPrint.quantitySummaryText).toContain('Почему столько? Проверка количества ЭК');
+        expect(withoutQuantity.bodyClass).toContain('printing-details-no-quantity-summary');
+        expect(withoutQuantity.quantitySummaryDisplay).toBe('none');
+        expect(duringPrint.vendorWidth).toBeGreaterThan(60);
+        expect(duringPrint.vendorWordBreak).toBe('keep-all');
+        expect(duringPrint.vendorOverflowWrap).toBe('normal');
+        expect(themeSnapshot.afterClass).not.toContain('printing-details');
+        expect(themeSnapshot.afterStyleExists).toBe(false);
+    }
 
     await page.emulateMedia({ media: 'screen' });
     expect(consoleErrors).toEqual([]);

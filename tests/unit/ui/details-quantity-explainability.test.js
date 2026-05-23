@@ -137,6 +137,7 @@ describe('Details quantity explainability', () => {
 
         assert.doesNotMatch(detailsSrc, /renderCostCheckReport\(/);
         assert.match(detailsSrc, /data-testid['"]?:\s*['"]details-root-cause-open['"]/);
+        assert.match(detailsSrc, /icon\(['"]git-branch['"],\s*\{\s*size:\s*16\s*\}\)/);
         assert.match(detailsSrc, /ctx\.openRootCauseReportModal\?\.\(\)/);
         assert.match(appSrc, /openRootCauseReportModal\(\)\s*\{\s*store\.openModal\(['"]rootCauseReport['"]\)/);
         assert.match(storeSrc, /rootCauseReport:\s*\{\s*open:\s*false\s*\}/);
@@ -153,6 +154,10 @@ describe('Details quantity explainability', () => {
         assert.match(modalsCss, /\.root-cause-row\s*\{[^}]*grid-template-columns/);
         assert.match(modalsCss, /\.root-cause-name\s*\{[^}]*overflow-wrap\s*:\s*anywhere/);
         assert.doesNotMatch(modalsCss, /\.root-cause-name\s*\{[^}]*text-overflow\s*:\s*ellipsis/);
+        assert.match(printCss,
+            /\.details-table-wrap,\s*\.items-table-wrap\s*\{[^}]*background\s*:\s*white\s*!important[^}]*border-radius\s*:\s*0\s*!important/s);
+        assert.match(printCss, /\*\s*,\s*\*::before\s*,\s*\*::after\s*\{[^}]*transition\s*:\s*none\s*!important[^}]*animation\s*:\s*none\s*!important/s);
+        assert.match(printCss, /\.details-table\s+\.col-info[\s\S]{0,260}?display\s*:\s*none\s*!important/);
         assert.doesNotMatch(printCss, /root-cause|cost-check/);
     });
 });

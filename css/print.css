@@ -3,6 +3,13 @@
  * ============================================================ */
 
 @media print {
+    *,
+    *::before,
+    *::after {
+        transition: none !important;
+        animation: none !important;
+    }
+
     body {
         background: white !important;
         color: black !important;
@@ -190,7 +197,12 @@
     /* Таблицы */
     table { page-break-inside: auto; }
     tr { page-break-inside: avoid; page-break-after: auto; }
-    .details-table-wrap, .items-table-wrap { border: none !important; }
+    .details-table-wrap, .items-table-wrap {
+        background: white !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
     .details-table th, .details-table td,
     .items-table th, .items-table td,
     .questions-table th, .questions-table td {
@@ -352,9 +364,11 @@
     .details-table .col-share,
     .details-table .col-risk,
     .details-table .col-risk-amount,
+    .details-table .col-info,
     .details-table th.col-share,
     .details-table th.col-risk,
-    .details-table th.col-risk-amount {
+    .details-table th.col-risk-amount,
+    .details-table th.col-info {
         display: none !important;
     }
     .details-table .col-stand,
