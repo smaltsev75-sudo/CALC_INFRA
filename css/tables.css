@@ -597,6 +597,135 @@
     line-height: 1.4;
 }
 
+.details-cost-check-report {
+    margin: 0 0 var(--space-4, 16px);
+    box-sizing: border-box;
+    max-width: calc(100vw - var(--sidebar-width, 220px) - 48px);
+    min-width: 0;
+}
+.cost-check-title {
+    margin-top: var(--space-2, 8px);
+}
+.cost-check-note {
+    margin: 0 0 var(--space-2, 8px);
+    color: var(--text-muted);
+    font-size: var(--font-sm, 0.92rem);
+    line-height: 1.45;
+}
+.cost-check-table-wrap {
+    width: 100%;
+    overflow-x: visible;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm, 6px);
+    background: var(--bg-card);
+}
+.cost-check-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+.cost-check-table th,
+.cost-check-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    overflow-wrap: anywhere;
+}
+.cost-check-table th {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    font-weight: 700;
+    text-align: left;
+    text-transform: uppercase;
+}
+.cost-check-table th:nth-child(1) { width: 18%; }
+.cost-check-table th:nth-child(2) { width: 13%; }
+.cost-check-table th:nth-child(3) { width: 35%; }
+.cost-check-table th:nth-child(4) { width: 17%; }
+.cost-check-table th:nth-child(5) { width: 17%; }
+.cost-check-row:last-child td {
+    border-bottom: none;
+}
+.cost-check-item-layout {
+    display: flex;
+    gap: 8px;
+    min-width: 0;
+}
+.cost-check-rank {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--accent-faint);
+    color: var(--accent);
+    font-size: var(--font-xs);
+    font-weight: 700;
+}
+.cost-check-item-text,
+.cost-check-money,
+.cost-check-chain,
+.cost-check-sources,
+.cost-check-units {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+.cost-check-item-text strong,
+.cost-check-money strong {
+    color: var(--text);
+    font-size: var(--font-sm);
+}
+.cost-check-item-text span,
+.cost-check-money span,
+.cost-check-muted {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    line-height: 1.35;
+}
+.cost-check-chain-line {
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: var(--font-xs);
+    line-height: 1.45;
+}
+.cost-check-source-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.cost-check-source-pill,
+.cost-check-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    max-width: 100%;
+    padding: 2px 6px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm, 6px);
+    color: var(--text);
+    font-size: var(--font-xs);
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+.cost-check-badge-ok {
+    border-color: rgba(20, 184, 166, 0.55);
+    color: var(--accent);
+}
+.cost-check-badge-warn {
+    border-color: rgba(251, 191, 36, 0.65);
+    color: var(--warning);
+}
+.cost-check-unit-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
 /* Поле «Тип расхода» в форме редактирования ЭК. */
 .cost-type-field { display: flex; flex-direction: column; gap: 4px; }
 .cost-type-hint {

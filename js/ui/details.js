@@ -27,6 +27,7 @@ import {
     renderCostSection,
     renderQtySection
 } from './detailsSections.js';
+import { renderCostCheckReport } from './costCheckReport.js';
 import { renderDetailsQuantityPrintSummary } from './quantityExplanation.js';
 
 /** Sub-tab id-ы для Детализации. */
@@ -129,6 +130,10 @@ export function renderDetails(state, ctx) {
             testId: 'details-provider-price-actuality'
         }),
         providerPriceWarning ? renderProviderPriceWarning(providerPriceWarning, ctx) : null,
+
+        subTab === 'cost'
+            ? renderCostCheckReport(calc, result, disabledStands, { limit: 10 })
+            : null,
 
         subTab === 'qty'
             ? renderQtySection(byCat, result, ctx, disabledStands, state, presentCats)

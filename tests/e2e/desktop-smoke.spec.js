@@ -70,6 +70,10 @@ test('details and comparison desktop tables render with seeded calculations', as
     await seedCalculations(page);
 
     await switchTab(page, 'details');
+    await expect(page.getByTestId('cost-check-report')).toBeVisible();
+    await expect(page.getByTestId('cost-check-report')).toContainText('Проверка расчёта ЭК');
+    await expect(page.getByTestId('cost-check-report')).toContainText('Источники');
+    await expect(page.getByTestId('cost-check-report')).toContainText('Единицы');
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expect(page.locator('.details-table-cost tbody tr').first()).toBeVisible();
     await expectDetailsCostCategoriesMatchModel(page);
@@ -79,6 +83,8 @@ test('details and comparison desktop tables render with seeded calculations', as
     await expect(page.locator('.modal-title')).toContainText('Почему столько?');
     await expect(page.getByTestId('quantity-explanation-panel')).toBeVisible();
     await expectNoHorizontalOverflow(page, [
+        '.details-cost-check-report',
+        '.cost-check-table',
         '.modal',
         '.formula-modal-body',
         '.quantity-explanation-panel',

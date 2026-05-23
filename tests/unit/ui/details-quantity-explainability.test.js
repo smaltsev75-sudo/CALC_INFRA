@@ -12,6 +12,7 @@ import {
     settingLabel,
     sourceLabel
 } from '../../../js/ui/quantityExplanation.js';
+import { buildCostCheckReportModel } from '../../../js/ui/costCheckReport.js';
 import { stripCssComments, stripJsComments } from '../../_helpers/source.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -97,5 +98,43 @@ describe('Details quantity explainability', () => {
         assert.match(detailsSrc, /renderDetailsQuantityPrintSummary\(calc,\s*result,\s*disabledStands\)/);
         assert.match(tablesCss, /\.details-quantity-print-summary\s*\{[^}]*display\s*:\s*none/);
         assert.match(printCss, /\.details-quantity-print-summary\s*\{[^}]*display\s*:\s*block\s*!important/);
+    });
+
+    it('отчёт проверки расчёта ЭК показывает top-строки, источники и контроль единиц', () => {
+        const calc = buildQuickStartCalc();
+        const result = calculate(calc);
+        const model = buildCostCheckReportModel(calc, result, [], { limit: 10 });
+
+        assert.ok(model.rows.length > 0, 'в отчёте должны быть строки top-ЭК');
+        assert.ok(model.rows.length <= 10, 'отчёт должен ограничиваться top-10');
+        assert.ok(model.rows.every(row => row.monthly > 0), 'каждая строка должна влиять на бюджет');
+        assert.ok(model.rows.every(row => row.unitCheck.ok), 'единицы и формулы стоимости должны сходиться');
+    });
+
+    it('отчёт проверки расчёта ЭК сохраняет источник Quick Start и коэффициенты стенда', () => {
+        const calc = buildQuickStartCalc();
+        const result = calculate(calc);
+        const model = buildCostCheckReportModel(calc, result, [], { limit: 50 });
+        const cpu = model.rows.find(row => row.itemId === 'cpu-vcpu-shared');
+
+        assert.ok(cpu, 'CPU должен попасть в расширенную проверку');
+        assert.ok(
+            cpu.sourceSummary.some(text => text.includes('Quick Start')),
+            cpu.sourceSummary.join('\n')
+        );
+        assert.match(cpu.answersText, /Quick Start/);
+        assert.match(cpu.settingsText, /коэффициент размера стенда/);
+        assert.match(cpu.unitText, /месячный тариф|дневной тариф|годовой тариф|разовый платёж/);
+    });
+
+    it('Детализация рендерит отчёт проверки расчёта ЭК перед таблицей стоимости', () => {
+        const detailsSrc = stripJsComments(read('js/ui/details.js'));
+        const reportSrc = stripJsComments(read('js/ui/costCheckReport.js'));
+        const tablesCss = stripCssComments(read('css/tables.css'));
+
+        assert.match(detailsSrc, /renderCostCheckReport\(calc,\s*result,\s*disabledStands/);
+        assert.match(reportSrc, /data-testid['"]?:\s*['"]cost-check-report['"]/);
+        assert.match(reportSrc, /Проверка расчёта ЭК/);
+        assert.match(tablesCss, /\.cost-check-table\s*\{[^}]*table-layout\s*:\s*fixed/);
     });
 });
