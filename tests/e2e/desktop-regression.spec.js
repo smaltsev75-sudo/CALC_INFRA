@@ -215,9 +215,16 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
         .not.toContainText('версия');
     await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta').first())
         .not.toHaveAttribute('title', /.+/);
-    await expect(analyticsModal.locator('.analytics-hint')).toContainText('6 крупнейших ЭК');
-    await expect(analyticsModal.locator('.analytics-cat-toggle')).toHaveCount(6);
-    await expect(analyticsModal.locator('.analytics-th-cat')).toHaveCount(6);
+    await expect(analyticsModal.locator('.analytics-hint')).toContainText('Показаны до 6 крупнейших ЭК');
+    await expect(analyticsModal.locator('.analytics-hint')).toContainText('публичная цена Cloud.ru');
+    const benchmarkCategoryCount = await analyticsModal.locator('.analytics-cat-toggle').count();
+    expect(benchmarkCategoryCount).toBeGreaterThan(0);
+    expect(benchmarkCategoryCount).toBeLessThanOrEqual(6);
+    await expect(analyticsModal.locator('.analytics-th-cat')).toHaveCount(benchmarkCategoryCount);
+    const cloudBenchmarkRow = analyticsModal.locator('.analytics-table tbody tr')
+        .filter({ hasText: 'Cloud.ru' });
+    await expect(cloudBenchmarkRow.locator('.analytics-td-cat-empty')).toHaveCount(0);
+    await expect(cloudBenchmarkRow).not.toContainText('Нет цены');
     await expect(analyticsModal.locator('.analytics-th-total')).toContainText('Вклад ЭК');
     await expect.poll(async () => analyticsModal.locator('.analytics-trust-matrix-wrap')
         .evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);

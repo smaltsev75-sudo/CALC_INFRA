@@ -98,7 +98,8 @@ describe('provider analytics modal — trust metadata is visible', () => {
     });
 
     it('hint explains calc-specific benchmark in Russian', () => {
-        assert.match(ANALYTICS_SRC, /6 крупнейших ЭК/);
+        assert.match(ANALYTICS_SRC, /до.*крупнейших ЭК/);
+        assert.match(ANALYTICS_SRC, /публичная цена Cloud\.ru/);
         assert.match(ANALYTICS_SRC, /месячному вкладу/);
         assert.match(ANALYTICS_SRC, /Вклад ЭК/);
         assert.doesNotMatch(ANALYTICS_SRC, /CPU = 1 vCPU/);

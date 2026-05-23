@@ -81,6 +81,7 @@ export const CATEGORY_DESCRIPTIONS_FOR_UI = Object.freeze({
 
 const CATEGORY_ORDER = Object.freeze(['CPU', 'RAM', 'STORAGE', 'NETWORK', 'LICENSE']);
 export const PROVIDER_BENCHMARK_TOP_LIMIT = 6;
+export const PROVIDER_BENCHMARK_REFERENCE_PROVIDER = DEFAULT_PROVIDER;
 
 const BENCHMARK_ITEM_LABELS_FOR_UI = Object.freeze({
     'cpu-vcpu-shared': 'CPU shared',
@@ -143,9 +144,10 @@ function makeDefaultColumns() {
 }
 
 function normalizeBenchmarkColumns(benchmarkItems) {
-    if (!Array.isArray(benchmarkItems) || benchmarkItems.length === 0) {
+    if (!Array.isArray(benchmarkItems)) {
         return makeDefaultColumns();
     }
+    if (benchmarkItems.length === 0) return [];
 
     const seen = new Set();
     const columns = [];
@@ -202,12 +204,17 @@ function priceUnitForItem(item) {
 
 /**
  * Построить колонки Прайс-бенчмарка из конкретного расчёта: top-N ЭК по
- * месячному вкладу на всём расчётном горизонте. monthlyUsageFactor — это
- * «взвешенное количество в месяц»: qty × интервальный множитель × риски × НДС.
+ * месячному вкладу на всём расчётном горизонте среди ЭК, для которых есть
+ * эталонная цена Cloud.ru. monthlyUsageFactor — это «взвешенное количество в
+ * месяц»: qty × интервальный множитель × риски × НДС.
  * Умножая его на цену другого провайдера, получаем практическое влияние этой
  * цены на текущий расчёт, а не абстрактный unit-price.
  */
-export function buildProviderBenchmarkItems(calculation, result, { limit = PROVIDER_BENCHMARK_TOP_LIMIT } = {}) {
+export function buildProviderBenchmarkItems(calculation, result, {
+    limit = PROVIDER_BENCHMARK_TOP_LIMIT,
+    referenceProviderId = PROVIDER_BENCHMARK_REFERENCE_PROVIDER,
+    referencePrices = null
+} = {}) {
     const rawItems = Array.isArray(calculation?.dictionaries?.items)
         ? calculation.dictionaries.items
         : [];
@@ -220,14 +227,20 @@ export function buildProviderBenchmarkItems(calculation, result, { limit = PROVI
         : {};
     const totalMonthly = Number(result?.totalMonthly) || 0;
     const n = Number.isInteger(limit) && limit > 0 ? limit : PROVIDER_BENCHMARK_TOP_LIMIT;
+    const referencePriceMap = (referencePrices && typeof referencePrices === 'object')
+        ? referencePrices
+        : (PROVIDER_OVERLAYS[referenceProviderId]?.prices || {});
 
     return items
         .map(item => {
             const monthlyCost = Number(itemResults[item.id]?.totalMonthly) || 0;
             const price = Number(item.pricePerUnit);
+            const referenceEntry = referencePriceMap[item.id] || null;
+            const referencePrice = Number(referenceEntry?.pricePerUnit);
             const monthlyUsageFactor = Number.isFinite(price) && price > 0 && monthlyCost > 0
                 ? monthlyCost / price
                 : null;
+            const hasReferencePrice = Number.isFinite(referencePrice) && referencePrice > 0;
             return {
                 key: item.id,
                 itemId: item.id,
@@ -238,10 +251,17 @@ export function buildProviderBenchmarkItems(calculation, result, { limit = PROVI
                 category: item.category || '',
                 monthlyCost,
                 monthlyUsageFactor,
+                referenceProviderId,
+                referencePrice: hasReferencePrice ? referencePrice : null,
+                referenceMonthlyCost: hasReferencePrice && Number.isFinite(monthlyUsageFactor)
+                    ? referencePrice * monthlyUsageFactor
+                    : null,
                 sharePct: totalMonthly > 0 ? (monthlyCost / totalMonthly) * 100 : null
             };
         })
-        .filter(item => item.monthlyCost > 0 && Number.isFinite(item.monthlyUsageFactor))
+        .filter(item => item.monthlyCost > 0
+            && Number.isFinite(item.monthlyUsageFactor)
+            && Number.isFinite(item.referencePrice))
         .sort((a, b) => (b.monthlyCost - a.monthlyCost)
             || String(a.label).localeCompare(String(b.label), 'ru'))
         .slice(0, n);

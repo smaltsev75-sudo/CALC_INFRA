@@ -6,7 +6,8 @@
  *     (вызывает domain/providerAnalytics + сам собирает effective prices).
  *
  * UX:
- *   - Для активного расчёта: top-6 ЭК по месячному вкладу на горизонте.
+ *   - Для активного расчёта: до 6 ЭК по месячному вкладу на горизонте,
+ *     только если по ЭК есть эталонная цена Cloud.ru.
  *   - Каждая строка: название провайдера, цены по ЭК, вклад top-6.
  *   - Бейдж delta-pill (Stage 9.1) если effective != frozen.
  *   - Клик на th-категорию → сортировка по этой колонке (asc/desc toggle).
@@ -25,6 +26,7 @@ import {
     CATEGORY_LABELS_FOR_UI,
     CATEGORY_DESCRIPTIONS_FOR_UI,
     PROVIDER_BENCHMARK_TOP_LIMIT,
+    PROVIDER_BENCHMARK_REFERENCE_PROVIDER,
     buildProviderBenchmarkItems
 } from '../../domain/providerAnalytics.js';
 import { getProviderPriceBundleMeta } from '../../domain/providerOverlay.js';
@@ -65,7 +67,11 @@ export function renderProviderAnalyticsModal(state, ctx) {
     const activeCalc = state.activeCalc;
     const activeResult = activeCalc ? calculate(activeCalc, state.calcRevision) : null;
     const benchmarkItems = activeCalc && activeResult
-        ? buildProviderBenchmarkItems(activeCalc, activeResult, { limit: PROVIDER_BENCHMARK_TOP_LIMIT })
+        ? buildProviderBenchmarkItems(activeCalc, activeResult, {
+            limit: PROVIDER_BENCHMARK_TOP_LIMIT,
+            referenceProviderId: PROVIDER_BENCHMARK_REFERENCE_PROVIDER,
+            referencePrices: effectiveByProvider[PROVIDER_BENCHMARK_REFERENCE_PROVIDER]
+        })
         : null;
 
     const data = ctx.aggregateProviderPrices
@@ -77,7 +83,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
             trustMatrix: { capabilities: [], providers: [] }
         };
     const categoryMeta = data.categoryMeta || {};
-    const isCalcSpecificBenchmark = data.categories.some(cat => categoryMeta[cat]?.dynamic);
+    const isCalcSpecificBenchmark = Boolean(activeCalc && activeResult);
 
     const providerMetaById = {};
     for (const id of allActiveIds) {
@@ -190,6 +196,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
         const meta = getColumnMeta(cat);
         const lines = [
             meta.description,
+            isCalcSpecificBenchmark ? 'Колонка показана, потому что у Cloud.ru есть публичная цена по этому ЭК.' : '',
             Number.isFinite(meta.monthlyCost)
                 ? `Вклад в текущем расчёте: ${fmtRub(meta.monthlyCost)} ₽/мес.`
                 : '',
@@ -261,7 +268,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
        «что именно за число в этой колонке». В calc-specific режиме нижняя
        строка заголовка показывает вклад ЭК в текущий расчёт. */
     const totalTitle = isCalcSpecificBenchmark
-        ? 'Суммарный месячный вклад видимых ЭК, пересчитанный на текущих количествах расчёта. Если у провайдера нет цены по одному из ЭК, итог помечается как неполный.'
+        ? 'Суммарный месячный вклад видимых ЭК с эталонной ценой Cloud.ru, пересчитанный на текущих количествах расчёта. Если у провайдера нет цены по одному из ЭК, итог помечается как неполный.'
         : 'Сумма представительных цен видимых категорий — индикатор для ранжирования. Единицы измерения категорий различаются; сумма не является корректной денежной величиной, только относительной оценкой.';
     const totalUnit = isCalcSpecificBenchmark ? '₽/мес' : 'для ранжирования';
     const thead = el('thead', null,
@@ -398,13 +405,19 @@ export function renderProviderAnalyticsModal(state, ctx) {
         ? el('div', { class: 'analytics-empty',
             text: 'Активных провайдеров нет.' })
         : null;
-    const noCategories = visibleCategories.length === 0
+    const hasNoBenchmarkCategories = data.categories.length === 0;
+    const noCategories = hasNoBenchmarkCategories
+        ? el('div', { class: 'analytics-empty',
+            text: isCalcSpecificBenchmark
+                ? 'В текущем расчёте нет ЭК с публичной ценой Cloud.ru для сравнения.'
+                : 'Нет категорий для сравнения.' })
+        : visibleCategories.length === 0
         ? el('div', { class: 'analytics-empty',
             text: 'Все категории скрыты — отметьте хотя бы одну колонку ЭК для отображения цен.' })
         : null;
 
     const hintText = isCalcSpecificBenchmark
-        ? `Показаны ${PROVIDER_BENCHMARK_TOP_LIMIT} крупнейших ЭК текущего расчёта по месячному вкладу на всём горизонте планирования. В ячейках — цена за единицу у провайдера; «Вклад ЭК» пересчитывает эти позиции на текущих объёмах.`
+        ? `Показаны до ${PROVIDER_BENCHMARK_TOP_LIMIT} крупнейших ЭК текущего расчёта по месячному вкладу, по которым есть публичная цена Cloud.ru. В ячейках — цена за единицу у провайдера; «Вклад ЭК» пересчитывает эти позиции на текущих объёмах.`
         : 'Показаны базовые позиции провайдеров. Откройте расчёт, чтобы увидеть 6 крупнейших ЭК именно для него.';
 
     return modalShell({
@@ -414,7 +427,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
         children: el('div', { class: 'analytics-body' },
             el('p', { class: 'analytics-hint', text: hintText }),
             renderTrustMatrix(data.trustMatrix),
-            filterBar,
+            data.categories.length > 0 ? filterBar : null,
             noProviders || noCategories || null,
             !noCategories ? table : null
         ),

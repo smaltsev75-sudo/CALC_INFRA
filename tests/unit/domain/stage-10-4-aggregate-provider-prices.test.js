@@ -152,10 +152,48 @@ describe('Stage 10.4 → calc-specific top-6 ЭК', () => {
             }
         };
 
-        const top = buildProviderBenchmarkItems(calc, result, { limit: 2 });
+        const top = buildProviderBenchmarkItems(calc, result, {
+            limit: 2,
+            referencePrices: {
+                'cpu-vcpu-shared': { pricePerUnit: 100 },
+                'ram-gb': { pricePerUnit: 10 },
+                'storage-hdd-tb': { pricePerUnit: 100 }
+            }
+        });
         assert.deepEqual(top.map(i => i.itemId), ['storage-hdd-tb', 'ram-gb']);
         assert.equal(top[0].label, 'HDD');
         assert.equal(top[0].unit, '₽/ТБ/мес');
+    });
+
+    it('buildProviderBenchmarkItems не выводит ЭК без эталонной цены Cloud.ru', () => {
+        const calc = {
+            dictionaries: {
+                items: [
+                    { id: 'one-deployment', name: 'Внедрение', unit: 'проект', billingInterval: 'oneTime', pricePerUnit: 1_000_000, category: 'SERVICES' },
+                    { id: 'storage-hdd-tb', name: 'Хранилище HDD (холодное)', unit: 'ТБ', billingInterval: 'monthly', pricePerUnit: 100, category: 'HW', dashboardResource: 'HDD' },
+                    { id: 'ram-gb', name: 'Оперативная память (GB)', unit: 'ГБ', billingInterval: 'monthly', pricePerUnit: 10, category: 'HW', dashboardResource: 'RAM' }
+                ]
+            }
+        };
+        const result = {
+            totalMonthly: 5_500,
+            items: {
+                'one-deployment': { totalMonthly: 5_000 },
+                'storage-hdd-tb': { totalMonthly: 300 },
+                'ram-gb': { totalMonthly: 200 }
+            }
+        };
+
+        const top = buildProviderBenchmarkItems(calc, result, {
+            limit: 3,
+            referencePrices: {
+                'storage-hdd-tb': { pricePerUnit: 100 },
+                'ram-gb': { pricePerUnit: 10 }
+            }
+        });
+
+        assert.deepEqual(top.map(i => i.itemId), ['storage-hdd-tb', 'ram-gb']);
+        assert.equal(top.some(i => i.itemId === 'one-deployment'), false);
     });
 
     it('aggregateProviderPrices считает totalCost как месячный вклад top-ЭК на текущих объёмах', () => {
@@ -192,5 +230,14 @@ describe('Stage 10.4 → calc-specific top-6 ЭК', () => {
         assert.equal(r.providers[0].byCategory['storage-hdd-tb'].monthlyImpact, 6_000);
         assert.equal(r.providers[0].byCategory['ram-gb'].monthlyImpact, 600);
         assert.equal(r.providers[0].totalCost, 6_600);
+    });
+
+    it('aggregateProviderPrices не подставляет fallback-категории, если calc-specific список пуст', () => {
+        const r = aggregateProviderPrices(['sbercloud'], {}, []);
+
+        assert.deepEqual(r.categories, []);
+        assert.deepEqual(r.categoryMeta, {});
+        assert.deepEqual(r.providers[0].byCategory, {});
+        assert.equal(r.providers[0].totalCost, 0);
     });
 });

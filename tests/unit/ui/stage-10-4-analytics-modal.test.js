@@ -89,6 +89,11 @@ describe('Stage 10.4 — providerAnalyticsModal.js файл-модуль', () =>
     it('читает effective-цены через ctx.getEffectivePricesForProvider (UI не лезет в services)', () => {
         assert.match(MODAL_SRC, /ctx\.getEffectivePricesForProvider/);
     });
+
+    it('calc-specific benchmark передаёт Cloud.ru как эталонный прайс для выбора ЭК', () => {
+        assert.match(MODAL_SRC, /PROVIDER_BENCHMARK_REFERENCE_PROVIDER/);
+        assert.match(MODAL_SRC, /referencePrices:\s*effectiveByProvider\[PROVIDER_BENCHMARK_REFERENCE_PROVIDER\]/);
+    });
 });
 
 describe('Stage 10.4 — store.modals.providerAnalytics', () => {
