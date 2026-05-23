@@ -163,10 +163,10 @@ function simulateCandidate(calc, candidate, context) {
         const currentNumber = Number(currentValue);
         if (!Number.isFinite(currentNumber) || currentNumber <= 0) return null;
         proposedValue = currentNumber * (1 - context.numericReductionPct / 100);
-        actionLabel = `проверить -${context.numericReductionPct}%`;
+        actionLabel = `пробно снизить на ${context.numericReductionPct}%`;
     } else {
         proposedValue = !Boolean(currentValue);
-        actionLabel = 'проверить необходимость';
+        actionLabel = 'пробно изменить';
     }
 
     setField(clone, candidate, proposedValue);

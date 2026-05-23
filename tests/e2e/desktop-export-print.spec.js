@@ -216,7 +216,7 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
     expect(snapshot.duringPrint.tableWidth).toBeGreaterThan(snapshot.duringPrint.mainWidth * 0.98);
     expect(snapshot.duringPrint.wrapWidth).toBeGreaterThan(snapshot.duringPrint.mainWidth * 0.98);
     expect(snapshot.duringPrint.hasRootCause).toBe(false);
-    expect(snapshot.duringPrint.rootCauseText).not.toContain('Корневые причины бюджета');
+    expect(snapshot.duringPrint.rootCauseText).not.toContain('Анализ факторов');
     expect(snapshot.duringPrint.quantitySummaryDisplay).toBe('block');
     expect(snapshot.duringPrint.quantitySummaryText).toContain('Почему столько? Проверка количества ЭК');
     expect(snapshot.withoutQuantity.bodyClass).toContain('printing-details-no-quantity-summary');

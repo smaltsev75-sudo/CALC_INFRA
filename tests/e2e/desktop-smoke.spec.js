@@ -73,11 +73,13 @@ test('details and comparison desktop tables render with seeded calculations', as
     await expect(page.getByTestId('root-cause-report')).toHaveCount(0);
     await expect(page.getByTestId('details-root-cause-open')).toBeVisible();
     await page.getByTestId('details-root-cause-open').click();
-    await expect(page.locator('.modal-title')).toContainText('Корневые причины бюджета');
+    await expect(page.locator('.modal-title')).toContainText('Анализ факторов');
     await expect(page.getByTestId('root-cause-modal')).toBeVisible();
     await expect(page.getByTestId('root-cause-report')).toBeVisible();
     await expect(page.getByTestId('root-cause-row').first()).toBeVisible();
-    await expect(page.getByTestId('root-cause-report')).toContainText('Связи и изменения');
+    await expect(page.getByTestId('root-cause-report')).toContainText('Top-');
+    await expect(page.getByTestId('root-cause-report')).toContainText('Что меняем для оценки');
+    await expect(page.getByTestId('root-cause-report')).toContainText('Показать связи с ЭК');
     await expectNoHorizontalOverflow(page, [
         '.modal',
         '.root-cause-modal-body',

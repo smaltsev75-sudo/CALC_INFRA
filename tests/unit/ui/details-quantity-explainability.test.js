@@ -145,8 +145,14 @@ describe('Details quantity explainability', () => {
         assert.match(modalSrc, /renderRootCauseReportContent\(.*\{\s*limit:\s*8\s*\}/s);
         assert.match(modalSrc, /data-testid['"]?:\s*['"]root-cause-modal['"]/);
         assert.match(reportSrc, /data-testid['"]?:\s*['"]root-cause-report['"]/);
-        assert.match(reportSrc, /Связи и изменения/);
+        assert.match(detailsSrc, /Анализ факторов/);
+        assert.match(modalSrc, /Анализ факторов/);
+        assert.match(reportSrc, /Top-\$\{model\.shown\} корневых причин/);
+        assert.match(reportSrc, /Что меняем для оценки/);
+        assert.match(reportSrc, /Показать связи с ЭК/);
         assert.match(modalsCss, /\.root-cause-row\s*\{[^}]*grid-template-columns/);
+        assert.match(modalsCss, /\.root-cause-name\s*\{[^}]*overflow-wrap\s*:\s*anywhere/);
+        assert.doesNotMatch(modalsCss, /\.root-cause-name\s*\{[^}]*text-overflow\s*:\s*ellipsis/);
         assert.doesNotMatch(printCss, /root-cause|cost-check/);
     });
 });

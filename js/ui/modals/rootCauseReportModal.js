@@ -20,7 +20,7 @@ export function renderRootCauseReportModal(state, ctx) {
         : null;
 
     return modalShell({
-        title: 'Корневые причины бюджета',
+        title: 'Анализ факторов',
         size: 'xl',
         onClose,
         children: el('div', {
@@ -29,7 +29,7 @@ export function renderRootCauseReportModal(state, ctx) {
         },
             content || el('p', {
                 class: 'root-cause-empty',
-                text: 'Не найдено параметров, которые дают заметное снижение бюджета при проверочном изменении.'
+                text: 'Не найдено факторов, которые заметно снижают бюджет при пробном пересчёте.'
             })
         ),
         footer: el('div', { class: 'modal-footer-actions' },
