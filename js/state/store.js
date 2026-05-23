@@ -164,10 +164,9 @@ const initialState = deepFreeze({
         //                   дефолт = [providerId] если providerId задан, иначе [].
         //                   Массив = явно сохранённый пользователем выбор (persist).
         deltaHistory: { open: false, providerId: null, expandedIds: null },
-        // Stage 10.4: «Сравнение провайдеров» — таблица CPU/RAM/STORAGE/NETWORK/LICENSE
-        // × providers + чекбоксы + sortable + bulk-update.
-        // Stage 14.1 (PATCH 2.7.1): добавлен visibleCategories — фильтр колонок.
-        // null = «не задано» → UI применяет дефолт (все 5 категорий видны).
+        // Stage 10.4 → 2.20.40: «Прайс-бенчмарк» — providers × top-ЭК активного
+        // расчёта; без активного расчёта остаётся fallback по базовым категориям.
+        // visibleCategories — фильтр колонок; null = UI применяет дефолт.
         providerAnalytics: {
             open: false,
             sortBy: 'total',
@@ -178,9 +177,8 @@ const initialState = deepFreeze({
         //   selectedProviderIds — string[]|null. null = «не сохранено» → UI применит
         //                          дефолт (все active providers). F5-safe через
         //                          persist.saveScenarioComparisonSelectedProviders.
-        //   visibleCategories   — string[]|null. Reuse тот же набор 5 категорий что
-        //                          в providerAnalyticsModal (CPU/RAM/STORAGE/NETWORK/LICENSE).
-        //                          null = все видимы.
+        //   visibleCategories   — legacy поле от Stage 14.5, оставлено для обратной
+        //                          совместимости сохранённого состояния.
         scenarioComparison: { open: false, selectedProviderIds: null,
             visibleCategories: null },
         // Stage 15.1 (MINOR 2.8.0): модалка «Качество расчёта» — список findings

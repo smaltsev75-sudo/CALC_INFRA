@@ -1935,6 +1935,13 @@ td.scenario-cmp-td-cell-total .delta-pill {
     margin-top: 2px;
     font-variant-numeric: normal;
 }
+.analytics-th-cat-impact {
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-top: 2px;
+    white-space: nowrap;
+}
 .analytics-th-cat.is-sorted,
 .analytics-th-total.is-sorted {
     color: var(--accent);
@@ -1972,6 +1979,25 @@ td.analytics-td-cat {
 .analytics-td-cat-empty .analytics-td-cat-num {
     color: var(--warning);
     margin-right: 0;
+}
+td.analytics-td-total {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.analytics-td-total-stack {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+.analytics-td-total-num {
+    white-space: nowrap;
+}
+.analytics-total-incomplete {
+    color: var(--warning);
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
 }
 .analytics-trust-badge,
 .analytics-provider-warning {

@@ -6,8 +6,8 @@
  *     (вызывает domain/providerAnalytics + сам собирает effective prices).
  *
  * UX:
- *   - 5 столбцов representative-key-item per category.
- *   - Каждая строка: название провайдера, цены по категориям, итог.
+ *   - Для активного расчёта: top-6 ЭК по месячному вкладу на горизонте.
+ *   - Каждая строка: название провайдера, цены по ЭК, вклад top-6.
  *   - Бейдж delta-pill (Stage 9.1) если effective != frozen.
  *   - Клик на th-категорию → сортировка по этой колонке (asc/desc toggle).
  *   - Фильтр видимых категорий через pill-toggle (Stage 14.1).
@@ -19,14 +19,17 @@
 import { el } from '../dom.js';
 import { icon } from '../icons.js';
 import { modalShell } from './baseModal.js';
+import { calculate } from '../../domain/calculator.js';
 import {
     CATEGORY_UNITS,
     CATEGORY_LABELS_FOR_UI,
-    CATEGORY_DESCRIPTIONS_FOR_UI
+    CATEGORY_DESCRIPTIONS_FOR_UI,
+    PROVIDER_BENCHMARK_TOP_LIMIT,
+    buildProviderBenchmarkItems
 } from '../../domain/providerAnalytics.js';
 import { getProviderPriceBundleMeta } from '../../domain/providerOverlay.js';
 import { getProviderPriceActuality } from '../../domain/providerPriceTrust.js';
-import { formatNumber, formatPercentPoints } from '../../services/format.js';
+import { formatNumber, formatPercentPoints, percent } from '../../services/format.js';
 
 const fmtRub = (n) => formatNumber(Number(n), { min: 0, max: 2 });
 
@@ -43,9 +46,9 @@ export function renderProviderAnalyticsModal(state, ctx) {
     const close = () => ctx.closeModal('providerAnalytics');
 
     /* state.modals.providerAnalytics:
-       - sortBy:      'total' | 'CPU' | 'RAM' | 'STORAGE' | 'NETWORK' | 'LICENSE'
+       - sortBy:      'total' | dynamic item id | fallback category id
        - sortDir:     'asc' | 'desc'             (default 'asc')
-       - visibleCategories: string[] | null      (default — все 5 категорий) — Stage 14.1 */
+       - visibleCategories: string[] | null      (default — все calc-specific колонки) */
     const allActiveIds = ['sbercloud', 'yandex', 'vk'];
     const sortBy = m.sortBy || 'total';
     const sortDir = m.sortDir || 'asc';
@@ -59,13 +62,22 @@ export function renderProviderAnalyticsModal(state, ctx) {
         }
     }
 
+    const activeCalc = state.activeCalc;
+    const activeResult = activeCalc ? calculate(activeCalc, state.calcRevision) : null;
+    const benchmarkItems = activeCalc && activeResult
+        ? buildProviderBenchmarkItems(activeCalc, activeResult, { limit: PROVIDER_BENCHMARK_TOP_LIMIT })
+        : null;
+
     const data = ctx.aggregateProviderPrices
-        ? ctx.aggregateProviderPrices(allActiveIds, effectiveByProvider)
+        ? ctx.aggregateProviderPrices(allActiveIds, effectiveByProvider, benchmarkItems)
         : {
             providers: [],
             categories: ['CPU', 'RAM', 'STORAGE', 'NETWORK', 'LICENSE'],
+            categoryMeta: {},
             trustMatrix: { capabilities: [], providers: [] }
         };
+    const categoryMeta = data.categoryMeta || {};
+    const isCalcSpecificBenchmark = data.categories.some(cat => categoryMeta[cat]?.dynamic);
 
     const providerMetaById = {};
     for (const id of allActiveIds) {
@@ -76,26 +88,48 @@ export function renderProviderAnalyticsModal(state, ctx) {
 
     /* Stage 14.1: фильтр видимых категорий. Дефолт — все. Persist через
        ctx.setProviderAnalyticsVisibleCategories (controller → localStorage). */
-    const visibleCategories = Array.isArray(m.visibleCategories)
+    let visibleCategories = Array.isArray(m.visibleCategories)
         ? m.visibleCategories.filter(c => data.categories.includes(c))
         : [...data.categories];
+    if (Array.isArray(m.visibleCategories) && m.visibleCategories.length > 0 && visibleCategories.length === 0) {
+        visibleCategories = [...data.categories];
+    }
     const visibleSet = new Set(visibleCategories);
 
     /* Если выбранный sortBy относится к скрытой категории — fallback на 'total'. */
     const effectiveSortBy = (sortBy === 'total' || visibleSet.has(sortBy)) ? sortBy : 'total';
 
-    /* Сортировка по выбранной колонке. Итог пересчитывается с учётом visibleCategories. */
-    const computeRowTotal = (p) => {
+    const cellSortValue = (cell) => {
+        const impact = Number(cell?.monthlyImpact);
+        if (Number.isFinite(impact)) return impact;
+        const effective = Number(cell?.effective);
+        return Number.isFinite(effective) ? effective : null;
+    };
+
+    /* Сортировка по выбранной колонке. В calc-specific режиме итог — месячный
+       вклад top-ЭК на текущих количествах, а не сумма разных unit-price. */
+    const computeRowTotalInfo = (p) => {
         let sum = 0;
+        let missing = 0;
         for (const cat of visibleCategories) {
-            const eff = p.byCategory[cat]?.effective;
-            if (Number.isFinite(eff)) sum += eff;
+            const v = cellSortValue(p.byCategory[cat]);
+            if (v === null) missing++;
+            else sum += v;
         }
-        return sum;
+        return { sum, missing, complete: missing === 0 };
     };
     const sortedProviders = [...data.providers].sort((a, b) => {
-        const va = effectiveSortBy === 'total' ? computeRowTotal(a) : (a.byCategory[effectiveSortBy]?.effective ?? 0);
-        const vb = effectiveSortBy === 'total' ? computeRowTotal(b) : (b.byCategory[effectiveSortBy]?.effective ?? 0);
+        if (effectiveSortBy === 'total') {
+            const ia = computeRowTotalInfo(a);
+            const ib = computeRowTotalInfo(b);
+            if (ia.missing !== ib.missing) return ia.missing - ib.missing;
+            return sortDir === 'asc' ? ia.sum - ib.sum : ib.sum - ia.sum;
+        }
+        const va = cellSortValue(a.byCategory[effectiveSortBy]);
+        const vb = cellSortValue(b.byCategory[effectiveSortBy]);
+        if (va === null && vb !== null) return 1;
+        if (va !== null && vb === null) return -1;
+        if (va === null && vb === null) return 0;
         return sortDir === 'asc' ? va - vb : vb - va;
     });
 
@@ -141,6 +175,30 @@ export function renderProviderAnalyticsModal(state, ctx) {
             class: 'analytics-provider-meta',
             text: actuality.label
         });
+    };
+
+    const getColumnMeta = (cat) => categoryMeta[cat] || {
+        label: CATEGORY_LABELS_FOR_UI[cat] || cat,
+        unit: CATEGORY_UNITS[cat] || '',
+        description: CATEGORY_DESCRIPTIONS_FOR_UI[cat] || cat,
+        monthlyCost: null,
+        sharePct: null,
+        dynamic: false
+    };
+
+    const renderColumnTitle = (cat) => {
+        const meta = getColumnMeta(cat);
+        const lines = [
+            meta.description,
+            Number.isFinite(meta.monthlyCost)
+                ? `Вклад в текущем расчёте: ${fmtRub(meta.monthlyCost)} ₽/мес.`
+                : '',
+            Number.isFinite(meta.sharePct)
+                ? `Доля бюджета: ${percent(meta.sharePct / 100)}.`
+                : '',
+            'Нажмите, чтобы отсортировать по этой колонке.'
+        ];
+        return lines.filter(Boolean).join('\n');
     };
 
     const renderTrustMatrix = (matrix) => {
@@ -200,46 +258,62 @@ export function renderProviderAnalyticsModal(state, ctx) {
 
     /* PATCH 2.7.3: каждая колонка имеет 2-line header «КАТЕГОРИЯ + ед.изм.»
        (тот же паттерн что .col-stand в details-table). Tooltip содержит
-       «что именно за число в этой колонке» (например, «Цена 1 vCPU shared
-       в месяц»). «Итого» тут — это сумма представительных цен для скоринга
-       провайдеров, не математически корректный total (единицы разные). */
+       «что именно за число в этой колонке». В calc-specific режиме нижняя
+       строка заголовка показывает вклад ЭК в текущий расчёт. */
+    const totalTitle = isCalcSpecificBenchmark
+        ? 'Суммарный месячный вклад видимых ЭК, пересчитанный на текущих количествах расчёта. Если у провайдера нет цены по одному из ЭК, итог помечается как неполный.'
+        : 'Сумма представительных цен видимых категорий — индикатор для ранжирования. Единицы измерения категорий различаются; сумма не является корректной денежной величиной, только относительной оценкой.';
+    const totalUnit = isCalcSpecificBenchmark ? '₽/мес' : 'для ранжирования';
     const thead = el('thead', null,
         el('tr', null,
             el('th', { class: 'analytics-th-provider', text: 'Провайдер' }),
-            ...visibleCategories.map(cat => el('th', {
-                class: ['analytics-th-cat', effectiveSortBy === cat && 'is-sorted'],
-                attrs: { type: 'button',
-                    title: `${CATEGORY_DESCRIPTIONS_FOR_UI[cat] || cat}. Нажмите, чтобы отсортировать по этой колонке.` },
-                onClick: () => handleSort(cat)
-            },
-                el('span', null,
-                    el('span', { class: 'analytics-th-cat-name', text: CATEGORY_LABELS_FOR_UI[cat] || cat }),
-                    el('span', { class: 'analytics-th-cat-unit',
-                        text: CATEGORY_UNITS[cat] || '' })
-                ),
-                sortIcon(cat)
-            )),
+            ...visibleCategories.map(cat => {
+                const meta = getColumnMeta(cat);
+                return el('th', {
+                    class: ['analytics-th-cat', effectiveSortBy === cat && 'is-sorted'],
+                    attrs: { type: 'button', title: renderColumnTitle(cat) },
+                    onClick: () => handleSort(cat)
+                },
+                    el('span', null,
+                        el('span', { class: 'analytics-th-cat-name', text: meta.label }),
+                        el('span', { class: 'analytics-th-cat-unit', text: meta.unit || '' }),
+                        Number.isFinite(meta.monthlyCost)
+                            ? el('span', { class: 'analytics-th-cat-impact',
+                                text: `${fmtRub(meta.monthlyCost)} ₽/мес` })
+                            : null
+                    ),
+                    sortIcon(cat)
+                );
+            }),
             el('th', {
                 class: ['analytics-th-total', effectiveSortBy === 'total' && 'is-sorted'],
                 onClick: () => handleSort('total'),
-                attrs: { title: 'Сумма представительных цен видимых категорий — индикатор для ранжирования. Единицы измерения категорий различаются (₽/vCPU, ₽/ГБ, ₽/ТБ, ₽/узел/год); сумма не является корректной денежной величиной, только относительной оценкой.' }
+                attrs: { title: totalTitle }
             },
                 el('span', null,
-                    el('span', { class: 'analytics-th-cat-name', text: 'Сумма' }),
-                    el('span', { class: 'analytics-th-cat-unit', text: 'для ранжирования' })
+                    el('span', { class: 'analytics-th-cat-name',
+                        text: isCalcSpecificBenchmark ? 'Вклад ЭК' : 'Сумма' }),
+                    el('span', { class: 'analytics-th-cat-unit', text: totalUnit })
                 ),
                 sortIcon('total')
             )
         )
     );
 
-    const renderCell = (cell) => {
+    const renderCell = (cell, cat) => {
+        const meta = getColumnMeta(cat);
+        const impact = Number(cell?.monthlyImpact);
+        const impactLine = Number.isFinite(impact)
+            ? `Вклад при этом провайдере: ${fmtRub(impact)} ₽/мес.`
+            : '';
         const trustBadge = renderTrustBadge(cell?.trust);
         if (!cell || cell.effective === null) {
             const emptyText = cell?.trust?.status === 'by-request' ? 'по запросу' : '—';
             return el('td', {
                 class: ['analytics-td-cat', 'analytics-td-cat-empty'],
-                attrs: { title: cell?.trust ? `${cell.trust.fullLabel}. ${cell.trust.description}` : undefined }
+                attrs: { title: cell?.trust
+                    ? `${meta.description}\n${cell.trust.fullLabel}. ${cell.trust.description}`
+                    : meta.description }
             },
                 el('span', { class: 'analytics-td-cat-stack' },
                     el('span', { class: 'analytics-td-cat-num', text: emptyText }),
@@ -248,7 +322,8 @@ export function renderProviderAnalyticsModal(state, ctx) {
             );
         }
         const pillText = fmtPct(cell.deltaPct);
-        return el('td', { class: 'analytics-td-cat' },
+        return el('td', { class: 'analytics-td-cat',
+            attrs: { title: [meta.description, impactLine].filter(Boolean).join('\n') } },
             el('span', { class: 'analytics-td-cat-stack' },
                 el('span', { class: 'analytics-td-cat-main' },
                     el('span', { class: 'analytics-td-cat-num', text: fmtRub(cell.effective) }),
@@ -269,16 +344,27 @@ export function renderProviderAnalyticsModal(state, ctx) {
 
     const tbody = el('tbody', null,
         ...sortedProviders.map(p => {
-            const rowTotal = computeRowTotal(p);
+            const rowTotal = computeRowTotalInfo(p);
             return el('tr', { class: 'analytics-row' },
                 el('td', { class: 'analytics-td-provider' },
                     el('span', { class: 'analytics-provider-name', text: p.label }),
                     renderProviderActuality(p.id),
                     ...renderProviderWarnings(p.warnings)
                 ),
-                ...visibleCategories.map(cat => renderCell(p.byCategory[cat])),
+                ...visibleCategories.map(cat => renderCell(p.byCategory[cat], cat)),
                 el('td', { class: 'analytics-td-total',
-                    text: fmtRub(rowTotal) })
+                    attrs: { title: rowTotal.missing > 0
+                        ? `Нет цены по ${rowTotal.missing} из ${visibleCategories.length} видимых ЭК. Итог неполный.`
+                        : totalTitle } },
+                    el('span', { class: 'analytics-td-total-stack' },
+                        el('span', { class: 'analytics-td-total-num',
+                            text: fmtRub(rowTotal.sum) }),
+                        rowTotal.missing > 0
+                            ? el('span', { class: 'analytics-total-incomplete',
+                                text: 'неполно' })
+                            : null
+                    )
+                )
             );
         })
     );
@@ -289,21 +375,22 @@ export function renderProviderAnalyticsModal(state, ctx) {
        с aria-pressed; визуально — pill (.analytics-cat-toggle). При клике
        persist через ctx + patchModal. */
     const filterBar = el('div', { class: 'analytics-cat-filter',
-        attrs: { role: 'group', 'aria-label': 'Фильтр категорий' } },
-        el('span', { class: 'analytics-cat-filter-label', text: 'Категории:' }),
+        attrs: { role: 'group', 'aria-label': 'Фильтр ЭК' } },
+        el('span', { class: 'analytics-cat-filter-label', text: 'ЭК в сравнении:' }),
         ...data.categories.map(cat => {
             const active = visibleSet.has(cat);
+            const meta = getColumnMeta(cat);
             return el('button', {
                 class: ['analytics-cat-toggle', active && 'is-active'],
                 attrs: {
                     type: 'button',
                     'aria-pressed': active ? 'true' : 'false',
                     title: active
-                        ? `Скрыть колонку ${CATEGORY_LABELS_FOR_UI[cat] || cat}`
-                        : `Показать колонку ${CATEGORY_LABELS_FOR_UI[cat] || cat}`
+                        ? `Скрыть колонку ${meta.label}`
+                        : `Показать колонку ${meta.label}`
                 },
                 onClick: () => toggleCategory(cat)
-            }, CATEGORY_LABELS_FOR_UI[cat] || cat);
+            }, meta.label);
         })
     );
 
@@ -313,16 +400,19 @@ export function renderProviderAnalyticsModal(state, ctx) {
         : null;
     const noCategories = visibleCategories.length === 0
         ? el('div', { class: 'analytics-empty',
-            text: 'Все категории скрыты — отметьте хотя бы одну для отображения цен.' })
+            text: 'Все категории скрыты — отметьте хотя бы одну колонку ЭК для отображения цен.' })
         : null;
+
+    const hintText = isCalcSpecificBenchmark
+        ? `Показаны ${PROVIDER_BENCHMARK_TOP_LIMIT} крупнейших ЭК текущего расчёта по месячному вкладу на всём горизонте планирования. В ячейках — цена за единицу у провайдера; «Вклад ЭК» пересчитывает эти позиции на текущих объёмах.`
+        : 'Показаны базовые позиции провайдеров. Откройте расчёт, чтобы увидеть 6 крупнейших ЭК именно для него.';
 
     return modalShell({
         title: 'Прайс-бенчмарк',
         size: 'analytics',
         onClose: close,
         children: el('div', { class: 'analytics-body' },
-            el('p', { class: 'analytics-hint',
-                text: 'Представительные цены: процессоры = 1 виртуальное ядро shared, память = 1 ГБ, SSD-диски = 1 ТБ, балансировщик = HTTP/HTTPS L7, лицензия = ОС на 1 узел. Под каждой ценой показан уровень доверия: проверено, публичный прайс, задано вручную или нет публичной цены. Колонка «Сумма» — индикатор для ранжирования, не денежная величина.' }),
+            el('p', { class: 'analytics-hint', text: hintText }),
             renderTrustMatrix(data.trustMatrix),
             filterBar,
             noProviders || noCategories || null,

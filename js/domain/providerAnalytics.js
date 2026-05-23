@@ -9,7 +9,12 @@
  * предотвращает layer violation domain → services.
  */
 
-import { PROVIDER_OVERLAYS, getProviderPriceBundleMeta } from './providerOverlay.js';
+import {
+    PROVIDER_OVERLAYS,
+    DEFAULT_PROVIDER,
+    applyProviderOverlay,
+    getProviderPriceBundleMeta
+} from './providerOverlay.js';
 import {
     getProviderPriceTrust,
     getProviderPriceWarnings,
@@ -18,12 +23,9 @@ import {
 } from './providerPriceTrust.js';
 
 /**
- * Stage 10.4: какой ЭК взять как «представителя» категории при сравнении
- * провайдеров. Выбраны самые ёмкие в денежном вкладе позиции — у любого
- * провайдера они присутствуют, и движение их цены отражает общий тренд.
- *
- * При желании в будущем можно расширить — например, считать medianPrice
- * нескольких ЭК в категории. Пока — single-key-item для простоты UI.
+ * Fallback-режим Прайс-бенчмарка, когда нет активного расчёта. Для реального
+ * расчёта UI передаёт top-6 ЭК по месячному вкладу, см.
+ * buildProviderBenchmarkItems().
  */
 export const CATEGORY_KEY_ITEMS = Object.freeze({
     CPU:     'cpu-vcpu-shared',
@@ -78,6 +80,172 @@ export const CATEGORY_DESCRIPTIONS_FOR_UI = Object.freeze({
 });
 
 const CATEGORY_ORDER = Object.freeze(['CPU', 'RAM', 'STORAGE', 'NETWORK', 'LICENSE']);
+export const PROVIDER_BENCHMARK_TOP_LIMIT = 6;
+
+const BENCHMARK_ITEM_LABELS_FOR_UI = Object.freeze({
+    'cpu-vcpu-shared': 'CPU shared',
+    'cpu-vcpu-dedicated': 'CPU dedicated',
+    'cpu-vcpu-gpu': 'GPU CPU',
+    'ram-gb': 'RAM',
+    'storage-ssd-tb': 'SSD',
+    'storage-hdd-tb': 'HDD',
+    'storage-object-tb': 'Объектное',
+    'storage-secure-gb': '152-ФЗ SSD',
+    'network-lb-l7': 'Балансировщик L7',
+    'network-waf': 'WAF',
+    'license-db-per-vcpu': 'СУБД',
+    'license-os-per-node': 'ОС',
+    'license-siem-edr-per-node': 'SIEM/EDR',
+    'service-email-per-1k': 'Email',
+    'service-sms-per-1k': 'SMS',
+    'service-push-per-1m': 'Push',
+    'traffic-egress-tb': 'Исходящий трафик',
+    'traffic-ingress-tb': 'Входящий трафик',
+    'llm-tokens-input-1m': 'LLM input',
+    'llm-tokens-output-1m': 'LLM output',
+    'rag-embeddings-1m': 'RAG embeddings',
+    'rag-vector-db-gb': 'Vector DB',
+    'rag-managed-knowledge-base-gb': 'RAG база знаний',
+    'ai-agent-sandbox-vcpu': 'CPU агентов',
+    'ai-agent-memory-storage-tb': 'Память агентов',
+    'one-pentest-external': 'Внешний пентест',
+    'one-pentest-internal': 'Внутренний пентест',
+    'one-load-test-prelaunch': 'НТ перед релизом',
+    'one-load-test-regular': 'Регулярное НТ',
+    'one-pentest-regular': 'Регулярный пентест',
+    'one-security-audit': 'Аудит ИБ',
+    'one-fstec-certification': 'Сертификация ФСТЭК',
+    'one-deployment': 'Внедрение',
+    'one-staff-training': 'Обучение',
+    'one-source-code-audit': 'Аудит кода',
+    'res-georedundancy': 'Георезерв',
+    'res-dr-active': 'DR-кластер'
+});
+
+const BILLING_INTERVAL_UNIT_LABELS = Object.freeze({
+    daily: 'день',
+    monthly: 'мес',
+    annual: 'год'
+});
+
+function makeDefaultColumns() {
+    return CATEGORY_ORDER.map(cat => ({
+        key: cat,
+        itemId: CATEGORY_KEY_ITEMS[cat],
+        label: CATEGORY_LABELS_FOR_UI[cat] || cat,
+        unit: CATEGORY_UNITS[cat] || '',
+        description: CATEGORY_DESCRIPTIONS_FOR_UI[cat] || cat,
+        monthlyCost: null,
+        monthlyUsageFactor: null,
+        sharePct: null,
+        dynamic: false
+    }));
+}
+
+function normalizeBenchmarkColumns(benchmarkItems) {
+    if (!Array.isArray(benchmarkItems) || benchmarkItems.length === 0) {
+        return makeDefaultColumns();
+    }
+
+    const seen = new Set();
+    const columns = [];
+    for (const raw of benchmarkItems) {
+        if (!raw || typeof raw !== 'object') continue;
+        const itemId = String(raw.itemId || raw.id || raw.key || '').trim();
+        if (!itemId || seen.has(itemId)) continue;
+        seen.add(itemId);
+
+        const key = String(raw.key || itemId);
+        const monthlyCost = Number(raw.monthlyCost);
+        const monthlyUsageFactor = Number(raw.monthlyUsageFactor);
+        const sharePct = Number(raw.sharePct);
+        columns.push({
+            key,
+            itemId,
+            label: String(raw.label || raw.name || itemId),
+            unit: String(raw.unit || ''),
+            description: String(raw.description || raw.name || itemId),
+            monthlyCost: Number.isFinite(monthlyCost) ? monthlyCost : null,
+            monthlyUsageFactor: Number.isFinite(monthlyUsageFactor) && monthlyUsageFactor > 0
+                ? monthlyUsageFactor
+                : null,
+            sharePct: Number.isFinite(sharePct) ? sharePct : null,
+            dynamic: true
+        });
+    }
+
+    return columns.length > 0 ? columns : makeDefaultColumns();
+}
+
+function benchmarkLabelForItem(item) {
+    if (!item || typeof item !== 'object') return '';
+    const mapped = BENCHMARK_ITEM_LABELS_FOR_UI[item.id];
+    if (mapped) return mapped;
+
+    switch (item.dashboardResource) {
+        case 'CPU': return 'CPU';
+        case 'GPU': return 'GPU';
+        case 'RAM': return 'RAM';
+        case 'SSD': return 'SSD';
+        case 'HDD': return 'HDD';
+        case 'S3':  return 'Объектное';
+        default:    return item.name || item.id || '';
+    }
+}
+
+function priceUnitForItem(item) {
+    const unit = String(item?.unit || 'ед.').trim() || 'ед.';
+    const interval = item?.billingInterval;
+    if (interval === 'oneTime') return `₽/${unit}`;
+    return `₽/${unit}/${BILLING_INTERVAL_UNIT_LABELS[interval] || 'мес'}`;
+}
+
+/**
+ * Построить колонки Прайс-бенчмарка из конкретного расчёта: top-N ЭК по
+ * месячному вкладу на всём расчётном горизонте. monthlyUsageFactor — это
+ * «взвешенное количество в месяц»: qty × интервальный множитель × риски × НДС.
+ * Умножая его на цену другого провайдера, получаем практическое влияние этой
+ * цены на текущий расчёт, а не абстрактный unit-price.
+ */
+export function buildProviderBenchmarkItems(calculation, result, { limit = PROVIDER_BENCHMARK_TOP_LIMIT } = {}) {
+    const rawItems = Array.isArray(calculation?.dictionaries?.items)
+        ? calculation.dictionaries.items
+        : [];
+    const providerId = calculation?.settings?.provider || DEFAULT_PROVIDER;
+    const items = calculation?.providerVersion
+        ? rawItems
+        : applyProviderOverlay(rawItems, providerId);
+    const itemResults = result?.items && typeof result.items === 'object'
+        ? result.items
+        : {};
+    const totalMonthly = Number(result?.totalMonthly) || 0;
+    const n = Number.isInteger(limit) && limit > 0 ? limit : PROVIDER_BENCHMARK_TOP_LIMIT;
+
+    return items
+        .map(item => {
+            const monthlyCost = Number(itemResults[item.id]?.totalMonthly) || 0;
+            const price = Number(item.pricePerUnit);
+            const monthlyUsageFactor = Number.isFinite(price) && price > 0 && monthlyCost > 0
+                ? monthlyCost / price
+                : null;
+            return {
+                key: item.id,
+                itemId: item.id,
+                label: benchmarkLabelForItem(item),
+                name: item.name || item.id,
+                unit: priceUnitForItem(item),
+                description: item.name || item.id,
+                category: item.category || '',
+                monthlyCost,
+                monthlyUsageFactor,
+                sharePct: totalMonthly > 0 ? (monthlyCost / totalMonthly) * 100 : null
+            };
+        })
+        .filter(item => item.monthlyCost > 0 && Number.isFinite(item.monthlyUsageFactor))
+        .sort((a, b) => (b.monthlyCost - a.monthlyCost)
+            || String(a.label).localeCompare(String(b.label), 'ru'))
+        .slice(0, n);
+}
 
 function buildProviderTrustMatrix(providerIds, effMap) {
     const providers = [];
@@ -134,11 +302,26 @@ function buildProviderTrustMatrix(providerIds, effMap) {
  *   categories: string[]
  * }}
  */
-export function aggregateProviderPrices(providerIds, effectivePricesByProvider) {
+export function aggregateProviderPrices(providerIds, effectivePricesByProvider, benchmarkItems = null) {
+    const columns = normalizeBenchmarkColumns(benchmarkItems);
+    const categories = columns.map(c => c.key);
+    const categoryMeta = Object.fromEntries(columns.map(c => [c.key, {
+        key: c.key,
+        itemId: c.itemId,
+        label: c.label,
+        unit: c.unit,
+        description: c.description,
+        monthlyCost: c.monthlyCost,
+        sharePct: c.sharePct,
+        dynamic: c.dynamic
+    }]));
+    const hasDynamicImpact = columns.some(c => Number.isFinite(c.monthlyUsageFactor));
+
     if (!Array.isArray(providerIds)) {
         return {
             providers: [],
-            categories: [...CATEGORY_ORDER],
+            categories,
+            categoryMeta,
             trustMatrix: { capabilities: [...PROVIDER_TRUST_MATRIX_CAPABILITIES], providers: [] }
         };
     }
@@ -158,8 +341,9 @@ export function aggregateProviderPrices(providerIds, effectivePricesByProvider) 
         const byCategory = {};
         let totalCost = 0;
 
-        for (const cat of CATEGORY_ORDER) {
-            const itemId = CATEGORY_KEY_ITEMS[cat];
+        for (const column of columns) {
+            const cat = column.key;
+            const itemId = column.itemId;
             const effectiveEntry = effectivePrices[itemId] || null;
             const frozenEntry = frozenPrices[itemId] || null;
             const effective = Number(effectiveEntry?.pricePerUnit);
@@ -175,10 +359,15 @@ export function aggregateProviderPrices(providerIds, effectivePricesByProvider) 
                 deltaPct = Math.abs(pct) < 0.1 ? 0 : pct;
             }
 
+            const monthlyImpact = (eff !== null && Number.isFinite(column.monthlyUsageFactor))
+                ? eff * column.monthlyUsageFactor
+                : null;
+
             byCategory[cat] = {
                 effective: eff,
                 frozen: fro,
                 deltaPct,
+                monthlyImpact,
                 trust: getProviderPriceTrust({
                     providerId: id,
                     itemId,
@@ -186,7 +375,11 @@ export function aggregateProviderPrices(providerIds, effectivePricesByProvider) 
                     frozenEntry
                 })
             };
-            if (eff !== null) totalCost += eff;
+            if (hasDynamicImpact) {
+                if (monthlyImpact !== null) totalCost += monthlyImpact;
+            } else if (eff !== null) {
+                totalCost += eff;
+            }
         }
 
         providers.push({
@@ -200,5 +393,5 @@ export function aggregateProviderPrices(providerIds, effectivePricesByProvider) 
         });
     }
 
-    return { providers, categories: [...CATEGORY_ORDER], trustMatrix };
+    return { providers, categories, categoryMeta, trustMatrix };
 }

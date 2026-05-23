@@ -1,10 +1,10 @@
 {
     "name": "infrastructure-calculator",
-    "version": "2.20.39",
+    "version": "2.20.40",
     "description": "Локальное web-приложение для расчёта инфраструктуры и стоимости программных продуктов по 5 стендам (DEV / ИФТ / ПСИ / ПРОМ / НТ). Работает offline, без runtime-зависимостей.",
     "type": "module",
     "private": true,
-    "license": "MIT",
+    "license": "SEE LICENSE IN LICENSE",
     "scripts": {
         "start": "python -m http.server 8000",
         "start:node": "npx --yes http-server -p 8000 -c-1",

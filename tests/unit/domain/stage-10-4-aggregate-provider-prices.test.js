@@ -25,10 +25,11 @@ import assert from 'node:assert/strict';
 import { installLocalStorage } from '../../integration/storage-mock.js';
 
 let aggregateProviderPrices;
+let buildProviderBenchmarkItems;
 
 before(async () => {
     installLocalStorage();
-    ({ aggregateProviderPrices } = await import('../../../js/domain/providerAnalytics.js'));
+    ({ aggregateProviderPrices, buildProviderBenchmarkItems } = await import('../../../js/domain/providerAnalytics.js'));
 });
 
 describe('Stage 10.4 aggregateProviderPrices — базовый API', () => {
@@ -128,5 +129,68 @@ describe('Stage 10.4 aggregateProviderPrices — категории-индекс
         assert.equal(typeof m.CATEGORY_KEY_ITEMS, 'object');
         assert.equal(m.CATEGORY_KEY_ITEMS.CPU, 'cpu-vcpu-shared');
         assert.equal(m.CATEGORY_KEY_ITEMS.RAM, 'ram-gb');
+    });
+});
+
+describe('Stage 10.4 → calc-specific top-6 ЭК', () => {
+    it('buildProviderBenchmarkItems выбирает ЭК по месячному вкладу и сохраняет HDD как колонку', () => {
+        const calc = {
+            dictionaries: {
+                items: [
+                    { id: 'cpu-vcpu-shared', name: 'vCPU (общий пул)', unit: 'шт.', billingInterval: 'monthly', pricePerUnit: 100, category: 'HW', dashboardResource: 'CPU' },
+                    { id: 'ram-gb', name: 'Оперативная память (GB)', unit: 'ГБ', billingInterval: 'monthly', pricePerUnit: 10, category: 'HW', dashboardResource: 'RAM' },
+                    { id: 'storage-hdd-tb', name: 'Хранилище HDD (холодное)', unit: 'ТБ', billingInterval: 'monthly', pricePerUnit: 100, category: 'HW', dashboardResource: 'HDD' }
+                ]
+            }
+        };
+        const result = {
+            totalMonthly: 3_600,
+            items: {
+                'cpu-vcpu-shared': { totalMonthly: 100 },
+                'ram-gb': { totalMonthly: 500 },
+                'storage-hdd-tb': { totalMonthly: 3_000 }
+            }
+        };
+
+        const top = buildProviderBenchmarkItems(calc, result, { limit: 2 });
+        assert.deepEqual(top.map(i => i.itemId), ['storage-hdd-tb', 'ram-gb']);
+        assert.equal(top[0].label, 'HDD');
+        assert.equal(top[0].unit, '₽/ТБ/мес');
+    });
+
+    it('aggregateProviderPrices считает totalCost как месячный вклад top-ЭК на текущих объёмах', () => {
+        const benchmarkItems = [
+            {
+                key: 'storage-hdd-tb',
+                itemId: 'storage-hdd-tb',
+                label: 'HDD',
+                unit: '₽/ТБ/мес',
+                description: 'Хранилище HDD',
+                monthlyCost: 3_000,
+                monthlyUsageFactor: 30
+            },
+            {
+                key: 'ram-gb',
+                itemId: 'ram-gb',
+                label: 'RAM',
+                unit: '₽/ГБ/мес',
+                description: 'Оперативная память',
+                monthlyCost: 500,
+                monthlyUsageFactor: 50
+            }
+        ];
+
+        const r = aggregateProviderPrices(['yandex'], {
+            yandex: {
+                'storage-hdd-tb': { pricePerUnit: 200, vendor: 'test', priceSource: 'test' },
+                'ram-gb': { pricePerUnit: 12, vendor: 'test', priceSource: 'test' }
+            }
+        }, benchmarkItems);
+
+        assert.deepEqual(r.categories, ['storage-hdd-tb', 'ram-gb']);
+        assert.equal(r.categoryMeta['storage-hdd-tb'].label, 'HDD');
+        assert.equal(r.providers[0].byCategory['storage-hdd-tb'].monthlyImpact, 6_000);
+        assert.equal(r.providers[0].byCategory['ram-gb'].monthlyImpact, 600);
+        assert.equal(r.providers[0].totalCost, 6_600);
     });
 });

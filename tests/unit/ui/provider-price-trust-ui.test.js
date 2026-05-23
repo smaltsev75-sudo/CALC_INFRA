@@ -97,11 +97,18 @@ describe('provider analytics modal — trust metadata is visible', () => {
         assert.match(ANALYTICS_SRC, /getProviderPriceActuality/);
     });
 
-    it('hint explains trust labels in Russian', () => {
-        assert.match(ANALYTICS_SRC, /уровень доверия/);
-        assert.match(ANALYTICS_SRC, /проверено, публичный прайс, задано вручную или нет публичной цены/);
+    it('hint explains calc-specific benchmark in Russian', () => {
+        assert.match(ANALYTICS_SRC, /6 крупнейших ЭК/);
+        assert.match(ANALYTICS_SRC, /месячному вкладу/);
+        assert.match(ANALYTICS_SRC, /Вклад ЭК/);
         assert.doesNotMatch(ANALYTICS_SRC, /CPU = 1 vCPU/);
-        assert.match(ANALYTICS_SRC, /процессоры = 1 виртуальное ядро/);
+        assert.doesNotMatch(ANALYTICS_SRC, /процессоры = 1 виртуальное ядро/);
+    });
+
+    it('trust matrix explains price-source quality in Russian', () => {
+        assert.match(ANALYTICS_SRC, /качество источника цены/);
+        assert.match(ANALYTICS_SRC, /где прайс проверен/);
+        assert.match(ANALYTICS_SRC, /где цена отсутствует или выдаётся по запросу/);
     });
 });
 

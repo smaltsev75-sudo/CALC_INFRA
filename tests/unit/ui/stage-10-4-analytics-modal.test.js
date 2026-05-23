@@ -128,9 +128,9 @@ describe('Stage 10.4 — ctx-методы и controller re-exports', () => {
         assert.match(APP_SRC, /openProviderAnalyticsModal\s*\(\s*\)/);
     });
 
-    it('ctx.aggregateProviderPrices(providerIds, effective) в app.js', () => {
+    it('ctx.aggregateProviderPrices(providerIds, effective, benchmarkItems) в app.js', () => {
         assert.match(APP_SRC,
-            /aggregateProviderPrices\s*\(\s*providerIds\s*,\s*effectiveByProvider\s*\)/);
+            /aggregateProviderPrices\s*\(\s*providerIds\s*,\s*effectiveByProvider\s*,\s*benchmarkItems\s*=\s*null\s*\)/);
     });
 
     it('controller re-export aggregateProviderPrices из providerAnalytics.js', () => {
@@ -171,7 +171,7 @@ describe('Stage 10.4 — CSS .analytics-* + .provider-analytics-btn', () => {
     it('.analytics-th-cat', () => assert.match(FORMS_CSS, /\.analytics-th-cat\b/));
     it('.analytics-td-cat', () => assert.match(FORMS_CSS, /\.analytics-td-cat\b/));
     it('.provider-analytics-btn', () => assert.match(FORMS_CSS, /\.provider-analytics-btn\s*\{/));
-    it('.modal-analytics', () => assert.match(MODALS_CSS, /\.modal-analytics\s*\{[^}]*max-width\s*:\s*min\(1280px,\s*calc\(100vw - 48px\)\)/));
+    it('.modal-analytics', () => assert.match(MODALS_CSS, /\.modal-analytics\s*\{[^}]*max-width\s*:\s*min\(1540px,\s*calc\(100vw - 32px\)\)/));
     /* Stage 17.2: .analytics-row--unchecked + .analytics-bulk-update-btn — bulk-only классы.
        JS-callsite удалён, CSS будет убран в Phase 4 cleanup. Для текущей фазы только
        проверяем, что bulk не рендерится. */

@@ -21,7 +21,7 @@
  *   PATCH (1.1.X) — багфиксы, рефакторинг, мелкие UX-правки, hardening,
  *                   обновления прайсов без новых фич, compatibility-миграции
  *                   без нового формата данных. */
-export const APP_VERSION = '2.20.39';
+export const APP_VERSION = '2.20.40';
 export const APP_NAME = 'Калькулятор инфраструктуры';
 
 /* ============================================================
@@ -1056,10 +1056,9 @@ export const STORAGE_KEYS = Object.freeze({
         вкладки видят это через storage-event и блокируют свои update-кнопки на этого
         провайдера. Lock TTL = 60 секунд (защита от crashed-tab). */
     PROVIDER_TAB_LOCKS: 'calc.providerTabLocks',
-    /** Stage 14.1 (PATCH 2.7.1): per-category фильтр аналитической модалки.
-        Структура: string[] — массив видимых категорий из CATEGORY_KEY_ITEMS
-        (CPU/RAM/STORAGE/NETWORK/LICENSE). Дефолт = все 5 видимы. F5-safe.
-        Невидимые категории скрываются из таблицы и из расчёта итога. */
+    /** Stage 14.1 → 2.20.40: фильтр колонок Прайс-бенчмарка.
+        Структура: string[] — массив видимых ключей колонок. В активном расчёте
+        это top-ЭК, в fallback-режиме — базовые категории. F5-safe. */
     PROVIDER_ANALYTICS_VISIBLE_CATEGORIES: 'calc.providerAnalyticsVisibleCategories',
     /** Stage 14.4 (PATCH 2.7.2): раскрытые провайдеры в multi-provider accordion'е
         delta-history модалки. Структура: string[] — массив providerId, которые

@@ -329,11 +329,11 @@ const ctx = {
     },
     /* Открыть модалку «Прайс-бенчмарк» (read-only сравнение цен провайдеров).
        visibleCategories восстанавливается из localStorage; null = UI применит
-       дефолт (все 5 категорий). */
+       дефолтные колонки для текущего расчёта. */
     openProviderAnalyticsModal() {
         return openProviderAnalyticsModalAction({ store, persist });
     },
-    /* Stage 14.1: persist фильтра категорий в localStorage. Вызывается из UI
+    /* Stage 14.1: persist фильтра колонок в localStorage. Вызывается из UI
        при каждом toggle, чтобы F5 не сбрасывал выбор. */
     setProviderAnalyticsVisibleCategories(categories) {
         return setProviderAnalyticsVisibleCategoriesAction({ categories, persist });
@@ -356,11 +356,11 @@ const ctx = {
         if (!calc) return { currentProviderId: null, providers: [] };
         return providerCtl.getCalcCrossProviderComparison(calc, providerIds);
     },
-    /* Stage 10.4: pure-domain агрегатор для cross-provider table. UI вызывает
-       этот ctx-метод с list providerIds; он сам подгрузит effective-цены и
-       передаст в чистый domain helper aggregateProviderPrices. */
-    aggregateProviderPrices(providerIds, effectiveByProvider) {
-        return providerCtl.aggregateProviderPrices(providerIds, effectiveByProvider);
+    /* Stage 10.4 → 2.20.40: pure-domain агрегатор для cross-provider table.
+       UI передаёт effective-цены и, если есть активный расчёт, top-ЭК для
+       calc-specific бенчмарка. */
+    aggregateProviderPrices(providerIds, effectiveByProvider, benchmarkItems = null) {
+        return providerCtl.aggregateProviderPrices(providerIds, effectiveByProvider, benchmarkItems);
     },
     /* Stage 11.1: read-only геттер — заблокирован ли провайдер cross-tab'ом.
        UI рендерит fetch/file кнопки disabled + tooltip «обновляется в другой

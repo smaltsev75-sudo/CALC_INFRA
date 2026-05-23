@@ -215,7 +215,13 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
         .not.toContainText('версия');
     await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta').first())
         .not.toHaveAttribute('title', /.+/);
+    await expect(analyticsModal.locator('.analytics-hint')).toContainText('6 крупнейших ЭК');
+    await expect(analyticsModal.locator('.analytics-cat-toggle')).toHaveCount(6);
+    await expect(analyticsModal.locator('.analytics-th-cat')).toHaveCount(6);
+    await expect(analyticsModal.locator('.analytics-th-total')).toContainText('Вклад ЭК');
     await expect.poll(async () => analyticsModal.locator('.analytics-trust-matrix-wrap')
+        .evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    await expect.poll(async () => analyticsModal.locator('.analytics-table')
         .evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
 
     expect(consoleErrors).toEqual([]);
