@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { renderMarkdown } from '../../../js/services/markdown.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..', '..');
@@ -60,6 +61,25 @@ describe('Help modal readability', () => {
         assert.doesNotMatch(manual, /Актуальность прайса: ДД\.ММ\.ГГГГ · версия/);
         assert.doesNotMatch(manual, /актуальность прайса и версия/);
         assert.match(manual, /Актуальность прайса: ДД\.ММ\.ГГГГ/);
+    });
+
+    it('quick validation checklist renders as one ordered list with sequential items', () => {
+        const checklist = section(manual, 'Как проверить реалистичность результата');
+        const quick = checklist.slice(
+            checklist.indexOf('### Быстрая проверка за 5-10 минут'),
+            checklist.indexOf('### Красные флаги')
+        );
+        assert.doesNotMatch(quick, /^\s{2,}\S/m);
+        const html = renderMarkdown(quick);
+        assert.equal((html.match(/<ol>/g) || []).length, 1);
+        assert.equal((html.match(/<li>/g) || []).length, 6);
+    });
+
+    it('does not duplicate the hotkeys section already rendered by helpModal.js', () => {
+        assert.doesNotMatch(manual, /## Темы и горячие клавиши/);
+        assert.doesNotMatch(manual, /Горячие клавиши/);
+        assert.doesNotMatch(manual, /\| Клавиши \| Действие \|/);
+        assert.match(manual, /## Темы/);
     });
 
     it('help content CSS limits line length and visually separates sections', () => {

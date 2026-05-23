@@ -248,6 +248,7 @@ test('Help modal renders scannable UserManual on desktop', async ({ page }) => {
     await expect(helpContent).toContainText('без технического словаря');
     await expect(helpContent).toContainText('WAF (защита веб-приложений)');
     await expect(helpContent).toContainText('DDoS (защита от распределённых атак)');
+    await expect(modal.locator('h2', { hasText: 'Горячие клавиши' })).toHaveCount(1);
     await expect(helpContent.locator('pre').filter({ hasText: 'Расчёты → Новый расчёт' })).toHaveCount(0);
     await expect.poll(async () => helpContent.evaluate(el => getComputedStyle(el).maxWidth))
         .toBe('940px');
