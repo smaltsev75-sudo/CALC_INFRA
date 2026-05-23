@@ -1886,11 +1886,12 @@ td.scenario-cmp-td-cell-total .delta-pill {
     font-weight: 500;
     user-select: none;
 }
-.analytics-th-cat,
-.analytics-th-total {
+th.analytics-th-cat,
+th.analytics-th-total {
     cursor: pointer;
     text-align: right;
     white-space: nowrap;
+    vertical-align: bottom;
 }
 /* PATCH 2.7.2 hotfix: display:flex на <th> ломал table-cell layout —
    thead-row рендерился вертикальным стеком вместо горизонтального ряда.
@@ -1925,6 +1926,7 @@ td.scenario-cmp-td-cell-total .delta-pill {
     text-transform: uppercase;
     font-size: 0.72rem;
     letter-spacing: 0.4px;
+    text-align: right;
 }
 .analytics-th-cat-unit {
     font-size: 0.66rem;
@@ -1934,6 +1936,7 @@ td.scenario-cmp-td-cell-total .delta-pill {
     letter-spacing: 0;
     margin-top: 2px;
     font-variant-numeric: normal;
+    text-align: right;
 }
 .analytics-th-cat-impact {
     font-size: 0.66rem;
@@ -1963,7 +1966,16 @@ td.analytics-td-cat {
     white-space: nowrap;
 }
 .analytics-td-cat-num {
-    margin-right: 6px;
+    margin-right: 0;
+}
+.analytics-td-cat-main .delta-pill {
+    margin-left: 6px;
+}
+.analytics-td-cat-price {
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-weight: 400;
+    line-height: 1.15;
 }
 .analytics-td-cat-main {
     display: inline-flex;

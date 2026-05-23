@@ -225,6 +225,20 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
         .filter({ hasText: 'Cloud.ru' });
     await expect(cloudBenchmarkRow.locator('.analytics-td-cat-empty')).toHaveCount(0);
     await expect(cloudBenchmarkRow).not.toContainText('Нет цены');
+    await expect(cloudBenchmarkRow.locator('.analytics-td-cat-price')).toHaveCount(benchmarkCategoryCount);
+    await expect.poll(async () => analyticsModal.locator('.analytics-table').evaluate(table => {
+        const headers = [...table.querySelectorAll('thead .analytics-th-cat')];
+        const cells = [...table.querySelectorAll('tbody tr:first-child .analytics-td-cat')];
+        return headers.length === cells.length && headers.every((th, index) =>
+            getComputedStyle(th).textAlign === 'right'
+            && getComputedStyle(cells[index]).textAlign === 'right');
+    })).toBe(true);
+    await expect.poll(async () => cloudBenchmarkRow.evaluate(row => {
+        const sum = [...row.querySelectorAll('.analytics-td-cat')]
+            .reduce((acc, td) => acc + Number(td.getAttribute('data-monthly-impact') || 0), 0);
+        const total = Number(row.querySelector('.analytics-td-total')?.getAttribute('data-total-cost'));
+        return Number.isFinite(total) && Math.abs(sum - total) < 0.01;
+    })).toBe(true);
     await expect(analyticsModal.locator('.analytics-th-total')).toContainText('Вклад ЭК');
     await expect.poll(async () => analyticsModal.locator('.analytics-trust-matrix-wrap')
         .evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);

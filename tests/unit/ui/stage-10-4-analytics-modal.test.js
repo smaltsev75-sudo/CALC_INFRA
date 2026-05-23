@@ -94,6 +94,13 @@ describe('Stage 10.4 — providerAnalyticsModal.js файл-модуль', () =>
         assert.match(MODAL_SRC, /PROVIDER_BENCHMARK_REFERENCE_PROVIDER/);
         assert.match(MODAL_SRC, /referencePrices:\s*effectiveByProvider\[PROVIDER_BENCHMARK_REFERENCE_PROVIDER\]/);
     });
+
+    it('calc-specific ячейки показывают месячный вклад как основное число и unit-price ниже', () => {
+        assert.match(MODAL_SRC, /data-monthly-impact/);
+        assert.match(MODAL_SRC, /data-total-cost/);
+        assert.match(MODAL_SRC, /analytics-td-cat-price/);
+        assert.match(MODAL_SRC, /showMonthlyImpact\s*\?\s*impact\s*:\s*cell\.effective/);
+    });
 });
 
 describe('Stage 10.4 — store.modals.providerAnalytics', () => {
@@ -175,6 +182,11 @@ describe('Stage 10.4 — CSS .analytics-* + .provider-analytics-btn', () => {
     it('.analytics-table', () => assert.match(FORMS_CSS, /\.analytics-table\s*\{/));
     it('.analytics-th-cat', () => assert.match(FORMS_CSS, /\.analytics-th-cat\b/));
     it('.analytics-td-cat', () => assert.match(FORMS_CSS, /\.analytics-td-cat\b/));
+    it('.analytics-td-cat-price', () => assert.match(FORMS_CSS, /\.analytics-td-cat-price\b/));
+    it('заголовки и числа price benchmark выровнены вправо', () => {
+        assert.match(FORMS_CSS, /\.analytics-th-cat-name\s*\{[^}]*text-align:\s*right/s);
+        assert.match(FORMS_CSS, /td\.analytics-td-cat\s*\{[^}]*text-align:\s*right/s);
+    });
     it('.provider-analytics-btn', () => assert.match(FORMS_CSS, /\.provider-analytics-btn\s*\{/));
     it('.modal-analytics', () => assert.match(MODALS_CSS, /\.modal-analytics\s*\{[^}]*max-width\s*:\s*min\(1540px,\s*calc\(100vw - 32px\)\)/));
     /* Stage 17.2: .analytics-row--unchecked + .analytics-bulk-update-btn — bulk-only классы.

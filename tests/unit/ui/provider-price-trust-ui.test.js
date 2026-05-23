@@ -101,6 +101,8 @@ describe('provider analytics modal — trust metadata is visible', () => {
         assert.match(ANALYTICS_SRC, /до.*крупнейших ЭК/);
         assert.match(ANALYTICS_SRC, /публичная цена Cloud\.ru/);
         assert.match(ANALYTICS_SRC, /месячному вкладу/);
+        assert.match(ANALYTICS_SRC, /месячный вклад у провайдера/);
+        assert.match(ANALYTICS_SRC, /цена за единицу показана ниже/);
         assert.match(ANALYTICS_SRC, /Вклад ЭК/);
         assert.doesNotMatch(ANALYTICS_SRC, /CPU = 1 vCPU/);
         assert.doesNotMatch(ANALYTICS_SRC, /процессоры = 1 виртуальное ядро/);

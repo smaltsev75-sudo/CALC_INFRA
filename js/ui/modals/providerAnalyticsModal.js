@@ -8,7 +8,8 @@
  * UX:
  *   - Для активного расчёта: до 6 ЭК по месячному вкладу на горизонте,
  *     только если по ЭК есть эталонная цена Cloud.ru.
- *   - Каждая строка: название провайдера, цены по ЭК, вклад top-6.
+ *   - Каждая строка: название провайдера, месячный вклад по ЭК, вклад top-6.
+ *     Цена за единицу показана вторичной строкой.
  *   - Бейдж delta-pill (Stage 9.1) если effective != frozen.
  *   - Клик на th-категорию → сортировка по этой колонке (asc/desc toggle).
  *   - Фильтр видимых категорий через pill-toggle (Stage 14.1).
@@ -276,6 +277,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
             el('th', { class: 'analytics-th-provider', text: 'Провайдер' }),
             ...visibleCategories.map(cat => {
                 const meta = getColumnMeta(cat);
+                const unitText = isCalcSpecificBenchmark ? 'вклад ₽/мес' : (meta.unit || '');
                 return el('th', {
                     class: ['analytics-th-cat', effectiveSortBy === cat && 'is-sorted'],
                     attrs: { type: 'button', title: renderColumnTitle(cat) },
@@ -283,11 +285,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
                 },
                     el('span', null,
                         el('span', { class: 'analytics-th-cat-name', text: meta.label }),
-                        el('span', { class: 'analytics-th-cat-unit', text: meta.unit || '' }),
-                        Number.isFinite(meta.monthlyCost)
-                            ? el('span', { class: 'analytics-th-cat-impact',
-                                text: `${fmtRub(meta.monthlyCost)} ₽/мес` })
-                            : null
+                        el('span', { class: 'analytics-th-cat-unit', text: unitText })
                     ),
                     sortIcon(cat)
                 );
@@ -329,11 +327,24 @@ export function renderProviderAnalyticsModal(state, ctx) {
             );
         }
         const pillText = fmtPct(cell.deltaPct);
+        const showMonthlyImpact = isCalcSpecificBenchmark && Number.isFinite(impact);
+        const primaryValue = showMonthlyImpact ? impact : cell.effective;
+        const unitPriceLine = showMonthlyImpact
+            ? `${fmtRub(cell.effective)} ${meta.unit}`
+            : '';
         return el('td', { class: 'analytics-td-cat',
-            attrs: { title: [meta.description, impactLine].filter(Boolean).join('\n') } },
+            attrs: {
+                title: [
+                    meta.description,
+                    showMonthlyImpact ? `Цена за единицу: ${fmtRub(cell.effective)} ${meta.unit}.` : '',
+                    impactLine
+                ].filter(Boolean).join('\n'),
+                ...(showMonthlyImpact ? { 'data-monthly-impact': String(impact) } : {}),
+                'data-effective-price': String(cell.effective)
+            } },
             el('span', { class: 'analytics-td-cat-stack' },
                 el('span', { class: 'analytics-td-cat-main' },
-                    el('span', { class: 'analytics-td-cat-num', text: fmtRub(cell.effective) }),
+                    el('span', { class: 'analytics-td-cat-num', text: fmtRub(primaryValue) }),
                     pillText
                         ? el('span', {
                             class: ['delta-pill',
@@ -344,6 +355,9 @@ export function renderProviderAnalyticsModal(state, ctx) {
                         })
                         : null
                 ),
+                unitPriceLine
+                    ? el('span', { class: 'analytics-td-cat-price', text: unitPriceLine })
+                    : null,
                 trustBadge
             )
         );
@@ -360,9 +374,12 @@ export function renderProviderAnalyticsModal(state, ctx) {
                 ),
                 ...visibleCategories.map(cat => renderCell(p.byCategory[cat], cat)),
                 el('td', { class: 'analytics-td-total',
-                    attrs: { title: rowTotal.missing > 0
-                        ? `Нет цены по ${rowTotal.missing} из ${visibleCategories.length} видимых ЭК. Итог неполный.`
-                        : totalTitle } },
+                    attrs: {
+                        title: rowTotal.missing > 0
+                            ? `Нет цены по ${rowTotal.missing} из ${visibleCategories.length} видимых ЭК. Итог неполный.`
+                            : totalTitle,
+                        'data-total-cost': String(rowTotal.sum)
+                    } },
                     el('span', { class: 'analytics-td-total-stack' },
                         el('span', { class: 'analytics-td-total-num',
                             text: fmtRub(rowTotal.sum) }),
@@ -417,7 +434,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
         : null;
 
     const hintText = isCalcSpecificBenchmark
-        ? `Показаны до ${PROVIDER_BENCHMARK_TOP_LIMIT} крупнейших ЭК текущего расчёта по месячному вкладу, по которым есть публичная цена Cloud.ru. В ячейках — цена за единицу у провайдера; «Вклад ЭК» пересчитывает эти позиции на текущих объёмах.`
+        ? `Показаны до ${PROVIDER_BENCHMARK_TOP_LIMIT} крупнейших ЭК текущего расчёта по месячному вкладу, по которым есть публичная цена Cloud.ru. В ячейках — месячный вклад у провайдера; цена за единицу показана ниже.`
         : 'Показаны базовые позиции провайдеров. Откройте расчёт, чтобы увидеть 6 крупнейших ЭК именно для него.';
 
     return modalShell({
