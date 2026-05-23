@@ -1,5 +1,18 @@
 # Журнал решений и допущений
 
+## 23.05.2026 · PATCH 2.20.48 — Quantity explanation Linux layout fix
+
+**Контекст.** После публикации v2.20.47 CI на Ubuntu/Chromium поймал
+desktop-smoke overflow в карточках `Почему столько?`: при Linux font metrics
+`scrollWidth` карточки был на 13-14 px больше `clientWidth`.
+
+**Решение.**
+
+- Для `.quantity-explanation-grid` добавлен `min-width: 0`.
+- Для `.quantity-explanation-card` добавлены `box-sizing: border-box`,
+  `min-width: 0` и `overflow-wrap: anywhere`.
+- Заголовок карточки и итог qty защищены от min-content overflow.
+
 ## 23.05.2026 · PATCH 2.20.47 — Details quantity explainability
 
 **Контекст.** Пользователь попросил проверить логику расчёта количества ЭК:

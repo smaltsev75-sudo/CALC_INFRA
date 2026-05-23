@@ -854,13 +854,17 @@ select.qs-flash,
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 10px;
+    min-width: 0;
 }
 
 .quantity-explanation-card {
+    box-sizing: border-box;
+    min-width: 0;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--bg-input);
     padding: 10px 12px;
+    overflow-wrap: anywhere;
 }
 
 .quantity-explanation-card-head {
@@ -869,6 +873,7 @@ select.qs-flash,
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 6px;
+    min-width: 0;
 }
 
 .quantity-explanation-stand {
@@ -882,7 +887,8 @@ select.qs-flash,
     color: var(--accent);
     font-family: var(--font-mono);
     font-weight: 700;
-    white-space: nowrap;
+    text-align: right;
+    overflow-wrap: anywhere;
 }
 
 .quantity-explanation-help {
