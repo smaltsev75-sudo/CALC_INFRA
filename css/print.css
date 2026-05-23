@@ -192,7 +192,6 @@
     tr { page-break-inside: avoid; page-break-after: auto; }
     .details-table-wrap, .items-table-wrap { border: none !important; }
     .details-table th, .details-table td,
-    .cost-check-table th, .cost-check-table td,
     .items-table th, .items-table td,
     .questions-table th, .questions-table td {
         background: white !important;
@@ -202,32 +201,6 @@
     .category-row td, .totals-row td {
         background: #f0f0f0 !important;
         color: black !important;
-    }
-    .details-cost-check-report {
-        max-width: none !important;
-        page-break-inside: avoid;
-    }
-    .cost-check-note,
-    .cost-check-muted,
-    .cost-check-item-text span,
-    .cost-check-money span {
-        color: #333 !important;
-    }
-    .cost-check-table-wrap {
-        border-color: #999 !important;
-        background: white !important;
-    }
-    .cost-check-chain-line,
-    .cost-check-item-text strong,
-    .cost-check-money strong {
-        color: black !important;
-    }
-    .cost-check-rank,
-    .cost-check-source-pill,
-    .cost-check-badge {
-        background: white !important;
-        color: black !important;
-        border-color: #999 !important;
     }
 
     .details-quantity-print-summary {

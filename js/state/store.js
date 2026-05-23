@@ -142,6 +142,9 @@ const initialState = deepFreeze({
         printAnswersOptions: { open: false },
         // PATCH 2.20.49: выбор состава PDF для вкладки «Детализация».
         detailsPrintOptions: { open: false },
+        // PATCH 2.20.51: корневые причины бюджета открываются отдельным окном
+        // из Детализации. Runtime-only, в PDF не выводится.
+        rootCauseReport: { open: false },
         // Этап 14.U1: Quick Start Wizard — 7 макро-вопросов → автозаполнение опросника.
         quickStart:      { open: false },
         // Этап 14.U5: подтверждение re-apply профиля. Содержит manualCount —

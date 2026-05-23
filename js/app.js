@@ -802,6 +802,7 @@ const ctx = {
     openHelp()                { store.openModal('help'); },
     openReset()               { store.openModal('reset'); },
     openFormula(itemId)       { store.openModal('formula', { itemId }); },
+    openRootCauseReportModal(){ store.openModal('rootCauseReport'); },
     input(opts)               { store.openModal('input', { draft: opts.defaultValue ?? '', ...opts }); },
     /**
      * Патч полезной нагрузки открытой модалки (errors, activeSubTab и т.п.).

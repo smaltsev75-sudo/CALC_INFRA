@@ -70,10 +70,21 @@ test('details and comparison desktop tables render with seeded calculations', as
     await seedCalculations(page);
 
     await switchTab(page, 'details');
-    await expect(page.getByTestId('cost-check-report')).toBeVisible();
-    await expect(page.getByTestId('cost-check-report')).toContainText('Проверка расчёта ЭК');
-    await expect(page.getByTestId('cost-check-report')).toContainText('Источники');
-    await expect(page.getByTestId('cost-check-report')).toContainText('Единицы');
+    await expect(page.getByTestId('root-cause-report')).toHaveCount(0);
+    await expect(page.getByTestId('details-root-cause-open')).toBeVisible();
+    await page.getByTestId('details-root-cause-open').click();
+    await expect(page.locator('.modal-title')).toContainText('Корневые причины бюджета');
+    await expect(page.getByTestId('root-cause-modal')).toBeVisible();
+    await expect(page.getByTestId('root-cause-report')).toBeVisible();
+    await expect(page.getByTestId('root-cause-row').first()).toBeVisible();
+    await expect(page.getByTestId('root-cause-report')).toContainText('Связи и изменения');
+    await expectNoHorizontalOverflow(page, [
+        '.modal',
+        '.root-cause-modal-body',
+        '.root-cause-row',
+        '.root-cause-detail-grid'
+    ]);
+    await page.locator('.modal-footer .btn-primary').click();
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expect(page.locator('.details-table-cost tbody tr').first()).toBeVisible();
     await expectDetailsCostCategoriesMatchModel(page);
@@ -83,8 +94,6 @@ test('details and comparison desktop tables render with seeded calculations', as
     await expect(page.locator('.modal-title')).toContainText('Почему столько?');
     await expect(page.getByTestId('quantity-explanation-panel')).toBeVisible();
     await expectNoHorizontalOverflow(page, [
-        '.details-cost-check-report',
-        '.cost-check-table',
         '.modal',
         '.formula-modal-body',
         '.quantity-explanation-panel',

@@ -12,7 +12,7 @@ import {
     settingLabel,
     sourceLabel
 } from '../../../js/ui/quantityExplanation.js';
-import { buildCostCheckReportModel } from '../../../js/ui/costCheckReport.js';
+import { buildRootCauseAnalysisModel } from '../../../js/domain/rootCauseAnalysis.js';
 import { stripCssComments, stripJsComments } from '../../_helpers/source.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -100,41 +100,53 @@ describe('Details quantity explainability', () => {
         assert.match(printCss, /\.details-quantity-print-summary\s*\{[^}]*display\s*:\s*block\s*!important/);
     });
 
-    it('отчёт проверки расчёта ЭК показывает top-строки, источники и контроль единиц', () => {
+    it('модель корневых причин показывает параметры с реальной экономией бюджета', () => {
         const calc = buildQuickStartCalc();
         const result = calculate(calc);
-        const model = buildCostCheckReportModel(calc, result, [], { limit: 10 });
+        const model = buildRootCauseAnalysisModel(calc, { result, limit: 8 });
 
-        assert.ok(model.rows.length > 0, 'в отчёте должны быть строки top-ЭК');
-        assert.ok(model.rows.length <= 10, 'отчёт должен ограничиваться top-10');
-        assert.ok(model.rows.every(row => row.monthly > 0), 'каждая строка должна влиять на бюджет');
-        assert.ok(model.rows.every(row => row.unitCheck.ok), 'единицы и формулы стоимости должны сходиться');
+        assert.ok(model.rows.length > 0, 'должны быть причины с ненулевой экономией');
+        assert.ok(model.rows.length <= 8, 'отчёт должен ограничиваться top-X');
+        assert.ok(model.rows.every(row => row.savingMonthly > 0), 'каждая причина должна снижать бюджет');
+        assert.ok(model.rows.every(row => row.affectedItemsCount > 0), 'должны быть затронутые ЭК');
+        assert.ok(!model.rows.some(row => ['applyRiskFactors', 'vatEnabled', 'vatRate'].includes(row.fieldId)),
+            'НДС и полное отключение рисков не должны выдаваться как оптимизация');
     });
 
-    it('отчёт проверки расчёта ЭК сохраняет источник Quick Start и коэффициенты стенда', () => {
+    it('корневая причина связывает параметр с зависимыми ЭК', () => {
         const calc = buildQuickStartCalc();
         const result = calculate(calc);
-        const model = buildCostCheckReportModel(calc, result, [], { limit: 50 });
-        const cpu = model.rows.find(row => row.itemId === 'cpu-vcpu-shared');
+        const model = buildRootCauseAnalysisModel(calc, { result, limit: 50 });
+        const cause = model.rows.find(row => row.directFormulaCount > 0 && row.topAffectedItems.length > 0);
 
-        assert.ok(cpu, 'CPU должен попасть в расширенную проверку');
-        assert.ok(
-            cpu.sourceSummary.some(text => text.includes('Quick Start')),
-            cpu.sourceSummary.join('\n')
-        );
-        assert.match(cpu.answersText, /Quick Start/);
-        assert.match(cpu.settingsText, /коэффициент размера стенда/);
-        assert.match(cpu.unitText, /месячный тариф|дневной тариф|годовой тариф|разовый платёж/);
+        assert.ok(cause, 'хотя бы одна причина должна иметь прямые связи в формулах');
+        assert.ok(cause.label);
+        assert.ok(cause.topAffectedItems.some(item => item.savingMonthly > 0));
+        assert.ok(cause.directItemNames.length > 0);
     });
 
-    it('Детализация рендерит отчёт проверки расчёта ЭК перед таблицей стоимости', () => {
+    it('Детализация открывает корневые причины бюджета отдельным окном без PDF-вывода', () => {
         const detailsSrc = stripJsComments(read('js/ui/details.js'));
-        const reportSrc = stripJsComments(read('js/ui/costCheckReport.js'));
-        const tablesCss = stripCssComments(read('css/tables.css'));
+        const reportSrc = stripJsComments(read('js/ui/rootCauseReport.js'));
+        const modalSrc = stripJsComments(read('js/ui/modals/rootCauseReportModal.js'));
+        const indexSrc = stripJsComments(read('js/ui/index.js'));
+        const storeSrc = stripJsComments(read('js/state/store.js'));
+        const appSrc = stripJsComments(read('js/app.js'));
+        const modalsCss = stripCssComments(read('css/modals.css'));
+        const printCss = stripCssComments(read('css/print.css'));
 
-        assert.match(detailsSrc, /renderCostCheckReport\(calc,\s*result,\s*disabledStands/);
-        assert.match(reportSrc, /data-testid['"]?:\s*['"]cost-check-report['"]/);
-        assert.match(reportSrc, /Проверка расчёта ЭК/);
-        assert.match(tablesCss, /\.cost-check-table\s*\{[^}]*table-layout\s*:\s*fixed/);
+        assert.doesNotMatch(detailsSrc, /renderCostCheckReport\(/);
+        assert.match(detailsSrc, /data-testid['"]?:\s*['"]details-root-cause-open['"]/);
+        assert.match(detailsSrc, /ctx\.openRootCauseReportModal\?\.\(\)/);
+        assert.match(appSrc, /openRootCauseReportModal\(\)\s*\{\s*store\.openModal\(['"]rootCauseReport['"]\)/);
+        assert.match(storeSrc, /rootCauseReport:\s*\{\s*open:\s*false\s*\}/);
+        assert.match(indexSrc, /renderRootCauseReportModal/);
+        assert.match(indexSrc, /\['rootCauseReport',\s*renderRootCauseReportModal\]/);
+        assert.match(modalSrc, /renderRootCauseReportContent\(.*\{\s*limit:\s*8\s*\}/s);
+        assert.match(modalSrc, /data-testid['"]?:\s*['"]root-cause-modal['"]/);
+        assert.match(reportSrc, /data-testid['"]?:\s*['"]root-cause-report['"]/);
+        assert.match(reportSrc, /Связи и изменения/);
+        assert.match(modalsCss, /\.root-cause-row\s*\{[^}]*grid-template-columns/);
+        assert.doesNotMatch(printCss, /root-cause|cost-check/);
     });
 });

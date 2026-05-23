@@ -29,6 +29,7 @@ import { renderDuplicateImportModal } from './modals/duplicateImportModal.js';
 import { renderAssumptionsModal } from './modals/assumptionsModal.js';
 import { renderPrintAnswersOptionsModal } from './modals/printAnswersOptionsModal.js';
 import { renderDetailsPrintOptionsModal } from './modals/detailsPrintOptionsModal.js';
+import { renderRootCauseReportModal } from './modals/rootCauseReportModal.js';
 import { renderQuickStartModal } from './modals/quickStartModal.js';
 import { renderReapplyConfirmModal } from './modals/reapplyConfirmModal.js';
 import { renderScenarioMenuModal } from './modals/scenarioMenuModal.js';
@@ -79,7 +80,7 @@ let _prevOpenModals = new Set();
 const MODAL_ORDER = [
     'message', 'confirm', 'duplicateImport', 'input', 'quickStart',
     'reset', 'help', 'printAnswersOptions', 'detailsPrintOptions',
-    'assumptions', 'assumptionsRegister', 'calculationHealth',
+    'rootCauseReport', 'assumptions', 'assumptionsRegister', 'calculationHealth',
     'sensitivity', 'budgetGuardrails', 'decisionMemo',
     'costOptimizationPlanner', 'guidedCompletion',
     'formula', 'itemEdit', 'questionEdit',
@@ -197,6 +198,7 @@ const MODAL_RENDERERS = [
     ['priceImportMapping',   renderPriceImportMappingModal],
     ['printAnswersOptions', renderPrintAnswersOptionsModal],
     ['detailsPrintOptions', renderDetailsPrintOptionsModal],
+    ['rootCauseReport', renderRootCauseReportModal],
     ['reapplyConfirm',  renderReapplyConfirmModal],
     ['scenarioMenu',    renderScenarioMenuModal],
     ['scenarioRename',  renderScenarioRenameModal],

@@ -161,7 +161,7 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
                 const table = document.querySelector('.details-table-cost');
                 const wrap = document.querySelector('.details-table-wrap');
                 const main = document.querySelector('.app-main');
-                const costCheck = document.querySelector('.details-cost-check-report');
+                const rootCause = document.querySelector('.root-cause-report, .root-cause-modal-body');
                 const quantitySummary = document.querySelector('.details-quantity-print-summary');
                 const vendorHeader = [...document.querySelectorAll('.details-table-cost thead th')]
                     .find(th => th.textContent.trim() === 'Поставщик');
@@ -176,8 +176,8 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
                     wrapWidth: wrap.getBoundingClientRect().width,
                     mainWidth: main.getBoundingClientRect().width,
                     tabContain: getComputedStyle(document.querySelector('.tab-pane')).contain,
-                    costCheckDisplay: getComputedStyle(costCheck).display,
-                    costCheckText: costCheck.textContent,
+                    hasRootCause: !!rootCause,
+                    rootCauseText: rootCause?.textContent || '',
                     quantitySummaryDisplay: getComputedStyle(quantitySummary).display,
                     quantitySummaryText: quantitySummary.textContent,
                     vendorWidth: vendorHeader.getBoundingClientRect().width,
@@ -215,8 +215,8 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
     expect(snapshot.duringPrint.tabContain).toBe('none');
     expect(snapshot.duringPrint.tableWidth).toBeGreaterThan(snapshot.duringPrint.mainWidth * 0.98);
     expect(snapshot.duringPrint.wrapWidth).toBeGreaterThan(snapshot.duringPrint.mainWidth * 0.98);
-    expect(snapshot.duringPrint.costCheckDisplay).not.toBe('none');
-    expect(snapshot.duringPrint.costCheckText).toContain('Проверка расчёта ЭК');
+    expect(snapshot.duringPrint.hasRootCause).toBe(false);
+    expect(snapshot.duringPrint.rootCauseText).not.toContain('Корневые причины бюджета');
     expect(snapshot.duringPrint.quantitySummaryDisplay).toBe('block');
     expect(snapshot.duringPrint.quantitySummaryText).toContain('Почему столько? Проверка количества ЭК');
     expect(snapshot.withoutQuantity.bodyClass).toContain('printing-details-no-quantity-summary');

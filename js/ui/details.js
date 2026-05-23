@@ -27,7 +27,6 @@ import {
     renderCostSection,
     renderQtySection
 } from './detailsSections.js';
-import { renderCostCheckReport } from './costCheckReport.js';
 import { renderDetailsQuantityPrintSummary } from './quantityExplanation.js';
 
 /** Sub-tab id-ы для Детализации. */
@@ -115,6 +114,12 @@ export function renderDetails(state, ctx) {
                 }),
                 el('button', {
                     class: 'btn btn-ghost btn-icon-text',
+                    title: 'Открыть корневые причины бюджета и потенциальной оптимизации',
+                    attrs: { type: 'button', 'data-testid': 'details-root-cause-open' },
+                    onClick: () => ctx.openRootCauseReportModal?.()
+                }, icon('bar-chart-3', { size: 16 }), el('span', { text: 'Причины бюджета' })),
+                el('button', {
+                    class: 'btn btn-ghost btn-icon-text',
                     title: 'Скачать детализацию в Excel-совместимом формате CSV — для отчёта или передачи коллегам',
                     onClick: (e) => ctx.exportCsv(e)
                 }, icon('bar-chart-3', { size: 16 }), el('span', { text: 'CSV' }))
@@ -130,10 +135,6 @@ export function renderDetails(state, ctx) {
             testId: 'details-provider-price-actuality'
         }),
         providerPriceWarning ? renderProviderPriceWarning(providerPriceWarning, ctx) : null,
-
-        subTab === 'cost'
-            ? renderCostCheckReport(calc, result, disabledStands, { limit: 10 })
-            : null,
 
         subTab === 'qty'
             ? renderQtySection(byCat, result, ctx, disabledStands, state, presentCats)
