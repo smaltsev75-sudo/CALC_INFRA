@@ -109,10 +109,12 @@ describe('Stage 10.4 — providerAnalyticsModal.js файл-модуль', () =>
     });
 
     it('строка ЭК в сравнении объясняет выбор и количество ЭК', () => {
-        assert.match(MODAL_SRC, /analytics-cat-filter-reason/);
-        assert.match(MODAL_SRC, /Показаны.*из максимум.*PROVIDER_BENCHMARK_TOP_LIMIT/);
-        assert.match(MODAL_SRC, /самые дорогие ЭК текущего расчёта/);
-        assert.match(MODAL_SRC, /публичной ценой Cloud\.ru/);
+        assert.match(MODAL_SRC, /analytics-cat-filter-label--hint/);
+        assert.match(MODAL_SRC, /title:\s*filterHintText/);
+        assert.match(MODAL_SRC, /Показаны top-\$\{PROVIDER_BENCHMARK_TOP_LIMIT\}/);
+        assert.match(MODAL_SRC, /самых дорогих ЭК текущего расчёта/);
+        assert.match(MODAL_SRC, /имеющие стоимость в прайсе Cloud\.ru/);
+        assert.match(MODAL_SRC, /analytics-hint--below/);
     });
 });
 
@@ -198,7 +200,7 @@ describe('Stage 10.4 — CSS .analytics-* + .provider-analytics-btn', () => {
     it('.analytics-td-cat-price', () => assert.match(FORMS_CSS, /\.analytics-td-cat-price\b/));
     it('.analytics-td-cat-kind', () => assert.match(FORMS_CSS, /\.analytics-td-cat-kind\b/));
     it('.analytics-provider-price-date', () => assert.match(FORMS_CSS, /\.analytics-provider-price-date\b/));
-    it('.analytics-cat-filter-reason', () => assert.match(FORMS_CSS, /\.analytics-cat-filter-reason\b/));
+    it('.analytics-cat-filter-label--hint', () => assert.match(FORMS_CSS, /\.analytics-cat-filter-label--hint\b/));
     it('заголовки и числа price benchmark выровнены вправо', () => {
         assert.match(FORMS_CSS, /\.analytics-th-content\s*\{[^}]*width:\s*100%/s);
         assert.match(FORMS_CSS, /\.analytics-th-cat-name\s*\{[^}]*text-align:\s*right/s);

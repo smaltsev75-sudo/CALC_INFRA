@@ -99,13 +99,15 @@ describe('provider analytics modal — trust metadata is visible', () => {
     });
 
     it('hint explains calc-specific benchmark in Russian', () => {
-        assert.match(ANALYTICS_SRC, /analytics-cat-filter-reason/);
-        assert.match(ANALYTICS_SRC, /Показаны.*из максимум/);
-        assert.match(ANALYTICS_SRC, /самые дорогие ЭК текущего расчёта/);
-        assert.match(ANALYTICS_SRC, /публичной ценой Cloud\.ru/);
+        assert.match(ANALYTICS_SRC, /analytics-cat-filter-label--hint/);
+        assert.match(ANALYTICS_SRC, /title:\s*filterHintText/);
+        assert.match(ANALYTICS_SRC, /Показаны top-\$\{PROVIDER_BENCHMARK_TOP_LIMIT\}/);
+        assert.match(ANALYTICS_SRC, /самых дорогих ЭК текущего расчёта/);
+        assert.match(ANALYTICS_SRC, /имеющие стоимость в прайсе Cloud\.ru/);
         assert.match(ANALYTICS_SRC, /Крупное число/);
         assert.match(ANALYTICS_SRC, /вклад в расчёт за месяц/);
         assert.match(ANALYTICS_SRC, /тариф за единицу ресурса/);
+        assert.match(ANALYTICS_SRC, /analytics-hint--below/);
         assert.match(ANALYTICS_SRC, /Вклад ЭК/);
         assert.doesNotMatch(ANALYTICS_SRC, /CPU = 1 vCPU/);
         assert.doesNotMatch(ANALYTICS_SRC, /процессоры = 1 виртуальное ядро/);
@@ -190,7 +192,7 @@ describe('provider trust CSS', () => {
         assert.match(FORMS_CSS, /\.provider-price-actuality/);
         assert.match(FORMS_CSS, /\.analytics-trust-badge/);
         assert.match(FORMS_CSS, /\.analytics-provider-price-date/);
-        assert.match(FORMS_CSS, /\.analytics-cat-filter-reason/);
+        assert.match(FORMS_CSS, /\.analytics-cat-filter-label--hint/);
         assert.match(FORMS_CSS, /\.analytics-provider-warning/);
         assert.match(FORMS_CSS, /\.term-hint/);
         assert.match(FORMS_CSS, /\.scenario-cmp-provider-price-date/);

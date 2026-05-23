@@ -351,13 +351,16 @@ export function renderProviderAnalyticsModal(state, ctx) {
     /* Stage 14.1: панель фильтра по категориям. Каждая кнопка — toggle on/off
        с aria-pressed; визуально — pill (.analytics-cat-toggle). При клике
        persist через ctx + patchModal. */
-    const filterReasonText = isCalcSpecificBenchmark
-        ? `Показаны ${data.categories.length} из максимум ${PROVIDER_BENCHMARK_TOP_LIMIT}: самые дорогие ЭК текущего расчёта с публичной ценой Cloud.ru.`
+    const filterHintText = isCalcSpecificBenchmark
+        ? `Показаны top-${PROVIDER_BENCHMARK_TOP_LIMIT} самых дорогих ЭК текущего расчёта, имеющие стоимость в прайсе Cloud.ru`
         : 'Показаны базовые позиции; после расчёта здесь будут самые дорогие ЭК именно этого проекта.';
     const filterBar = el('div', { class: 'analytics-cat-filter',
         attrs: { role: 'group', 'aria-label': 'Фильтр ЭК' } },
-        el('span', { class: 'analytics-cat-filter-label', text: 'ЭК в сравнении:' }),
-        el('span', { class: 'analytics-cat-filter-reason', text: filterReasonText }),
+        el('span', {
+            class: ['analytics-cat-filter-label', 'analytics-cat-filter-label--hint'],
+            attrs: { title: filterHintText },
+            text: 'ЭК в сравнении:'
+        }),
         ...data.categories.map(cat => {
             const active = visibleSet.has(cat);
             const meta = getColumnMeta(cat);
@@ -399,10 +402,10 @@ export function renderProviderAnalyticsModal(state, ctx) {
         size: 'analytics',
         onClose: close,
         children: el('div', { class: 'analytics-body' },
-            el('p', { class: 'analytics-hint', text: hintText }),
             data.categories.length > 0 ? filterBar : null,
             noProviders || noCategories || null,
-            !noCategories ? table : null
+            !noCategories ? table : null,
+            !noCategories ? el('p', { class: ['analytics-hint', 'analytics-hint--below'], text: hintText }) : null
         ),
         footer: el('div', { class: 'modal-footer-actions' },
             el('button', { class: 'btn btn-ghost', onClick: close }, 'Закрыть')
