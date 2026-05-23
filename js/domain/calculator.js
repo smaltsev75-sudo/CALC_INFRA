@@ -170,7 +170,7 @@ export function riskFactor(item, stand, settings) {
  * всех 180 (item × stand) контекстов — иначе на каждой ячейке шёл бы
  * лишний обход 80+ вопросов, ~14k property-writes на recalc.
  */
-function buildQuestionDefaults(questions) {
+export function buildQuestionDefaults(questions) {
     const out = {};
     for (const q of questions) {
         if (q.defaultValue !== undefined && q.defaultValue !== null) {

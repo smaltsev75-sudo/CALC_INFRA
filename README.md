@@ -24,7 +24,7 @@
 - **Сравнение расчётов** до 4 штук side-by-side.
 - **Анализ расчёта**: Качество (Health Check + динамика), Реестр допущений, Анализ чувствительности, Бюджетные ограничения, Decision Memo.
 - **Планер оптимизации стоимости**: черновик изменений, preview экономии/рисков, явное применение и откат последнего apply.
-- **36 элементов конфигурации** (включая 7 AI-позиций) и формульный движок qty с собственным безопасным DSL.
+- **37 элементов конфигурации** (включая 8 AI-позиций) и формульный движок qty с собственным безопасным DSL.
 - **Импорт прайса JSON** (provider-JSON, CSV или JSON-массив через мастер маппинга), история откатов, прайс-бенчмарк (read-only сравнение прайсов провайдеров).
 - **Кросс-табная синхронизация**: одновременно открытые вкладки видят чужие обновления и блокируют конфликты.
 - **Защита от двойного запуска**: одновременно может работать только **один экземпляр приложения** в браузере. Второе окно/вкладка получает экран «Приложение уже открыто» — это гарантия, что две копии не повредят данные расчётов в общем хранилище.
@@ -149,6 +149,8 @@ npm run sanity:check      # проверка актуальности SANITY_REP
 npm run sanity            # пересобрать SANITY_REPORT.md
 npm run prices:freshness:check # проверка PROVIDER_FRESHNESS_REPORT.md
 npm run prices:freshness       # пересобрать PROVIDER_FRESHNESS_REPORT.md
+npm run quantity:audit:check # проверка QUANTITY_LOGIC_AUDIT.md
+npm run quantity:audit       # пересобрать QUANTITY_LOGIC_AUDIT.md
 npm run pages:build       # собрать .pages-dist для GitHub Pages workflow
 ```
 
@@ -201,10 +203,14 @@ Cloud.ru vs Yandex vs VK по ключевым типам ресурсов. На
 (`calc.providerVersion` → bundled provider JSON), и попадает также в CSV,
 memo и печатный PDF.
 
+`QUANTITY_LOGIC_AUDIT.md` фиксирует проверку логики количества ЭК: все
+применимые qty-формулы, ссылки `Q.*` и `S.*`, единицы измерения, месячный
+множитель тарифа, риск-коэффициенты, НДС и 2880 сценариев Quick Start.
+
 В GitHub Actions заведены два обязательных job'а: `unit-and-sanity`
 (`npm test`, `syntax-check`, `sanity:check`, `prices:freshness:check`,
-`pages:build`, whitespace diff check) и `desktop-smoke` (Playwright Chromium,
-desktop viewport 1365×768). Публикация GitHub Pages идёт отдельным workflow
+`quantity:audit:check`, `pages:build`, whitespace diff check) и
+`desktop-smoke` (Playwright Chromium, desktop viewport 1365×768). Публикация GitHub Pages идёт отдельным workflow
 `.github/workflows/pages.yml` через `.pages-dist`, а не через legacy
 deploy-from-branch. Playwright артефакты при падении загружаются из
 `.playwright-mcp/test-results`.
@@ -219,7 +225,7 @@ deploy-from-branch. Playwright артефакты при падении загр
 
 ### Источники цен
 
-Все 36 элементов конфигурации в `js/domain/seed.js` имеют источник цены в inline-комментарии: 35 позиций с `pricePerUnit > 0` и 1 явно бесплатная позиция `traffic-ingress-tb` (входящий трафик, 0 ₽/ТБ):
+Все 37 элементов конфигурации в `js/domain/seed.js` имеют источник цены в inline-комментарии: 36 позиций с `pricePerUnit > 0` и 1 явно бесплатная позиция `traffic-ingress-tb` (входящий трафик, 0 ₽/ТБ):
 
 - Cloud-инфраструктура (CPU/RAM/Storage/LB/WAF/Traffic) — **Cloud.ru**; bundled-прайс Cloud.ru проверен 22.05.2026 по официальным тарифам Evolution/Advanced.
 - LLM-токены и embeddings — **GigaChat 2 Pro** (Сбер).
@@ -247,3 +253,4 @@ deploy-from-branch. Playwright артефакты при падении загр
 - Все способы запуска и troubleshooting — в [HOW_TO_START.md](HOW_TO_START.md).
 - Sanity-check цифр на 3 типовых профилях продукта — в [SANITY_REPORT.md](SANITY_REPORT.md); расширенные business-эталоны описаны в [UserManual.md](UserManual.md#как-проверить-реалистичность-результата).
 - Свежесть bundled provider-прайсов — в [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md).
+- Аудит логики количества ЭК и Quick Start — в [QUANTITY_LOGIC_AUDIT.md](QUANTITY_LOGIC_AUDIT.md).

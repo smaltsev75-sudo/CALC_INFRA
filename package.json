@@ -1,6 +1,6 @@
 {
     "name": "infrastructure-calculator",
-    "version": "2.20.38",
+    "version": "2.20.39",
     "description": "Локальное web-приложение для расчёта инфраструктуры и стоимости программных продуктов по 5 стендам (DEV / ИФТ / ПСИ / ПРОМ / НТ). Работает offline, без runtime-зависимостей.",
     "type": "module",
     "private": true,
@@ -21,6 +21,8 @@
         "sanity:check": "node scripts/sanity-report.mjs --check",
         "prices:freshness": "node scripts/provider-freshness-report.mjs --write",
         "prices:freshness:check": "node scripts/provider-freshness-report.mjs --check",
+        "quantity:audit": "node scripts/quantity-logic-audit.mjs --write",
+        "quantity:audit:check": "node scripts/quantity-logic-audit.mjs --check",
         "pages:build": "node scripts/build-pages-dist.mjs",
         "generate:providers": "node scripts/generate-providers-bundled.js",
         "bump": "node scripts/bump-version.mjs",

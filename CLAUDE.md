@@ -244,7 +244,7 @@ vatMul     = vatEnabled ? (1 + vatRate) : 1                          // неза
 
 ## Миграции схемы
 
-[js/state/migrations.js](js/state/migrations.js) содержит массив `MIGRATIONS` шагов `from → to`. Текущая версия вычисляется автоматически из последнего шага `MIGRATIONS`; на PATCH 2.20.38 это **20** (см. `LATEST_SCHEMA_VERSION` в [js/state/migrations.js](js/state/migrations.js) и re-export `CURRENT_SCHEMA_VERSION` в [js/utils/constants.js](js/utils/constants.js)). Не дублировать номер схемы в production-коде.
+[js/state/migrations.js](js/state/migrations.js) содержит массив `MIGRATIONS` шагов `from → to`. Текущая версия вычисляется автоматически из последнего шага `MIGRATIONS`; на PATCH 2.20.39 это **20** (см. `LATEST_SCHEMA_VERSION` в [js/state/migrations.js](js/state/migrations.js) и re-export `CURRENT_SCHEMA_VERSION` в [js/utils/constants.js](js/utils/constants.js)). Не дублировать номер схемы в production-коде.
 
 При добавлении миграции:
 1. Реализовать `step.run(calc)` — мутирует **глубокую копию**, не оригинал.
@@ -272,7 +272,7 @@ Bump делается **синхронно в двух файлах** (`constant
 
 ## Контекст этапов разработки
 
-[DECISIONS.md](DECISIONS.md) — журнал ключевых решений и допущений по этапам, главный source of truth при расхождении с краткими сводками. Короткий срез на PATCH 2.20.38 (2026-05-23): `APP_VERSION=2.20.38`, schema v20, `BUNDLE_MAJOR=3`, `PROVIDER_PRICE_SCHEMA_VERSION=2`; проект production-ready/hardened, с provider JSON VAT Schema v2, sanity/freshness quality gates, Cloud.ru public tariff refresh, Yandex Cloud official pricing refresh verified 2026-05-22 (включая ALB minimum 2 resource units baseline), provider price trust UI с русскими бейджами, date-only актуальностью прайса расчёта (`calc.providerVersion` → bundled provider JSON) на Dashboard/Details/Comparison/CSV/memo/PDF без tooltip/версии-дубля, подавлением row-бейджей доверия, если они повторяют общий статус карточки, матрицей Cloud.ru vs Yandex vs VK в широком Прайс-бенчмарке, VK Cloud source-level public pricelist bundle with explicit `MISSING_CORE` for WAF/DDoS by request and Health/Details warnings, F1-справкой UserManual простым русским языком без необъяснённых англоязычных терминов, без дублирования горячих клавиш и с корректной нумерацией проверочного списка, 9 golden Quick Start snapshots, 6 manual business golden snapshots, full Quick Start calculation invariants, desktop Playwright UI↔domain regression-suite, Details PDF full-width landscape mode, desktop viewport guards, PNG-signal visual regression, real-click user-flow/data-management/export/print E2E, UserManual validation checklist, strict `vatPolicy` shape validation и source-level guard'ами против ad-hoc форматирования чисел/денег/процентов. Актуальное число тестов брать из `npm test`, не из этого файла.
+[DECISIONS.md](DECISIONS.md) — журнал ключевых решений и допущений по этапам, главный source of truth при расхождении с краткими сводками. Короткий срез на PATCH 2.20.39 (2026-05-23): `APP_VERSION=2.20.39`, schema v20, `BUNDLE_MAJOR=3`, `PROVIDER_PRICE_SCHEMA_VERSION=2`; проект production-ready/hardened, с provider JSON VAT Schema v2, sanity/freshness quality gates, отдельным [QUANTITY_LOGIC_AUDIT.md](QUANTITY_LOGIC_AUDIT.md) для проверки qty-формул, `Q.*`/`S.*`, единиц измерения и 2880 Quick Start-сценариев, Cloud.ru public tariff refresh, Yandex Cloud official pricing refresh verified 2026-05-22 (включая ALB minimum 2 resource units baseline), provider price trust UI с русскими бейджами, date-only актуальностью прайса расчёта (`calc.providerVersion` → bundled provider JSON) на Dashboard/Details/Comparison/CSV/memo/PDF без tooltip/версии-дубля, подавлением row-бейджей доверия, если они повторяют общий статус карточки, матрицей Cloud.ru vs Yandex vs VK в широком Прайс-бенчмарке, VK Cloud source-level public pricelist bundle with explicit `MISSING_CORE` for WAF/DDoS by request and Health/Details warnings, F1-справкой UserManual простым русским языком без необъяснённых англоязычных терминов, без дублирования горячих клавиш и с корректной нумерацией проверочного списка, окном формулы с эффективными `S.standSizeRatio.*` из production `buildContext()`, 9 golden Quick Start snapshots, 6 manual business golden snapshots, full Quick Start calculation invariants, desktop Playwright UI↔domain regression-suite, Details PDF full-width landscape mode, desktop viewport guards, PNG-signal visual regression, real-click user-flow/data-management/export/print E2E, UserManual validation checklist, strict `vatPolicy` shape validation и source-level guard'ами против ad-hoc форматирования чисел/денег/процентов. Актуальное число тестов брать из `npm test`, не из этого файла.
 
 ### Накопленный функционал (краткая шкала)
 
@@ -542,7 +542,7 @@ Bump делается **синхронно в двух файлах** (`constant
 
 **Provider freshness report** ([scripts/provider-freshness-report.mjs](scripts/provider-freshness-report.mjs)) — maintainer-команда для bundled provider-прайсов. Запуск: `npm run prices:freshness` обновляет [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md), `npm run prices:freshness:check` сверяет отчёт с `js/data/providers-bundled.generated.js`. Фиксирует version/timestamp/age/SKU-count/VAT confidence и статусы `STALE`, `STUB`, `ASSUMED_VAT`; таблица `Quality gates` проверяет core SKU coverage, gross→net VAT policy, положительные net/gross цены и vendor/source, а `Confidence summary` агрегирует verified/source-level, assumed/unknown VAT и stub-провайдеров. Пользовательские русские бейджи доверия, WAF/DDoS-хинты, матрица доверия и дата актуальности прайса находятся в [providerPriceTrust.js](js/domain/providerPriceTrust.js) + UI-рендерах provider summary / analytics modal. Входит в CI.
 
-**Desktop Playwright suite** (`npm run smoke:desktop`) — 29 desktop-first тестов:
+**Desktop Playwright suite** (`npm run smoke:desktop`) — 30 desktop-first тестов:
 smoke-рендер критичных экранов, UI↔domain сверка Dashboard/Details и реальные
 user-flow клики Quick Start/Sidebar/Опросник/Dashboard CTA, scenario tabs,
 active/bundle JSON import-export-reset, provider VAT-policy import, Decision
@@ -599,7 +599,7 @@ CSS-refactor'ам критичные элементы получают `data-tes
 
 Перед каждым коммитом пройтись по 12 пунктам. Подробные правила — в разделах выше; здесь — только быстрый сканер. Если хоть один пункт под вопросом — НЕ коммитить, сначала разобраться.
 
-1. **`npm test`** зелёный (1286+ тестов). Если упали — НЕ маркировать «исправлено», пока не зелёные.
+1. **`npm test`** зелёный. Если упали — НЕ маркировать «исправлено», пока не зелёные.
 2. **`npm run syntax-check`** зелёный (`node --check` на всех `js/**/*.js`).
 3. **Ничего не «забыто» вне коммита**: `git status` чистый по релевантным файлам, screenshots от Playwright НЕ в корне (только в `.playwright-mcp/`), временные `.bak`/`.old`/`*_v2`/JSON-дампы — в `d:/tmp/` или `$TEMP`.
 4. **Слои не нарушены**: UI не импортирует напрямую `controllers/` или `state/`; ловит [layer-imports.test.js](tests/unit/architecture/layer-imports.test.js).
@@ -610,7 +610,7 @@ CSS-refactor'ам критичные элементы получают `data-tes
 9. **Magic-числа времени и лимитов** — через `constants.js` (`*_MS`, `*_MAX_BYTES`), не через литералы в коде.
 10. **Денежные сравнения** через `isZeroMoney(x)` (EPSILON_KOPECK), не через `x === 0` — после 6+ накопленных умножений float даёт остатки 1e-15.
 11. **Settings-коэффициенты** — через `numWithDefault(value, fallback)` в `calculator.js`, не `Number(x) || 0` (маскирует `NaN→0` и игнорирует DEFAULT).
-12. **Если правил `seed.js` или DSL-парсер** — прогнать [seed-formulas.test.js](tests/unit/domain/seed-formulas.test.js) (smoke на все qty-формулы).
+12. **Если правили `seed.js`, Quick Start, калькулятор или DSL-парсер** — прогнать [seed-formulas.test.js](tests/unit/domain/seed-formulas.test.js) и `npm run quantity:audit:check` (smoke на все qty-формулы + аудит причинной цепочки qty).
 
 ### Что НЕ делать (anti-patterns, повторявшиеся жертвы)
 

@@ -1,5 +1,56 @@
 # Журнал решений и допущений
 
+## 23.05.2026 · PATCH 2.20.39 — Quantity logic audit for EK calculations
+
+**Контекст.** Пользователь обозначил главный слой доверия: корректность бюджета
+следует из корректности количества каждого ЭК, если прайсы, формулы и единицы
+измерения актуальны. Нужно проверять не только итоговую сумму, а причинную
+цепочку: Quick Start / Опросник → ответы → коэффициенты → qty ЭК → стоимость.
+
+**Решение.**
+
+- Добавлен доменный модуль [quantityTrace.js](js/domain/quantityTrace.js):
+  строит трассировку одной ячейки `ЭК × стенд`, показывает формулу, входные
+  `Q.*`, эффективные `S.*`, происхождение значения, `qty`, тарифный множитель,
+  риск-множители, НДС и сверку с production `calculate()`.
+- Добавлен автоматический аудит `auditQuantityLogic()`: ловит пустую формулу на
+  применимом стенде, битые ссылки `Q.*`/`S.*`, не-финитные qty, расхождения
+  `costBase = qty × price × interval` и `costFinal = costBase × risks × VAT`.
+- Добавлен maintainer-отчёт
+  [QUANTITY_LOGIC_AUDIT.md](QUANTITY_LOGIC_AUDIT.md) и команды
+  `npm run quantity:audit` / `npm run quantity:audit:check`. Отчёт проверяет
+  118 применимых qty-формул и все 2880 Quick Start-сценариев.
+- CI теперь запускает `quantity:audit:check` рядом с sanity/freshness checks.
+- Окно формулы исправлено: вложенные параметры вроде
+  `S.standSizeRatio.DEV` показывают эффективное значение из реального
+  `buildContext()` (например, `resourceRatio.DEV.RAM` для RAM или
+  `aiStandFactor.DEV` для AI-ЭК), а не `undefined`.
+- Системная формула в окне формулы теперь показывает полный путь стоимости:
+  `qty × pricePerUnit × billingIntervalMul × riskMul × vatMul`, с разложением
+  риск-множителя.
+- README и Maintainer Guide описывают новый отчёт, команды и связь с проверкой
+  формул/Quick Start.
+
+**Проверки.**
+
+- Targeted quantity trace suite: 5/5 pass.
+- Public doc tracked-link guard: 3/3 pass.
+- `npm run quantity:audit:check`: pass.
+- `npm run test:quick`: 1978/1978 pass.
+- `npm test`: 5111/5111 pass.
+- `npm run smoke:desktop`: 30/30 pass.
+- `npm run syntax-check`: pass.
+- `npm run sanity:check`: pass.
+- `npm run prices:freshness:check`: pass.
+- `npm run pages:build`: pass.
+- `git diff --check`: pass.
+
+**Версионирование.**
+
+`2.20.38 → 2.20.39` (PATCH). Schema, provider JSON schema и bundle format не
+меняются. Изменение пользовательски видимо в окне формулы и maintainer-отчёте
+аудита qty-логики; persisted data не мигрируется.
+
 ## 23.05.2026 · PATCH 2.20.38 — Help numbering and hotkeys de-duplication
 
 **Контекст.** Пользователь показал два дефекта в F1-справке:

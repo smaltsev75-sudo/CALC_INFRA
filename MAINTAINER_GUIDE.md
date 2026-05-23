@@ -102,6 +102,7 @@ npm run prices:freshness
 
 ```bash
 npm run prices:freshness:check
+npm run quantity:audit:check
 npm run sanity:check
 npm test
 ```
@@ -130,6 +131,7 @@ npm test
 | [stage-14-7-json-linter.test.js](tests/unit/architecture/stage-14-7-json-linter.test.js) | Структура `data/providers/*.json` (schemaVersion, providerId, vatPolicy, prices.<id> ∈ SEED_ITEMS, net/gross price > 0) |
 | [provider-freshness-report-sync.test.js](tests/unit/architecture/provider-freshness-report-sync.test.js) | [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md) соответствует bundled-прайсам, timestamps, VAT confidence и quality gates |
 | [seed-formulas.test.js](tests/unit/domain/seed-formulas.test.js) | Каждая qty-формула в seed парсится и считается в финитное неотрицательное число |
+| [quantity-trace.test.js](tests/unit/domain/quantity-trace.test.js) | Трассировка qty показывает входные `Q.*`/`S.*`, эффективные коэффициенты стенда и ловит битые ссылки |
 | [no-emoji-in-source.test.js](tests/unit/architecture/) | Эмодзи в UI-исходниках запрещены |
 | [storage-whitelist.test.js](tests/unit/services/storage-whitelist.test.js) | Все ключи localStorage идут через `STORAGE_KEYS` |
 | [layer-imports.test.js](tests/unit/architecture/layer-imports.test.js) | UI ↛ controllers/state, domain ↛ services/state/controllers/ui |
@@ -199,6 +201,8 @@ npm run sanity:check      # SANITY_REPORT.md соответствует теку
 npm run sanity            # Пересобрать SANITY_REPORT.md
 npm run prices:freshness:check # PROVIDER_FRESHNESS_REPORT.md соответствует bundled-прайсам
 npm run prices:freshness       # Пересобрать PROVIDER_FRESHNESS_REPORT.md
+npm run quantity:audit:check # QUANTITY_LOGIC_AUDIT.md соответствует текущим формулам
+npm run quantity:audit       # Пересобрать QUANTITY_LOGIC_AUDIT.md
 npm run pages:build       # Собрать .pages-dist для Pages workflow
 ```
 
@@ -317,7 +321,30 @@ stub-статус. Колонка `Attention` включает и freshness-фл
 
 ---
 
-### 4.6 Source-grep тесты после модульного рефакторинга
+### 4.6 Quantity logic audit
+
+```bash
+npm run quantity:audit
+npm run quantity:audit:check
+```
+
+[QUANTITY_LOGIC_AUDIT.md](QUANTITY_LOGIC_AUDIT.md) фиксирует не итоговую сумму,
+а причинную цепочку количества ЭК: Quick Start / Опросник → ответы `Q.*` →
+формулы qty → количество → `qty × цена × тарифный интервал` → риск-множители и
+НДС. Отчёт проверяет все применимые формулы, ссылки `Q.*`/`S.*`, единицы
+измерения и все 2880 комбинаций Quick Start. Запускать после правок
+`wizardProfiles`, `seed.js`, `calculator.js`, коэффициентов стендов,
+риск/VAT-множителей или единиц измерения.
+
+В UI окно формулы должно показывать эффективные значения `S.*`, а не только
+сырые настройки. Например, `S.standSizeRatio.DEV` для RAM может быть взят из
+`resourceRatio.DEV.RAM`; для AI-ЭК тот же путь может быть подменён на
+`aiStandFactor.DEV`. Это поведение закреплено в
+[quantity-trace.test.js](tests/unit/domain/quantity-trace.test.js).
+
+---
+
+### 4.7 Source-grep тесты после модульного рефакторинга
 
 В проекте много архитектурных и UI-тестов, которые читают исходник как текст. После дробления монолитов важно обновлять **путь файла-владельца поведения**, а не добавлять дубли в старый фасад:
 

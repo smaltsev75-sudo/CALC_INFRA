@@ -12,8 +12,9 @@ import { getAst, isAstError } from '../../domain/formula/cache.js';
 import { evaluate, collectReferences } from '../../domain/formula/evaluator.js';
 import { lintFormulas } from '../../domain/validation.js';
 import { STAND_IDS, STAND_LABELS, BILLING_INTERVAL_LABELS, MONTHS_PER_YEAR, DEFAULT_DAYS_PER_MONTH } from '../../utils/constants.js';
-import { formatNumber, money, num, percent } from '../../services/format.js';
-import { billingIntervalToMonthlyMultiplier, buildContext } from '../../domain/calculator.js';
+import { formatNumber, money, num } from '../../services/format.js';
+import { billingIntervalToMonthlyMultiplier, buildContext, riskFactor } from '../../domain/calculator.js';
+import { resolvePathValue } from '../../domain/quantityTrace.js';
 
 export function renderFormulaModal(state, ctx) {
     const m = state.modals.formula;
@@ -91,12 +92,14 @@ function renderSystemFormula(item, calc) {
     const phaseDuration = Number(calc.settings?.phaseDurationMonths) || MONTHS_PER_YEAR;
     const daysPerMonth  = Number(calc.settings?.daysPerMonth) || DEFAULT_DAYS_PER_MONTH;
     const billingIntervalMul = billingIntervalToMonthlyMultiplier(item.billingInterval, daysPerMonth, phaseDuration);
-    const factor = (1 + calc.settings.bufferTask) * (1 + calc.settings.bufferProject) * (1 + (calc.settings.kInflation ?? 0));
+    const breakdown = riskFactor(item, 'PROD', calc.settings || {});
+    const applyRisks = calc.settings?.applyRiskFactors !== false;
+    const riskMul = applyRisks ? breakdown.total : 1;
 
     return el('div', { class: 'formula-system' },
         el('div', { class: 'formula-system-title', text: 'Системная формула стоимости' }),
         el('pre', { class: 'formula-code' },
-            'costFinal(stand) = qty(stand) × pricePerUnit × billingIntervalMul × bufferFactor\n' +
+            'costFinal(stand) = qty(stand) × pricePerUnit × billingIntervalMul × riskMul × vatMul\n' +
             `qty(stand)        — формула элемента (см. ниже по стендам)\n` +
             `pricePerUnit      = ${num(item.pricePerUnit, 4)}\n` +
             `billingIntervalMul= ${formatNumber(billingIntervalMul, { min: 6, max: 6 })} (тариф «${BILLING_INTERVAL_LABELS[item.billingInterval]}»` +
@@ -107,9 +110,13 @@ function renderSystemFormula(item, calc) {
                         : item.billingInterval === 'daily'
                             ? `, × ${daysPerMonth} дн./мес.`
                             : '') + `)\n` +
-            `bufferFactor      = (1 + ${percent(calc.settings.bufferTask)}) × ` +
-                `(1 + ${percent(calc.settings.bufferProject)}) × ` +
-                `(1 + ${percent(calc.settings.kInflation ?? 0)}) = ${formatNumber(factor, { min: 4, max: 4 })}\n`
+            `riskMul           = ${applyRisks ? formatNumber(riskMul, { min: 4, max: 4 }) : '1.0000'} ` +
+                `(буферы ${formatNumber(breakdown.bufferFactor, { min: 4, max: 4 })}, ` +
+                `инфляция ${formatNumber(breakdown.inflationMul, { min: 4, max: 4 })}, ` +
+                `сезонность ${formatNumber(breakdown.seasonalMul, { min: 4, max: 4 })}, ` +
+                `сдвиг сроков ${formatNumber(breakdown.scheduleMul, { min: 4, max: 4 })}, ` +
+                `резерв ${formatNumber(breakdown.contingencyMul, { min: 4, max: 4 })})\n` +
+            `vatMul            = ${formatNumber(breakdown.vatMul, { min: 4, max: 4 })}\n`
         )
     );
 }
@@ -165,7 +172,9 @@ function renderResolvedRefs(formula, calc, stand, item) {
     const rows = [];
     for (const qid of refs.questions) {
         const q = calc.dictionaries.questions.find(x => x.id === qid);
-        const v = calc.answers?.[qid];
+        const hasAnswer = Object.prototype.hasOwnProperty.call(calc.answers || {}, qid);
+        const hasDefault = Object.prototype.hasOwnProperty.call(questionDefaults, qid);
+        const v = hasAnswer ? calc.answers[qid] : hasDefault ? questionDefaults[qid] : 0;
         rows.push(el('tr', null,
             el('td', null, el('code', { text: 'Q.' + qid })),
             el('td', { text: q?.title || '(вопрос не найден)' }),
@@ -173,7 +182,8 @@ function renderResolvedRefs(formula, calc, stand, item) {
         ));
     }
     for (const sid of refs.settings) {
-        const v = ctx.S?.[sid];
+        const resolved = resolvePathValue(ctx.S, sid);
+        const v = resolved.exists ? resolved.value : 0;
         rows.push(el('tr', null,
             el('td', null, el('code', { text: 'S.' + sid })),
             el('td', { text: 'Параметр настроек (с учётом per-item override)' }),

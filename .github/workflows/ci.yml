@@ -38,6 +38,9 @@ jobs:
       - name: Provider freshness report check
         run: npm run prices:freshness:check
 
+      - name: Quantity logic audit check
+        run: npm run quantity:audit:check
+
       - name: Pages artifact check
         run: npm run pages:build
 
