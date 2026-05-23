@@ -205,18 +205,22 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
     await page.locator('.provider-analytics-btn').click();
     const analyticsModal = page.locator('.modal-overlay').filter({ hasText: 'Прайс-бенчмарк' });
     await expect(analyticsModal.locator('.modal')).toHaveClass(/modal-analytics/);
+    await expect(analyticsModal.locator('.analytics-actuality-table')).toBeVisible();
+    await expect(analyticsModal.locator('.analytics-actuality-table')).toContainText('Дата прайса');
+    await expect(analyticsModal.locator('.analytics-actuality-date')).toHaveCount(3);
+    await expect(analyticsModal.locator('.analytics-actuality-date').first()).toHaveText(/\d{2}\.\d{2}\.\d{4}/);
     await expect(analyticsModal.locator('.analytics-trust-matrix')).toBeVisible();
     await expect(analyticsModal.locator('.analytics-trust-matrix')).toContainText('Cloud.ru vs Yandex vs VK');
     await expect(analyticsModal.locator('.analytics-trust-matrix .analytics-provider-meta')).toHaveCount(0);
-    await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta')).toHaveCount(3);
-    await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta').first())
-        .toContainText('Актуальность прайса:');
-    await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta').first())
-        .not.toContainText('версия');
-    await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta').first())
-        .not.toHaveAttribute('title', /.+/);
+    await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta')).toHaveCount(0);
+    await expect.poll(async () => analyticsModal.locator('.analytics-actuality').evaluate((actuality) => {
+        const matrix = document.querySelector('.analytics-trust-matrix');
+        return !!matrix && (actuality.compareDocumentPosition(matrix) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    })).toBe(true);
     await expect(analyticsModal.locator('.analytics-hint')).toContainText('Показаны до 6 крупнейших ЭК');
     await expect(analyticsModal.locator('.analytics-hint')).toContainText('публичная цена Cloud.ru');
+    await expect(analyticsModal.locator('.analytics-hint')).toContainText('Крупное число');
+    await expect(analyticsModal.locator('.analytics-hint')).toContainText('тариф за единицу ресурса');
     const benchmarkCategoryCount = await analyticsModal.locator('.analytics-cat-toggle').count();
     expect(benchmarkCategoryCount).toBeGreaterThan(0);
     expect(benchmarkCategoryCount).toBeLessThanOrEqual(6);
@@ -226,12 +230,23 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
     await expect(cloudBenchmarkRow.locator('.analytics-td-cat-empty')).toHaveCount(0);
     await expect(cloudBenchmarkRow).not.toContainText('Нет цены');
     await expect(cloudBenchmarkRow.locator('.analytics-td-cat-price')).toHaveCount(benchmarkCategoryCount);
+    await expect(cloudBenchmarkRow.locator('.analytics-td-cat-kind')).toHaveCount(benchmarkCategoryCount);
+    await expect(cloudBenchmarkRow.locator('.analytics-td-cat-price').first()).toContainText('цена:');
     await expect.poll(async () => analyticsModal.locator('.analytics-table').evaluate(table => {
         const headers = [...table.querySelectorAll('thead .analytics-th-cat')];
         const cells = [...table.querySelectorAll('tbody tr:first-child .analytics-td-cat')];
         return headers.length === cells.length && headers.every((th, index) =>
             getComputedStyle(th).textAlign === 'right'
             && getComputedStyle(cells[index]).textAlign === 'right');
+    })).toBe(true);
+    await expect.poll(async () => analyticsModal.locator('.analytics-table').evaluate(table => {
+        const headers = [...table.querySelectorAll('thead .analytics-th-cat .analytics-th-content')];
+        const cells = [...table.querySelectorAll('tbody tr:first-child .analytics-td-cat .analytics-td-cat-stack')];
+        return headers.length === cells.length && headers.every((header, index) => {
+            const hr = header.getBoundingClientRect();
+            const cr = cells[index].getBoundingClientRect();
+            return Math.abs(hr.right - cr.right) <= 4;
+        });
     })).toBe(true);
     await expect.poll(async () => cloudBenchmarkRow.evaluate(row => {
         const sum = [...row.querySelectorAll('.analytics-td-cat')]

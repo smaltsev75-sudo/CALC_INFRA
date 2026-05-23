@@ -89,11 +89,12 @@ describe('provider analytics modal — trust metadata is visible', () => {
         assert.match(ANALYTICS_SRC, /p\.warnings/);
     });
 
-    it('renders provider trust matrix and price actuality in the price table', () => {
+    it('renders provider trust matrix and separate price actuality table', () => {
         assert.match(ANALYTICS_SRC, /analytics-trust-matrix/);
         assert.match(ANALYTICS_SRC, /Cloud\.ru vs Yandex vs VK/);
         assert.match(ANALYTICS_SRC, /analytics-table/);
-        assert.match(ANALYTICS_SRC, /analytics-provider-meta/);
+        assert.match(ANALYTICS_SRC, /analytics-actuality-table/);
+        assert.match(ANALYTICS_SRC, /Дата прайса/);
         assert.match(ANALYTICS_SRC, /getProviderPriceActuality/);
     });
 
@@ -101,8 +102,9 @@ describe('provider analytics modal — trust metadata is visible', () => {
         assert.match(ANALYTICS_SRC, /до.*крупнейших ЭК/);
         assert.match(ANALYTICS_SRC, /публичная цена Cloud\.ru/);
         assert.match(ANALYTICS_SRC, /месячному вкладу/);
-        assert.match(ANALYTICS_SRC, /месячный вклад у провайдера/);
-        assert.match(ANALYTICS_SRC, /цена за единицу показана ниже/);
+        assert.match(ANALYTICS_SRC, /Крупное число/);
+        assert.match(ANALYTICS_SRC, /вклад в расчёт за месяц/);
+        assert.match(ANALYTICS_SRC, /тариф за единицу ресурса/);
         assert.match(ANALYTICS_SRC, /Вклад ЭК/);
         assert.doesNotMatch(ANALYTICS_SRC, /CPU = 1 vCPU/);
         assert.doesNotMatch(ANALYTICS_SRC, /процессоры = 1 виртуальное ядро/);
@@ -187,7 +189,8 @@ describe('provider trust CSS', () => {
         assert.match(FORMS_CSS, /\.provider-price-actuality/);
         assert.match(FORMS_CSS, /\.analytics-trust-badge/);
         assert.match(FORMS_CSS, /\.analytics-trust-matrix/);
-        assert.match(FORMS_CSS, /\.analytics-provider-meta/);
+        assert.match(FORMS_CSS, /\.analytics-actuality-table/);
+        assert.match(FORMS_CSS, /\.analytics-actuality-date/);
         assert.match(FORMS_CSS, /\.analytics-provider-warning/);
         assert.match(FORMS_CSS, /\.term-hint/);
         assert.match(FORMS_CSS, /\.scenario-cmp-provider-price-date/);

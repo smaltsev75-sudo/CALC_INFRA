@@ -176,12 +176,39 @@ export function renderProviderAnalyticsModal(state, ctx) {
         })
     );
 
-    const renderProviderActuality = (providerId) => {
+    const getProviderActualityText = (providerId) => {
         const actuality = getProviderPriceActuality(providerMetaById[providerId]);
-        return el('span', {
-            class: 'analytics-provider-meta',
-            text: actuality.label
-        });
+        return actuality.date || 'дата не указана';
+    };
+
+    const renderProviderActualityTable = (providers = []) => {
+        if (!providers.length) return null;
+        return el('section', { class: 'analytics-actuality' },
+            el('div', { class: 'analytics-section-head analytics-section-head--compact' },
+                el('h3', { class: 'analytics-section-title', text: 'Актуальность прайсов' })
+            ),
+            el('div', { class: 'analytics-actuality-wrap' },
+                el('table', { class: 'analytics-actuality-table' },
+                    el('thead', null,
+                        el('tr', null,
+                            el('th', { text: 'Провайдер' }),
+                            el('th', { text: 'Дата прайса' })
+                        )
+                    ),
+                    el('tbody', null,
+                        ...providers.map(provider =>
+                            el('tr', null,
+                                el('td', { class: 'analytics-actuality-provider', text: provider.label }),
+                                el('td', {
+                                    class: 'analytics-actuality-date',
+                                    text: getProviderActualityText(provider.id)
+                                })
+                            )
+                        )
+                    )
+                )
+            )
+        );
     };
 
     const getColumnMeta = (cat) => categoryMeta[cat] || {
@@ -278,16 +305,19 @@ export function renderProviderAnalyticsModal(state, ctx) {
             ...visibleCategories.map(cat => {
                 const meta = getColumnMeta(cat);
                 const unitText = isCalcSpecificBenchmark ? 'вклад ₽/мес' : (meta.unit || '');
+                const headerIcon = sortIcon(cat);
                 return el('th', {
                     class: ['analytics-th-cat', effectiveSortBy === cat && 'is-sorted'],
                     attrs: { type: 'button', title: renderColumnTitle(cat) },
                     onClick: () => handleSort(cat)
                 },
-                    el('span', null,
-                        el('span', { class: 'analytics-th-cat-name', text: meta.label }),
+                    el('span', { class: 'analytics-th-content' },
+                        el('span', { class: 'analytics-th-name-row' },
+                            el('span', { class: 'analytics-th-cat-name', text: meta.label }),
+                            headerIcon
+                        ),
                         el('span', { class: 'analytics-th-cat-unit', text: unitText })
-                    ),
-                    sortIcon(cat)
+                    )
                 );
             }),
             el('th', {
@@ -295,12 +325,14 @@ export function renderProviderAnalyticsModal(state, ctx) {
                 onClick: () => handleSort('total'),
                 attrs: { title: totalTitle }
             },
-                el('span', null,
-                    el('span', { class: 'analytics-th-cat-name',
-                        text: isCalcSpecificBenchmark ? 'Вклад ЭК' : 'Сумма' }),
+                el('span', { class: 'analytics-th-content' },
+                    el('span', { class: 'analytics-th-name-row' },
+                        el('span', { class: 'analytics-th-cat-name',
+                            text: isCalcSpecificBenchmark ? 'Вклад ЭК' : 'Сумма' }),
+                        sortIcon('total')
+                    ),
                     el('span', { class: 'analytics-th-cat-unit', text: totalUnit })
-                ),
-                sortIcon('total')
+                )
             )
         )
     );
@@ -330,7 +362,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
         const showMonthlyImpact = isCalcSpecificBenchmark && Number.isFinite(impact);
         const primaryValue = showMonthlyImpact ? impact : cell.effective;
         const unitPriceLine = showMonthlyImpact
-            ? `${fmtRub(cell.effective)} ${meta.unit}`
+            ? `цена: ${fmtRub(cell.effective)} ${meta.unit}`
             : '';
         return el('td', { class: 'analytics-td-cat',
             attrs: {
@@ -342,9 +374,9 @@ export function renderProviderAnalyticsModal(state, ctx) {
                 ...(showMonthlyImpact ? { 'data-monthly-impact': String(impact) } : {}),
                 'data-effective-price': String(cell.effective)
             } },
-            el('span', { class: 'analytics-td-cat-stack' },
-                el('span', { class: 'analytics-td-cat-main' },
-                    el('span', { class: 'analytics-td-cat-num', text: fmtRub(primaryValue) }),
+                el('span', { class: 'analytics-td-cat-stack' },
+                    el('span', { class: 'analytics-td-cat-main' },
+                        el('span', { class: 'analytics-td-cat-num', text: fmtRub(primaryValue) }),
                     pillText
                         ? el('span', {
                             class: ['delta-pill',
@@ -355,6 +387,9 @@ export function renderProviderAnalyticsModal(state, ctx) {
                         })
                         : null
                 ),
+                showMonthlyImpact
+                    ? el('span', { class: 'analytics-td-cat-kind', text: 'вклад, ₽/мес' })
+                    : null,
                 unitPriceLine
                     ? el('span', { class: 'analytics-td-cat-price', text: unitPriceLine })
                     : null,
@@ -369,7 +404,6 @@ export function renderProviderAnalyticsModal(state, ctx) {
             return el('tr', { class: 'analytics-row' },
                 el('td', { class: 'analytics-td-provider' },
                     el('span', { class: 'analytics-provider-name', text: p.label }),
-                    renderProviderActuality(p.id),
                     ...renderProviderWarnings(p.warnings)
                 ),
                 ...visibleCategories.map(cat => renderCell(p.byCategory[cat], cat)),
@@ -434,7 +468,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
         : null;
 
     const hintText = isCalcSpecificBenchmark
-        ? `Показаны до ${PROVIDER_BENCHMARK_TOP_LIMIT} крупнейших ЭК текущего расчёта по месячному вкладу, по которым есть публичная цена Cloud.ru. В ячейках — месячный вклад у провайдера; цена за единицу показана ниже.`
+        ? `Показаны до ${PROVIDER_BENCHMARK_TOP_LIMIT} крупнейших ЭК текущего расчёта по месячному вкладу, по которым есть публичная цена Cloud.ru. Крупное число в ячейке — вклад в расчёт за месяц; строка «цена» — тариф за единицу ресурса.`
         : 'Показаны базовые позиции провайдеров. Откройте расчёт, чтобы увидеть 6 крупнейших ЭК именно для него.';
 
     return modalShell({
@@ -443,6 +477,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
         onClose: close,
         children: el('div', { class: 'analytics-body' },
             el('p', { class: 'analytics-hint', text: hintText }),
+            renderProviderActualityTable(data.providers),
             renderTrustMatrix(data.trustMatrix),
             data.categories.length > 0 ? filterBar : null,
             noProviders || noCategories || null,
