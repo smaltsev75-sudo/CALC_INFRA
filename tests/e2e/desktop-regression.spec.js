@@ -227,6 +227,16 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
     expect(benchmarkCategoryCount).toBeGreaterThan(0);
     expect(benchmarkCategoryCount).toBeLessThanOrEqual(6);
     await expect(analyticsModal.locator('.analytics-th-cat')).toHaveCount(benchmarkCategoryCount);
+    await expect.poll(async () => analyticsModal.locator('.analytics-table').evaluate(table => {
+        const emptyCells = [...table.querySelectorAll('.analytics-td-cat-empty')];
+        return emptyCells.length > 0 && emptyCells.every(cell => {
+            const text = cell.textContent || '';
+            const num = cell.querySelector('.analytics-td-cat-num');
+            return !num && !text.includes('—') && !text.includes('по запросу');
+        });
+    })).toBe(true);
+    await expect(analyticsModal.locator('.analytics-td-cat-empty .analytics-trust-badge'))
+        .toHaveCount(await analyticsModal.locator('.analytics-td-cat-empty').count());
     const cloudBenchmarkRow = analyticsModal.locator('.analytics-table tbody tr')
         .filter({ hasText: 'Cloud.ru' });
     await expect(cloudBenchmarkRow.locator('.analytics-td-cat-empty')).toHaveCount(0);

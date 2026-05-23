@@ -260,7 +260,6 @@ export function renderProviderAnalyticsModal(state, ctx) {
             : '';
         const trustBadge = renderTrustBadge(cell?.trust);
         if (!cell || cell.effective === null) {
-            const emptyText = cell?.trust?.status === 'by-request' ? 'по запросу' : '—';
             return el('td', {
                 class: ['analytics-td-cat', 'analytics-td-cat-empty'],
                 attrs: { title: cell?.trust
@@ -268,8 +267,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
                     : meta.description }
             },
                 el('span', { class: 'analytics-td-cat-stack' },
-                    el('span', { class: 'analytics-td-cat-num', text: emptyText }),
-                    trustBadge
+                    trustBadge || el('span', { class: 'analytics-td-cat-num', text: 'Нет цены' })
                 )
             );
         }

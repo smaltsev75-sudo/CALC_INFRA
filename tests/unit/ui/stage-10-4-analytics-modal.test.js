@@ -108,6 +108,12 @@ describe('Stage 10.4 — providerAnalyticsModal.js файл-модуль', () =>
         assert.match(MODAL_SRC, /showMonthlyImpact\s*\?\s*impact\s*:\s*cell\.effective/);
     });
 
+    it('пустые price-cell не дублируют статус прочерком или текстом по запросу', () => {
+        assert.doesNotMatch(MODAL_SRC, /const\s+emptyText/);
+        assert.doesNotMatch(MODAL_SRC, /text:\s*emptyText/);
+        assert.match(MODAL_SRC, /trustBadge\s*\|\|\s*el\('span'[\s\S]*text:\s*'Нет цены'/);
+    });
+
     it('строка ЭК в сравнении объясняет выбор и количество ЭК', () => {
         assert.match(MODAL_SRC, /analytics-cat-filter-label--hint/);
         assert.match(MODAL_SRC, /title:\s*filterHintText/);
