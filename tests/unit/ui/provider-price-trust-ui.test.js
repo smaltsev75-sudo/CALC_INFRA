@@ -89,19 +89,20 @@ describe('provider analytics modal — trust metadata is visible', () => {
         assert.match(ANALYTICS_SRC, /p\.warnings/);
     });
 
-    it('renders provider trust matrix and separate price actuality table', () => {
-        assert.match(ANALYTICS_SRC, /analytics-trust-matrix/);
-        assert.match(ANALYTICS_SRC, /Cloud\.ru vs Yandex vs VK/);
+    it('renders price actuality inside the benchmark table without duplicate top tables', () => {
         assert.match(ANALYTICS_SRC, /analytics-table/);
-        assert.match(ANALYTICS_SRC, /analytics-actuality-table/);
+        assert.match(ANALYTICS_SRC, /analytics-provider-price-date/);
         assert.match(ANALYTICS_SRC, /Дата прайса/);
         assert.match(ANALYTICS_SRC, /getProviderPriceActuality/);
+        assert.doesNotMatch(ANALYTICS_SRC, /analytics-actuality-table/);
+        assert.doesNotMatch(ANALYTICS_SRC, /analytics-trust-matrix/);
     });
 
     it('hint explains calc-specific benchmark in Russian', () => {
-        assert.match(ANALYTICS_SRC, /до.*крупнейших ЭК/);
-        assert.match(ANALYTICS_SRC, /публичная цена Cloud\.ru/);
-        assert.match(ANALYTICS_SRC, /месячному вкладу/);
+        assert.match(ANALYTICS_SRC, /analytics-cat-filter-reason/);
+        assert.match(ANALYTICS_SRC, /Показаны.*из максимум/);
+        assert.match(ANALYTICS_SRC, /самые дорогие ЭК текущего расчёта/);
+        assert.match(ANALYTICS_SRC, /публичной ценой Cloud\.ru/);
         assert.match(ANALYTICS_SRC, /Крупное число/);
         assert.match(ANALYTICS_SRC, /вклад в расчёт за месяц/);
         assert.match(ANALYTICS_SRC, /тариф за единицу ресурса/);
@@ -110,10 +111,10 @@ describe('provider analytics modal — trust metadata is visible', () => {
         assert.doesNotMatch(ANALYTICS_SRC, /процессоры = 1 виртуальное ядро/);
     });
 
-    it('trust matrix explains price-source quality in Russian', () => {
-        assert.match(ANALYTICS_SRC, /качество источника цены/);
-        assert.match(ANALYTICS_SRC, /где прайс проверен/);
-        assert.match(ANALYTICS_SRC, /где цена отсутствует или выдаётся по запросу/);
+    it('price-source status is shown in benchmark cells', () => {
+        assert.match(ANALYTICS_SRC, /analytics-trust-badge/);
+        assert.match(ANALYTICS_SRC, /fullLabel/);
+        assert.match(ANALYTICS_SRC, /description/);
     });
 });
 
@@ -188,9 +189,8 @@ describe('provider trust CSS', () => {
         assert.match(FORMS_CSS, /\.provider-price-trust-badge/);
         assert.match(FORMS_CSS, /\.provider-price-actuality/);
         assert.match(FORMS_CSS, /\.analytics-trust-badge/);
-        assert.match(FORMS_CSS, /\.analytics-trust-matrix/);
-        assert.match(FORMS_CSS, /\.analytics-actuality-table/);
-        assert.match(FORMS_CSS, /\.analytics-actuality-date/);
+        assert.match(FORMS_CSS, /\.analytics-provider-price-date/);
+        assert.match(FORMS_CSS, /\.analytics-cat-filter-reason/);
         assert.match(FORMS_CSS, /\.analytics-provider-warning/);
         assert.match(FORMS_CSS, /\.term-hint/);
         assert.match(FORMS_CSS, /\.scenario-cmp-provider-price-date/);

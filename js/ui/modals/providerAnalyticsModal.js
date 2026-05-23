@@ -181,36 +181,6 @@ export function renderProviderAnalyticsModal(state, ctx) {
         return actuality.date || 'дата не указана';
     };
 
-    const renderProviderActualityTable = (providers = []) => {
-        if (!providers.length) return null;
-        return el('section', { class: 'analytics-actuality' },
-            el('div', { class: 'analytics-section-head analytics-section-head--compact' },
-                el('h3', { class: 'analytics-section-title', text: 'Актуальность прайсов' })
-            ),
-            el('div', { class: 'analytics-actuality-wrap' },
-                el('table', { class: 'analytics-actuality-table' },
-                    el('thead', null,
-                        el('tr', null,
-                            el('th', { text: 'Провайдер' }),
-                            el('th', { text: 'Дата прайса' })
-                        )
-                    ),
-                    el('tbody', null,
-                        ...providers.map(provider =>
-                            el('tr', null,
-                                el('td', { class: 'analytics-actuality-provider', text: provider.label }),
-                                el('td', {
-                                    class: 'analytics-actuality-date',
-                                    text: getProviderActualityText(provider.id)
-                                })
-                            )
-                        )
-                    )
-                )
-            )
-        );
-    };
-
     const getColumnMeta = (cat) => categoryMeta[cat] || {
         label: CATEGORY_LABELS_FOR_UI[cat] || cat,
         unit: CATEGORY_UNITS[cat] || '',
@@ -234,61 +204,6 @@ export function renderProviderAnalyticsModal(state, ctx) {
             'Нажмите, чтобы отсортировать по этой колонке.'
         ];
         return lines.filter(Boolean).join('\n');
-    };
-
-    const renderTrustMatrix = (matrix) => {
-        if (!matrix?.providers?.length || !matrix?.capabilities?.length) return null;
-        return el('section', { class: 'analytics-trust-matrix' },
-            el('div', { class: 'analytics-section-head' },
-                el('h3', { class: 'analytics-section-title', text: 'Cloud.ru vs Yandex vs VK: доверие к ценам' }),
-                el('p', {
-                    class: 'analytics-section-note',
-                    text: 'Матрица показывает не стоимость, а качество источника цены: где прайс проверен, где он публичный, где цена отсутствует или выдаётся по запросу.'
-                })
-            ),
-            el('div', { class: 'analytics-trust-matrix-wrap' },
-                el('table', { class: 'analytics-trust-matrix-table' },
-                    el('thead', null,
-                        el('tr', null,
-                            el('th', { text: 'Провайдер' }),
-                            ...matrix.capabilities.map(capability =>
-                                el('th', {
-                                    attrs: { title: capability.title },
-                                    text: capability.label
-                                })
-                            )
-                        )
-                    ),
-                    el('tbody', null,
-                        ...matrix.providers.map(provider =>
-                            el('tr', null,
-                                el('td', { class: 'analytics-trust-provider' },
-                                    el('span', { class: 'analytics-provider-name', text: provider.label }),
-                                    ...renderProviderWarnings(provider.warnings)
-                                ),
-                                ...matrix.capabilities.map(capability => {
-                                    const trust = provider.byCapability?.[capability.key];
-                                    const coverage = trust?.coverage;
-                                    const coverageText = coverage
-                                        ? `${coverage.covered}/${coverage.total} позиций покрыто`
-                                        : '';
-                                    return el('td', {
-                                        class: ['analytics-trust-cell', `analytics-trust-cell--${trust?.status || 'unknown'}`],
-                                        attrs: {
-                                            title: [
-                                                capability.title,
-                                                trust ? `${trust.fullLabel}. ${trust.description}` : '',
-                                                coverageText
-                                            ].filter(Boolean).join('\n')
-                                        }
-                                    }, renderTrustBadge(trust));
-                                })
-                            )
-                        )
-                    )
-                )
-            )
-        );
     };
 
     /* PATCH 2.7.3: каждая колонка имеет 2-line header «КАТЕГОРИЯ + ед.изм.»
@@ -404,6 +319,10 @@ export function renderProviderAnalyticsModal(state, ctx) {
             return el('tr', { class: 'analytics-row' },
                 el('td', { class: 'analytics-td-provider' },
                     el('span', { class: 'analytics-provider-name', text: p.label }),
+                    el('span', {
+                        class: 'analytics-provider-price-date',
+                        text: `Дата прайса: ${getProviderActualityText(p.id)}`
+                    }),
                     ...renderProviderWarnings(p.warnings)
                 ),
                 ...visibleCategories.map(cat => renderCell(p.byCategory[cat], cat)),
@@ -432,9 +351,13 @@ export function renderProviderAnalyticsModal(state, ctx) {
     /* Stage 14.1: панель фильтра по категориям. Каждая кнопка — toggle on/off
        с aria-pressed; визуально — pill (.analytics-cat-toggle). При клике
        persist через ctx + patchModal. */
+    const filterReasonText = isCalcSpecificBenchmark
+        ? `Показаны ${data.categories.length} из максимум ${PROVIDER_BENCHMARK_TOP_LIMIT}: самые дорогие ЭК текущего расчёта с публичной ценой Cloud.ru.`
+        : 'Показаны базовые позиции; после расчёта здесь будут самые дорогие ЭК именно этого проекта.';
     const filterBar = el('div', { class: 'analytics-cat-filter',
         attrs: { role: 'group', 'aria-label': 'Фильтр ЭК' } },
         el('span', { class: 'analytics-cat-filter-label', text: 'ЭК в сравнении:' }),
+        el('span', { class: 'analytics-cat-filter-reason', text: filterReasonText }),
         ...data.categories.map(cat => {
             const active = visibleSet.has(cat);
             const meta = getColumnMeta(cat);
@@ -468,7 +391,7 @@ export function renderProviderAnalyticsModal(state, ctx) {
         : null;
 
     const hintText = isCalcSpecificBenchmark
-        ? `Показаны до ${PROVIDER_BENCHMARK_TOP_LIMIT} крупнейших ЭК текущего расчёта по месячному вкладу, по которым есть публичная цена Cloud.ru. Крупное число в ячейке — вклад в расчёт за месяц; строка «цена» — тариф за единицу ресурса.`
+        ? 'Крупное число в ячейке — вклад в расчёт за месяц; строка «цена» — тариф за единицу ресурса.'
         : 'Показаны базовые позиции провайдеров. Откройте расчёт, чтобы увидеть 6 крупнейших ЭК именно для него.';
 
     return modalShell({
@@ -477,8 +400,6 @@ export function renderProviderAnalyticsModal(state, ctx) {
         onClose: close,
         children: el('div', { class: 'analytics-body' },
             el('p', { class: 'analytics-hint', text: hintText }),
-            renderProviderActualityTable(data.providers),
-            renderTrustMatrix(data.trustMatrix),
             data.categories.length > 0 ? filterBar : null,
             noProviders || noCategories || null,
             !noCategories ? table : null

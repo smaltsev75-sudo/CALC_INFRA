@@ -70,18 +70,15 @@ describe('Stage 10.4 — providerAnalyticsModal.js файл-модуль', () =>
         assert.match(MODAL_SRC, /size:\s*['"]analytics['"]/);
     });
 
-    it('дата актуальности прайса вынесена в отдельную таблицу над матрицей доверия', () => {
-        assert.match(MODAL_SRC, /renderProviderActualityTable/);
-        assert.match(MODAL_SRC, /analytics-actuality-table/);
+    it('дата актуальности прайса показана в основной таблице без верхних таблиц-дублей', () => {
+        assert.match(MODAL_SRC, /analytics-provider-price-date/);
         assert.match(MODAL_SRC, /Дата прайса/);
-        assert.match(MODAL_SRC, /renderProviderActualityTable\(data\.providers\)[\s\S]*renderTrustMatrix\(data\.trustMatrix\)/);
-
-        const m = MODAL_SRC.match(/const\s+renderTrustMatrix\s*=[\s\S]+?const\s+thead\s*=/);
-        assert.ok(m, 'не нашёл renderTrustMatrix');
-        assert.doesNotMatch(m[0], /renderProviderActualityTable|getProviderActualityText/,
-            'в матрице доверия не нужно повторять дату: она вынесена в отдельную таблицу');
+        assert.doesNotMatch(MODAL_SRC, /renderProviderActualityTable/);
+        assert.doesNotMatch(MODAL_SRC, /renderTrustMatrix/);
+        assert.doesNotMatch(MODAL_SRC, /analytics-actuality-table/);
+        assert.doesNotMatch(MODAL_SRC, /analytics-trust-matrix/);
         assert.doesNotMatch(MODAL_SRC, /class:\s*['"]analytics-provider-meta['"]/,
-            'в основной таблице цен дата актуальности больше не повторяется');
+            'в основной таблице цен используется один date-only элемент без старого дубля');
     });
 
     it('Stage 17.2: sort работает через ctx.patchModal (категория → sortBy)', () => {
@@ -109,6 +106,13 @@ describe('Stage 10.4 — providerAnalyticsModal.js файл-модуль', () =>
         assert.match(MODAL_SRC, /analytics-td-cat-kind/);
         assert.match(MODAL_SRC, /цена:\s*\$\{fmtRub\(cell\.effective\)\}/);
         assert.match(MODAL_SRC, /showMonthlyImpact\s*\?\s*impact\s*:\s*cell\.effective/);
+    });
+
+    it('строка ЭК в сравнении объясняет выбор и количество ЭК', () => {
+        assert.match(MODAL_SRC, /analytics-cat-filter-reason/);
+        assert.match(MODAL_SRC, /Показаны.*из максимум.*PROVIDER_BENCHMARK_TOP_LIMIT/);
+        assert.match(MODAL_SRC, /самые дорогие ЭК текущего расчёта/);
+        assert.match(MODAL_SRC, /публичной ценой Cloud\.ru/);
     });
 });
 
@@ -193,7 +197,8 @@ describe('Stage 10.4 — CSS .analytics-* + .provider-analytics-btn', () => {
     it('.analytics-td-cat', () => assert.match(FORMS_CSS, /\.analytics-td-cat\b/));
     it('.analytics-td-cat-price', () => assert.match(FORMS_CSS, /\.analytics-td-cat-price\b/));
     it('.analytics-td-cat-kind', () => assert.match(FORMS_CSS, /\.analytics-td-cat-kind\b/));
-    it('.analytics-actuality-table', () => assert.match(FORMS_CSS, /\.analytics-actuality-table\b/));
+    it('.analytics-provider-price-date', () => assert.match(FORMS_CSS, /\.analytics-provider-price-date\b/));
+    it('.analytics-cat-filter-reason', () => assert.match(FORMS_CSS, /\.analytics-cat-filter-reason\b/));
     it('заголовки и числа price benchmark выровнены вправо', () => {
         assert.match(FORMS_CSS, /\.analytics-th-content\s*\{[^}]*width:\s*100%/s);
         assert.match(FORMS_CSS, /\.analytics-th-cat-name\s*\{[^}]*text-align:\s*right/s);

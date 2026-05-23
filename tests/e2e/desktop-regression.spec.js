@@ -205,22 +205,21 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
     await page.locator('.provider-analytics-btn').click();
     const analyticsModal = page.locator('.modal-overlay').filter({ hasText: 'Прайс-бенчмарк' });
     await expect(analyticsModal.locator('.modal')).toHaveClass(/modal-analytics/);
-    await expect(analyticsModal.locator('.analytics-actuality-table')).toBeVisible();
-    await expect(analyticsModal.locator('.analytics-actuality-table')).toContainText('Дата прайса');
-    await expect(analyticsModal.locator('.analytics-actuality-date')).toHaveCount(3);
-    await expect(analyticsModal.locator('.analytics-actuality-date').first()).toHaveText(/\d{2}\.\d{2}\.\d{4}/);
-    await expect(analyticsModal.locator('.analytics-trust-matrix')).toBeVisible();
-    await expect(analyticsModal.locator('.analytics-trust-matrix')).toContainText('Cloud.ru vs Yandex vs VK');
-    await expect(analyticsModal.locator('.analytics-trust-matrix .analytics-provider-meta')).toHaveCount(0);
+    await expect(analyticsModal.locator('table')).toHaveCount(1);
+    await expect(analyticsModal.locator('.analytics-actuality-table')).toHaveCount(0);
+    await expect(analyticsModal.locator('.analytics-trust-matrix')).toHaveCount(0);
+    await expect(analyticsModal.locator('.analytics-table .analytics-provider-price-date')).toHaveCount(3);
+    await expect(analyticsModal.locator('.analytics-table .analytics-provider-price-date').first())
+        .toHaveText(/Дата прайса: \d{2}\.\d{2}\.\d{4}/);
     await expect(analyticsModal.locator('.analytics-table .analytics-provider-meta')).toHaveCount(0);
-    await expect.poll(async () => analyticsModal.locator('.analytics-actuality').evaluate((actuality) => {
-        const matrix = document.querySelector('.analytics-trust-matrix');
-        return !!matrix && (actuality.compareDocumentPosition(matrix) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
-    })).toBe(true);
-    await expect(analyticsModal.locator('.analytics-hint')).toContainText('Показаны до 6 крупнейших ЭК');
-    await expect(analyticsModal.locator('.analytics-hint')).toContainText('публичная цена Cloud.ru');
     await expect(analyticsModal.locator('.analytics-hint')).toContainText('Крупное число');
     await expect(analyticsModal.locator('.analytics-hint')).toContainText('тариф за единицу ресурса');
+    await expect(analyticsModal.locator('.analytics-cat-filter-reason'))
+        .toContainText(/Показаны \d+ из максимум 6/);
+    await expect(analyticsModal.locator('.analytics-cat-filter-reason'))
+        .toContainText('самые дорогие ЭК текущего расчёта');
+    await expect(analyticsModal.locator('.analytics-cat-filter-reason'))
+        .toContainText('публичной ценой Cloud.ru');
     const benchmarkCategoryCount = await analyticsModal.locator('.analytics-cat-toggle').count();
     expect(benchmarkCategoryCount).toBeGreaterThan(0);
     expect(benchmarkCategoryCount).toBeLessThanOrEqual(6);
@@ -255,8 +254,6 @@ test('Provider price summary preserves decimal comma in expanded tariff rows', a
         return Number.isFinite(total) && Math.abs(sum - total) < 0.01;
     })).toBe(true);
     await expect(analyticsModal.locator('.analytics-th-total')).toContainText('Вклад ЭК');
-    await expect.poll(async () => analyticsModal.locator('.analytics-trust-matrix-wrap')
-        .evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
     await expect.poll(async () => analyticsModal.locator('.analytics-table')
         .evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
 
