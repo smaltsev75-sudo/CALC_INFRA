@@ -166,7 +166,8 @@ function renderQtyItemRow(item, result, ctx, disabled = new Set()) {
             class: 'col-name',
             title: item.description ? `${item.name}\n\n${item.description}` : item.name
         },
-            el('div', { class: 'col-name-main', text: item.name || '—' })
+            el('div', { class: 'col-name-main', text: item.name || '—' }),
+            renderItemInfoIcon(item, ctx)
         ),
         el('td', { class: 'col-vendor', text: item.vendor || '—' }),
         /* 13.U10: суффикс периода рядом с единицей — «ТБ / мес» для трафика,
@@ -206,9 +207,7 @@ function renderQtyItemRow(item, result, ctx, disabled = new Set()) {
                 ? [el('span', { class: 'qty-num', text: formatQtyDisplayParts(qtySum, item.unit).valueText }), ' ', el('span', { class: 'qty-unit', text: displayUnit })]
                 : el('span', { text: '—' })
         ),
-        el('td', { class: 'col-info' },
-            renderItemInfoIcon(item, ctx)
-        )
+        el('td', { class: 'col-info' })
     );
 }
 
@@ -390,7 +389,8 @@ function renderCostItemRow(item, result, ctx, disabled = new Set(), denomMonthly
             class: 'col-name',
             title: item.description ? `${item.name}\n\n${item.description}` : item.name
         },
-            el('div', { class: 'col-name-main', text: item.name || '—' })
+            el('div', { class: 'col-name-main', text: item.name || '—' }),
+            renderItemInfoIcon(item, ctx)
         ),
         el('td', { class: 'col-vendor', text: item.vendor || '—' }),
         el('td', { class: 'col-tariff', text: BILLING_INTERVAL_LABELS[item.billingInterval] || item.billingInterval || '—' }),
@@ -427,9 +427,7 @@ function renderCostItemRow(item, result, ctx, disabled = new Set(), denomMonthly
         renderShareCell(itemMonthly, denom),
         renderRiskCell(rowRiskTotal),
         renderRiskAmountCell(riskAmountActive),
-        el('td', { class: 'col-info' },
-            renderItemInfoIcon(item, ctx)
-        )
+        el('td', { class: 'col-info' })
     );
 }
 
@@ -446,19 +444,23 @@ function renderRiskAmountCell(riskAmount) {
 }
 
 /**
- * Иконка ⓘ с описанием в title (если есть) и обработчиком клика — открыть формулу.
- * Заменяет отдельный col-name-sub блок (компактнее).
+ * Кнопка «Почему столько?» открывает окно с понятной трассировкой количества
+ * и технической формулой. Одна кнопка вместо двух дублей: описание ЭК остаётся
+ * в title ячейки имени, а расчёт — в модалке.
  */
 function renderItemInfoIcon(item, ctx) {
     const titleParts = [];
-    if (item.description) titleParts.push(item.description);
-    titleParts.push('Клик: показать формулу');
+    titleParts.push('Почему столько? Показать входные ответы, коэффициенты и формулу.');
     return el('button', {
-        class: 'info-icon',
+        class: 'quantity-explain-inline',
         title: titleParts.join('\n\n'),
-        attrs: { type: 'button', 'aria-label': 'Показать формулу' },
+        attrs: {
+            type: 'button',
+            'aria-label': 'Почему столько?',
+            'data-testid': 'quantity-explain-button'
+        },
         onClick: () => ctx.openFormula(item.id)
-    }, icon('info', { size: 12 }));
+    }, icon('help-circle', { size: 12 }), el('span', { text: 'Почему столько?' }));
 }
 
 function renderShareCell(itemMonthly, denomMonthly) {

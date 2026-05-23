@@ -27,6 +27,7 @@ import {
     renderCostSection,
     renderQtySection
 } from './detailsSections.js';
+import { renderDetailsQuantityPrintSummary } from './quantityExplanation.js';
 
 /** Sub-tab id-ы для Детализации. */
 const SUB_TABS = Object.freeze(['cost', 'qty']);
@@ -132,6 +133,8 @@ export function renderDetails(state, ctx) {
         subTab === 'qty'
             ? renderQtySection(byCat, result, ctx, disabledStands, state, presentCats)
             : renderCostSection(byCat, result, ctx, totalsForFilter, isFiltered, disabledStands, applyRisks, calc, state, presentCats),
+
+        renderDetailsQuantityPrintSummary(calc, result, disabledStands),
 
         /* Сводная панель AI-метрик — qty-таблица (токены/ГБ/vCPU). Появляется
            ТОЛЬКО на подвкладке «Объём» (subTab === 'qty'). На «Бюджет» все

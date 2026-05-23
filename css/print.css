@@ -23,6 +23,7 @@
     .tabs,
     .tab-toolbar-actions,
     .info-icon,
+    .quantity-explain-inline,
     .btn,
     .btn-icon,
     .col-actions,
@@ -200,6 +201,35 @@
     .category-row td, .totals-row td {
         background: #f0f0f0 !important;
         color: black !important;
+    }
+
+    .details-quantity-print-summary {
+        display: block !important;
+        margin-top: 12px !important;
+        padding: 10px 0 0 !important;
+        border-top: 1px solid #999 !important;
+        color: black !important;
+        page-break-inside: auto;
+    }
+    .details-quantity-print-summary h3 {
+        margin: 0 0 6px !important;
+        color: black !important;
+        font-size: 12pt !important;
+    }
+    .details-quantity-print-summary p {
+        margin: 0 0 6px !important;
+        color: #333 !important;
+        font-size: 8pt !important;
+    }
+    .details-quantity-print-summary ol {
+        margin: 0 !important;
+        padding-left: 16px !important;
+        font-size: 7.5pt !important;
+        line-height: 1.35 !important;
+    }
+    .details-quantity-print-summary li {
+        margin: 0 0 5px !important;
+        page-break-inside: avoid;
     }
 
     /* Вложенные узлы внутри th/td имеют собственные `color: var(--text*)` правила

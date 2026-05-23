@@ -821,6 +821,96 @@ select.qs-flash,
     border-radius: var(--radius);
     padding: 14px 16px;
 }
+
+.quantity-explanation-panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+}
+
+.quantity-explanation-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.quantity-explanation-title .icon {
+    color: var(--accent);
+}
+
+.quantity-explanation-note,
+.quantity-explanation-empty {
+    margin: 0 0 10px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.quantity-explanation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 10px;
+}
+
+.quantity-explanation-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    padding: 10px 12px;
+}
+
+.quantity-explanation-card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.quantity-explanation-stand {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.quantity-explanation-total {
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.quantity-explanation-help {
+    margin: 0 0 8px;
+    color: var(--text);
+    line-height: 1.45;
+    font-size: 0.9rem;
+}
+
+.quantity-explanation-list {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 5px 10px;
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.4;
+}
+
+.quantity-explanation-list dt {
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.quantity-explanation-list dd {
+    margin: 0;
+    color: var(--text);
+}
+
 .formula-system-title,
 .formula-stand-title,
 .formula-help-title {

@@ -73,6 +73,19 @@ test('details and comparison desktop tables render with seeded calculations', as
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expect(page.locator('.details-table-cost tbody tr').first()).toBeVisible();
     await expectDetailsCostCategoriesMatchModel(page);
+    await page.locator('.details-table-cost tbody .category-row-clickable').first().click();
+    await expect(page.getByTestId('quantity-explain-button').first()).toBeVisible();
+    await page.getByTestId('quantity-explain-button').first().click();
+    await expect(page.locator('.modal-title')).toContainText('Почему столько?');
+    await expect(page.getByTestId('quantity-explanation-panel')).toBeVisible();
+    await expectNoHorizontalOverflow(page, [
+        '.modal',
+        '.formula-modal-body',
+        '.quantity-explanation-panel',
+        '.quantity-explanation-grid',
+        '.quantity-explanation-card'
+    ]);
+    await page.locator('.modal-footer .btn-primary').click();
     await page.screenshot({ path: '.playwright-mcp/desktop-smoke-details.png', fullPage: true });
 
     await switchTab(page, 'comparison');

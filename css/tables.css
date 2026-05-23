@@ -251,6 +251,38 @@
     color: var(--text);
 }
 
+.quantity-explain-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+}
+.quantity-explain-inline:hover {
+    color: var(--accent-2);
+}
+.quantity-explain-inline:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+.quantity-explain-inline .icon {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 auto;
+}
+
+.details-quantity-print-summary {
+    display: none;
+}
+
 /* 12.U27: ИТОГО-строки переехали из tfoot в thead — числовые ячейки тоже
    tabular-nums (правило применяется и в новой позиции). */
 .details-table .totals-row td.col-stand,

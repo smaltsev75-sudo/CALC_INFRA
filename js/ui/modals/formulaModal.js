@@ -13,8 +13,9 @@ import { evaluate, collectReferences } from '../../domain/formula/evaluator.js';
 import { lintFormulas } from '../../domain/validation.js';
 import { STAND_IDS, STAND_LABELS, BILLING_INTERVAL_LABELS, MONTHS_PER_YEAR, DEFAULT_DAYS_PER_MONTH } from '../../utils/constants.js';
 import { formatNumber, money, num } from '../../services/format.js';
-import { billingIntervalToMonthlyMultiplier, buildContext, riskFactor } from '../../domain/calculator.js';
+import { billingIntervalToMonthlyMultiplier, buildContext, calculate, riskFactor } from '../../domain/calculator.js';
 import { resolvePathValue } from '../../domain/quantityTrace.js';
+import { renderQuantityExplanationPanel } from '../quantityExplanation.js';
 
 export function renderFormulaModal(state, ctx) {
     const m = state.modals.formula;
@@ -35,13 +36,19 @@ export function renderFormulaModal(state, ctx) {
     // Линтер формул — выявляет «висящие» ссылки на удалённые/переименованные вопросы.
     const warnings = lintFormulas([item], calc.dictionaries.questions);
 
+    const result = calculate(calc);
+
     return modalShell({
-        title: `Формула расчёта · ${item.name}`,
+        title: `Почему столько? · ${item.name}`,
         size: 'lg',
         onClose,
         children: el('div', { class: 'formula-modal-body' },
             warnings.length > 0 && renderLintWarnings(warnings),
             renderItemSummary(item, calc),
+            renderQuantityExplanationPanel(calc, item, result, {
+                disabledStands: calc.view?.disabledStands || [],
+                standLimit: 5
+            }),
             renderSystemFormula(item, calc),
             ...STAND_IDS.map(stand => renderStandFormula(item, stand, calc)),
             item.formulaHelp && el('div', { class: 'formula-help' },

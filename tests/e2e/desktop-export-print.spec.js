@@ -118,6 +118,7 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
                 const table = document.querySelector('.details-table-cost');
                 const wrap = document.querySelector('.details-table-wrap');
                 const main = document.querySelector('.app-main');
+                const quantitySummary = document.querySelector('.details-quantity-print-summary');
                 const vendorHeader = [...document.querySelectorAll('.details-table-cost thead th')]
                     .find(th => th.textContent.trim() === 'Поставщик');
                 const tableStyle = getComputedStyle(table);
@@ -131,6 +132,8 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
                     wrapWidth: wrap.getBoundingClientRect().width,
                     mainWidth: main.getBoundingClientRect().width,
                     tabContain: getComputedStyle(document.querySelector('.tab-pane')).contain,
+                    quantitySummaryDisplay: getComputedStyle(quantitySummary).display,
+                    quantitySummaryText: quantitySummary.textContent,
                     vendorWidth: vendorHeader.getBoundingClientRect().width,
                     vendorWordBreak: vendorStyle.wordBreak,
                     vendorOverflowWrap: vendorStyle.overflowWrap
@@ -153,6 +156,8 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
     expect(snapshot.duringPrint.tabContain).toBe('none');
     expect(snapshot.duringPrint.tableWidth).toBeGreaterThan(snapshot.duringPrint.mainWidth * 0.98);
     expect(snapshot.duringPrint.wrapWidth).toBeGreaterThan(snapshot.duringPrint.mainWidth * 0.98);
+    expect(snapshot.duringPrint.quantitySummaryDisplay).toBe('block');
+    expect(snapshot.duringPrint.quantitySummaryText).toContain('Почему столько? Проверка количества ЭК');
     expect(snapshot.duringPrint.vendorWidth).toBeGreaterThan(60);
     expect(snapshot.duringPrint.vendorWordBreak).toBe('keep-all');
     expect(snapshot.duringPrint.vendorOverflowWrap).toBe('normal');
