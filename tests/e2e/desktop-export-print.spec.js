@@ -90,6 +90,51 @@ test('Header PDF routes dashboard print and questionnaire answer print correctly
     expect(consoleErrors).toEqual([]);
 });
 
+test('Details PDF options allow hiding quantity check summary', async ({ page }) => {
+    await page.addInitScript(() => {
+        window.__printCalls = [];
+        window.print = () => {
+            const summary = document.querySelector('.details-quantity-print-summary');
+            window.__printCalls.push({
+                bodyClass: document.body.className,
+                summaryText: summary?.textContent || ''
+            });
+            window.dispatchEvent(new Event('afterprint'));
+        };
+    });
+    const consoleErrors = await bootCleanApp(page);
+
+    await createCalculationFromQuickStart(page, {
+        name: 'Details PDF quantity option',
+        presetId: 'std_b2b'
+    });
+    await clickSidebarTab(page, 'details');
+    await expect(page.locator('.details-table-cost')).toBeVisible();
+
+    await page.getByTestId('header-print-pdf').click();
+    await expect(page.getByTestId('details-print-options-modal')).toBeVisible();
+    await expect(page.getByTestId('details-print-quantity-toggle')).toBeChecked();
+    await page.getByTestId('details-print-options-submit').click();
+
+    await expect.poll(() => page.evaluate(() => window.__printCalls?.length || 0)).toBe(1);
+    let calls = await page.evaluate(() => window.__printCalls);
+    expect(calls[0].bodyClass).toContain('printing-details');
+    expect(calls[0].bodyClass).not.toContain('printing-details-no-quantity-summary');
+    expect(calls[0].summaryText).toContain('Почему столько? Проверка количества ЭК');
+
+    await page.getByTestId('header-print-pdf').click();
+    await expect(page.getByTestId('details-print-options-modal')).toBeVisible();
+    await page.getByTestId('details-print-quantity-toggle').click();
+    await page.getByTestId('details-print-options-submit').click();
+
+    await expect.poll(() => page.evaluate(() => window.__printCalls?.length || 0)).toBe(2);
+    calls = await page.evaluate(() => window.__printCalls);
+    expect(calls[1].bodyClass).toContain('printing-details');
+    expect(calls[1].bodyClass).toContain('printing-details-no-quantity-summary');
+
+    expect(consoleErrors).toEqual([]);
+});
+
 test('Details PDF print mode uses full-width landscape table layout', async ({ page }) => {
     const consoleErrors = await bootCleanApp(page);
 
@@ -103,18 +148,16 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
     await page.emulateMedia({ media: 'print' });
 
     const snapshot = await page.evaluate(async () => {
-        const { printPdfAction } = await import(new URL('js/app/printActions.js', document.baseURI).href);
+        const { printWithDetailsMode } = await import(new URL('js/utils/printMode.js', document.baseURI).href);
         const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
         store.setActiveTab('details');
         store.setUi({ detailsSubTab: 'cost' });
         await new Promise(resolve => requestAnimationFrame(resolve));
 
         let duringPrint = null;
-        printPdfAction({
-            store,
-            snackbar: { info() {}, warning() {} },
-            withLoadingButton: async (_event, fn) => fn(),
-            printWindow: () => {
+        let withoutQuantity = null;
+        printWithDetailsMode(
+            () => {
                 const table = document.querySelector('.details-table-cost');
                 const wrap = document.querySelector('.details-table-wrap');
                 const main = document.querySelector('.app-main');
@@ -139,11 +182,24 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
                     vendorOverflowWrap: vendorStyle.overflowWrap
                 };
                 window.dispatchEvent(new Event('afterprint'));
-            }
-        });
+            },
+            { includeQuantitySummary: true }
+        );
+        printWithDetailsMode(
+            () => {
+                const quantitySummary = document.querySelector('.details-quantity-print-summary');
+                withoutQuantity = {
+                    bodyClass: document.body.className,
+                    quantitySummaryDisplay: getComputedStyle(quantitySummary).display
+                };
+                window.dispatchEvent(new Event('afterprint'));
+            },
+            { includeQuantitySummary: false }
+        );
 
         return {
             duringPrint,
+            withoutQuantity,
             afterClass: document.body.className,
             afterStyleExists: !!document.getElementById('details-print-page-style')
         };
@@ -158,6 +214,8 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
     expect(snapshot.duringPrint.wrapWidth).toBeGreaterThan(snapshot.duringPrint.mainWidth * 0.98);
     expect(snapshot.duringPrint.quantitySummaryDisplay).toBe('block');
     expect(snapshot.duringPrint.quantitySummaryText).toContain('Почему столько? Проверка количества ЭК');
+    expect(snapshot.withoutQuantity.bodyClass).toContain('printing-details-no-quantity-summary');
+    expect(snapshot.withoutQuantity.quantitySummaryDisplay).toBe('none');
     expect(snapshot.duringPrint.vendorWidth).toBeGreaterThan(60);
     expect(snapshot.duringPrint.vendorWordBreak).toBe('keep-all');
     expect(snapshot.duringPrint.vendorOverflowWrap).toBe('normal');

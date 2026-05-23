@@ -140,6 +140,8 @@ const initialState = deepFreeze({
         // расчёт» создаёт пустой calc через ctx.createCalc(name, null)).
         // Этап 13.U3: выбор формата перед PDF-выгрузкой ответов опросника.
         printAnswersOptions: { open: false },
+        // PATCH 2.20.49: выбор состава PDF для вкладки «Детализация».
+        detailsPrintOptions: { open: false },
         // Этап 14.U1: Quick Start Wizard — 7 макро-вопросов → автозаполнение опросника.
         quickStart:      { open: false },
         // Этап 14.U5: подтверждение re-apply профиля. Содержит manualCount —

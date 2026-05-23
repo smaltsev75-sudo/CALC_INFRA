@@ -53,9 +53,38 @@ export function printPdfAction({
         return printAnswersAction({ triggerEvent, store, snackbar, withLoadingButton });
     }
     if (activeTab === 'details') {
-        return printWithDetailsMode(printWindow);
+        return printDetailsAction({ triggerEvent, store, snackbar, withLoadingButton, printWindow });
     }
     printWindow();
+}
+
+export function printDetailsAction({
+    triggerEvent,
+    store,
+    snackbar,
+    withLoadingButton,
+    printWindow = () => window.print()
+}) {
+    const calc = store.getState().activeCalc;
+    if (!calc) { snackbar.warning('Нет активного расчёта'); return; }
+
+    const run = typeof withLoadingButton === 'function'
+        ? (fn) => withLoadingButton(triggerEvent, fn)
+        : (fn) => fn();
+
+    return run(async () => {
+        const choice = await new Promise(resolve => {
+            store.openModal('detailsPrintOptions', {
+                draft: { includeQuantityCheck: true },
+                onChoose: (selection) => resolve(selection),
+                onCancel: () => resolve(null)
+            });
+        });
+        if (!choice) return;
+        return printWithDetailsMode(printWindow, {
+            includeQuantitySummary: choice.includeQuantityCheck !== false
+        });
+    });
 }
 
 export function printAnswersAction({

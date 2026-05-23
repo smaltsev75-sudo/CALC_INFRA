@@ -231,6 +231,9 @@
         margin: 0 0 5px !important;
         page-break-inside: avoid;
     }
+    body.printing-details-no-quantity-summary .details-quantity-print-summary {
+        display: none !important;
+    }
 
     /* Вложенные узлы внутри th/td имеют собственные `color: var(--text*)` правила
        (например, `.col-stand-name { color: var(--text) }` в tables.css). CSS

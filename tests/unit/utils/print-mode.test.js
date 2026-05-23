@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
     DETAILS_PRINT_BODY_CLASS,
+    DETAILS_PRINT_NO_QUANTITY_CLASS,
     DETAILS_PRINT_PAGE_CSS,
     DETAILS_PRINT_STYLE_ID,
     beginDetailsPrintMode,
@@ -84,5 +85,19 @@ describe('details print mode', () => {
 
         assert.equal(doc.body.classList.contains(DETAILS_PRINT_BODY_CLASS), false);
         assert.equal(doc.getElementById(DETAILS_PRINT_STYLE_ID), null);
+    });
+
+    it('can hide quantity explanation summary for Details PDF', () => {
+        const doc = makeDocument();
+        const win = makeWindow();
+
+        beginDetailsPrintMode({ doc, win, includeQuantitySummary: false });
+
+        assert.equal(doc.body.classList.contains(DETAILS_PRINT_BODY_CLASS), true);
+        assert.equal(doc.body.classList.contains(DETAILS_PRINT_NO_QUANTITY_CLASS), true);
+
+        win.dispatch('afterprint');
+        assert.equal(doc.body.classList.contains(DETAILS_PRINT_BODY_CLASS), false);
+        assert.equal(doc.body.classList.contains(DETAILS_PRINT_NO_QUANTITY_CLASS), false);
     });
 });
