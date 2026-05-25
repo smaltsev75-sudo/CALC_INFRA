@@ -89,7 +89,7 @@ async function expectTokensBudgetSummaryZero(page) {
 
 async function expandAiCategoryIfNeeded(page, tableSelector) {
     const inputRow = page.locator(`${tableSelector} tbody tr.item-row`).filter({ hasText: 'Входящие токены LLM' });
-    if (await inputRow.count()) return;
+    if ((await inputRow.count()) > 0 && await inputRow.first().isVisible()) return;
 
     const aiCategory = page
         .locator(`${tableSelector} tbody tr.category-row`)
@@ -97,6 +97,7 @@ async function expandAiCategoryIfNeeded(page, tableSelector) {
         .first();
     await expect(aiCategory).toBeVisible();
     await aiCategory.click();
+    await expect(inputRow.first()).toBeVisible();
 }
 
 async function expectTokenItemRowsVisible(page, tableSelector) {
@@ -243,7 +244,7 @@ test('Dashboard and Details show token workload when LLM is hosted on own GPU', 
             },
             answers: {
                 ...calc.answers,
-                ai_llm_used: true,
+                ai_llm_used: 'true',
                 ai_hosting_mode: 'on_prem_gpu',
                 ai_avg_input_tokens: 2000,
                 ai_avg_output_tokens: 500,

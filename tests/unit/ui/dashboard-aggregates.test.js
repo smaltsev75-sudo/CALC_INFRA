@@ -207,6 +207,21 @@ describe('dashboardAggregates', () => {
         assert.equal(metrics.total.TOKENS.unit, 'млн токенов');
     });
 
+    it('aggregateAiMetrics treats legacy string ai_llm_used as enabled for token workload', () => {
+        const calc = makeOnPremAiCalc({ ai_llm_used: 'true' });
+        const result = calculate(calc);
+
+        assert.equal(result.items['llm-tokens-input-1m'].stands.PROD.qty, 0);
+        assert.equal(result.items['llm-tokens-output-1m'].stands.PROD.qty, 0);
+
+        const metrics = aggregateAiMetrics(result, calc.dictionaries.items, [], false, calc);
+
+        assert.equal(metrics.perStand.PROD.TOKENS.qty, 825);
+        assert.equal(metrics.perStand.LOAD.TOKENS.qty, 825);
+        assert.equal(metrics.total.TOKENS.qty, 2245);
+        assert.equal(metrics.total.TOKENS.unit, 'млн токенов');
+    });
+
     it('aggregateAiMetrics restores TOKENS from filled answers when token item formulas are zero', () => {
         const calc = makeOnPremAiCalc({ ai_hosting_mode: 'external_api' });
         calc.dictionaries = {

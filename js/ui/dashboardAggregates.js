@@ -222,8 +222,25 @@ export function distributeRoundingPreservingSum(resources, activeStands) {
 }
 
 function finiteNumber(value, fallback = 0) {
-    const n = Number(value);
+    const normalized = typeof value === 'string'
+        ? value.trim()
+            .replace(/\s+/g, '')
+            .replace('%', '')
+            .replace(',', '.')
+        : value;
+    const n = Number(normalized);
     return Number.isFinite(n) ? n : fallback;
+}
+
+function boolAnswer(value) {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        return normalized !== '' && normalized !== 'false' && normalized !== '0' &&
+            normalized !== 'нет' && normalized !== 'no';
+    }
+    return Boolean(value);
 }
 
 function buildAnswerResolver(calc) {
@@ -283,7 +300,7 @@ function hasExplicitLlmTokenDemand(calc, get) {
 }
 
 function shouldUseLlmTokenDemand(calc, get) {
-    return get('ai_llm_used', false) === true || hasExplicitLlmTokenDemand(calc, get);
+    return boolAnswer(get('ai_llm_used', false)) || hasExplicitLlmTokenDemand(calc, get);
 }
 
 function aiStandRatio(calc, stand) {

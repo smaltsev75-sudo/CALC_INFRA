@@ -193,6 +193,7 @@ export function renderRiskCard(result, calc, period, applyRisks = true) {
         el('div', { class: 'dash-card-header' },
             el('div', { class: 'dash-card-eyebrow' },
                 el('span', { text: 'Вклад риск-коэффициентов' }),
+                el('span', { class: 'dash-card-eyebrow-tag', text: 'ИТОГО' }),
                 el('span', { class: 'info-icon',
                     title: RISK_OVERVIEW_TOOLTIP,
                     attrs: { role: 'note', tabindex: '0', 'aria-label': 'Как считается вклад' }
@@ -227,22 +228,24 @@ export function renderRiskCard(result, calc, period, applyRisks = true) {
                     title: buildRiskRowTooltip(it.id, calc, contribPct, contribAmount, slash, it.multiplier),
                     attrs: { tabindex: '0' }
                 },
-                    el('span', { class: 'dash-risk-row-label', text: it.label }),
+                    el('div', { class: 'dash-risk-row-head' },
+                        el('span', { class: 'dash-risk-row-label', text: it.label }),
+                        el('span', { class: 'dash-risk-row-amount',
+                            /* 12.U25-fix-16: единица времени (/ год / мес / день) обязательна — без неё
+                               «+25 817 тыс. ₽» оторвано от шапки «Общая наценка ... / год» и пользователь
+                               вынужден помнить, в каком периоде смотрит дашборд. */
+                            text: `${contribAmount >= 0 ? '+' : ''}${fmtRubForPeriod(contribAmount, period)} ${slash}`
+                        }),
+                        el('span', { class: 'dash-risk-row-value',
+                            /* 12.U26-fix: ru-RU формат (запятая), согласован с категории. */
+                            text: `${contribPct >= 0 ? '+' : ''}${formatNumber(contribPct, { min: 1, max: 1 })}%`
+                        })
+                    ),
                     el('span', { class: 'dash-risk-row-bar' },
                         el('span', { class: 'dash-risk-row-bar-fill',
                             style: { width: `${Math.max(0, Math.min(100, Math.abs(it.shareOfSurplus) * 100))}%` }
                         })
-                    ),
-                    el('span', { class: 'dash-risk-row-amount',
-                        /* 12.U25-fix-16: единица времени (/ год / мес / день) обязательна — без неё
-                           «+25 817 тыс. ₽» оторвано от шапки «Общая наценка ... / год» и пользователь
-                           вынужден помнить, в каком периоде смотрит дашборд. */
-                        text: `${contribAmount >= 0 ? '+' : ''}${fmtRubForPeriod(contribAmount, period)} ${slash}`
-                    }),
-                    el('span', { class: 'dash-risk-row-value',
-                        /* 12.U26-fix: ru-RU формат (запятая), согласован с категории. */
-                        text: `${contribPct >= 0 ? '+' : ''}${formatNumber(contribPct, { min: 1, max: 1 })}%`
-                    })
+                    )
                 );
             })
         )
