@@ -34,6 +34,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   two tabs. If Dashboard applies capacity buffers to displayed qty, Details
   `Объём (qty)` must use the same adjusted qty; otherwise the UI is lying even
   when `calculate()` is mathematically stable.
+- Token visibility must be checked in the exact user-facing block. Passing tests
+  for `Объёмы AI-нагрузки` does not prove that `Токены` are visible inside
+  Dashboard `Объёмы ресурсов` or Details `Сводка AI-метрик`. Add a fallback from
+  filled LLM answers when legacy/broken token item formulas aggregate to zero.
+- Similar visibility regressions must be checked across every positive qty, not
+  only the reported item. The e2e contract must assert that each positive
+  Dashboard resource/AI row is visible and non-empty, and each positive Details
+  `Объём (qty)` ЭК row is visible and non-empty. Operational AI fallback covers
+  both `TOKENS` and `EMBEDDINGS`, with the same capacity multiplier as the qty
+  table.
 
 ## 🎨 UI/UX Review Standard для локальных ванильных веб-приложений
 

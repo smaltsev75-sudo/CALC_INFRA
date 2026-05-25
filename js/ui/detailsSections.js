@@ -16,6 +16,7 @@ import {
 import { formatNumber, formatPercentPoints, formatRub, num, percent } from '../services/format.js';
 import { getCostType } from '../domain/costType.js';
 import { renderVatBadge, renderVatBreakdownLine } from './vatBadge.js';
+import { deriveAiMetricItemQty } from './dashboardAggregates.js';
 
 export { renderAiMetricsSummary } from './detailsAiSummary.js';
 export { computeTotalsForItems, itemMonthlyOnActiveStands } from './detailsTotals.js';
@@ -76,7 +77,7 @@ export function formatQtyDisplayParts(qty, unit) {
     };
 }
 
-function quantityCapacityMultiplier(cell, applyRisks) {
+export function quantityCapacityMultiplier(cell, applyRisks) {
     if (!applyRisks || !cell?.riskBreakdown) return 1;
     const br = cell.riskBreakdown;
     const factor = ['bufferFactor', 'seasonalMul', 'scheduleMul', 'contingencyMul']
@@ -92,7 +93,7 @@ export function effectiveQtyForDisplay(cell, applyRisks = true) {
     return qty * quantityCapacityMultiplier(cell, applyRisks);
 }
 
-export function renderQtySection(byCat, result, ctx, disabledStands = [], applyRisks = true, state = null, presentCats = []) {
+export function renderQtySection(byCat, result, ctx, disabledStands = [], applyRisks = true, state = null, presentCats = [], calc = null) {
     const disabled = new Set(disabledStands);
     const categoryOrder = presentCats.length > 0 ? presentCats : CATEGORY_IDS;
     return el('div', { class: 'details-section' },
@@ -138,7 +139,7 @@ export function renderQtySection(byCat, result, ctx, disabledStands = [], applyR
                         const collapsed = state ? isCategoryCollapsed(cat, state) : true;
                         const rows = [renderQtyCategoryRow(cat, list, disabled, collapsed, ctx, presentCats)];
                         if (!collapsed) {
-                            for (const it of list) rows.push(renderQtyItemRow(it, result, ctx, disabled, applyRisks));
+                            for (const it of list) rows.push(renderQtyItemRow(it, result, ctx, disabled, applyRisks, calc));
                         }
                         return rows;
                     })
@@ -179,11 +180,11 @@ function renderQtyCategoryRow(cat, list, disabled = new Set(), collapsed = true,
     );
 }
 
-function renderQtyItemRow(item, result, ctx, disabled = new Set(), applyRisks = true) {
+function renderQtyItemRow(item, result, ctx, disabled = new Set(), applyRisks = true, calc = null) {
     const r = result.items[item.id];
     let qtySum = 0;
     const displayUnit = formatQtyDisplayUnit(item.unit);
-    return el('tr', { class: 'item-row' },
+    return el('tr', { class: 'item-row', attrs: { 'data-item-id': item.id } },
         /* 12.U30-fix: title с полным названием + description, чтобы при ellipsis
            короткой колонки .col-name пользователь видел при hover полное имя
            и пояснение. Раньше title не было — пользователь жаловался. */
@@ -205,10 +206,15 @@ function renderQtyItemRow(item, result, ctx, disabled = new Set(), applyRisks = 
         ...STAND_IDS.map(sid => {
             const cell = r?.stands[sid];
             const isDisabled = disabled.has(sid);
-            if (!cell || (!cell.qty && !cell.error)) {
+            const fallbackQty = cell && (Number(cell.qty) || 0) <= 0
+                ? deriveAiMetricItemQty(calc, item.id, sid)
+                : 0;
+            if (!cell || ((Number(cell.qty) || 0) <= 0 && fallbackQty <= 0 && !cell.error)) {
                 return el('td', { class: ['col-stand', 'col-stand-empty', isDisabled && 'stand-disabled'], text: '—' });
             }
-            const displayQty = effectiveQtyForDisplay(cell, applyRisks);
+            const displayQty = fallbackQty > 0
+                ? fallbackQty * quantityCapacityMultiplier(cell, applyRisks)
+                : effectiveQtyForDisplay(cell, applyRisks);
             // qtySum считаем только по активным стендам — как и итог в таблице.
             if (!isDisabled) qtySum += displayQty;
             // Этап 13.U2 PDF-fit: число и единица — отдельные spans. CSS @media print
@@ -407,7 +413,7 @@ function renderCostItemRow(item, result, ctx, disabled = new Set(), denomMonthly
     // Знаменатель для «Доля в стенде, %» — общий ИТОГО по активным стендам/фильтру.
     const denom = denomMonthly !== null ? denomMonthly : result.totalMonthly;
 
-    return el('tr', { class: 'item-row', attrs: { 'data-cost-type': ct } },
+    return el('tr', { class: 'item-row', attrs: { 'data-cost-type': ct, 'data-item-id': item.id } },
         /* 12.U30-fix: title с полным названием + description, чтобы при ellipsis
            короткой колонки .col-name пользователь видел при hover полное имя
            и пояснение. Раньше title не было — пользователь жаловался. */

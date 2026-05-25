@@ -87,6 +87,20 @@ function periodMul(period) {
     return period === 'daily' ? 1 / 30 : period === 'annual' ? MONTHS_PER_YEAR : 1;
 }
 
+function resourcesWithTokenMetric(resourceMap = {}, aiMetricMap = {}) {
+    const token = aiMetricMap?.TOKENS;
+    const qty = Number(token?.qty) || 0;
+    if (qty <= 0) return resourceMap;
+    return {
+        ...resourceMap,
+        TOKENS: {
+            qty,
+            unit: token.unit || 'млн токенов',
+            applicable: token.applicable !== false
+        }
+    };
+}
+
 /* ---------- Допущения ---------- */
 
 function countAssumptions(calc) {
@@ -403,7 +417,13 @@ function renderHero(result, period, ctx, applyRisks = true, totalResources = nul
            qty учитывает applyRiskFactors так же, как и стоимости в Hero. Бейдж режима НЕ
            показываем — он уже есть в шапке Hero «Итого по расчёту С РИСКАМИ / БЕЗ РИСКОВ»,
            дубль на той же карточке = визуальный шум (принцип №22). */
-        totalResources ? renderResourcesBlock(totalResources, 'Объёмы ресурсов · ИТОГО', applyRisks, /*showModeBadge*/ false) : null,
+        totalResources ? renderResourcesBlock(
+            resourcesWithTokenMetric(totalResources, totalAiMetrics),
+            'Объёмы ресурсов · ИТОГО',
+            applyRisks,
+            /*showModeBadge*/ false,
+            period
+        ) : null,
 
         /* 13.U6: Метрики AI / RAG / агентов — отдельная ось, аналогично «Объёмам ресурсов».
            Блок возвращает null если AI-нагрузки в расчёте нет — секция не появляется
@@ -640,7 +660,13 @@ function renderStandCard(sid, result, period, ctx, isDisabled, standResources = 
            в шапку карточки (рядом с названием стенда), потому что (1) это маркер scope ВСЕЙ
            карточки, (2) для вертикального выравнивания «Объёмов ресурсов» между карточками
            бейдж не должен жить ВНУТРИ выравниваемого блока. */
-        renderResourcesBlock(standResources, 'Объёмы ресурсов', applyRisks, /*showModeBadge*/ false),
+        renderResourcesBlock(
+            resourcesWithTokenMetric(standResources, standAiMetrics),
+            'Объёмы ресурсов',
+            applyRisks,
+            /*showModeBadge*/ false,
+            period
+        ),
 
         /* 13.U6: Метрики AI / RAG / агентов на этом стенде. Возвращает null если на стенде
            нет ни одной AI-ЭК с qty>0 (например, на DEV токены не закладываются — блок

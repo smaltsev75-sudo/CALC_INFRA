@@ -10,6 +10,8 @@ import {
 } from '../utils/constants.js';
 import { DASHBOARD_RESOURCE_ORDER, formatResourceQty } from './dashboardAggregates.js';
 
+const RESOURCE_BLOCK_AI_LABELS = ['TOKENS'];
+
 function periodSlash(period) {
     return period === 'daily' ? '/ день' : period === 'annual' ? '/ год' : '/ мес';
 }
@@ -25,7 +27,7 @@ function periodMul(period) {
  *   На стенд-карточках — false (Hero уже показал бейдж, дублировать на каждой
  *   карточке = визуальный шум). Tooltip всё равно объясняет режим.
  */
-export function renderResourcesBlock(resourceMap, titleText, applyRisks = true, showModeBadge = false) {
+export function renderResourcesBlock(resourceMap, titleText, applyRisks = true, showModeBadge = false, period = 'monthly') {
     const rows = [];
     /* Tooltip несёт только режимную часть — НЕ дублирует видимое
        «CPU 100 vCPU». Объясняет, что объём ВКЛЮЧАЕТ или НЕ включает
@@ -33,10 +35,20 @@ export function renderResourcesBlock(resourceMap, titleText, applyRisks = true, 
     const modeNote = applyRisks
         ? 'Объём с capacity-буферами: задачи / проект / сезон / сдвиг / контингент. Без VAT и инфляции — это финансовые факторы, не capacity.'
         : 'Объём без capacity-буферов — голый расчёт. Включите «Учитывать риск-коэффициенты» в Опроснике для оценки с буферами.';
-    for (const label of DASHBOARD_RESOURCE_ORDER) {
+    const labels = [
+        ...DASHBOARD_RESOURCE_ORDER,
+        ...RESOURCE_BLOCK_AI_LABELS.filter(label => resourceMap[label])
+    ];
+    for (const label of labels) {
         const entry = resourceMap[label];
         if (!entry) continue;
-        const formatted = formatResourceQty(entry.qty, entry.unit);
+        const isTokenFlow = label === 'TOKENS';
+        const displayQty = isTokenFlow ? entry.qty * periodMul(period) : entry.qty;
+        const displayUnit = isTokenFlow
+            ? `${entry.unit} ${periodSlash(period)}`
+            : entry.unit;
+        const displayLabel = isTokenFlow ? DASHBOARD_AI_METRIC_TITLES.TOKENS : label;
+        const formatted = formatResourceQty(displayQty, entry.unit);
         if (formatted === null) {
             /* 12.U10: метка известна (есть ЭК с такой меткой в каталоге), но qty=0.
                Показываем «—» вместо silent skip — иначе пользователь не поймёт,
@@ -47,7 +59,7 @@ export function renderResourcesBlock(resourceMap, titleText, applyRisks = true, 
                 ? 'При текущих ответах Опросника объём = 0. Заполните соответствующие вопросы (объёмы БД, файлов, пиковая нагрузка), чтобы появилась оценка.'
                 : 'Для этого стенда ресурс не предусмотрен текущим каталогом ЭК. Если он нужен в проекте, добавьте применимость ресурса в справочник или включите соответствующий ЭК.';
             rows.push(el('div', { class: 'dash-resource-row dash-resource-row-empty', title: tooltip },
-                el('span', { class: 'dash-resource-row-label', text: label }),
+                el('span', { class: 'dash-resource-row-label', text: displayLabel }),
                 el('span', { class: 'dash-resource-row-value' },
                     el('span', { class: 'dash-resource-row-qty dash-resource-row-qty-empty', text: '—' })
                 )
@@ -55,10 +67,10 @@ export function renderResourcesBlock(resourceMap, titleText, applyRisks = true, 
             continue;
         }
         rows.push(el('div', { class: 'dash-resource-row', title: modeNote },
-            el('span', { class: 'dash-resource-row-label', text: label }),
+            el('span', { class: 'dash-resource-row-label', text: displayLabel }),
             el('span', { class: 'dash-resource-row-value' },
                 el('span', { class: 'dash-resource-row-qty', text: formatted }),
-                el('span', { class: 'dash-resource-row-unit', text: entry.unit })
+                el('span', { class: 'dash-resource-row-unit', text: displayUnit })
             )
         ));
     }

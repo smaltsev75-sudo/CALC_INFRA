@@ -13,7 +13,7 @@
 
 import { el } from './dom.js';
 import { icon } from './icons.js';
-import { CATEGORY_IDS, MONTHS_PER_YEAR } from '../utils/constants.js';
+import { CATEGORY_IDS, MONTHS_PER_YEAR, STAND_IDS } from '../utils/constants.js';
 import { calculate } from '../domain/calculator.js';
 import { applyStandFilter } from '../domain/standsFilter.js';
 import { getProviderSecurityPriceWarningForCalc } from '../domain/providerPriceTrust.js';
@@ -28,6 +28,7 @@ import {
     renderQtySection
 } from './detailsSections.js';
 import { renderDetailsQuantityPrintSummary } from './quantityExplanation.js';
+import { deriveAiMetricItemQty } from './dashboardAggregates.js';
 
 /** Sub-tab id-ы для Детализации. */
 const SUB_TABS = Object.freeze(['cost', 'qty']);
@@ -77,7 +78,10 @@ export function renderDetails(state, ctx) {
     let hiddenCount = 0;
     if (hideZero) {
         const before = filtered.length;
-        filtered = filtered.filter(it => itemMonthlyOnActiveStands(it.id, result, disabledStands) > 0);
+        filtered = filtered.filter(it =>
+            itemMonthlyOnActiveStands(it.id, result, disabledStands) > 0 ||
+            (subTab === 'qty' && itemHasDerivedAiMetricQty(it, disabledStands, calc))
+        );
         hiddenCount = before - filtered.length;
     }
 
@@ -137,7 +141,7 @@ export function renderDetails(state, ctx) {
         providerPriceWarning ? renderProviderPriceWarning(providerPriceWarning, ctx) : null,
 
         subTab === 'qty'
-            ? renderQtySection(byCat, result, ctx, disabledStands, applyRisks, state, presentCats)
+            ? renderQtySection(byCat, result, ctx, disabledStands, applyRisks, state, presentCats, calc)
             : renderCostSection(byCat, result, ctx, totalsForFilter, isFiltered, disabledStands, applyRisks, calc, state, presentCats),
 
         renderDetailsQuantityPrintSummary(calc, result, disabledStands),
@@ -148,6 +152,11 @@ export function renderDetails(state, ctx) {
            а на «Объём» получает тот же агрегат рядом с построчными qty. */
         renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx, { hideNoBudget: hideZero })
     );
+}
+
+function itemHasDerivedAiMetricQty(item, disabledStands = [], calc = null) {
+    const disabled = new Set(disabledStands);
+    return STAND_IDS.some(sid => !disabled.has(sid) && deriveAiMetricItemQty(calc, item.id, sid) > 0);
 }
 
 function renderProviderPriceWarning(warning, ctx) {

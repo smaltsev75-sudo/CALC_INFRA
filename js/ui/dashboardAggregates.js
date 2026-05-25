@@ -12,6 +12,18 @@ import { buildQuestionDefaults } from '../domain/calculator.js';
 // 12.U5: индекс dashboardResource из актуального SEED_ITEMS — fallback для
 // расчётов, dictionary которых был сохранён до добавления поля. UI-only.
 const SEED_ITEM_BY_ID = new Map(SEED_ITEMS.map(it => [it.id, it]));
+const AI_MODEL_TIER_FACTOR = Object.freeze({
+    light: 0.4,
+    mid: 1,
+    heavy: 3,
+    frontier: 10
+});
+const TOKEN_DEMAND_ITEM_IDS = Object.freeze([
+    'llm-tokens-input-1m',
+    'llm-tokens-output-1m',
+    'ai-safety-moderation-tokens-1m'
+]);
+const EMBEDDING_DEMAND_ITEM_IDS = Object.freeze(['rag-embeddings-1m']);
 
 /**
  * 12.U5: фиксированный порядок ресурсов на дашборде (CPU → GPU → RAM → SSD → HDD → S3).
@@ -248,6 +260,13 @@ function agentStepFactor(get) {
     return stepsBase * parallel;
 }
 
+function capacityMultiplier(cell, applyRisks) {
+    const br = cell?.riskBreakdown;
+    return (applyRisks && br)
+        ? br.bufferFactor * br.seasonalMul * br.scheduleMul * br.contingencyMul
+        : 1;
+}
+
 function ragRefreshMultiplier(value) {
     switch (value) {
         case 'realtime':
@@ -267,30 +286,45 @@ function ragRefreshMultiplier(value) {
     }
 }
 
-function deriveOnPremTokenQty(calc, stand) {
+export function deriveLlmTokenItemQty(calc, itemId, stand) {
     const get = buildAnswerResolver(calc);
     if (get('ai_llm_used', false) !== true) return 0;
-    if (get('ai_hosting_mode', 'external_api') !== 'on_prem_gpu') return 0;
 
     const registered = finiteNumber(get('registered_users_total', 0));
     const dauShare = finiteNumber(get('dau_share_of_registered_percent', 0)) / 100;
     const aiShare = finiteNumber(get('ai_users_share', 0)) / 100;
     const requestsPerDay = finiteNumber(get('ai_requests_per_user_day', 0));
-    const inputTokens = finiteNumber(get('ai_avg_input_tokens', 0));
-    const outputTokens = finiteNumber(get('ai_avg_output_tokens', 0));
     const cacheShare = Math.min(100, Math.max(0, finiteNumber(get('ai_caching_share', 0)))) / 100;
+    const modelFactor = AI_MODEL_TIER_FACTOR[get('ai_model_tier', 'mid')] ?? AI_MODEL_TIER_FACTOR.mid;
     const requestsPerMonth = registered * dauShare * aiShare * requestsPerDay * 30 * agentStepFactor(get);
     const ratio = aiStandRatio(calc, stand);
 
-    const inputMillions = requestsPerMonth * inputTokens * (1 - cacheShare) / 1_000_000 * ratio;
-    const outputMillions = requestsPerMonth * outputTokens / 1_000_000 * ratio;
-    return Math.ceil(Math.max(0, inputMillions)) + Math.ceil(Math.max(0, outputMillions));
+    if (itemId === 'llm-tokens-input-1m') {
+        const inputTokens = finiteNumber(get('ai_avg_input_tokens', 0));
+        return Math.ceil(Math.max(0,
+            requestsPerMonth * inputTokens * (1 - cacheShare) / 1_000_000 * modelFactor * ratio
+        ));
+    }
+    if (itemId === 'llm-tokens-output-1m') {
+        const outputTokens = finiteNumber(get('ai_avg_output_tokens', 0));
+        return Math.ceil(Math.max(0,
+            requestsPerMonth * outputTokens / 1_000_000 * modelFactor * ratio
+        ));
+    }
+    if (itemId === 'ai-safety-moderation-tokens-1m') {
+        if (get('ai_safety_layer', false) !== true) return 0;
+        const inputTokens = finiteNumber(get('ai_avg_input_tokens', 0));
+        const outputTokens = finiteNumber(get('ai_avg_output_tokens', 0));
+        const inputMillions = requestsPerMonth * inputTokens * (1 - cacheShare) / 1_000_000 * modelFactor * ratio;
+        const outputMillions = requestsPerMonth * outputTokens / 1_000_000 * modelFactor * ratio;
+        return Math.ceil(Math.max(0, (inputMillions + outputMillions) * 0.10));
+    }
+    return 0;
 }
 
-function deriveOnPremEmbeddingQty(calc, stand) {
+function deriveRagEmbeddingItemQty(calc, stand) {
     const get = buildAnswerResolver(calc);
     if (get('rag_needed', false) !== true) return 0;
-    if (get('ai_hosting_mode', 'external_api') !== 'on_prem_gpu') return 0;
 
     const corpusGb = finiteNumber(get('rag_corpus_size_gb', 0));
     const refresh = ragRefreshMultiplier(get('rag_refresh_frequency', 'never'));
@@ -298,35 +332,44 @@ function deriveOnPremEmbeddingQty(calc, stand) {
     return Math.ceil(Math.max(0, corpusGb * 200 * refresh * ratio));
 }
 
-function applyOnPremOperationalAiMetricFallback(out, calc, activeStands) {
-    if (!calc || !out?.perStand || !out?.total) return out;
+export function deriveAiMetricItemQty(calc, itemId, stand) {
+    const tokenQty = deriveLlmTokenItemQty(calc, itemId, stand);
+    if (tokenQty > 0) return tokenQty;
+    if (itemId === 'rag-embeddings-1m') return deriveRagEmbeddingItemQty(calc, stand);
+    return 0;
+}
 
-    const fallbackSpecs = [
-        { label: 'TOKENS', unit: 'млн токенов', derive: deriveOnPremTokenQty },
-        { label: 'EMBEDDINGS', unit: 'млн токенов', derive: deriveOnPremEmbeddingQty }
-    ];
+function deriveAiMetricItemsQty(calc, result, itemIds, stand, applyRisks) {
+    return itemIds.reduce((sum, itemId) => {
+        const qty = deriveAiMetricItemQty(calc, itemId, stand);
+        if (qty <= 0) return sum;
+        const cell = result?.items?.[itemId]?.stands?.[stand];
+        return sum + qty * capacityMultiplier(cell, applyRisks);
+    }, 0);
+}
 
-    for (const spec of fallbackSpecs) {
-        let activeTotal = 0;
-        let touched = false;
-        for (const sid of STAND_IDS) {
-            const entry = out.perStand[sid]?.[spec.label];
-            if (!entry) continue;
-            const current = Number(entry.qty) || 0;
-            const derived = spec.derive(calc, sid);
-            if (current <= 0 && derived > 0) {
-                entry.qty = derived;
-                entry.unit = entry.unit || spec.unit;
-                entry.applicable = true;
-                touched = true;
-            }
-            if (activeStands.includes(sid)) activeTotal += Number(entry.qty) || 0;
+function applyAiMetricDemandFallback(out, calc, activeStands, result, applyRisks, spec) {
+    if (!calc || !out?.perStand || !out?.total?.[spec.label]) return out;
+    const activeTokenTotal = activeStands.reduce((sum, sid) =>
+        sum + (Number(out.perStand?.[sid]?.[spec.label]?.qty) || 0), 0);
+    if (activeTokenTotal > 0) return out;
+
+    let derivedTotal = 0;
+    for (const sid of STAND_IDS) {
+        const entry = out.perStand[sid]?.[spec.label];
+        if (!entry) continue;
+        const derived = deriveAiMetricItemsQty(calc, result, spec.itemIds, sid, applyRisks);
+        if (derived > 0) {
+            entry.qty = derived;
+            entry.unit = entry.unit || spec.unit;
+            entry.applicable = true;
         }
-        if (touched && out.total[spec.label]) {
-            out.total[spec.label].qty = activeTotal;
-            out.total[spec.label].unit = out.total[spec.label].unit || spec.unit;
-            out.total[spec.label].applicable = true;
-        }
+        if (activeStands.includes(sid)) derivedTotal += Number(entry.qty) || 0;
+    }
+    if (derivedTotal > 0) {
+        out.total[spec.label].qty = derivedTotal;
+        out.total[spec.label].unit = out.total[spec.label].unit || spec.unit;
+        out.total[spec.label].applicable = true;
     }
     return out;
 }
@@ -400,6 +443,15 @@ export function aggregateAiMetrics(result, dictionaryItems, disabledStands, appl
         }
     }
 
-    applyOnPremOperationalAiMetricFallback(out, calc, activeStands);
+    applyAiMetricDemandFallback(out, calc, activeStands, result, applyRisks, {
+        label: 'TOKENS',
+        unit: 'млн токенов',
+        itemIds: TOKEN_DEMAND_ITEM_IDS
+    });
+    applyAiMetricDemandFallback(out, calc, activeStands, result, applyRisks, {
+        label: 'EMBEDDINGS',
+        unit: 'млн токенов',
+        itemIds: EMBEDDING_DEMAND_ITEM_IDS
+    });
     return distributeRoundingPreservingSum(out, activeStands);
 }

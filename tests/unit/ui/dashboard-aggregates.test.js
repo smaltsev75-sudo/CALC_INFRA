@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import {
     aggregateAiMetrics,
     aggregateResources,
+    DASHBOARD_RESOURCE_ORDER,
     distributeRoundingPreservingSum,
     formatResourceQty
 } from '../../../js/ui/dashboardAggregates.js';
 import { calculate } from '../../../js/domain/calculator.js';
-import { buildSeedDictionaries, defaultAnswersFrom } from '../../../js/domain/seed.js';
+import { buildSeedDictionaries, defaultAnswersFrom, SEED_ITEMS } from '../../../js/domain/seed.js';
 import { effectiveQtyForDisplay } from '../../../js/ui/detailsSections.js';
 import { STAND_IDS } from '../../../js/utils/constants.js';
 
@@ -39,6 +40,11 @@ function makeOnPremAiCalc(overrides = {}) {
 }
 
 describe('dashboardAggregates', () => {
+    it('DASHBOARD_RESOURCE_ORDER covers every resource label from seed', () => {
+        const labels = [...new Set(SEED_ITEMS.map(item => item.dashboardResource).filter(Boolean))].sort();
+        assert.deepEqual(labels, [...DASHBOARD_RESOURCE_ORDER].sort());
+    });
+
     it('aggregateResources uses SEED fallback and excludes disabled stands from total', () => {
         const result = {
             items: {
@@ -191,12 +197,37 @@ describe('dashboardAggregates', () => {
 
         const metrics = aggregateAiMetrics(result, calc.dictionaries.items, [], false, calc);
 
-        assert.equal(metrics.perStand.PROD.TOKENS.qty, 750);
-        assert.equal(metrics.perStand.LOAD.TOKENS.qty, 750);
-        assert.equal(metrics.perStand.PSI.TOKENS.qty, 375);
-        assert.equal(metrics.perStand.IFT.TOKENS.qty, 150);
-        assert.equal(metrics.perStand.DEV.TOKENS.qty, 15);
-        assert.equal(metrics.total.TOKENS.qty, 2040);
+        assert.equal(metrics.perStand.PROD.TOKENS.qty, 825);
+        assert.equal(metrics.perStand.LOAD.TOKENS.qty, 825);
+        assert.equal(metrics.perStand.PSI.TOKENS.qty, 413);
+        assert.equal(metrics.perStand.IFT.TOKENS.qty, 165);
+        assert.equal(metrics.perStand.DEV.TOKENS.qty, 17);
+        assert.equal(metrics.total.TOKENS.qty, 2245);
+        assert.equal(metrics.total.TOKENS.unit, 'млн токенов');
+    });
+
+    it('aggregateAiMetrics restores TOKENS from filled answers when token item formulas are zero', () => {
+        const calc = makeOnPremAiCalc({ ai_hosting_mode: 'external_api' });
+        calc.dictionaries = {
+            ...calc.dictionaries,
+            items: calc.dictionaries.items.map(item => (
+                item.dashboardAiMetric === 'TOKENS'
+                    ? {
+                        ...item,
+                        qtyFormulas: Object.fromEntries(STAND_IDS.map(sid => [sid, '0']))
+                    }
+                    : item
+            ))
+        };
+        const result = calculate(calc);
+        assert.equal(result.items['llm-tokens-input-1m'].stands.PROD.qty, 0);
+        assert.equal(result.items['llm-tokens-output-1m'].stands.PROD.qty, 0);
+
+        const metrics = aggregateAiMetrics(result, calc.dictionaries.items, [], false, calc);
+
+        assert.ok(metrics.perStand.PROD.TOKENS.qty > 0);
+        assert.ok(metrics.perStand.LOAD.TOKENS.qty > 0);
+        assert.ok(metrics.total.TOKENS.qty > 0);
         assert.equal(metrics.total.TOKENS.unit, 'млн токенов');
     });
 

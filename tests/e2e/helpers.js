@@ -339,11 +339,13 @@ export async function getDashboardDetailsConsistencyReport(page) {
         } = await import(new URL('js/utils/constants.js', document.baseURI).href);
         const {
             aggregateAiMetrics,
-            aggregateResources
+            aggregateResources,
+            deriveAiMetricItemQty
         } = await import(new URL('js/ui/dashboardAggregates.js', document.baseURI).href);
         const {
             computeTotalsForItems,
-            effectiveQtyForDisplay
+            effectiveQtyForDisplay,
+            quantityCapacityMultiplier
         } = await import(new URL('js/ui/detailsSections.js', document.baseURI).href);
 
         const EPS_RUB = 0.01;
@@ -445,7 +447,13 @@ export async function getDashboardDetailsConsistencyReport(page) {
             for (const sid of STAND_IDS) {
                 const cell = itemResult.stands?.[sid];
                 if (!cell) continue;
-                const qty = effectiveQtyForDisplay(cell, applyRisks);
+                const baseQty = effectiveQtyForDisplay(cell, applyRisks);
+                const fallbackQty = baseQty <= 0
+                    ? deriveAiMetricItemQty(calc, item.id, sid)
+                    : 0;
+                const qty = fallbackQty > 0
+                    ? fallbackQty * quantityCapacityMultiplier(cell, applyRisks)
+                    : baseQty;
                 addQty(detailResource, resourceLabel, sid, qty);
                 addQty(detailAi, aiLabel, sid, qty);
             }
