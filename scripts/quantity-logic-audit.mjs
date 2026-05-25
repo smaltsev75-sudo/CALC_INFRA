@@ -29,8 +29,8 @@ function normalizeLineEndings(value) {
     return String(value).replace(/\r\n?/g, '\n');
 }
 
-const REPORT_DATE = '2026-05-23';
-const CALC_CREATED_AT = '2026-05-23T00:00:00Z';
+const REPORT_DATE = '2026-05-25';
+const CALC_CREATED_AT = '2026-05-25T00:00:00Z';
 const SCALES = Object.freeze(['xs', 's', 'm', 'l', 'xl']);
 const GEOGRAPHIES = Object.freeze(['ru', 'ru_cis', 'global']);
 const ACTIVITIES = Object.freeze(['low', 'medium', 'high']);

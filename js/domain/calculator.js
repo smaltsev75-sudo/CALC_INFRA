@@ -71,6 +71,12 @@ const SEED_DASHBOARD_RESOURCE_BY_ID = new Map(
 const SEED_AI_ITEM_IDS = new Set(
     SEED_ITEMS.filter(it => it.category === 'AI' || it.dashboardAiMetric).map(it => it.id)
 );
+const AI_MODEL_TIER_FACTOR = Object.freeze({
+    light: 0.4,
+    mid: 1,
+    heavy: 3,
+    frontier: 10
+});
 import { LruCache } from '../utils/lru.js';
 import { getCostType, makeZeroCostTypeMap } from './costType.js';
 
@@ -278,6 +284,7 @@ export function buildContext(answers, settings, questionDefaults, stand, item = 
         ? (Number.isFinite(Number(a.agent_tool_use_share)) ? Number(a.agent_tool_use_share) / 100 : 0)
         : 0;
     const agentToolFactor = agentStepFactor * toolShare;
+    const aiModelTierFactor = AI_MODEL_TIER_FACTOR[a.ai_model_tier] ?? AI_MODEL_TIER_FACTOR.mid;
 
     return {
         Q: answers || {},
@@ -296,7 +303,8 @@ export function buildContext(answers, settings, questionDefaults, stand, item = 
             phaseDurationMonths:  settings.phaseDurationMonths,
             standSizeRatio:       ratio,
             agentStepFactor,
-            agentToolFactor
+            agentToolFactor,
+            aiModelTierFactor
         },
         STAND: stand,
         questionDefaults

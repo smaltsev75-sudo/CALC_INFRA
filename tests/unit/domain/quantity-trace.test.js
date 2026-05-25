@@ -70,7 +70,7 @@ describe('quantityTrace: explain one ЭК quantity', () => {
         assert.match(trace.formulaHelp, /RPS/);
         assert.deepEqual(
             trace.questionInputs.map(input => input.ref).sort(),
-            ['Q.async_workers_count', 'Q.microservices_count', 'Q.peak_rps']
+            ['Q.async_workers_count', 'Q.microservices_count', 'Q.pcu_target', 'Q.peak_rps', 'Q.realtime_required']
         );
         assert.equal(
             trace.questionInputs.find(input => input.ref === 'Q.peak_rps').value,
@@ -110,7 +110,7 @@ describe('quantityTrace: explain one ЭК quantity', () => {
         assert.equal(ratioInput.value, 0.25);
         assert.equal(ratioInput.rawValue, 0.11);
         assert.equal(ratioInput.overriddenByContext, true);
-        assert.equal(trace.qty, 12);
+        assert.equal(trace.qty, 16);
     });
 });
 

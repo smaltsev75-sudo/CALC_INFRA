@@ -1,13 +1,15 @@
 # Журнал решений и допущений
 
-## 25.05.2026 · PATCH 2.20.59 — Health gate + budget coverage for security/AI flags
+## 25.05.2026 · PATCH 2.20.60 — Health gate + full questionnaire budget coverage
 
 **Контекст.** Повторный аудит пользовательского JSON показал опасный класс
 ошибок: пользователь включает DDoS, SIEM, DLP, audit logging, AI safety или
 fine-tune, а бюджет не меняется либо причина не видна. Отдельно: Health Check
 при загрузке JSON должен быть gate для ошибок, Quick Start не должен иметь
 отдельную «счастливую дорожку», а в Опроснике нужно явно показывать, какие
-вопросы влияют на формулы.
+вопросы влияют на формулы. После повторной проверки найден тот же класс риска
+для SSO, платежей, антифрода, ЭДО, realtime, CDN/географии, RTO/RPO,
+maintenance window, hot-data split, PCU, peak duration и AI model/sensitivity.
 
 **Решение.**
 
@@ -22,11 +24,16 @@ fine-tune, а бюджет не меняется либо причина не в
   трактуется как возможное осознанное допущение, а не как автоматическая
   ошибка «0.7 вместо 70».
 - В Опроснике рядом с каждым вопросом появился статус по фактическому scan
-  `Q.<id>` в qty-формулах: «Влияет на расчёт» / «Информационное поле».
-- Seed расширен до 46 ЭК: добавлены DDoS, SIEM integration + SIEM monitoring,
-  DLP implementation + license, audit-log storage, AI safety moderation tokens,
-  AI safety service, fine-tuning run. Эти ЭК подмешиваются в legacy-расчёты через
-  `enrichLegacyDictionaryWithAgentSeed`.
+  `Q.<id>` в qty-формулах и explicit allowlist: «Влияет на расчёт» /
+  «Контроль бюджета» / «Параметр планирования» / «Информационное поле».
+- Seed расширен до 63 ЭК: помимо DDoS/SIEM/DLP/audit/AI safety/fine-tune
+  добавлены CDN/edge, realtime gateway, seasonal readiness, PDn hardening,
+  payment/SSO/antifraud/EDO/API-call статьи, AI low-latency reserve,
+  AI sensitive-data gateway, schedule acceleration, blue-green и DR-учения.
+  Эти ЭК подмешиваются в legacy-расчёты через `enrichLegacyDictionaryWithAgentSeed`.
+- Формулы существующих ЭК теперь учитывают PCU, realtime, users_total,
+  hot_data_share_percent, peak_duration_hours, ai_model_tier,
+  rag_retrieval_calls_per_query, RTO/RPO и maintenance_window_hours_month.
 - Provider trust matrix учитывает WAF/DDoS как capability с price-by-request
   для DDoS, чтобы benchmark не выдавал ложную точность.
 
@@ -36,8 +43,14 @@ fine-tune, а бюджет не меняется либо причина не в
   флаги используются в qtyFormula и включение каждого меняет итог.
 - Import flow test: при Health `error` после JSON-импорта открывается gate.
 - Business golden snapshots пересчитаны после новых ЭК безопасности/AI.
-- UserManual/README/Architecture/Wizard profiles обновлены под 46 ЭК и новые
+- Новые regression-tests `questionnaire-field-budget-links` и
+  `questionnaire-field-impact-coverage` фиксируют: активные вопросы Опросника
+  не могут быть декоративными без explicit non-EK статуса.
+- UserManual/README/Architecture/Wizard profiles обновлены под 63 ЭК и новые
   статусы вопросов.
+- Release-gates на финальном состоянии: `npm test` (5276/5276), Quick Start
+  matrix (2880 комбинаций), `quantity:audit:check`, `sanity:check`,
+  `syntax-check`, Playwright smoke для AI-токенов/Детализации/PDF (10/10).
 
 ## 25.05.2026 · PATCH 2.20.58 — Dashboard AI workload tokens decoupled from external API billing
 

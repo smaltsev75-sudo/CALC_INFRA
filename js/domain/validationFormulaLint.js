@@ -23,7 +23,7 @@ const KNOWN_SETTINGS = new Set([
        agentStepFactor — среднее число LLM-вызовов на одну пользовательскую
        задачу (=1 при выключенном master), agentToolFactor — произведение
        на долю tool-use (sandbox-нагрузка). */
-    'agentStepFactor', 'agentToolFactor'
+    'agentStepFactor', 'agentToolFactor', 'aiModelTierFactor'
 ]);
 
 /**

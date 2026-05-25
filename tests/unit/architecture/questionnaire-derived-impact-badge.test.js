@@ -7,6 +7,7 @@ const SRC = fs.readFileSync('js/ui/questionnaire.js', 'utf8');
 describe('questionnaire formula impact badges', () => {
     it('marks agent-derived fields as calculation-affecting', () => {
         for (const id of [
+            'ai_model_tier',
             'ai_agent_type',
             'agent_complexity',
             'agent_parallel_specialists',

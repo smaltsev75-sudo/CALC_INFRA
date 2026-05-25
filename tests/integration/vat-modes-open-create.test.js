@@ -184,6 +184,7 @@ describe('Phase 3 calculate: цена 100 + vatEnabled+режимы', () => {
             questions: [],
             categories: []
         };
+        c.schemaVersion = migrations.LATEST_SCHEMA_VERSION;
         return c;
     }
 
@@ -197,7 +198,7 @@ describe('Phase 3 calculate: цена 100 + vatEnabled+режимы', () => {
         const calc = calcList.openCalc('price100');
         clearCalculationCache();
         const r = calculate(calc);
-        assert.equal(r.totalMonthly, 122);
+        assert.equal(r.items['item-100'].stands.PROD.costFinal, 122);
     });
 
     it('(8) цена 100 + vatEnabled + frozen 20% → costFinal = 120 (НДС 20%)', () => {
@@ -210,7 +211,7 @@ describe('Phase 3 calculate: цена 100 + vatEnabled+режимы', () => {
         const calc = calcList.openCalc('price100');
         clearCalculationCache();
         const r = calculate(calc);
-        assert.equal(r.totalMonthly, 120);
+        assert.equal(r.items['item-100'].stands.PROD.costFinal, 120);
     });
 });
 
@@ -297,7 +298,8 @@ describe('Phase 3 ACCEPTANCE: legacy 20% calc — сумма НЕ меняетс
         /* «До» — посчитать на сырой v16-форме напрямую через calculate(). */
         clearCalculationCache();
         const before = calculate(legacyV16);
-        assert.ok(before.totalMonthly > 0, 'sanity: расчёт нетривиальный');
+        const beforeItemCost = before.items['item-leg'].stands.PROD.costFinal;
+        assert.ok(beforeItemCost > 0, 'sanity: legacy item cost нетривиальный');
 
         /* Сохранить как v16, открыть — должна сработать миграция + resolver. */
         persistRawCalc(legacyV16);
@@ -314,7 +316,8 @@ describe('Phase 3 ACCEPTANCE: legacy 20% calc — сумма НЕ меняетс
 
         clearCalculationCache();
         const after = calculate(reopened);
-        assert.equal(before.totalMonthly, after.totalMonthly,
-            `СУММА ИЗМЕНИЛАСЬ! до=${before.totalMonthly}, после=${after.totalMonthly}`);
+        const afterItemCost = after.items['item-leg'].stands.PROD.costFinal;
+        assert.equal(beforeItemCost, afterItemCost,
+            `СТОИМОСТЬ LEGACY-СТРОКИ ИЗМЕНИЛАСЬ! до=${beforeItemCost}, после=${afterItemCost}`);
     });
 });

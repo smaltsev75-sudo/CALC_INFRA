@@ -2710,7 +2710,7 @@ export const SEED_QUESTIONS = [
 const onStands = (map) => Object.fromEntries(STAND_IDS.map(s => [s, map[s] ?? '']));
 
 export const SEED_ITEMS = [
-    /* ===== CPU / RAM / STORAGE / NETWORK (10 ЭК) ===== */
+    /* ===== CPU / RAM / STORAGE / NETWORK ===== */
     {
         id: 'cpu-vcpu-shared',
         name: 'vCPU (общий пул)',
@@ -2736,13 +2736,13 @@ export const SEED_ITEMS = [
             'Расчёт: 1.15 ₽/core·час × 730 ч ≈ 840 ₽/мес.\n' +
             'В контракте уточняйте по фактическому тарифу провайдера.',
         qtyFormulas: {
-            DEV:  'ceil((Q.peak_rps / 50 + Q.microservices_count + Q.async_workers_count) * S.standSizeRatio.DEV)',
-            IFT:  'ceil((Q.peak_rps / 50 + Q.microservices_count + Q.async_workers_count) * S.standSizeRatio.IFT)',
-            PSI:  'ceil((Q.peak_rps / 50 + Q.microservices_count + Q.async_workers_count) * S.standSizeRatio.PSI)',
-            PROD: 'ceil(Q.peak_rps / 50 + Q.microservices_count + Q.async_workers_count)',
-            LOAD: 'ceil((Q.peak_rps / 50 + Q.microservices_count + Q.async_workers_count) * S.standSizeRatio.LOAD)'
+            DEV:  'ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.DEV)',
+            IFT:  'ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.IFT)',
+            PSI:  'ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.PSI)',
+            PROD: 'ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0))',
+            LOAD: 'ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'vCPU = ceil(пик. RPS / 50 + кол-во микросервисов + фоновые воркеры) × множитель размера стенда.'
+        formulaHelp: 'vCPU = ceil(max(пик. RPS / 50, PCU / 200) + микросервисы + фоновые воркеры + 1 при realtime) × множитель размера стенда.'
     },
     {
         id: 'cpu-vcpu-dedicated',
@@ -2796,11 +2796,11 @@ export const SEED_ITEMS = [
             'Расчёт: GPU-нода NVIDIA A100 ~287 000 ₽/мес за 20 vCPU = ~14 400 ₽/(GPU-vCPU)/мес.\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            PSI:  'ceil(if(Q.ai_hosting_mode == "on_prem_gpu", max(4, (Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * Q.ai_users_share / 100 * Q.ai_requests_per_user_day / 5000), 0) * S.standSizeRatio.PSI)',
-            PROD: 'ceil(if(Q.ai_hosting_mode == "on_prem_gpu", max(4, (Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * Q.ai_users_share / 100 * Q.ai_requests_per_user_day / 5000), 0))',
-            LOAD: 'ceil(if(Q.ai_hosting_mode == "on_prem_gpu", max(4, (Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * Q.ai_users_share / 100 * Q.ai_requests_per_user_day / 5000), 0) * S.standSizeRatio.LOAD)'
+            PSI:  'ceil(if(Q.ai_hosting_mode == "on_prem_gpu", max(4, (Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * Q.ai_users_share / 100 * Q.ai_requests_per_user_day / 5000 * S.aiModelTierFactor), 0) * S.standSizeRatio.PSI)',
+            PROD: 'ceil(if(Q.ai_hosting_mode == "on_prem_gpu", max(4, (Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * Q.ai_users_share / 100 * Q.ai_requests_per_user_day / 5000 * S.aiModelTierFactor), 0))',
+            LOAD: 'ceil(if(Q.ai_hosting_mode == "on_prem_gpu", max(4, (Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * Q.ai_users_share / 100 * Q.ai_requests_per_user_day / 5000 * S.aiModelTierFactor), 0) * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'qty = ceil(max(4, DAU × доля_AI × запросов/день / 5000)) × коэф. стенда; иначе 0.'
+        formulaHelp: 'qty = ceil(max(4, DAU × доля_AI × запросов/день / 5000 × множитель_класса_модели)) × коэф. стенда; иначе 0.'
     },
     {
         id: 'ram-gb',
@@ -2824,13 +2824,13 @@ export const SEED_ITEMS = [
             'Расчёт: 0.31 ₽/ГБ·час × 730 ч ≈ 226 ₽/ГБ/мес.\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            DEV:  'ceil((ceil((Q.peak_rps / 50 + Q.microservices_count + Q.async_workers_count) * S.standSizeRatio.DEV) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb * S.standSizeRatio.DEV)',
-            IFT:  'ceil((ceil((Q.peak_rps / 50 + Q.microservices_count + Q.async_workers_count) * S.standSizeRatio.IFT) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb * S.standSizeRatio.IFT)',
-            PSI:  'ceil((ceil((Q.peak_rps / 50 + Q.microservices_count + Q.async_workers_count) * S.standSizeRatio.PSI) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb * S.standSizeRatio.PSI)',
-            PROD: 'ceil((ceil(Q.peak_rps / 50 + Q.microservices_count + Q.async_workers_count) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb)',
-            LOAD: 'ceil((ceil((Q.peak_rps / 50 + Q.microservices_count + Q.async_workers_count) * S.standSizeRatio.LOAD) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb * S.standSizeRatio.LOAD)'
+            DEV:  'ceil((ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.DEV) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb * S.standSizeRatio.DEV)',
+            IFT:  'ceil((ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.IFT) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb * S.standSizeRatio.IFT)',
+            PSI:  'ceil((ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.PSI) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb * S.standSizeRatio.PSI)',
+            PROD: 'ceil((ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb)',
+            LOAD: 'ceil((ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.LOAD) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'GB RAM = vCPU × Q.ram_per_vcpu_ratio + Q.cache_size_gb (всё × коэф. стенда).'
+        formulaHelp: 'GB RAM = расчётный vCPU (с учётом RPS/PCU/realtime) × Q.ram_per_vcpu_ratio + Q.cache_size_gb (всё × коэф. стенда).'
     },
     {
         id: 'storage-ssd-tb',
@@ -2854,9 +2854,9 @@ export const SEED_ITEMS = [
             'Расчёт: 12.09 ₽/ГБ/мес × 1024 ≈ 12 378 ₽/ТБ/мес.\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            DEV:  'max(0.1, ((Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count / 1024) * S.standSizeRatio.DEV)',
-            IFT:  'max(0.1, ((Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count / 1024) * S.standSizeRatio.IFT)',
-            PSI:  'max(0.2, ((Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * (1 + Q.db_replicas_count) / 1024) * S.standSizeRatio.PSI)',
+            DEV:  'max(0.1, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count / 1024) * S.standSizeRatio.DEV + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * 0.10 * S.standSizeRatio.DEV)',
+            IFT:  'max(0.1, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count / 1024) * S.standSizeRatio.IFT + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * 0.10 * S.standSizeRatio.IFT)',
+            PSI:  'max(0.2, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * (1 + Q.db_replicas_count) / 1024) * S.standSizeRatio.PSI + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * 0.10 * S.standSizeRatio.PSI)',
             // 13.U13 (Phase 0): убрано аномальное слагаемое
             //   `+ Q.cache_size_gb / 1024 * (Q.hot_data_share_percent / 100 * 10)`
             // которое присутствовало ТОЛЬКО на PROD, без аналогов на других стендах,
@@ -2865,10 +2865,10 @@ export const SEED_ITEMS = [
             // ещё и в SSD-БД — двойной учёт. Если нужен hot/cold split БД на SSD vs HDD —
             // это отдельная задача с явным разделением `db_size_initial_gb` по
             // `hot_data_share_percent`, а не через cache_size.
-            PROD: 'max(0.5, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * (1 + Q.db_replicas_count) / 1024)',
-            LOAD: 'max(0.2, ((Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * (1 + Q.db_replicas_count) / 1024) * S.standSizeRatio.LOAD)'
+            PROD: 'max(0.5, max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * (1 + Q.db_replicas_count) / 1024 + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * 0.10)',
+            LOAD: 'max(0.2, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * (1 + Q.db_replicas_count) / 1024) * S.standSizeRatio.LOAD + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * 0.10 * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'TB SSD = (объём БД на старте + рост × 12 мес) × кластеров × (1 + реплики) / 1024.'
+        formulaHelp: 'TB SSD = max(БД + рост за год, users_total × 50 КБ) × кластеров × (1 + реплики) / 1024 + 10% горячего файлового слоя.'
     },
     {
         id: 'storage-hdd-tb',
@@ -2892,10 +2892,10 @@ export const SEED_ITEMS = [
             'Расчёт: ~4.015 ₽/ГБ/мес × 1024 ≈ 4 111 ₽/ТБ/мес.\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            PSI:  'max(0.5, ((Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * Q.backup_retention_days / 30 / 1024) * S.standSizeRatio.PSI)',
-            PROD: 'max(1, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * Q.backup_retention_days / 30 / 1024 + Q.file_storage_volume_tb * 0.5)'
+            PSI:  'max(0.5, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024) * S.standSizeRatio.PSI)',
+            PROD: 'max(1, max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024 + Q.file_storage_volume_tb * max(0, 100 - Q.hot_data_share_percent) / 100 * 0.5)'
         },
-        formulaHelp: 'TB HDD = (объём БД × кластеров × глубина бэкапов в месяцах) / 1024 + 50% от объёма файлов.'
+        formulaHelp: 'TB HDD = max(БД + рост за год, users_total × 50 КБ) × кластеров × глубина бэкапов / 1024 + 50% холодной доли файлов.'
     },
     {
         id: 'storage-object-tb',
@@ -2948,11 +2948,11 @@ export const SEED_ITEMS = [
             'Расчёт: SSD 12.09 ₽/ГБ + 17.5% надбавка за compliance ≈ 14.2 ₽/ГБ/мес.\n' +
             'В контракте уточняйте у провайдера.',
         qtyFormulas: {
-            PSI:  'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, Q.db_size_initial_gb * Q.db_count, 0) * S.standSizeRatio.PSI)',
-            PROD: 'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, Q.db_size_initial_gb * Q.db_count + Q.db_growth_gb_month * 12, 0))',
-            LOAD: 'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, Q.db_size_initial_gb * Q.db_count, 0) * S.standSizeRatio.LOAD)'
+            PSI:  'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb, Q.users_total * 0.00005) * Q.db_count, 0) * S.standSizeRatio.PSI)',
+            PROD: 'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count, 0))',
+            LOAD: 'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb, Q.users_total * 0.00005) * Q.db_count, 0) * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'GB защ. = БД × кластеров (+ годовой прирост на ПРОМ) × коэф. стенда. Иначе 0.'
+        formulaHelp: 'GB защ. = max(БД, users_total × 50 КБ) × кластеров (+ годовой прирост на ПРОМ) × коэф. стенда. Иначе 0.'
     },
     {
         id: 'network-lb-l7',
@@ -3032,8 +3032,80 @@ export const SEED_ITEMS = [
         },
         formulaHelp: 'qty = 1 на ПРОМ при Q.ddos_protection_required. Расширенный L7-DDoS уточняется КП.'
     },
+    {
+        id: 'network-cdn-edge',
+        name: 'CDN / edge-доставка по географии',
+        unit: 'контур',
+        pricePerUnit: 20000,  // Модельная оценка базового CDN-контура для СНГ/глобальной аудитории; точный тариф зависит от трафика и провайдера.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'SERVICES',
+        resourceClass: 'NETWORK',
+        applicableStands: ['PROD'],
+        description:
+            'CDN/edge-контур для ускорения отдачи статических файлов и API-cache за пределами основного региона.\n' +
+            'Включается по географии аудитории: Россия+СНГ или глобальный рынок.\n' +
+            'Единица измерения: 1 CDN-контур в месяц.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельная оценка на основе вопроса «География аудитории», 2026-05.\n' +
+            'Расчёт: СНГ = 1 базовый контур, global = 2 контура/региона; трафик считается отдельным ЭК traffic-egress-tb.\n' +
+            'ВАЖНО: финальная цена CDN зависит от TB egress и географии PoP; импортируйте КП провайдера для точного бюджета.',
+        qtyFormulas: {
+            PROD: 'if(Q.audience_geography == "global", 2, if(Q.audience_geography == "cis", 1, 0))'
+        },
+        formulaHelp: 'qty = 0 для RU, 1 для RU+СНГ, 2 для global. Трафик считается отдельно.'
+    },
+    {
+        id: 'network-realtime-gateway',
+        name: 'Realtime gateway / WebSocket-контур',
+        unit: 'контур',
+        pricePerUnit: 50000,  // Модельная оценка выделенного realtime-контура; точный тариф зависит от числа соединений и выбранного брокера.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'SERVICES',
+        resourceClass: 'NETWORK',
+        applicableStands: ['PSI','PROD','LOAD'],
+        description:
+            'Выделенный контур для realtime-сценариев: WebSocket/SSE, push через постоянное соединение, чаты и совместное редактирование.\n' +
+            'Применять при включённом требовании работы в реальном времени.\n' +
+            'Единица измерения: 1 realtime-контур в месяц.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельная оценка из вопроса «Нужна работа в реальном времени», 2026-05.\n' +
+            'Расчёт: минимум 1 контур на ПРОМ; далее масштаб от PCU. CPU/RAM также получают +1 сервисный слот через формулы hardware.',
+        qtyFormulas: {
+            PSI:  'if(Q.realtime_required, max(0.5, ceil(Q.pcu_target / 5000) * S.standSizeRatio.PSI), 0)',
+            PROD: 'if(Q.realtime_required, max(1, ceil(Q.pcu_target / 5000)), 0)',
+            LOAD: 'if(Q.realtime_required, max(0.5, ceil(Q.pcu_target / 5000) * S.standSizeRatio.LOAD), 0)'
+        },
+        formulaHelp: 'qty = ceil(PCU / 5000) realtime-контуров при realtime_required; минимум 1 на ПРОМ.'
+    },
+    {
+        id: 'one-seasonal-load-readiness',
+        name: 'Подготовка к сезонным пикам',
+        unit: 'пик-месяц',
+        pricePerUnit: 100000,  // Модельная оценка цикла подготовки/проверки на один сезонный месяц.
+        billingInterval: 'oneTime',
+        vendor: '',
+        category: 'SERVICES',
+        resourceClass: 'ONE_TIME',
+        applicableStands: ['PROD'],
+        description:
+            'Работы по подготовке к сезонным пикам: capacity review, прогон сценариев, настройка лимитов автоскейлинга и runbook на период повышенной нагрузки.\n' +
+            'Применять, если в Опроснике включена сезонная активность.\n' +
+            'Единица измерения: 1 пик-месяц.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельная оценка из вопросов о сезонности, 2026-05.\n' +
+            'Расчёт: один цикл подготовки на каждый выбранный месяц; если месяцы не выбраны, минимум 1 цикл.',
+        qtyFormulas: {
+            PROD: 'if(Q.seasonal_activity, max(1, Q.peak_months), 0)'
+        },
+        formulaHelp: 'qty = число выбранных peak_months при seasonal_activity; минимум 1, если сезонность включена.'
+    },
 
-    /* ===== LICENSE / SERVICE / TRAFFIC / AI_LLM (12 ЭК) ===== */
+    /* ===== LICENSE / SERVICE / TRAFFIC / AI_LLM ===== */
     {
         id: 'license-db-per-vcpu',
         name: 'СУБД (на vCPU)',
@@ -3144,6 +3216,29 @@ export const SEED_ITEMS = [
             'ВАЖНО: точный объём зависит от SIEM-платформы, числа источников событий и требований SOC.',
         qtyFormulas: { PROD: 'if(Q.siem_integration_required, 1, 0)' },
         formulaHelp: 'qty = 1 при Q.siem_integration_required.'
+    },
+    {
+        id: 'security-pdn-category-hardening',
+        name: 'Усиление контура по категории ПДн',
+        unit: 'уровень',
+        pricePerUnit: 50000,  // Модельная оценка доп. работ/сопровождения по категориям ПДн: категория 3 = 1, категории 1-2 выше.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'SECURITY',
+        resourceClass: 'SERVICE',
+        applicableStands: ['PROD'],
+        description:
+            'Дополнительное сопровождение защитного контура по категории персональных данных: настройки СЗИ, политики доступа, контроль шифрования и регламентные проверки.\n' +
+            'Применять при обработке ПДн; категория 1-2 дороже категории 3, категория 4 не добавляет надбавку.\n' +
+            'Единица измерения: условный уровень защищённости в месяц.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельная оценка из вопроса «Категория персональных данных», 2026-05.\n' +
+            'Расчёт: категория 3 = 1 уровень, категория 2 = 2, категория 1 = 3; точную стоимость сертифицированных СЗИ уточняйте по КП.',
+        qtyFormulas: {
+            PROD: 'if(Q.pdn_152fz, if(Q.pdn_category == "1", 3, if(Q.pdn_category == "2", 2, if(Q.pdn_category == "3", 1, 0))), 0)'
+        },
+        formulaHelp: 'qty = 3/2/1 для категорий ПДн 1/2/3 при pdn_152fz; 0 для категории 4/none или без ПДн.'
     },
     {
         id: 'security-siem-monitoring',
@@ -3325,6 +3420,159 @@ export const SEED_ITEMS = [
         formulaHelp: 'Млн PUSH = push_per_month / 1 000 000 × коэф. стенда.'
     },
     {
+        id: 'one-payment-gateway-integration',
+        name: 'Интеграция платёжного шлюза',
+        unit: 'проект',
+        pricePerUnit: 300000,  // Ориентир из impact вопроса payment_gateway: 300-800 тыс. ₽ разово.
+        billingInterval: 'oneTime',
+        vendor: '',
+        category: 'SERVICES',
+        resourceClass: 'ONE_TIME',
+        applicableStands: ['PROD'],
+        description:
+            'Разовая интеграция с платёжным шлюзом: сценарии оплаты, webhooks, статусы платежей, сверка и техническое логирование.\n' +
+            'Применять при включённом платёжном шлюзе.\n' +
+            'Единица измерения: 1 проект интеграции.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельный ориентир из вопроса «Подключение платёжного шлюза», 2026-05.\n' +
+            'Расчёт: нижняя граница диапазона 300-800 тыс. ₽; комиссия эквайринга не входит в инфраструктурный бюджет.',
+        qtyFormulas: { PROD: 'if(Q.payment_gateway, 1, 0)' },
+        formulaHelp: 'qty = 1 при Q.payment_gateway.'
+    },
+    {
+        id: 'one-sso-integration',
+        name: 'Интеграция SSO',
+        unit: 'проект',
+        pricePerUnit: 600000,  // Ориентир из impact вопроса sso_required: 400-1200 тыс. ₽ разово.
+        billingInterval: 'oneTime',
+        vendor: '',
+        category: 'SERVICES',
+        resourceClass: 'ONE_TIME',
+        applicableStands: ['PROD'],
+        description:
+            'Разовая интеграция с корпоративной или внешней системой единого входа: SAML/OIDC, роли, маппинг групп, тестирование сценариев входа.\n' +
+            'Применять при Q.sso_required.\n' +
+            'Единица измерения: 1 проект интеграции.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельный ориентир из вопроса «Единая точка входа (SSO)», 2026-05.\n' +
+            'Расчёт: середина диапазона 400-1200 тыс. ₽.',
+        qtyFormulas: { PROD: 'if(Q.sso_required, 1, 0)' },
+        formulaHelp: 'qty = 1 при Q.sso_required.'
+    },
+    {
+        id: 'service-identity-provider',
+        name: 'Identity provider / SSO сопровождение',
+        unit: 'контур',
+        pricePerUnit: 50000,  // Ориентир из описания SSO: 50-200 тыс. ₽/мес при managed/enterprise IDP.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'SERVICES',
+        resourceClass: 'SERVICE',
+        applicableStands: ['PROD'],
+        description:
+            'Ежемесячное сопровождение SSO/identity-контура: managed IdP, поддержка federation, мониторинг входов и обновление политик доступа.\n' +
+            'Применять при Q.sso_required.\n' +
+            'Единица измерения: 1 промышленный контур.',
+        qtyFormulas: { PROD: 'if(Q.sso_required, 1, 0)' },
+        formulaHelp: 'qty = 1 при Q.sso_required.'
+    },
+    {
+        id: 'one-antifraud-integration',
+        name: 'Интеграция антифрод-системы',
+        unit: 'проект',
+        pricePerUnit: 700000,  // Ориентир из impact вопроса antifraud_required: 500-1500 тыс. ₽.
+        billingInterval: 'oneTime',
+        vendor: '',
+        category: 'SERVICES',
+        resourceClass: 'ONE_TIME',
+        applicableStands: ['PROD'],
+        description:
+            'Разовая интеграция с антифрод-системой: события операций, признаки риска, callback-решения и разбор спорных сценариев.\n' +
+            'Применять при Q.antifraud_required.\n' +
+            'Единица измерения: 1 проект интеграции.',
+        qtyFormulas: { PROD: 'if(Q.antifraud_required, 1, 0)' },
+        formulaHelp: 'qty = 1 при Q.antifraud_required.'
+    },
+    {
+        id: 'service-antifraud-license',
+        name: 'Антифрод: лицензия / сервис',
+        unit: 'контур/год',
+        pricePerUnit: 1000000,  // Ориентир из вопроса antifraud_required: лицензия от 1 млн ₽/год.
+        billingInterval: 'annual',
+        vendor: '',
+        category: 'SERVICES',
+        resourceClass: 'LICENSE',
+        applicableStands: ['PROD'],
+        description:
+            'Годовая лицензия или подписка антифрод-сервиса для оценки подозрительных операций и действий пользователей.\n' +
+            'Применять при Q.antifraud_required.\n' +
+            'Единица измерения: 1 защищаемый контур в год.',
+        qtyFormulas: { PROD: 'if(Q.antifraud_required, 1, 0)' },
+        formulaHelp: 'qty = 1 при Q.antifraud_required. Тариф annual.'
+    },
+    {
+        id: 'one-edo-integration',
+        name: 'Интеграция ЭДО',
+        unit: 'проект',
+        pricePerUnit: 600000,  // Ориентир из impact вопроса edo_required: 400-1200 тыс. ₽ разово.
+        billingInterval: 'oneTime',
+        vendor: '',
+        category: 'SERVICES',
+        resourceClass: 'ONE_TIME',
+        applicableStands: ['PROD'],
+        description:
+            'Разовая интеграция с оператором электронного документооборота: API, статусы документов, подписи, архив юридически значимых событий.\n' +
+            'Применять при Q.edo_required.\n' +
+            'Единица измерения: 1 проект интеграции.',
+        qtyFormulas: { PROD: 'if(Q.edo_required, 1, 0)' },
+        formulaHelp: 'qty = 1 при Q.edo_required.'
+    },
+    {
+        id: 'service-edo-operator',
+        name: 'ЭДО: оператор и КЭП',
+        unit: 'контур/год',
+        pricePerUnit: 50000,  // Ориентир из вопроса edo_required: лицензия оператора 30-100 тыс. ₽/год.
+        billingInterval: 'annual',
+        vendor: '',
+        category: 'SERVICES',
+        resourceClass: 'SERVICE',
+        applicableStands: ['PROD'],
+        description:
+            'Годовая подписка оператора ЭДО и базовые расходы на электронную подпись для промышленного контура.\n' +
+            'Применять при Q.edo_required.\n' +
+            'Единица измерения: 1 контур в год.',
+        qtyFormulas: { PROD: 'if(Q.edo_required, 1, 0)' },
+        formulaHelp: 'qty = 1 при Q.edo_required. Тариф annual.'
+    },
+    {
+        id: 'service-external-api-calls-1m',
+        name: 'Внешние API-вызовы (млн./мес)',
+        unit: 'млн вызовов',
+        pricePerUnit: 50000,  // Модельный blended-rate: 1 млн вызовов внешних API в среднем контуре.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'SERVICES',
+        resourceClass: 'SERVICE',
+        applicableStands: ['IFT','PSI','PROD','LOAD'],
+        description:
+            'Сводная статья для платных внешних API: карты, проверки документов, партнёрские сервисы, внешние платформы и rate-limit пакеты.\n' +
+            'Применять по числу внешних API-вызовов в месяц.\n' +
+            'Единица измерения: 1 млн вызовов в месяц.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельная blended-оценка из вопроса «Вызовов внешних API в месяц», 2026-05.\n' +
+            'ВАЖНО: фактические API сильно различаются по цене; для финального бюджета импортируйте КП ключевых провайдеров.',
+        qtyFormulas: {
+            IFT:  'ceil((Q.external_api_calls_per_month / 1000000) * S.standSizeRatio.IFT)',
+            PSI:  'ceil((Q.external_api_calls_per_month / 1000000) * S.standSizeRatio.PSI)',
+            PROD: 'ceil(Q.external_api_calls_per_month / 1000000)',
+            LOAD: 'if(Q.external_api_calls_per_month > 0, max(1, round((Q.external_api_calls_per_month / 1000000) * S.standSizeRatio.LOAD)), 0)'
+        },
+        formulaHelp: 'Млн вызовов = external_api_calls_per_month / 1 000 000 × коэф. стенда.'
+    },
+    {
         id: 'traffic-egress-tb',
         name: 'Исходящий (TB/мес)',
         unit: 'ТБ',
@@ -3346,12 +3594,12 @@ export const SEED_ITEMS = [
             'Расчёт: 3.23 ₽/ГБ × 1024 ≈ 3 308 ₽/ТБ/мес.\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            IFT:  'ceil(if(Q.traffic_egress_tb_month > 0, Q.traffic_egress_tb_month, Q.avg_rps * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.IFT)',
-            PSI:  'ceil(if(Q.traffic_egress_tb_month > 0, Q.traffic_egress_tb_month, Q.avg_rps * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.PSI)',
-            PROD: 'ceil(if(Q.traffic_egress_tb_month > 0, Q.traffic_egress_tb_month, Q.avg_rps * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024))',
-            LOAD: 'ceil(if(Q.traffic_egress_tb_month > 0, Q.traffic_egress_tb_month, Q.avg_rps * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.LOAD)'
+            IFT:  'ceil(if(Q.traffic_egress_tb_month > 0, Q.traffic_egress_tb_month, ((Q.peak_rps * clamp(Q.peak_duration_hours, 0, 24) + Q.avg_rps * (24 - clamp(Q.peak_duration_hours, 0, 24))) / 24) * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.IFT)',
+            PSI:  'ceil(if(Q.traffic_egress_tb_month > 0, Q.traffic_egress_tb_month, ((Q.peak_rps * clamp(Q.peak_duration_hours, 0, 24) + Q.avg_rps * (24 - clamp(Q.peak_duration_hours, 0, 24))) / 24) * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.PSI)',
+            PROD: 'ceil(if(Q.traffic_egress_tb_month > 0, Q.traffic_egress_tb_month, ((Q.peak_rps * clamp(Q.peak_duration_hours, 0, 24) + Q.avg_rps * (24 - clamp(Q.peak_duration_hours, 0, 24))) / 24) * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024))',
+            LOAD: 'ceil(if(Q.traffic_egress_tb_month > 0, Q.traffic_egress_tb_month, ((Q.peak_rps * clamp(Q.peak_duration_hours, 0, 24) + Q.avg_rps * (24 - clamp(Q.peak_duration_hours, 0, 24))) / 24) * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'TB исх. = traffic_egress_tb_month, если задано > 0; иначе avg_rps × 86400 сек × avg_response_size_kb × 30 дн / 1 ГБ / 1024 ТБ.'
+        formulaHelp: 'TB исх. = traffic_egress_tb_month, если задано > 0; иначе blended RPS ((peak_rps × peak_hours + avg_rps × остальные часы) / 24) × размер ответа × 30 дней.'
     },
     {
         id: 'traffic-ingress-tb',
@@ -3375,12 +3623,12 @@ export const SEED_ITEMS = [
             'Расчёт: входящий трафик не тарифицируется (0 ₽/ТБ).\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            IFT:  'ceil(if(Q.traffic_ingress_tb_month > 0, Q.traffic_ingress_tb_month, Q.avg_rps * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.IFT)',
-            PSI:  'ceil(if(Q.traffic_ingress_tb_month > 0, Q.traffic_ingress_tb_month, Q.avg_rps * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.PSI)',
-            PROD: 'ceil(if(Q.traffic_ingress_tb_month > 0, Q.traffic_ingress_tb_month, Q.avg_rps * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024))',
-            LOAD: 'ceil(if(Q.traffic_ingress_tb_month > 0, Q.traffic_ingress_tb_month, Q.avg_rps * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.LOAD)'
+            IFT:  'ceil(if(Q.traffic_ingress_tb_month > 0, Q.traffic_ingress_tb_month, ((Q.peak_rps * clamp(Q.peak_duration_hours, 0, 24) + Q.avg_rps * (24 - clamp(Q.peak_duration_hours, 0, 24))) / 24) * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.IFT)',
+            PSI:  'ceil(if(Q.traffic_ingress_tb_month > 0, Q.traffic_ingress_tb_month, ((Q.peak_rps * clamp(Q.peak_duration_hours, 0, 24) + Q.avg_rps * (24 - clamp(Q.peak_duration_hours, 0, 24))) / 24) * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.PSI)',
+            PROD: 'ceil(if(Q.traffic_ingress_tb_month > 0, Q.traffic_ingress_tb_month, ((Q.peak_rps * clamp(Q.peak_duration_hours, 0, 24) + Q.avg_rps * (24 - clamp(Q.peak_duration_hours, 0, 24))) / 24) * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024))',
+            LOAD: 'ceil(if(Q.traffic_ingress_tb_month > 0, Q.traffic_ingress_tb_month, ((Q.peak_rps * clamp(Q.peak_duration_hours, 0, 24) + Q.avg_rps * (24 - clamp(Q.peak_duration_hours, 0, 24))) / 24) * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'TB вх. = traffic_ingress_tb_month, если задано > 0; иначе avg_rps × 86400 сек × avg_request_size_kb × 30 дн / 1 ГБ / 1024 ТБ.'
+        formulaHelp: 'TB вх. = traffic_ingress_tb_month, если задано > 0; иначе blended RPS ((peak_rps × peak_hours + avg_rps × остальные часы) / 24) × размер запроса × 30 дней.'
     },
     {
         id: 'llm-tokens-input-1m',
@@ -3408,13 +3656,13 @@ export const SEED_ITEMS = [
             'Расчёт: 500 ₽/млн токенов (input).\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            DEV:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.standSizeRatio.DEV), 0)',
-            IFT:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.standSizeRatio.IFT), 0)',
-            PSI:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.standSizeRatio.PSI), 0)',
-            PROD: 'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor), 0)',
-            LOAD: 'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.standSizeRatio.LOAD), 0)'
+            DEV:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.DEV), 0)',
+            IFT:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.IFT), 0)',
+            PSI:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.PSI), 0)',
+            PROD: 'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor), 0)',
+            LOAD: 'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.LOAD), 0)'
         },
-        formulaHelp: 'Млн вх. токенов = DAU × доля_AI × запросов/день × токенов/запрос × 30 дн × (1 − кэш) / 1M × агентский_множитель × коэф. стенда. Множитель = 1 при выключенном ai_agent_mode; 3..45 при включённом (зависит от сложности агента и числа параллельных специалистов).'
+        formulaHelp: 'Млн вх. токенов = DAU × доля_AI × запросов/день × токенов/запрос × 30 дн × (1 − кэш) / 1M × агентский_множитель × множитель_класса_модели × коэф. стенда. Класс модели: light=0.4, mid=1, heavy=3, frontier=10.'
     },
     {
         id: 'llm-tokens-output-1m',
@@ -3442,13 +3690,13 @@ export const SEED_ITEMS = [
             'Расчёт: 500 ₽/млн токенов (output = input).\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            DEV:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_output_tokens * 30 / 1000000 * S.agentStepFactor * S.standSizeRatio.DEV), 0)',
-            IFT:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_output_tokens * 30 / 1000000 * S.agentStepFactor * S.standSizeRatio.IFT), 0)',
-            PSI:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_output_tokens * 30 / 1000000 * S.agentStepFactor * S.standSizeRatio.PSI), 0)',
-            PROD: 'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_output_tokens * 30 / 1000000 * S.agentStepFactor), 0)',
-            LOAD: 'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_output_tokens * 30 / 1000000 * S.agentStepFactor * S.standSizeRatio.LOAD), 0)'
+            DEV:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_output_tokens * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.DEV), 0)',
+            IFT:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_output_tokens * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.IFT), 0)',
+            PSI:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_output_tokens * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.PSI), 0)',
+            PROD: 'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_output_tokens * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor), 0)',
+            LOAD: 'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_output_tokens * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.LOAD), 0)'
         },
-        formulaHelp: 'Млн исх. токенов = DAU × доля_AI × запросов/день × токенов_ответа × 30 дн / 1M × агентский_множитель × коэф. стенда. Множитель = 1 при выключенном ai_agent_mode; 3..45 при включённом.'
+        formulaHelp: 'Млн исх. токенов = DAU × доля_AI × запросов/день × токенов_ответа × 30 дн / 1M × агентский_множитель × множитель_класса_модели × коэф. стенда. Класс модели: light=0.4, mid=1, heavy=3, frontier=10.'
     },
     {
         id: 'ai-safety-moderation-tokens-1m',
@@ -3472,13 +3720,13 @@ export const SEED_ITEMS = [
             'Расчёт: 10% от базовых input+output токенов LLM, цена как у основного LLM-тарифа.\n' +
             'ВАЖНО: если provider даёт отдельный тариф на moderation endpoint, импортируйте его вручную.',
         qtyFormulas: {
-            DEV:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor) * 0.10 * S.standSizeRatio.DEV), 0)',
-            IFT:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor) * 0.10 * S.standSizeRatio.IFT), 0)',
-            PSI:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor) * 0.10 * S.standSizeRatio.PSI), 0)',
-            PROD: 'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor) * 0.10), 0)',
-            LOAD: 'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor) * 0.10 * S.standSizeRatio.LOAD), 0)'
+            DEV:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * 0.10 * S.standSizeRatio.DEV), 0)',
+            IFT:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * 0.10 * S.standSizeRatio.IFT), 0)',
+            PSI:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * 0.10 * S.standSizeRatio.PSI), 0)',
+            PROD: 'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * 0.10), 0)',
+            LOAD: 'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * 0.10 * S.standSizeRatio.LOAD), 0)'
         },
-        formulaHelp: 'Млн safety-токенов = 10% × (input после кэша + output) × DAU × доля_AI × запросов/день × 30 / 1M × агентский_множитель × AI-коэф. стенда.'
+        formulaHelp: 'Млн safety-токенов = 10% × (input после кэша + output) × DAU × доля_AI × запросов/день × 30 / 1M × агентский_множитель × множитель_класса_модели × AI-коэф. стенда.'
     },
     {
         id: 'ai-safety-layer-service',
@@ -3507,6 +3755,56 @@ export const SEED_ITEMS = [
             LOAD: 'if(Q.ai_llm_used && Q.ai_safety_layer, S.standSizeRatio.LOAD, 0)'
         },
         formulaHelp: 'qty = AI-коэф. стенда при включённом AI safety layer; PROD = 1.'
+    },
+    {
+        id: 'ai-low-latency-inference-reserve',
+        name: 'AI low-latency inference reserve',
+        unit: 'контур',
+        pricePerUnit: 50000,  // Модельная оценка резерва для низкой задержки AI-инференса.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'AI',
+        resourceClass: 'SERVICE',
+        applicableStands: ['PSI','PROD','LOAD'],
+        description:
+            'Резерв на низкую задержку AI-инференса: provisioned throughput, выделенный route/gateway или pre-warmed capacity у провайдера.\n' +
+            'Включается, если LLM используется и целевая задержка ответа ИИ не выше 1500 мс.\n' +
+            'Единица измерения: 1 контур низкой задержки в месяц.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельная оценка из вопроса «Целевой latency ответа ИИ», 2026-05.\n' +
+            'ВАЖНО: точный тариф зависит от provider SLA/provisioned throughput и должен уточняться КП.',
+        qtyFormulas: {
+            PSI:  'if(Q.ai_llm_used && Q.ai_inference_latency_ms > 0 && Q.ai_inference_latency_ms <= 1500, S.standSizeRatio.PSI, 0)',
+            PROD: 'if(Q.ai_llm_used && Q.ai_inference_latency_ms > 0 && Q.ai_inference_latency_ms <= 1500, 1, 0)',
+            LOAD: 'if(Q.ai_llm_used && Q.ai_inference_latency_ms > 0 && Q.ai_inference_latency_ms <= 1500, S.standSizeRatio.LOAD, 0)'
+        },
+        formulaHelp: 'qty = 1 на ПРОМ при ai_llm_used и latency <= 1500 мс; ПСИ/НТ масштабируются AI-коэф. стенда.'
+    },
+    {
+        id: 'ai-sensitive-data-gateway',
+        name: 'AI gateway для чувствительных данных',
+        unit: 'контур',
+        pricePerUnit: 80000,  // Модельная оценка приватного AI-gateway/PII-filter контура.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'AI',
+        resourceClass: 'SERVICE',
+        applicableStands: ['PSI','PROD','LOAD'],
+        description:
+            'Приватный AI-gateway для чувствительных данных: фильтрация/маскирование ПДн, журналирование prompts, контроль провайдера и политик доступа.\n' +
+            'Включается для confidential или pdn данных, передаваемых в ИИ.\n' +
+            'Единица измерения: 1 защищённый AI-gateway в месяц.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельная оценка из вопроса «Чувствительность данных, передаваемых в ИИ», 2026-05.\n' +
+            'ВАЖНО: если требуется сертифицированный контур/ФСТЭК, стоимость уточняется КП.',
+        qtyFormulas: {
+            PSI:  'if(Q.ai_llm_used && (Q.ai_data_sensitivity == "confidential" || Q.ai_data_sensitivity == "pdn"), S.standSizeRatio.PSI, 0)',
+            PROD: 'if(Q.ai_llm_used && (Q.ai_data_sensitivity == "confidential" || Q.ai_data_sensitivity == "pdn"), 1, 0)',
+            LOAD: 'if(Q.ai_llm_used && (Q.ai_data_sensitivity == "confidential" || Q.ai_data_sensitivity == "pdn"), S.standSizeRatio.LOAD, 0)'
+        },
+        formulaHelp: 'qty = 1 на ПРОМ при confidential/pdn данных в AI; ПСИ/НТ масштабируются AI-коэф. стенда.'
     },
     {
         id: 'ai-finetune-run',
@@ -3607,13 +3905,13 @@ export const SEED_ITEMS = [
             'Источник: ПРИЛОЖЕНИЕ №7.EVO.16 п.3 (Managed Redis) / №7.EVO.4 п.5 (Managed PostgreSQL) версия 260316 (2026-03-26): «Хранилище на сетевых SSD дисках» = 0,0138 ₽/ГБ·ч без НДС / 0,016836 ₽/ГБ·ч с НДС 22% × 730 = 10,07 ₽/ГБ/мес без НДС.\n' +
             'Когда выбирать: команда может админить vector DB сама, важна гибкость / экономия. Альтернатива — готовый Managed RAG-сервис провайдера (rag-managed-knowledge-base-gb), но дороже примерно в 81 раз (готовые embeddings + index + search-API в одном тарифе).',
         qtyFormulas: {
-            DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.DEV))), 0)',
-            IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.IFT))), 0)',
-            PSI:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.PSI)), 0)',
-            PROD: 'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(Q.rag_embeddings_million * 4)), 0)',
-            LOAD: 'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.LOAD)), 0)'
+            DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.DEV))), 0)',
+            IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.IFT))), 0)',
+            PSI:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.PSI)), 0)',
+            PROD: 'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4))), 0)',
+            LOAD: 'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.LOAD)), 0)'
         },
-        formulaHelp: 'GB self-hosted vector DB = embeddings_million × 4 КБ/эмбеддинг × коэф. стенда. Активно при RAG включён И НЕ выбран Managed RAG-сервис провайдера.'
+        formulaHelp: 'GB self-hosted vector DB = embeddings_million × 4 КБ/эмбеддинг × max(1, retrieval_calls_per_query / 4) × коэф. стенда. Активно при RAG включён И НЕ выбран Managed RAG-сервис провайдера.'
     },
     {
         id: 'rag-managed-knowledge-base-gb',
@@ -3636,13 +3934,13 @@ export const SEED_ITEMS = [
             'Источник: ПРИЛОЖЕНИЕ №7.EVO.20 п.2 версия 260316 (2026-03-26): «Хранение преобразованных текстовых данных в базе знаний» = 1,12 ₽/ГБ·ч без НДС / 1,3664 ₽/ГБ·ч с НДС 22% × 730 = 817,60 ₽/ГБ/мес без НДС.\n' +
             'Когда выбирать: ограниченные DevOps-ресурсы, нужен быстрый старт, готовы платить за full-managed. Если важна экономия — оставьте rag-vector-db-gb (self-hosted).',
         qtyFormulas: {
-            DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, max(1, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.DEV)), 0), 0)',
-            IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, max(1, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.IFT)), 0), 0)',
-            PSI:  'if(Q.rag_needed, if(Q.rag_managed_used, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.PSI), 0), 0)',
-            PROD: 'if(Q.rag_needed, if(Q.rag_managed_used, ceil(Q.rag_embeddings_million * 4), 0), 0)',
-            LOAD: 'if(Q.rag_needed, if(Q.rag_managed_used, ceil(Q.rag_embeddings_million * 4 * S.standSizeRatio.LOAD), 0), 0)'
+            DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, max(1, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.DEV)), 0), 0)',
+            IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, max(1, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.IFT)), 0), 0)',
+            PSI:  'if(Q.rag_needed, if(Q.rag_managed_used, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.PSI), 0), 0)',
+            PROD: 'if(Q.rag_needed, if(Q.rag_managed_used, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4)), 0), 0)',
+            LOAD: 'if(Q.rag_needed, if(Q.rag_managed_used, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.LOAD), 0), 0)'
         },
-        formulaHelp: 'GB Managed RAG = embeddings_million × 4 КБ/эмбеддинг × коэф. стенда. Активно при RAG включён И выбран Managed RAG-сервис провайдера.'
+        formulaHelp: 'GB Managed RAG = embeddings_million × 4 КБ/эмбеддинг × max(1, retrieval_calls_per_query / 4) × коэф. стенда. Активно при RAG включён И выбран Managed RAG-сервис провайдера.'
     },
 
     /* ===== AI agent infrastructure (Этап 13) ===== */
@@ -3717,7 +4015,7 @@ export const SEED_ITEMS = [
         formulaHelp: 'ТБ = max(0.01, размер_памяти_ГБ × 1.5 индексы / 1024) × коэф. стенда. Без agent_memory_used = 0.'
     },
 
-    /* ===== ONE_TIME / RESERVE (13 ЭК) ===== */
+    /* ===== ONE_TIME / RESERVE ===== */
     {
         id: 'one-pentest-external',
         name: 'Пентест внешний (Black/Grey Box)',
@@ -3932,6 +4230,27 @@ export const SEED_ITEMS = [
         formulaHelp: 'qty = 1 для внешних продуктов; 0 для внутренних.'
     },
     {
+        id: 'one-schedule-acceleration',
+        name: 'Резерв ускорения при жёстком сроке',
+        unit: 'проект',
+        pricePerUnit: 300000,  // Модельная оценка доп. работ/ускорения при малой допустимой задержке запуска.
+        billingInterval: 'oneTime',
+        vendor: '',
+        category: 'SERVICES',
+        resourceClass: 'ONE_TIME',
+        applicableStands: ['PROD'],
+        description:
+            'Дополнительный резерв на ускорение работ и параллелизацию проверок, если допустимый сдвиг запуска мал.\n' +
+            'Применять, когда допустимый сдвиг сроков меньше двух месяцев.\n' +
+            'Единица измерения: 1 проектный резерв.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельная оценка из вопроса «Допустимый сдвиг сроков», 2026-05.\n' +
+            'Расчёт: полный резерв при 0 месяцах допуска, половина резерва при 1 месяце, 0 при 2+ месяцах.',
+        qtyFormulas: { PROD: 'max(0, (2 - Q.schedule_shift_tolerance_months) / 2)' },
+        formulaHelp: 'qty = max(0, (2 - schedule_shift_tolerance_months) / 2).'
+    },
+    {
         id: 'one-source-code-audit',
         name: 'Аудит исходного кода (SAST/DAST)',
         unit: 'мероприятие',
@@ -4000,8 +4319,42 @@ export const SEED_ITEMS = [
             'Расчёт: 400 000 ₽/мес (горячее зеркало, ~67% от стоимости основного кластера).\n' +
             'ВАЖНО: цена не подтверждена конкретным КП — для вашего проекта получите КП от подрядчика. ' +
             'Стоимость сильно зависит от размера основного ПРОМ-кластера, провайдера и SLA-контракта.',
-        qtyFormulas: { PROD: 'if(Q.sla_target >= 99.95, 1, 0)' },
-        formulaHelp: 'qty = 1 при Q.sla_target >= 99.95.'
+        qtyFormulas: { PROD: 'if(Q.sla_target >= 99.95 || Q.rto_hours <= 1 || Q.rpo_minutes <= 5, 1, 0)' },
+        formulaHelp: 'qty = 1 при SLA >= 99.95%, RTO <= 1 часа или RPO <= 5 минут.'
+    },
+    {
+        id: 'res-blue-green-deployment',
+        name: 'Blue-green контур для обновлений без простоя',
+        unit: 'контур',
+        pricePerUnit: 250000,  // Модельная оценка доп. runtime/операционного резерва на zero-downtime deploy.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'RESERVES',
+        resourceClass: 'RESERVE',
+        applicableStands: ['PROD'],
+        description:
+            'Дополнительный контур и операционный резерв для обновлений без простоя: blue-green/canary, параллельный прогон миграций и переключение трафика.\n' +
+            'Применять при технологическом окне 0-1 час в месяц.\n' +
+            'Единица измерения: 1 контур в месяц.',
+        qtyFormulas: { PROD: 'if(Q.maintenance_window_hours_month <= 1, 1, 0)' },
+        formulaHelp: 'qty = 1 при maintenance_window_hours_month <= 1.'
+    },
+    {
+        id: 'one-dr-drill',
+        name: 'DR-учения',
+        unit: 'учение/год',
+        pricePerUnit: 250000,  // Ориентир из вопроса dr_drills_per_year: 200-500 тыс. ₽ за одно учение.
+        billingInterval: 'annual',
+        vendor: '',
+        category: 'RESERVES',
+        resourceClass: 'ONE_TIME',
+        applicableStands: ['PROD'],
+        description:
+            'Плановое учение по аварийному восстановлению: подготовка сценария, failover/fallback, протокол результатов и корректирующие действия.\n' +
+            'Применять при георезервировании.\n' +
+            'Единица измерения: 1 DR-учение в год.',
+        qtyFormulas: { PROD: 'if(Q.georedundancy_required, Q.dr_drills_per_year, 0)' },
+        formulaHelp: 'qty = dr_drills_per_year при georedundancy_required.'
     }
     /* 12.U25-fix-13: ЭК `res-project-risk` удалён.
      * Был плейсхолдером (pricePerUnit=1, qty=1) — давал ~0.17 ₽/мес и ломал
@@ -4122,19 +4475,45 @@ const _AGENT_ITEM_IDS = [
     'security-audit-log-storage-gb',
     'ai-safety-moderation-tokens-1m',
     'ai-safety-layer-service',
-    'ai-finetune-run'
+    'ai-finetune-run',
+    'network-cdn-edge',
+    'network-realtime-gateway',
+    'one-seasonal-load-readiness',
+    'security-pdn-category-hardening',
+    'one-payment-gateway-integration',
+    'one-sso-integration',
+    'service-identity-provider',
+    'one-antifraud-integration',
+    'service-antifraud-license',
+    'one-edo-integration',
+    'service-edo-operator',
+    'service-external-api-calls-1m',
+    'ai-low-latency-inference-reserve',
+    'ai-sensitive-data-gateway',
+    'one-schedule-acceleration',
+    'res-blue-green-deployment',
+    'one-dr-drill'
 ];
 /* Этап 13.U10: rag-embeddings-1m добавлен — у него тоже изменились qtyFormulas
    и applicableStands (появился DEV для разработческого AI-traffic'а).
    Stage RAG-split: rag-vector-db-gb получил nested-if с дискриминатором
    Q.rag_managed_used — legacy расчёты должны подхватить новую формулу. */
 const _AGENT_FORMULA_REFRESH_IDS = [
+    'cpu-vcpu-shared',
+    'cpu-vcpu-gpu',
+    'ram-gb',
+    'storage-ssd-tb',
+    'storage-hdd-tb',
+    'storage-secure-gb',
     'llm-tokens-input-1m',
     'llm-tokens-output-1m',
+    'ai-safety-moderation-tokens-1m',
     'rag-embeddings-1m',
     'rag-vector-db-gb',
+    'rag-managed-knowledge-base-gb',
     'traffic-egress-tb',
-    'traffic-ingress-tb'
+    'traffic-ingress-tb',
+    'res-dr-active'
 ];
 
 export function enrichLegacyDictionaryWithAgentSeed(calc) {

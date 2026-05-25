@@ -305,7 +305,7 @@ SLA — это **главный драйвер** для DR-блока (RTO / RPO
 | `pentest_per_year` | 1 (m+) | 1 (s+) | 1 (m+) | 2 |
 | `security_audit_per_year` | 1 (m+) | 0 | 1 (m+) | 1 |
 
-**Правило:** флаги DDoS, SIEM, DLP, audit logging, AI safety и fine-tune уже имеют бюджетные ЭК и должны менять Детализацию. Если wizard выставляет новый compliance-флаг без ЭК (например SSO / payment / antifraud / TURN), он обязан явно пометить его как информационный до появления формулы, чтобы пользователь не принял флаг за учтённый бюджет.
+**Правило:** флаги DDoS, SIEM, DLP, audit logging, SSO, payment, antifraud, EDO/API, realtime, geography/CDN, AI safety и fine-tune уже имеют бюджетные ЭК и должны менять Детализацию. Если wizard выставляет новый compliance-флаг без ЭК (например TURN или отдельный secrets-management), он обязан явно пометить его как информационный до появления формулы, чтобы пользователь не принял флаг за учтённый бюджет.
 
 ---
 

@@ -128,10 +128,18 @@ function renderSourceBadge(meta) {
 
 const QUESTION_FORMULA_IMPACT_CACHE = new WeakMap();
 const DERIVED_CALCULATION_QUESTION_IDS = new Set([
+    'ai_model_tier',
     'ai_agent_type',
     'agent_complexity',
     'agent_parallel_specialists',
     'agent_tool_use_share'
+]);
+const BUDGET_CONTROL_QUESTION_IDS = new Set([
+    'target_capex_rub',
+    'target_opex_monthly_rub'
+]);
+const PLANNING_CONTROL_QUESTION_IDS = new Set([
+    'launch_year'
 ]);
 
 function escapeRegExp(value) {
@@ -159,16 +167,42 @@ function buildQuestionFormulaImpactMap(calc) {
     return map;
 }
 
-function renderFormulaImpactBadge(q, calc) {
+function questionImpactKind(q, calc) {
     const impactMap = buildQuestionFormulaImpactMap(calc);
-    const affects = impactMap.get(q.id) === true;
-    const tip = affects
-        ? 'Ответ используется в формулах ЭК и влияет на расчёт бюджета.'
-        : 'Ответ сохраняется для контекста и пояснений; текущие формулы ЭК его не используют.';
+    if (impactMap.get(q.id) === true) return 'calculation';
+    if (BUDGET_CONTROL_QUESTION_IDS.has(q.id)) return 'budget';
+    if (PLANNING_CONTROL_QUESTION_IDS.has(q.id)) return 'planning';
+    return 'info';
+}
+
+function renderFormulaImpactBadge(q, calc) {
+    const kind = questionImpactKind(q, calc);
+    const cfg = {
+        calculation: {
+            cls: 'active',
+            label: 'Влияет на расчёт',
+            tip: 'Ответ используется в формулах ЭК и влияет на расчёт бюджета.'
+        },
+        budget: {
+            cls: 'budget',
+            label: 'Контроль бюджета',
+            tip: 'Ответ используется для проверки отклонения от целевого бюджета, но не меняет состав ЭК.'
+        },
+        planning: {
+            cls: 'planning',
+            label: 'Параметр планирования',
+            tip: 'Ответ используется в плановых проверках и настройках расчёта, но сам по себе не добавляет ЭК.'
+        },
+        info: {
+            cls: 'info',
+            label: 'Информационное поле',
+            tip: 'Ответ сохраняется для контекста и пояснений; текущие формулы ЭК его не используют.'
+        }
+    }[kind];
     return el('span', {
-        class: ['field-impact-badge', affects ? 'field-impact-badge--active' : 'field-impact-badge--info'],
-        attrs: { title: tip, 'aria-label': tip },
-        text: affects ? 'Влияет на расчёт' : 'Информационное поле'
+        class: ['field-impact-badge', `field-impact-badge--${cfg.cls}`],
+        attrs: { title: cfg.tip, 'aria-label': cfg.tip },
+        text: cfg.label
     });
 }
 
