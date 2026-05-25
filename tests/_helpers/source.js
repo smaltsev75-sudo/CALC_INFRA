@@ -12,13 +12,17 @@
  */
 
 /** Удалить /* ... *\/ блочные комментарии из CSS-исходника. */
+export function normalizeLineEndings(src) {
+    return String(src).replace(/\r\n?/g, '\n');
+}
+
 export function stripCssComments(src) {
-    return src.replace(/\/\*[\s\S]*?\*\//g, '');
+    return normalizeLineEndings(src).replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
 /** Удалить /* ... *\/ блочные и // строчные комментарии из JS-исходника. */
 export function stripJsComments(src) {
-    return src
+    return normalizeLineEndings(src)
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/\/\/[^\n]*/g, '');
 }

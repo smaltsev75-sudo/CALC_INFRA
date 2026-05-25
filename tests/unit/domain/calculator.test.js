@@ -111,22 +111,58 @@ describe('calculate: basic invariants on seed', () => {
             id: 'fallback-item', name: 'Fallback item', unit: 'шт.', pricePerUnit: 1,
             category: 'HW', resourceClass: 'RAM', billingInterval: 'monthly',
             applicableStands: ['PROD'],
-            qtyFormulas: { PROD: 'Q.ram_ratio + Q.cache_gb + Q.explicit_zero' }
+            qtyFormulas: { PROD: 'Q.ram_ratio + Q.cache_gb + Q.explicit_zero + Q.dual_default' }
         };
         const calc = makeNeutralCalc(item);
         calc.answers = {
             ram_ratio: null,
             cache_gb: undefined,
-            explicit_zero: 0
+            explicit_zero: 0,
+            dual_default: null
         };
         calc.dictionaries.questions = [
             { id: 'ram_ratio', type: 'number', defaultIfUnknown: 4 },
             { id: 'cache_gb', type: 'number', defaultIfUnknown: 8 },
-            { id: 'explicit_zero', type: 'number', defaultIfUnknown: 10 }
+            { id: 'explicit_zero', type: 'number', defaultIfUnknown: 10 },
+            { id: 'dual_default', type: 'number', defaultValue: 1, defaultIfUnknown: 2 }
         ];
         const r = calculate(calc);
-        assert.equal(r.items['fallback-item'].stands.PROD.qty, 12,
-            'null/undefined должны взять defaultIfUnknown: 4 + 8, явный 0 не заменяется на 10');
+        assert.equal(r.items['fallback-item'].stands.PROD.qty, 14,
+            'null/undefined берут defaultIfUnknown: 4 + 8 + 2, явный 0 не заменяется на 10');
+    });
+
+    it('traffic_*_tb_month больше 0 используется как ручной override трафика', () => {
+        clearCalculationCache();
+        const calc = makeCalc();
+        calc.settings.vatEnabled = false;
+        calc.answers.avg_rps = 80;
+        calc.answers.avg_response_size_kb = 20;
+        calc.answers.avg_request_size_kb = 5;
+        calc.answers.traffic_egress_tb_month = 15;
+        calc.answers.traffic_ingress_tb_month = 2;
+
+        const r = calculate(calc);
+
+        assert.equal(r.items['traffic-egress-tb'].stands.PROD.qty, 15);
+        assert.equal(r.items['traffic-ingress-tb'].stands.PROD.qty, 2);
+    });
+
+    it('traffic_*_tb_month = 0 оставляет авторасчёт по avg_rps и размеру payload', () => {
+        clearCalculationCache();
+        const calc = makeCalc();
+        calc.settings.vatEnabled = false;
+        calc.answers.avg_rps = 80;
+        calc.answers.avg_response_size_kb = 20;
+        calc.answers.avg_request_size_kb = 5;
+        calc.answers.traffic_egress_tb_month = 0;
+        calc.answers.traffic_ingress_tb_month = 0;
+
+        const expectedEgress = Math.ceil(80 * 86400 * 20 * 30 / 1048576 / 1024);
+        const expectedIngress = Math.ceil(80 * 86400 * 5 * 30 / 1048576 / 1024);
+        const r = calculate(calc);
+
+        assert.equal(r.items['traffic-egress-tb'].stands.PROD.qty, expectedEgress);
+        assert.equal(r.items['traffic-ingress-tb'].stands.PROD.qty, expectedIngress);
     });
 });
 

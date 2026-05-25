@@ -2,7 +2,7 @@
  * Stage 15.1 — Calculation Health Check.
  *
  * Pure-domain логика (без DOM, store, services — только calc + DI metadata).
- * Возвращает массив findings по 22 правилам + score + counts.
+ * Возвращает массив findings по правилам Calculation Health + score + counts.
  *
  * Score = clamp(100 − sum(HEALTH_PENALTY[sev]), 0, 100). Шкала штрафов
  * подобрана так, чтобы ОДНА ошибка чувствительно опускала рейтинг (−20),

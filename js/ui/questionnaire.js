@@ -882,7 +882,7 @@ function renderQuestionField(q, calc, state, ctx) {
                 : 'Если точное значение неизвестно — нажмите, и калькулятор подставит разумное значение по умолчанию.',
             onClick: () => {
                 if (isUnknown) {
-                    const fallback = q.defaultValue ?? q.defaultIfUnknown ?? null;
+                    const fallback = q.defaultIfUnknown ?? q.defaultValue ?? null;
                     ctx.setAnswer(q.id, fallback);
                 } else {
                     ctx.setAnswer(q.id, null);

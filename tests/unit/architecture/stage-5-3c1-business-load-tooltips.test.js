@@ -32,6 +32,8 @@ const LOAD_QUESTION_IDS = [
     'peak_duration_hours',
     'avg_request_size_kb',
     'avg_response_size_kb',
+    'traffic_egress_tb_month',
+    'traffic_ingress_tb_month',
     'microservices_count',
     'async_workers_count',
     'realtime_required'
@@ -85,7 +87,7 @@ describe('Stage 5.3.C.1 / Business секция — каталог покрыв�
     });
 });
 
-describe('Stage 5.3.C.1 / Load profile секция — каталог покрывает все 8 полей', () => {
+describe('Stage 5.3.C.1 / Load profile секция — каталог покрывает все поля', () => {
     it('UI_TOOLTIPS_SHORT содержит ключи q.<id> для всех вопросов load_profile', () => {
         for (const id of LOAD_QUESTION_IDS) {
             const key = `q.${id}`;

@@ -17,6 +17,10 @@ function ans(calc, id) {
     return calc?.answers ? calc.answers[id] : undefined;
 }
 
+function setting(calc, id) {
+    return calc?.settings ? calc.settings[id] : undefined;
+}
+
 /** Финитное число (не null/undefined/NaN/Infinity). */
 function isFiniteNum(v) {
     return typeof v === 'number' && Number.isFinite(v);
@@ -69,8 +73,21 @@ function aggregateDashboardQtyByStand(calc, result, resource) {
     return out;
 }
 
+function autoTrafficTb(avgRps, sizeKb) {
+    if (!isFiniteNum(avgRps) || !isFiniteNum(sizeKb)) return null;
+    if (avgRps <= 0 || sizeKb <= 0) return null;
+    return avgRps * 86400 * sizeKb * 30 / 1048576 / 1024;
+}
+
+function trafficDiffersMaterially(explicitTb, autoTb) {
+    if (!isFiniteNum(explicitTb) || !isFiniteNum(autoTb)) return false;
+    if (explicitTb <= 0 || autoTb <= 0) return false;
+    const ratio = explicitTb > autoTb ? explicitTb / autoTb : autoTb / explicitTb;
+    return ratio >= 3;
+}
+
 /* ============================================================
- * 22 правила проверки.
+ * 27 правил проверки.
  * Каждая функция получает (calc, options) и возвращает HealthFinding | null.
  * ============================================================ */
 
@@ -150,6 +167,70 @@ function checkRegisteredGtActive(calc) {
         });
     }
     return null;
+}
+
+function checkDauShareLikelyPercentMistake(calc) {
+    const share = ans(calc, 'dau_share_of_registered_percent');
+    const registered = ans(calc, 'registered_users_total');
+    if (!isFiniteNum(share) || share <= 0 || share >= 1) return null;
+
+    const dauText = isFiniteNum(registered)
+        ? ` При ${registered} зарегистрированных это даёт ${Math.round(registered * share) / 100} DAU.`
+        : '';
+
+    return makeFinding({
+        id: 'consistency-dau-share-likely-percent-mistake',
+        severity: 'warning',
+        category: 'consistency',
+        title: 'DAU-доля меньше 1 %',
+        message:
+            `dau_share_of_registered_percent=${share} означает ${share} %, а не ${share * 100} %.` +
+            dauText +
+            ' Такое значение допустимо только если очень низкая активность действительно подтверждена.',
+        fieldIds: ['dau_share_of_registered_percent', 'registered_users_total'],
+        suggestedAction:
+            'Если имелось в виду 70 %, введите 70. Если реально меньше 1 %, оставьте значение и зафиксируйте допущение.'
+    });
+}
+
+function checkTrafficEgressExplicitDiffersFromAuto(calc) {
+    const explicitTb = ans(calc, 'traffic_egress_tb_month');
+    const autoTb = autoTrafficTb(ans(calc, 'avg_rps'), ans(calc, 'avg_response_size_kb'));
+    if (!trafficDiffersMaterially(explicitTb, autoTb)) return null;
+
+    return makeFinding({
+        id: 'consistency-traffic-egress-explicit-differs-from-auto',
+        severity: 'warning',
+        category: 'consistency',
+        title: 'Исходящий трафик сильно отличается от автооценки',
+        message:
+            `В опроснике задано ${explicitTb} ТБ/мес исходящего трафика, ` +
+            `а автооценка по avg_rps и размеру ответа даёт примерно ${Math.round(autoTb * 10) / 10} ТБ/мес. ` +
+            'В расчёте будет использовано явное значение из опросника.',
+        fieldIds: ['traffic_egress_tb_month', 'avg_rps', 'avg_response_size_kb'],
+        suggestedAction:
+            'Подтвердите, что месячный трафик измерен отдельно. Если нет, поставьте 0, чтобы считать автоматически.'
+    });
+}
+
+function checkTrafficIngressExplicitDiffersFromAuto(calc) {
+    const explicitTb = ans(calc, 'traffic_ingress_tb_month');
+    const autoTb = autoTrafficTb(ans(calc, 'avg_rps'), ans(calc, 'avg_request_size_kb'));
+    if (!trafficDiffersMaterially(explicitTb, autoTb)) return null;
+
+    return makeFinding({
+        id: 'consistency-traffic-ingress-explicit-differs-from-auto',
+        severity: 'warning',
+        category: 'consistency',
+        title: 'Входящий трафик сильно отличается от автооценки',
+        message:
+            `В опроснике задано ${explicitTb} ТБ/мес входящего трафика, ` +
+            `а автооценка по avg_rps и размеру запроса даёт примерно ${Math.round(autoTb * 10) / 10} ТБ/мес. ` +
+            'В расчёте будет использовано явное значение из опросника.',
+        fieldIds: ['traffic_ingress_tb_month', 'avg_rps', 'avg_request_size_kb'],
+        suggestedAction:
+            'Подтвердите, что месячный трафик измерен отдельно. Если нет, поставьте 0, чтобы считать автоматически.'
+    });
 }
 
 /* --- Группа: AI / RAG --- */
@@ -356,6 +437,35 @@ function checkZeroRpoWithoutReplicas(calc) {
         });
     }
     return null;
+}
+
+/* --- Группа: Риск-коэффициенты --- */
+
+function checkSeasonalActivityNotApplied(calc) {
+    if (ans(calc, 'seasonal_activity') !== true) return null;
+
+    const applyRiskFactors = setting(calc, 'applyRiskFactors');
+    const kSeasonal = setting(calc, 'kSeasonal');
+    const riskDisabled = applyRiskFactors === false;
+    const zeroSeasonal = isFiniteNum(kSeasonal) && kSeasonal <= 0;
+    if (!riskDisabled && !zeroSeasonal) return null;
+
+    const reason = riskDisabled
+        ? 'риск-коэффициенты отключены'
+        : 'коэффициент сезонности равен 0 %';
+
+    return makeFinding({
+        id: 'risk-seasonal-activity-not-applied',
+        severity: 'warning',
+        category: 'risk',
+        title: 'Сезонность включена, но не влияет на расчёт',
+        message:
+            `В опроснике включена сезонная активность, но ${reason}. ` +
+            'Сезонная надбавка к ресурсам и стоимости сейчас не применяется.',
+        fieldIds: ['seasonal_activity', 'kSeasonal', 'applyRiskFactors'],
+        suggestedAction:
+            'Если сезонный пик должен попадать в бюджет, включите риск-коэффициенты и задайте kSeasonal больше 0. Если peak_rps уже включает сезонный пик, оставьте как есть.'
+    });
 }
 
 /* --- Группа: Прайсы --- */
@@ -575,6 +685,9 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkPcuGtUsersTotal,
     checkPeakDurationGt24,
     checkRegisteredGtActive,
+    checkDauShareLikelyPercentMistake,
+    checkTrafficEgressExplicitDiffersFromAuto,
+    checkTrafficIngressExplicitDiffersFromAuto,
     checkRagWithoutLlm,
     checkAgentWithoutLlm,
     checkRagIncompleteCorpus,
@@ -586,6 +699,7 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkSlaHighWithoutGeoredundancy,
     checkSlaStrictRtoRpoWithoutGeoredundancy,
     checkZeroRpoWithoutReplicas,
+    checkSeasonalActivityNotApplied,
     checkStaleBundle,
     checkStubBundle,
     checkBundleNotApplied,

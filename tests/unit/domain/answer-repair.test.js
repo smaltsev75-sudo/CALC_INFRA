@@ -9,7 +9,8 @@ const questions = [
     { id: 'backup_retention_days', title: 'Backup', type: 'number', min: 1, max: 365, defaultIfUnknown: 30 },
     { id: 'backup_retention_select', title: 'Backup select', type: 'select', defaultValue: 30,
         options: [{ value: 30, label: '30' }, { value: 90, label: '90' }] },
-    { id: 'explicit_zero_allowed', title: 'Zero OK', type: 'number', min: 0, max: 10, defaultIfUnknown: 5 }
+    { id: 'explicit_zero_allowed', title: 'Zero OK', type: 'number', min: 0, max: 10, defaultIfUnknown: 5 },
+    { id: 'dual_default', title: 'Dual default', type: 'number', min: 0, max: 10, defaultValue: 1, defaultIfUnknown: 2 }
 ];
 
 describe('answerRepair: automatic JSON repairs', () => {
@@ -19,7 +20,8 @@ describe('answerRepair: automatic JSON repairs', () => {
                 ram_per_vcpu_ratio: null,
                 backup_retention_days: '90',
                 backup_retention_select: '90',
-                explicit_zero_allowed: 0
+                explicit_zero_allowed: 0,
+                dual_default: null
             },
             dictionaries: { questions },
             scenarios: [{
@@ -36,6 +38,7 @@ describe('answerRepair: automatic JSON repairs', () => {
         assert.equal(calc.answers.backup_retention_days, 90);
         assert.equal(calc.answers.backup_retention_select, 90);
         assert.equal(calc.answers.explicit_zero_allowed, 0);
+        assert.equal(calc.answers.dual_default, 2);
         assert.equal(calc.scenarios[0].answers.ram_per_vcpu_ratio, 4);
         assert.equal(calc.scenarios[0].answers.backup_retention_days, 30);
         assert.deepEqual(
@@ -44,6 +47,7 @@ describe('answerRepair: automatic JSON repairs', () => {
                 ['answers.ram_per_vcpu_ratio', 'empty'],
                 ['answers.backup_retention_days', 'numeric-string'],
                 ['answers.backup_retention_select', 'select-numeric-string'],
+                ['answers.dual_default', 'empty'],
                 ['scenarios[0].answers.ram_per_vcpu_ratio', 'out-of-range'],
                 ['scenarios[0].answers.backup_retention_days', 'numeric-string']
             ]
@@ -98,5 +102,6 @@ describe('defaultAnswersFrom: unknown values', () => {
         assert.equal(answers.ram_per_vcpu_ratio, 4);
         assert.equal(answers.backup_retention_days, 30);
         assert.equal(answers.explicit_zero_allowed, 5);
+        assert.equal(answers.dual_default, 2);
     });
 });

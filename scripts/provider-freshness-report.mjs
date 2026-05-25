@@ -19,6 +19,10 @@ const REPORT_PATH = process.env.PROVIDER_FRESHNESS_REPORT_PATH
     ? resolve(process.env.PROVIDER_FRESHNESS_REPORT_PATH)
     : resolve(__dirname, '..', 'PROVIDER_FRESHNESS_REPORT.md');
 
+function normalizeLineEndings(value) {
+    return String(value).replace(/\r\n?/g, '\n');
+}
+
 export const CORE_PROVIDER_SKU_IDS = Object.freeze([
     'cpu-vcpu-shared',
     'cpu-vcpu-gpu',
@@ -297,7 +301,7 @@ if (isCli) {
                 console.warn('PROVIDER_FRESHNESS_REPORT.md отсутствует; проверка пропущена для урезанного архива.');
                 process.exit(0);
             }
-            const current = readFileSync(REPORT_PATH, 'utf8');
+            const current = normalizeLineEndings(readFileSync(REPORT_PATH, 'utf8'));
             if (current !== output) {
                 console.error('PROVIDER_FRESHNESS_REPORT.md is stale. Run: npm run prices:freshness');
                 process.exit(1);

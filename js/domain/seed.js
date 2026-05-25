@@ -540,6 +540,50 @@ export const SEED_QUESTIONS = [
         assumptionRisk: 'medium'
     },
     {
+        id: 'traffic_egress_tb_month',
+        section: 'load_profile',
+        subgroup: 'Размер трафика',
+        order: 220,
+        title: 'Фактический исходящий трафик, ТБ/мес',
+        type: 'number',
+        min: 0, max: 100_000, step: 0.1,
+        defaultValue: 0,
+        description:
+            'Измеренный или плановый месячный объём исходящего трафика от приложения к пользователям. ' +
+            'Если значение больше 0, оно используется как ручной override вместо автоматической оценки по среднему RPS и размеру ответа.' +
+            '\n\n' +
+            'Если точного значения нет, оставьте 0: калькулятор рассчитает трафик автоматически из среднего RPS, среднего размера ответа и 30 дней в месяце.',
+        recommendation:
+            'Используйте это поле, если у вас есть оценка из продуктовой аналитики, CDN, API Gateway или предыдущего контура. ' +
+            '0 означает «считать автоматически». Значение больше 0 должно быть согласовано с avg_rps и средним размером ответа.',
+        impact: 'Исходящий платный трафик; стоимость сетевого периметра и каналов передачи данных.',
+        allowUnknown: true,
+        defaultIfUnknown: 0,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'traffic_ingress_tb_month',
+        section: 'load_profile',
+        subgroup: 'Размер трафика',
+        order: 230,
+        title: 'Фактический входящий трафик, ТБ/мес',
+        type: 'number',
+        min: 0, max: 100_000, step: 0.1,
+        defaultValue: 0,
+        description:
+            'Измеренный или плановый месячный объём входящего трафика от пользователей к приложению. ' +
+            'Если значение больше 0, оно используется как ручной override вместо автоматической оценки по среднему RPS и размеру запроса.' +
+            '\n\n' +
+            'Если точного значения нет, оставьте 0: калькулятор рассчитает трафик автоматически из среднего RPS, среднего размера запроса и 30 дней в месяце.',
+        recommendation:
+            'Используйте это поле, если известен месячный upload/API-ingress из аналитики или сетевого мониторинга. ' +
+            '0 означает «считать автоматически». Значение больше 0 должно быть согласовано с avg_rps и средним размером запроса.',
+        impact: 'Входящий трафик, пропускная способность каналов, нагрузка на балансировщик и WAF.',
+        allowUnknown: true,
+        defaultIfUnknown: 0,
+        assumptionRisk: 'medium'
+    },
+    {
         id: 'microservices_count',
         section: 'load_profile',
         subgroup: 'Архитектурные параметры',
@@ -3153,6 +3197,7 @@ export const SEED_ITEMS = [
             'Исходящий трафик от приложения к пользователям.\n' +
             'Применять для облачных провайдеров с тарификацией egress.\n' +
             'Единица измерения: 1 ТБ исходящего трафика в месяц.\n' +
+            'Если задан фактический месячный трафик в опроснике, используется он; иначе трафик считается по среднему RPS и размеру ответа.\n' +
             'Пример: avg_rps 30 × 20 КБ × 86400 × 30 / (1024*1024) ≈ 1.5 ТБ/мес.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
@@ -3160,12 +3205,12 @@ export const SEED_ITEMS = [
             'Расчёт: 3.23 ₽/ГБ × 1024 ≈ 3 308 ₽/ТБ/мес.\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            IFT:  'ceil((Q.avg_rps * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.IFT)',
-            PSI:  'ceil((Q.avg_rps * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.PSI)',
-            PROD: 'ceil(Q.avg_rps * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024)',
-            LOAD: 'ceil((Q.avg_rps * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.LOAD)'
+            IFT:  'ceil(if(Q.traffic_egress_tb_month > 0, Q.traffic_egress_tb_month, Q.avg_rps * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.IFT)',
+            PSI:  'ceil(if(Q.traffic_egress_tb_month > 0, Q.traffic_egress_tb_month, Q.avg_rps * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.PSI)',
+            PROD: 'ceil(if(Q.traffic_egress_tb_month > 0, Q.traffic_egress_tb_month, Q.avg_rps * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024))',
+            LOAD: 'ceil(if(Q.traffic_egress_tb_month > 0, Q.traffic_egress_tb_month, Q.avg_rps * 86400 * Q.avg_response_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'TB исх. = avg_rps × 86400 сек × avg_response_size_kb × 30 дн / 1 ГБ / 1024 ТБ.'
+        formulaHelp: 'TB исх. = traffic_egress_tb_month, если задано > 0; иначе avg_rps × 86400 сек × avg_response_size_kb × 30 дн / 1 ГБ / 1024 ТБ.'
     },
     {
         id: 'traffic-ingress-tb',
@@ -3181,6 +3226,7 @@ export const SEED_ITEMS = [
             'Входящий трафик от пользователей к приложению.\n' +
             'Применять для облаков, где тарифицируется ingress.\n' +
             'Единица измерения: 1 ТБ входящего трафика в месяц.\n' +
+            'Если задан фактический месячный трафик в опроснике, используется он; иначе трафик считается по среднему RPS и размеру запроса.\n' +
             'Пример: avg_rps 30 × 5 КБ × 86400 × 30 / (1024*1024) ≈ 0.36 ТБ/мес.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
@@ -3188,12 +3234,12 @@ export const SEED_ITEMS = [
             'Расчёт: входящий трафик не тарифицируется (0 ₽/ТБ).\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            IFT:  'ceil((Q.avg_rps * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.IFT)',
-            PSI:  'ceil((Q.avg_rps * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.PSI)',
-            PROD: 'ceil(Q.avg_rps * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024)',
-            LOAD: 'ceil((Q.avg_rps * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.LOAD)'
+            IFT:  'ceil(if(Q.traffic_ingress_tb_month > 0, Q.traffic_ingress_tb_month, Q.avg_rps * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.IFT)',
+            PSI:  'ceil(if(Q.traffic_ingress_tb_month > 0, Q.traffic_ingress_tb_month, Q.avg_rps * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.PSI)',
+            PROD: 'ceil(if(Q.traffic_ingress_tb_month > 0, Q.traffic_ingress_tb_month, Q.avg_rps * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024))',
+            LOAD: 'ceil(if(Q.traffic_ingress_tb_month > 0, Q.traffic_ingress_tb_month, Q.avg_rps * 86400 * Q.avg_request_size_kb * 30 / 1048576 / 1024) * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'TB вх. = avg_rps × 86400 сек × avg_request_size_kb × 30 дн / 1 ГБ / 1024 ТБ.'
+        formulaHelp: 'TB вх. = traffic_ingress_tb_month, если задано > 0; иначе avg_rps × 86400 сек × avg_request_size_kb × 30 дн / 1 ГБ / 1024 ТБ.'
     },
     {
         id: 'llm-tokens-input-1m',
@@ -3799,10 +3845,10 @@ export const SEED_SETTINGS = Object.freeze({
 export function defaultAnswersFrom(questions) {
     const answers = {};
     for (const q of questions) {
-        if (q.defaultValue !== undefined && q.defaultValue !== null) {
-            answers[q.id] = q.defaultValue;
-        } else if (q.defaultIfUnknown !== undefined && q.defaultIfUnknown !== null) {
+        if (q.defaultIfUnknown !== undefined && q.defaultIfUnknown !== null) {
             answers[q.id] = q.defaultIfUnknown;
+        } else if (q.defaultValue !== undefined && q.defaultValue !== null) {
+            answers[q.id] = q.defaultValue;
         } else if (q.type === 'boolean') {
             answers[q.id] = false;
         } else if (q.type === 'multiselect') {
@@ -3832,7 +3878,11 @@ const _AGENT_QUESTION_IDS = [
     'agent_parallel_specialists', 'agent_tool_use_share', 'agent_tool_avg_seconds',
     'agent_memory_used', 'agent_memory_size_gb',
     // Stage RAG-split: дискриминатор «self-hosted vs managed» для хранения корпуса RAG.
-    'rag_managed_used'
+    'rag_managed_used',
+    // v2.20.56: Quick Start уже заполнял traffic_*_tb_month, но legacy seed
+    // не содержал вопросов с этими id, а traffic-формулы их не читали.
+    'traffic_egress_tb_month',
+    'traffic_ingress_tb_month'
 ];
 const _AGENT_ITEM_IDS = [
     'ai-agent-sandbox-vcpu', 'ai-agent-memory-storage-tb',
@@ -3847,7 +3897,9 @@ const _AGENT_FORMULA_REFRESH_IDS = [
     'llm-tokens-input-1m',
     'llm-tokens-output-1m',
     'rag-embeddings-1m',
-    'rag-vector-db-gb'
+    'rag-vector-db-gb',
+    'traffic-egress-tb',
+    'traffic-ingress-tb'
 ];
 
 export function enrichLegacyDictionaryWithAgentSeed(calc) {

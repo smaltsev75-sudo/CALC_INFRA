@@ -25,6 +25,10 @@ const REPORT_PATH = process.env.QUANTITY_LOGIC_AUDIT_PATH
     ? resolve(process.env.QUANTITY_LOGIC_AUDIT_PATH)
     : resolve(__dirname, '..', 'QUANTITY_LOGIC_AUDIT.md');
 
+function normalizeLineEndings(value) {
+    return String(value).replace(/\r\n?/g, '\n');
+}
+
 const REPORT_DATE = '2026-05-23';
 const CALC_CREATED_AT = '2026-05-23T00:00:00Z';
 const SCALES = Object.freeze(['xs', 's', 'm', 'l', 'xl']);
@@ -330,7 +334,7 @@ if (mode === '--write') {
         console.error('QUANTITY_LOGIC_AUDIT.md отсутствует. Run: npm run quantity:audit');
         process.exit(1);
     }
-    const current = readFileSync(REPORT_PATH, 'utf8');
+    const current = normalizeLineEndings(readFileSync(REPORT_PATH, 'utf8'));
     if (current !== output) {
         console.error('QUANTITY_LOGIC_AUDIT.md is stale. Run: npm run quantity:audit');
         process.exit(1);

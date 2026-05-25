@@ -8,7 +8,7 @@ import { renderMarkdown } from '../../../js/services/markdown.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..', '..');
 
-const manual = readFileSync(join(ROOT, 'UserManual.md'), 'utf8');
+const manual = readFileSync(join(ROOT, 'UserManual.md'), 'utf8').replace(/\r\n?/g, '\n');
 const modalCss = readFileSync(join(ROOT, 'css', 'modals.css'), 'utf8');
 const constants = readFileSync(join(ROOT, 'js', 'utils', 'constants.js'), 'utf8');
 

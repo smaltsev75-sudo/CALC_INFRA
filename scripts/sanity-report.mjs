@@ -19,6 +19,10 @@ const REPORT_PATH = process.env.SANITY_REPORT_PATH
     ? resolve(process.env.SANITY_REPORT_PATH)
     : resolve(__dirname, '..', 'SANITY_REPORT.md');
 
+function normalizeLineEndings(value) {
+    return String(value).replace(/\r\n?/g, '\n');
+}
+
 const REPORT_DATE = '2026-05-22';
 const CALC_CREATED_AT = '2026-05-02T00:00:00Z';
 const VAT_RATE_2026 = getVatRateForDate('2026-01-01');
@@ -187,7 +191,7 @@ if (mode === '--write') {
         console.warn('SANITY_REPORT.md отсутствует; проверка пропущена для урезанного архива.');
         process.exit(0);
     }
-    const current = readFileSync(REPORT_PATH, 'utf8');
+    const current = normalizeLineEndings(readFileSync(REPORT_PATH, 'utf8'));
     if (current !== output) {
         console.error('SANITY_REPORT.md is stale. Run: npm run sanity');
         process.exit(1);

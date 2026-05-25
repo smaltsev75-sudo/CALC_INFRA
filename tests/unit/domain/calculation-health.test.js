@@ -164,6 +164,58 @@ describe('rule: consistency-registered-gt-active (warning)', () => {
     });
 });
 
+describe('rule: consistency-dau-share-likely-percent-mistake (warning)', () => {
+    it('срабатывает при DAU-доле меньше 1%', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            registered_users_total: 500,
+            dau_share_of_registered_percent: 0.7
+        }));
+        const f = findById(r.findings, 'consistency-dau-share-likely-percent-mistake');
+        assert.ok(f);
+        assert.equal(f.severity, 'warning');
+        assert.ok(f.fieldIds.includes('dau_share_of_registered_percent'));
+    });
+
+    it('НЕ срабатывает при 1% и выше', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            registered_users_total: 500,
+            dau_share_of_registered_percent: 1
+        }));
+        assert.ok(!findById(r.findings, 'consistency-dau-share-likely-percent-mistake'));
+    });
+});
+
+describe('rule: consistency-traffic-*-explicit-differs-from-auto (warning)', () => {
+    it('срабатывает, если явный egress отличается от автооценки в 3+ раза', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            avg_rps: 80,
+            avg_response_size_kb: 20,
+            traffic_egress_tb_month: 15
+        }));
+        const f = findById(r.findings, 'consistency-traffic-egress-explicit-differs-from-auto');
+        assert.ok(f);
+        assert.equal(f.severity, 'warning');
+    });
+
+    it('НЕ срабатывает, если явный egress равен 0 и включён авторасчёт', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            avg_rps: 80,
+            avg_response_size_kb: 20,
+            traffic_egress_tb_month: 0
+        }));
+        assert.ok(!findById(r.findings, 'consistency-traffic-egress-explicit-differs-from-auto'));
+    });
+
+    it('срабатывает, если явный ingress отличается от автооценки в 3+ раза', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            avg_rps: 80,
+            avg_request_size_kb: 5,
+            traffic_ingress_tb_month: 4
+        }));
+        assert.ok(findById(r.findings, 'consistency-traffic-ingress-explicit-differs-from-auto'));
+    });
+});
+
 /* ============================================================
  * Группа: AI / RAG (4)
  * ============================================================ */
@@ -348,6 +400,42 @@ describe('rule: sla-zero-rpo-without-replicas (warning)', () => {
             rpo_minutes: 0, db_replicas_count: 2
         }));
         assert.ok(!findById(r.findings, 'sla-zero-rpo-without-replicas'));
+    });
+});
+
+/* ============================================================
+ * Группа: Риск-коэффициенты
+ * ============================================================ */
+
+describe('rule: risk-seasonal-activity-not-applied (warning)', () => {
+    it('срабатывает, если сезонность включена, но kSeasonal=0', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            seasonal_activity: true
+        }, {
+            settings: { kSeasonal: 0, applyRiskFactors: true }
+        }));
+        const f = findById(r.findings, 'risk-seasonal-activity-not-applied');
+        assert.ok(f);
+        assert.equal(f.category, 'risk');
+        assert.equal(f.severity, 'warning');
+    });
+
+    it('срабатывает, если сезонность включена, но риск-коэффициенты отключены', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            seasonal_activity: true
+        }, {
+            settings: { kSeasonal: 0.15, applyRiskFactors: false }
+        }));
+        assert.ok(findById(r.findings, 'risk-seasonal-activity-not-applied'));
+    });
+
+    it('НЕ срабатывает, если сезонная надбавка реально применяется', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            seasonal_activity: true
+        }, {
+            settings: { kSeasonal: 0.15, applyRiskFactors: true }
+        }));
+        assert.ok(!findById(r.findings, 'risk-seasonal-activity-not-applied'));
     });
 });
 

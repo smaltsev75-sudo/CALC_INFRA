@@ -173,10 +173,10 @@ export function riskFactor(item, stand, settings) {
 export function buildQuestionDefaults(questions) {
     const out = {};
     for (const q of questions) {
-        if (q.defaultValue !== undefined && q.defaultValue !== null) {
-            out[q.id] = q.defaultValue;
-        } else if (q.defaultIfUnknown !== undefined && q.defaultIfUnknown !== null) {
+        if (q.defaultIfUnknown !== undefined && q.defaultIfUnknown !== null) {
             out[q.id] = q.defaultIfUnknown;
+        } else if (q.defaultValue !== undefined && q.defaultValue !== null) {
+            out[q.id] = q.defaultValue;
         }
     }
     return out;

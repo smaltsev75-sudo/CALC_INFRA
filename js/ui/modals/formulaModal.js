@@ -13,7 +13,13 @@ import { evaluate, collectReferences } from '../../domain/formula/evaluator.js';
 import { lintFormulas } from '../../domain/validation.js';
 import { STAND_IDS, STAND_LABELS, BILLING_INTERVAL_LABELS, MONTHS_PER_YEAR, DEFAULT_DAYS_PER_MONTH } from '../../utils/constants.js';
 import { formatNumber, money, num } from '../../services/format.js';
-import { billingIntervalToMonthlyMultiplier, buildContext, calculate, riskFactor } from '../../domain/calculator.js';
+import {
+    billingIntervalToMonthlyMultiplier,
+    buildContext,
+    buildQuestionDefaults,
+    calculate,
+    riskFactor
+} from '../../domain/calculator.js';
 import { resolvePathValue } from '../../domain/quantityTrace.js';
 import { renderQuantityExplanationPanel } from '../quantityExplanation.js';
 
@@ -165,9 +171,7 @@ function renderResolvedRefs(formula, calc, stand, item) {
     }
     const refs = collectReferences(ast);
 
-    const questionDefaults = Object.fromEntries(
-        (calc.dictionaries.questions || []).map(q => [q.id, q.defaultValue])
-    );
+    const questionDefaults = buildQuestionDefaults(calc.dictionaries.questions || []);
     const ctx = buildContext(
         calc.answers || {},
         calc.settings || {},

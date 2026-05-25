@@ -1,5 +1,45 @@
 # Журнал решений и допущений
 
+## 25.05.2026 · PATCH 2.20.56 — Quick Start traffic contract + calculation risk health checks
+
+**Контекст.** Аудит пользовательского JSON показал, что часть рисков расчёта
+не была видна пользователю: `traffic_egress_tb_month` /
+`traffic_ingress_tb_month` создавались Quick Start'ом, но не имели вопросов в
+seed и не участвовали в формулах; `dau_share_of_registered_percent=0.7`
+формально валиден, но легко означает ошибку «0.7% вместо 70%»; сезонность могла
+быть включена в ответах, но не применяться из-за `kSeasonal=0` или выключенных
+риск-коэффициентов.
+
+**Решение.**
+
+- В seed добавлены вопросы `traffic_egress_tb_month` и
+  `traffic_ingress_tb_month`: значение `0` означает авторасчёт по
+  `avg_rps × payload`, значение `>0` — явный месячный override.
+- Формулы `traffic-egress-tb` / `traffic-ingress-tb` теперь используют явные
+  месячные ТБ, если они заданы, а legacy-словари при загрузке получают свежие
+  traffic-вопросы и обновлённые qtyFormulas через общий load pipeline.
+- `defaultIfUnknown` унифицирован как приоритетнее `defaultValue` в
+  `buildQuestionDefaults`, `defaultAnswersFrom`, Formula Modal и выходе из
+  режима «Не знаю».
+- Calculation Health получил предупреждения по DAU-доле `<1%`, сильному
+  расхождению явного трафика с автооценкой и сезонности, которая не влияет на
+  расчёт.
+- Добавлены regression tests для legacy traffic refresh, exhaustiveness Quick
+  Start (`3840` комбинаций), отсутствия orphan answers из wizard, traffic
+  override/autocalc и новых health checks.
+
+**Проверки.**
+
+- targeted domain/service/architecture tests: `134/134` pass.
+- пользовательский JSON после `prepareLoadedCalc`: traffic-вопросы есть,
+  formulas используют explicit traffic; `traffic-egress-tb.PROD=15`,
+  `traffic-ingress-tb.PROD=2`; Health: 1 error (`avg_rps > peak_rps`) и 3
+  warning (`DAU <1%`, egress explicit vs auto, seasonal not applied).
+- полный `npm test` в текущем working tree заблокирован чужой правкой
+  `UserManual.md`: падает `help-readability.test.js`, потому что читает dirty
+  документ из рабочей копии. Кодовые изменения проверяются отдельно в clean
+  worktree перед релизом.
+
 ## 25.05.2026 · PATCH 2.20.54 — Questionnaire/Details PDF print release
 
 **Контекст.** Пользователь дважды показал, что локальные проверки PDF были
