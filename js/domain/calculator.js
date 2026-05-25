@@ -273,7 +273,8 @@ export function buildContext(answers, settings, questionDefaults, stand, item = 
        factor = 1 (формулы LLM-токенов с домножением на factor дают тот же
        результат, что и в v7), и factor для tool-use = 0 (sandbox не нужен). */
     const a = answers || {};
-    const agentEnabled = a.ai_agent_mode === true;
+    const answerContext = { Q: a, questionDefaults };
+    const agentEnabled = answerBool(answerContext, 'ai_agent_mode', false);
     const stepsBase = agentEnabled
         ? (AGENT_STEPS_MULTIPLIER[a.agent_complexity] ?? AGENT_STEPS_MULTIPLIER.simple)
         : 1;
@@ -371,7 +372,11 @@ function answerBool(context, id, fallback = false) {
 }
 
 function answerNumber(context, id, fallback = 0) {
-    const n = Number(resolveAnswerValue(context, id, fallback));
+    const raw = resolveAnswerValue(context, id, fallback);
+    const normalized = typeof raw === 'string'
+        ? raw.trim().replace(/\s+/g, '').replace('%', '').replace(',', '.')
+        : raw;
+    const n = Number(normalized);
     return Number.isFinite(n) ? n : fallback;
 }
 
@@ -420,8 +425,30 @@ function hasExplicitTokenDemand(context) {
     ].some(id => isExplicitContextAnswer(context, id));
 }
 
+function hasPositiveTokenDemandInputs(context) {
+    const registered = answerNumber(context, 'registered_users_total', 0);
+    const dauShare = answerNumber(context, 'dau_share_of_registered_percent', 0);
+    const aiShare = answerNumber(context, 'ai_users_share', 0);
+    const requestsPerUserDay = answerNumber(context, 'ai_requests_per_user_day', 0);
+    const inputTokens = answerNumber(context, 'ai_avg_input_tokens', 0);
+    const outputTokens = answerNumber(context, 'ai_avg_output_tokens', 0);
+    return [registered, dauShare, aiShare, requestsPerUserDay].every(v => Number.isFinite(v) && v > 0)
+        && [inputTokens, outputTokens].some(v => Number.isFinite(v) && v > 0);
+}
+
+function hasImplicitLlmFeature(context) {
+    return [
+        'rag_needed',
+        'ai_agent_mode',
+        'ai_safety_layer',
+        'ai_finetune_needed'
+    ].some(id => answerBool(context, id, false) && isExplicitContextAnswer(context, id));
+}
+
 function shouldCalculateLlmTokenDemand(context) {
-    return answerBool(context, 'ai_llm_used', false) || hasExplicitTokenDemand(context);
+    return answerBool(context, 'ai_llm_used', false)
+        || hasExplicitTokenDemand(context)
+        || (hasImplicitLlmFeature(context) && hasPositiveTokenDemandInputs(context));
 }
 
 /**

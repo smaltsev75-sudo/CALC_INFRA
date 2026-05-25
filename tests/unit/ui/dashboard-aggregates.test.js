@@ -282,6 +282,40 @@ describe('dashboardAggregates', () => {
         assert.equal(metrics.total.TOKENS.unit, 'млн токенов');
     });
 
+    it('aggregateAiMetrics restores TOKENS when RAG is active and legacy answersMeta is empty', () => {
+        const calc = makeOnPremAiCalc({
+            ai_llm_used: false,
+            ai_hosting_mode: 'external_api',
+            rag_needed: true,
+            ai_users_share: 30,
+            ai_requests_per_user_day: 5,
+            ai_avg_input_tokens: 1500,
+            ai_avg_output_tokens: 500,
+            ai_caching_share: 20
+        });
+        calc.answersMeta = {};
+        calc.dictionaries = {
+            ...calc.dictionaries,
+            items: calc.dictionaries.items.map(item => (
+                item.dashboardAiMetric === 'TOKENS'
+                    ? {
+                        ...item,
+                        qtyFormulas: Object.fromEntries(STAND_IDS.map(sid => [sid, '0']))
+                    }
+                    : item
+            ))
+        };
+
+        const result = calculate(calc);
+        const metrics = aggregateAiMetrics(result, calc.dictionaries.items, [], false, calc);
+
+        assert.ok(result.items['llm-tokens-input-1m'].stands.PROD.qty > 0);
+        assert.ok(result.items['llm-tokens-output-1m'].stands.PROD.qty > 0);
+        assert.ok(metrics.perStand.PROD.TOKENS.qty > 0);
+        assert.ok(metrics.total.TOKENS.qty > 0);
+        assert.equal(metrics.total.TOKENS.unit, 'млн токенов');
+    });
+
     it('aggregateAiMetrics shows RAG embedding workload for on-prem RAG', () => {
         const calc = makeOnPremAiCalc();
         const result = calculate(calc);

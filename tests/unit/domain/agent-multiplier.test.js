@@ -197,6 +197,26 @@ describe('Этап 13: agent multiplier — буква контракта', () =
         assert.ok(r.items['llm-tokens-output-1m'].stands.PROD.costFinal > 0);
     });
 
+    it('RAG feature with positive token inputs restores LLM token qty for legacy master-toggle drift', () => {
+        const calc = withZeroTokenFormulas(buildLlmCalc({
+            ai_llm_used: false,
+            rag_needed: true,
+            ai_users_share: 30,
+            ai_requests_per_user_day: 5,
+            ai_avg_input_tokens: 1500,
+            ai_avg_output_tokens: 500,
+            ai_caching_share: 20
+        }));
+        calc.answersMeta = {};
+
+        const r = calculate(calc);
+
+        assert.equal(getQty(r, 'llm-tokens-input-1m'), 54);
+        assert.equal(getQty(r, 'llm-tokens-output-1m'), 23);
+        assert.ok(r.items['llm-tokens-input-1m'].stands.PROD.costFinal > 0);
+        assert.ok(r.items['llm-tokens-output-1m'].stands.PROD.costFinal > 0);
+    });
+
     it('stale zero token formulas do not bill external tokens for on-prem GPU hosting', () => {
         const calc = withZeroTokenFormulas(buildLlmCalc({
             ai_hosting_mode: 'on_prem_gpu',

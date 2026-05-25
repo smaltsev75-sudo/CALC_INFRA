@@ -299,8 +299,30 @@ function hasExplicitLlmTokenDemand(calc, get) {
     ].some(id => isExplicitAnswer(calc, id));
 }
 
+function hasPositiveLlmTokenDemandInputs(get) {
+    const registered = finiteNumber(get('registered_users_total', 0));
+    const dauShare = finiteNumber(get('dau_share_of_registered_percent', 0));
+    const aiShare = finiteNumber(get('ai_users_share', 0));
+    const requestsPerDay = finiteNumber(get('ai_requests_per_user_day', 0));
+    const inputTokens = finiteNumber(get('ai_avg_input_tokens', 0));
+    const outputTokens = finiteNumber(get('ai_avg_output_tokens', 0));
+    return [registered, dauShare, aiShare, requestsPerDay].every(v => v > 0)
+        && [inputTokens, outputTokens].some(v => v > 0);
+}
+
+function hasImplicitLlmFeature(calc, get) {
+    return [
+        'rag_needed',
+        'ai_agent_mode',
+        'ai_safety_layer',
+        'ai_finetune_needed'
+    ].some(id => boolAnswer(get(id, false)) && isExplicitAnswer(calc, id));
+}
+
 function shouldUseLlmTokenDemand(calc, get) {
-    return boolAnswer(get('ai_llm_used', false)) || hasExplicitLlmTokenDemand(calc, get);
+    return boolAnswer(get('ai_llm_used', false))
+        || hasExplicitLlmTokenDemand(calc, get)
+        || (hasImplicitLlmFeature(calc, get) && hasPositiveLlmTokenDemandInputs(get));
 }
 
 function aiStandRatio(calc, stand) {
@@ -315,7 +337,7 @@ function aiStandRatio(calc, stand) {
 }
 
 function agentStepFactor(get) {
-    if (get('ai_agent_mode', false) !== true) return 1;
+    if (!boolAnswer(get('ai_agent_mode', false))) return 1;
     const complexity = get('agent_complexity', 'simple');
     const stepsBase = AGENT_STEPS_MULTIPLIER[complexity] ?? AGENT_STEPS_MULTIPLIER.simple;
     const parallel = get('ai_agent_type', 'tool_use') === 'multi_agent'
@@ -376,7 +398,7 @@ export function deriveLlmTokenItemQty(calc, itemId, stand) {
         ));
     }
     if (itemId === 'ai-safety-moderation-tokens-1m') {
-        if (get('ai_safety_layer', false) !== true) return 0;
+        if (!boolAnswer(get('ai_safety_layer', false))) return 0;
         const inputTokens = finiteNumber(get('ai_avg_input_tokens', 0));
         const outputTokens = finiteNumber(get('ai_avg_output_tokens', 0));
         const inputMillions = requestsPerMonth * inputTokens * (1 - cacheShare) / 1_000_000 * modelFactor * ratio;
@@ -388,7 +410,7 @@ export function deriveLlmTokenItemQty(calc, itemId, stand) {
 
 function deriveRagEmbeddingItemQty(calc, stand) {
     const get = buildAnswerResolver(calc);
-    if (get('rag_needed', false) !== true) return 0;
+    if (!boolAnswer(get('rag_needed', false))) return 0;
 
     const corpusGb = finiteNumber(get('rag_corpus_size_gb', 0));
     const refresh = ragRefreshMultiplier(get('rag_refresh_frequency', 'never'));

@@ -333,3 +333,57 @@ test('Details and Dashboard restore token workload from explicit token answers w
 
     expect(consoleErrors).toEqual([]);
 });
+
+test('Dashboard and Details restore tokens when RAG is active but legacy LLM master is off', async ({ page }) => {
+    const consoleErrors = await bootCleanApp(page);
+
+    await createCalculationFromQuickStart(page, {
+        name: 'Legacy RAG token drift contract',
+        presetId: 'high_ai'
+    });
+
+    await page.evaluate(async () => {
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
+        const { STAND_IDS } = await import(new URL('js/utils/constants.js', document.baseURI).href);
+        store.updateActiveCalc(calc => ({
+            answers: {
+                ...calc.answers,
+                ai_llm_used: false,
+                ai_hosting_mode: 'external_api',
+                rag_needed: true,
+                ai_users_share: 30,
+                ai_requests_per_user_day: 5,
+                ai_avg_input_tokens: 1500,
+                ai_avg_output_tokens: 500,
+                ai_caching_share: 20
+            },
+            answersMeta: {},
+            dictionaries: {
+                ...calc.dictionaries,
+                items: calc.dictionaries.items.map(item => (
+                    item.dashboardAiMetric === 'TOKENS'
+                        ? {
+                            ...item,
+                            qtyFormulas: Object.fromEntries(STAND_IDS.map(sid => [sid, '0']))
+                        }
+                        : item
+                ))
+            }
+        }));
+    });
+
+    await expectDashboardTokensVisible(page);
+    await expectDashboardDetailsConsistency(page);
+
+    await clickSidebarTab(page, 'details');
+    await expect(page.locator('.details-ai-summary')).toBeVisible();
+    await expectTokensBudgetSummaryVisible(page);
+    await expectTokenItemRowsVisible(page, '.details-table-cost');
+
+    await page.getByRole('button', { name: 'Объём (qty)' }).click();
+    await expect(page.locator('.details-table-qty')).toBeVisible();
+    await expectTokensQtySummaryVisible(page);
+    await expectTokenItemRowsVisible(page, '.details-table-qty');
+
+    expect(consoleErrors).toEqual([]);
+});
