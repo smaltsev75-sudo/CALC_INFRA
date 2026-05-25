@@ -8,6 +8,8 @@ import {
 } from '../../../js/ui/dashboardAggregates.js';
 import { calculate } from '../../../js/domain/calculator.js';
 import { buildSeedDictionaries, defaultAnswersFrom } from '../../../js/domain/seed.js';
+import { effectiveQtyForDisplay } from '../../../js/ui/detailsSections.js';
+import { STAND_IDS } from '../../../js/utils/constants.js';
 
 function makeOnPremAiCalc(overrides = {}) {
     const dictionaries = buildSeedDictionaries();
@@ -95,6 +97,45 @@ describe('dashboardAggregates', () => {
         assert.equal(resources.total.CPU.qty, 10 * 1.2 * 1.5 * 2 * 1.1);
     });
 
+    it('Dashboard resource qty and Details qty use the same capacity-risk semantics', () => {
+        const calc = makeOnPremAiCalc({
+            ai_hosting_mode: 'external_api',
+            file_storage_tb: 8,
+            db_size_gb: 300,
+            db_growth_gb_month: 25,
+            backup_retention_days: 30
+        });
+        calc.settings = {
+            ...calc.settings,
+            applyRiskFactors: true,
+            bufferTask: 0.1,
+            bufferProject: 0.1,
+            kSeasonal: 0.15,
+            kScheduleShift: 0.05,
+            kContingency: 0.05
+        };
+        const result = calculate(calc);
+        const dashboard = aggregateResources(result, calc.dictionaries.items, [], true);
+        const details = {};
+
+        for (const item of calc.dictionaries.items) {
+            if (!item.dashboardResource) continue;
+            for (const sid of STAND_IDS) {
+                const cell = result.items[item.id]?.stands?.[sid];
+                details[item.dashboardResource] = (details[item.dashboardResource] || 0)
+                    + effectiveQtyForDisplay(cell, true);
+            }
+        }
+
+        for (const [label, entry] of Object.entries(dashboard.total)) {
+            assert.equal(
+                Math.round((entry.qty || 0) * 1_000_000) / 1_000_000,
+                Math.round((details[label] || 0) * 1_000_000) / 1_000_000,
+                `${label}: Dashboard qty must match Details qty`
+            );
+        }
+    });
+
     it('distributeRoundingPreservingSum keeps active stand sum equal to rounded total', () => {
         const resources = {
             total: { CPU: { qty: 2 } },
@@ -115,9 +156,30 @@ describe('dashboardAggregates', () => {
         assert.equal(sum, 2);
     });
 
+    it('distributeRoundingPreservingSum keeps fractional TB capacities visible per stand', () => {
+        const resources = {
+            total: { SSD: { qty: 0.36, unit: 'ТБ' } },
+            perStand: {
+                DEV: { SSD: { qty: 0.12, unit: 'ТБ' } },
+                IFT: { SSD: { qty: 0.24, unit: 'ТБ' } },
+                PSI: { SSD: { qty: 0, unit: 'ТБ' } },
+                LOAD: { SSD: { qty: 0, unit: 'ТБ' } },
+                PROD: { SSD: { qty: 0, unit: 'ТБ' } }
+            }
+        };
+
+        distributeRoundingPreservingSum(resources, ['DEV', 'IFT', 'PSI', 'LOAD', 'PROD']);
+
+        assert.equal(resources.perStand.DEV.SSD.qty, 0.12);
+        assert.equal(resources.perStand.IFT.SSD.qty, 0.24);
+        assert.equal(resources.total.SSD.qty, 0.36);
+        assert.equal(formatResourceQty(resources.perStand.DEV.SSD.qty, 'ТБ'), '0,12');
+    });
+
     it('formatResourceQty returns null for empty values and integer text otherwise', () => {
         assert.equal(formatResourceQty(0, 'vCPU'), null);
         assert.equal(formatResourceQty(12.6, 'vCPU'), '13');
+        assert.equal(formatResourceQty(0.2578125, 'ТБ'), '0,26');
     });
 
     it('aggregateAiMetrics shows token workload for on-prem LLM without charging external token items', () => {

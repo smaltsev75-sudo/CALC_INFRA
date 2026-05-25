@@ -325,6 +325,189 @@ export async function getCalculationUiModel(page) {
     });
 }
 
+export async function getDashboardDetailsConsistencyReport(page) {
+    return page.evaluate(async () => {
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
+        const { calculate } = await import(new URL('js/domain/calculator.js', document.baseURI).href);
+        const { applyStandFilter } = await import(new URL('js/domain/standsFilter.js', document.baseURI).href);
+        const { SEED_ITEMS } = await import(new URL('js/domain/seed.js', document.baseURI).href);
+        const {
+            CATEGORY_IDS,
+            CATEGORY_LABELS,
+            STAND_IDS,
+            STAND_LABELS
+        } = await import(new URL('js/utils/constants.js', document.baseURI).href);
+        const {
+            aggregateAiMetrics,
+            aggregateResources
+        } = await import(new URL('js/ui/dashboardAggregates.js', document.baseURI).href);
+        const {
+            computeTotalsForItems,
+            effectiveQtyForDisplay
+        } = await import(new URL('js/ui/detailsSections.js', document.baseURI).href);
+
+        const EPS_RUB = 0.01;
+        const EPS_QTY = 0.000001;
+        const close = (a, b, eps) => Math.abs((Number(a) || 0) - (Number(b) || 0)) <= eps;
+        const issue = (type, message, extra = {}) => ({ type, message, ...extra });
+        const issues = [];
+
+        const state = store.getState();
+        const calc = state.activeCalc;
+        if (!calc) throw new Error('No active calculation');
+
+        const result = calculate(calc, state.calcRevision);
+        const disabledStands = calc.view?.disabledStands || [];
+        const activeStands = STAND_IDS.filter(sid => !disabledStands.includes(sid));
+        const applyRisks = calc.settings?.applyRiskFactors !== false;
+        const filtered = applyStandFilter(result, disabledStands);
+        const items = calc.dictionaries?.items || [];
+        const seedById = new Map(SEED_ITEMS.map(item => [item.id, item]));
+
+        const totals = computeTotalsForItems(items, result, disabledStands);
+        if (!close(filtered.totalMonthly, totals.totalMonthly, EPS_RUB)) {
+            issues.push(issue('cost-total', 'Dashboard totalMonthly != Details grand total', {
+                dashboard: filtered.totalMonthly,
+                details: totals.totalMonthly
+            }));
+        }
+
+        for (const sid of STAND_IDS) {
+            const dashboard = result.stands?.[sid]?.totalMonthly || 0;
+            const details = totals.stands?.[sid]?.totalMonthly || 0;
+            if (!close(dashboard, details, EPS_RUB)) {
+                issues.push(issue('cost-stand', `Dashboard stand ${sid} != Details stand total`, {
+                    stand: sid,
+                    label: STAND_LABELS[sid],
+                    dashboard,
+                    details
+                }));
+            }
+        }
+
+        const byCategory = Object.fromEntries(CATEGORY_IDS.map(cat => [cat, []]));
+        for (const item of items) (byCategory[item.category] || (byCategory[item.category] = [])).push(item);
+        for (const cat of CATEGORY_IDS) {
+            let details = 0;
+            for (const item of byCategory[cat] || []) {
+                const itemResult = result.items?.[item.id];
+                if (!itemResult) continue;
+                for (const sid of activeStands) details += itemResult.stands?.[sid]?.costFinal || 0;
+            }
+            const dashboard = filtered.byCategory?.[cat] || 0;
+            if (!close(dashboard, details, EPS_RUB)) {
+                issues.push(issue('cost-category', `Dashboard category ${cat} != Details category total`, {
+                    category: cat,
+                    label: CATEGORY_LABELS[cat],
+                    dashboard,
+                    details
+                }));
+            }
+
+            const dashboardHasCategory = dashboard > 0;
+            const detailsVisibleCount = (byCategory[cat] || [])
+                .filter(item => {
+                    const itemResult = result.items?.[item.id];
+                    return activeStands.some(sid => (itemResult?.stands?.[sid]?.costFinal || 0) > 0);
+                })
+                .length;
+            if (dashboardHasCategory && detailsVisibleCount <= 0) {
+                issues.push(issue('category-item-count', `Dashboard category ${cat} has money but no Details ЭК rows`, {
+                    category: cat,
+                    label: CATEGORY_LABELS[cat],
+                    dashboard,
+                    detailsVisibleCount
+                }));
+            }
+        }
+
+        const detailResource = { total: {}, perStand: {} };
+        const detailAi = { total: {}, perStand: {} };
+        for (const sid of STAND_IDS) {
+            detailResource.perStand[sid] = {};
+            detailAi.perStand[sid] = {};
+        }
+        const addQty = (bucket, label, sid, qty) => {
+            if (!label) return;
+            bucket.perStand[sid][label] = (bucket.perStand[sid][label] || 0) + qty;
+            if (!disabledStands.includes(sid)) {
+                bucket.total[label] = (bucket.total[label] || 0) + qty;
+            }
+        };
+
+        for (const item of items) {
+            const seedItem = seedById.get(item.id);
+            const resourceLabel = item.dashboardResource ?? seedItem?.dashboardResource;
+            const aiLabel = item.dashboardAiMetric ?? seedItem?.dashboardAiMetric;
+            if (!resourceLabel && !aiLabel) continue;
+            const itemResult = result.items?.[item.id];
+            if (!itemResult) continue;
+            for (const sid of STAND_IDS) {
+                const cell = itemResult.stands?.[sid];
+                if (!cell) continue;
+                const qty = effectiveQtyForDisplay(cell, applyRisks);
+                addQty(detailResource, resourceLabel, sid, qty);
+                addQty(detailAi, aiLabel, sid, qty);
+            }
+        }
+
+        const dashboardResource = aggregateResources(result, items, disabledStands, applyRisks);
+        for (const [label, entry] of Object.entries(dashboardResource.total || {})) {
+            const dashboard = Number(entry?.qty) || 0;
+            const details = Number(detailResource.total[label]) || 0;
+            if (!close(dashboard, details, EPS_QTY)) {
+                issues.push(issue('qty-resource-total', `Dashboard resource ${label} != Details qty total`, {
+                    label,
+                    dashboard,
+                    details
+                }));
+            }
+        }
+        for (const sid of STAND_IDS) {
+            for (const [label, entry] of Object.entries(dashboardResource.perStand?.[sid] || {})) {
+                const dashboard = Number(entry?.qty) || 0;
+                const details = Number(detailResource.perStand?.[sid]?.[label]) || 0;
+                if (!close(dashboard, details, EPS_QTY)) {
+                    issues.push(issue('qty-resource-stand', `Dashboard resource ${label}/${sid} != Details qty`, {
+                        stand: sid,
+                        label,
+                        dashboard,
+                        details
+                    }));
+                }
+            }
+        }
+
+        const dashboardAi = aggregateAiMetrics(result, items, disabledStands, applyRisks, calc);
+        for (const [label, entry] of Object.entries(dashboardAi.total || {})) {
+            const dashboard = Math.round(Number(entry?.qty) || 0);
+            const details = Math.round(Number(detailAi.total[label]) || 0);
+            if (dashboard !== details) {
+                issues.push(issue('qty-ai-total', `Dashboard AI ${label} != Details qty total`, {
+                    label,
+                    dashboard,
+                    details
+                }));
+            }
+        }
+
+        return {
+            issues,
+            totals: {
+                dashboardMonthly: filtered.totalMonthly,
+                detailsMonthly: totals.totalMonthly,
+                activeStands
+            }
+        };
+    });
+}
+
+export async function expectDashboardDetailsConsistency(page) {
+    const report = await getDashboardDetailsConsistencyReport(page);
+    expect(report.issues).toEqual([]);
+    return report;
+}
+
 export async function readDashboardUi(page) {
     return page.evaluate(() => ({
         heroAmount: document.querySelector('.dash-hero-value-amount')?.textContent?.trim() || '',

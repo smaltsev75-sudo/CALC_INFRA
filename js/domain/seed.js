@@ -2880,7 +2880,7 @@ export const SEED_ITEMS = [
         category: 'HW',
         resourceClass: 'STORAGE',
         dashboardResource: 'HDD',
-        applicableStands: ['PSI', 'PROD'],
+        applicableStands: ['DEV', 'IFT', 'PSI', 'PROD', 'LOAD'],
         description:
             'Дешёвое медленное хранилище (HDD) для бэкапов, архивов, журналов длительного хранения.\n' +
             'Применять для бэкапов БД и архивных копий файлового хранилища.\n' +
@@ -2892,10 +2892,13 @@ export const SEED_ITEMS = [
             'Расчёт: ~4.015 ₽/ГБ/мес × 1024 ≈ 4 111 ₽/ТБ/мес.\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
+            DEV:  'max(0.1, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024) * S.standSizeRatio.DEV)',
+            IFT:  'max(0.2, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024) * S.standSizeRatio.IFT)',
             PSI:  'max(0.5, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024) * S.standSizeRatio.PSI)',
-            PROD: 'max(1, max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024 + Q.file_storage_volume_tb * max(0, 100 - Q.hot_data_share_percent) / 100 * 0.5)'
+            PROD: 'max(1, max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024 + Q.file_storage_volume_tb * max(0, 100 - Q.hot_data_share_percent) / 100 * 0.5)',
+            LOAD: 'max(0.5, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024) * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'TB HDD = max(БД + рост за год, users_total × 50 КБ) × кластеров × глубина бэкапов / 1024 + 50% холодной доли файлов.'
+        formulaHelp: 'TB HDD = max(БД + рост за год, users_total × 50 КБ) × кластеров × глубина бэкапов / 1024 × коэф. стенда; на ПРОМ дополнительно 50% холодной доли файлов.'
     },
     {
         id: 'storage-object-tb',

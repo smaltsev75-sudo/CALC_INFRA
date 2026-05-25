@@ -3,6 +3,7 @@ import {
     bootCleanApp,
     clickSidebarTab,
     createCalculationFromQuickStart,
+    expectDashboardDetailsConsistency,
     expectDashboardMatchesModel,
     expectDetailsCostCategoriesMatchModel,
     getCalculationUiModel,
@@ -20,20 +21,24 @@ test('Quick Start creates a calculation and desktop navigation works through rea
     });
 
     let model = await expectDashboardMatchesModel(page);
+    await expectDashboardDetailsConsistency(page);
     expect(model.calcName).toBe('Desktop user flow: B2C AI');
 
     await page.getByTestId('dashboard-period-annual').click();
     await expect.poll(async () => (await getCalculationUiModel(page)).period).toBe('annual');
     await expectDashboardMatchesModel(page);
+    await expectDashboardDetailsConsistency(page);
 
     await page.getByTestId('stand-toggle-LOAD').click();
     await expect.poll(async () => (await getCalculationUiModel(page)).disabledStands).toContain('LOAD');
     model = await expectDashboardMatchesModel(page);
+    await expectDashboardDetailsConsistency(page);
     expect(model.activeStands).not.toContain('LOAD');
 
     await page.getByTestId('dashboard-hero-details').click();
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expectDetailsCostCategoriesMatchModel(page);
+    await expectDashboardDetailsConsistency(page);
 
     await clickSidebarTab(page, 'comparison');
     await expect(page.locator('.comparison-picker')).toBeVisible();
@@ -71,6 +76,7 @@ test('Questionnaire risk and VAT settings update rendered desktop totals through
 
     await clickSidebarTab(page, 'dashboard');
     await expectDashboardMatchesModel(page);
+    await expectDashboardDetailsConsistency(page);
     const ui = await readDashboardUi(page);
     expect(ui.heroBadges).toContain('БЕЗ РИСКОВ');
     expect(ui.heroBadges).toContain('С НДС 22%');
@@ -78,6 +84,7 @@ test('Questionnaire risk and VAT settings update rendered desktop totals through
     await clickSidebarTab(page, 'details');
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expectDetailsCostCategoriesMatchModel(page);
+    await expectDashboardDetailsConsistency(page);
 
     expect(consoleErrors).toEqual([]);
 });

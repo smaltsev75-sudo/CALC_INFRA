@@ -18,9 +18,22 @@ function dashboardAiRow(page, label) {
 async function expectDashboardTokensVisible(page) {
     const row = dashboardAiRow(page, 'Токены');
     await expect(page.locator('.dash-card-hero .dash-ai-metrics')).toBeVisible();
+    await expect(page.locator('.dash-card-hero .dash-ai-metrics-title'))
+        .toHaveText('Объёмы AI-нагрузки · ИТОГО');
     await expect(row).toBeVisible();
     await expect(row.locator('.dash-ai-metric-row-value')).toContainText(/млн токенов \/ мес/);
     await expect(row.locator('.dash-ai-metric-row-qty-empty')).toHaveCount(0);
+}
+
+async function expectDashboardStorageVisible(page, standId) {
+    const card = page.getByTestId(`dashboard-stand-${standId}`);
+    await expect(card).toBeVisible();
+    for (const label of ['SSD', 'HDD']) {
+        const row = card.locator('.dash-resource-row').filter({ hasText: label });
+        await expect(row).toBeVisible();
+        await expect(row.locator('.dash-resource-row-qty-empty')).toHaveCount(0);
+        await expect(row.locator('.dash-resource-row-value')).toContainText(/ТБ/);
+    }
 }
 
 async function expectTokensSummaryVisible(page) {
@@ -62,6 +75,9 @@ test('Details shows calculated LLM tokens on Budget and Qty for Quick Start AI',
     });
 
     await expectDashboardTokensVisible(page);
+    await expectDashboardStorageVisible(page, 'DEV');
+    await expectDashboardStorageVisible(page, 'IFT');
+    await expectDashboardStorageVisible(page, 'LOAD');
 
     await clickSidebarTab(page, 'details');
     await expect(page.locator('.details-table-cost')).toBeVisible();

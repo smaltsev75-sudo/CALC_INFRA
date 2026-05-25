@@ -137,7 +137,7 @@ export function renderDetails(state, ctx) {
         providerPriceWarning ? renderProviderPriceWarning(providerPriceWarning, ctx) : null,
 
         subTab === 'qty'
-            ? renderQtySection(byCat, result, ctx, disabledStands, state, presentCats)
+            ? renderQtySection(byCat, result, ctx, disabledStands, applyRisks, state, presentCats)
             : renderCostSection(byCat, result, ctx, totalsForFilter, isFiltered, disabledStands, applyRisks, calc, state, presentCats),
 
         renderDetailsQuantityPrintSummary(calc, result, disabledStands),

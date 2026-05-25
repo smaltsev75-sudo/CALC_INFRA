@@ -25,6 +25,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   derivation. Add a Health `error` if token demand is positive but TOKENS ЭК
   aggregate to zero; this catches the exact "filled token section, no tokens in
   Dashboard/Details" failure mode before release.
+- Dashboard resource cards are a user-facing calculation contract, not a loose
+  formatting detail. Small fractional storage values in `ТБ` must remain visible
+  (`0,12 ТБ`, not `—`), and SSD/HDD visibility must be verified for DEV, ИФТ and
+  Нагрузка on the same imported JSON that triggered the report.
+- Dashboard and Details must reconcile by construction. Category totals,
+  stand totals, grand totals and qty aggregates are a hard invariant across the
+  two tabs. If Dashboard applies capacity buffers to displayed qty, Details
+  `Объём (qty)` must use the same adjusted qty; otherwise the UI is lying even
+  when `calculate()` is mathematically stable.
 
 ## 🎨 UI/UX Review Standard для локальных ванильных веб-приложений
 

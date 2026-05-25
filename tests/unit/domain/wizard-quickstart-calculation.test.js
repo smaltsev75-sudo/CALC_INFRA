@@ -14,7 +14,7 @@ import { wizardToAnswers } from '../../../js/domain/wizardProfiles.js';
 import { STAND_IDS } from '../../../js/utils/constants.js';
 
 const PRODUCT_TYPES = ['internal', 'b2b', 'b2c', 'b2g'];
-const CORE_RESOURCES = ['CPU', 'RAM', 'SSD'];
+const CORE_RESOURCES = ['CPU', 'RAM', 'SSD', 'HDD'];
 const TOKEN_ITEM_IDS = ['llm-tokens-input-1m', 'llm-tokens-output-1m'];
 
 function aggregateByResource(calc, result, resource) {
@@ -39,7 +39,7 @@ function aggregateByItemIds(result, itemIds) {
 }
 
 describe('Quick Start calculation contract', () => {
-    it('все Quick Start-комбинации дают финитный расчёт без health error и базовых провалов CPU/RAM/SSD', () => {
+    it('все Quick Start-комбинации дают финитный расчёт без health error и базовых провалов CPU/RAM/SSD/HDD', () => {
         const dictionaries = buildSeedDictionaries();
         let checked = 0;
 

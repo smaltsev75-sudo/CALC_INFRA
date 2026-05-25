@@ -76,11 +76,36 @@ export function formatQtyDisplayParts(qty, unit) {
     };
 }
 
-export function renderQtySection(byCat, result, ctx, disabledStands = [], state = null, presentCats = []) {
+function quantityCapacityMultiplier(cell, applyRisks) {
+    if (!applyRisks || !cell?.riskBreakdown) return 1;
+    const br = cell.riskBreakdown;
+    const factor = ['bufferFactor', 'seasonalMul', 'scheduleMul', 'contingencyMul']
+        .reduce((acc, key) => {
+            const value = Number(br[key]);
+            return acc * (Number.isFinite(value) ? value : 1);
+        }, 1);
+    return Number.isFinite(factor) && factor > 0 ? factor : 1;
+}
+
+export function effectiveQtyForDisplay(cell, applyRisks = true) {
+    const qty = Number(cell?.qty) || 0;
+    return qty * quantityCapacityMultiplier(cell, applyRisks);
+}
+
+export function renderQtySection(byCat, result, ctx, disabledStands = [], applyRisks = true, state = null, presentCats = []) {
     const disabled = new Set(disabledStands);
     const categoryOrder = presentCats.length > 0 ? presentCats : CATEGORY_IDS;
     return el('div', { class: 'details-section' },
-        el('h3', { class: 'details-section-title', text: 'Объём (qty)' }),
+        el('h3', { class: 'details-section-title' },
+            el('span', { text: 'Объём (qty)' }),
+            applyRisks
+                ? el('span', { class: 'details-section-tag dash-card-eyebrow-tag',
+                    title: 'Qty показан с capacity-буферами: задачи / проект / сезон / сдвиг / контингент. VAT и инфляция к объёмам не применяются.',
+                    text: 'С РИСКАМИ' })
+                : el('span', { class: 'details-section-tag dash-card-eyebrow-tag dash-card-eyebrow-tag-warn',
+                    title: 'Qty показан без capacity-буферов — голый расчёт.',
+                    text: 'БЕЗ РИСКОВ' })
+        ),
         el('div', { class: 'details-table-wrap' },
             el('table', { class: 'details-table details-table-qty' },
                 el('thead', null,
@@ -113,7 +138,7 @@ export function renderQtySection(byCat, result, ctx, disabledStands = [], state 
                         const collapsed = state ? isCategoryCollapsed(cat, state) : true;
                         const rows = [renderQtyCategoryRow(cat, list, disabled, collapsed, ctx, presentCats)];
                         if (!collapsed) {
-                            for (const it of list) rows.push(renderQtyItemRow(it, result, ctx, disabled));
+                            for (const it of list) rows.push(renderQtyItemRow(it, result, ctx, disabled, applyRisks));
                         }
                         return rows;
                     })
@@ -154,7 +179,7 @@ function renderQtyCategoryRow(cat, list, disabled = new Set(), collapsed = true,
     );
 }
 
-function renderQtyItemRow(item, result, ctx, disabled = new Set()) {
+function renderQtyItemRow(item, result, ctx, disabled = new Set(), applyRisks = true) {
     const r = result.items[item.id];
     let qtySum = 0;
     const displayUnit = formatQtyDisplayUnit(item.unit);
@@ -183,8 +208,9 @@ function renderQtyItemRow(item, result, ctx, disabled = new Set()) {
             if (!cell || (!cell.qty && !cell.error)) {
                 return el('td', { class: ['col-stand', 'col-stand-empty', isDisabled && 'stand-disabled'], text: '—' });
             }
+            const displayQty = effectiveQtyForDisplay(cell, applyRisks);
             // qtySum считаем только по активным стендам — как и итог в таблице.
-            if (!isDisabled) qtySum += cell.qty || 0;
+            if (!isDisabled) qtySum += displayQty;
             // Этап 13.U2 PDF-fit: число и единица — отдельные spans. CSS @media print
             // скрывает .qty-unit (единица уже видна в колонке «Ед.изм.»), что освобождает
             // ~30-40% ширины числовых колонок и устраняет обрезку справа на A4 landscape.
@@ -197,7 +223,7 @@ function renderQtyItemRow(item, result, ctx, disabled = new Set()) {
                     ? `Ошибка: ${cell.error}`
                     : (isDisabled ? 'Стенд исключён из ИТОГО' : undefined)
             },
-                el('span', { class: 'qty-num', text: formatQtyDisplayParts(cell.qty, item.unit).valueText }),
+                el('span', { class: 'qty-num', text: formatQtyDisplayParts(displayQty, item.unit).valueText }),
                 ' ',
                 el('span', { class: 'qty-unit', text: displayUnit })
             );

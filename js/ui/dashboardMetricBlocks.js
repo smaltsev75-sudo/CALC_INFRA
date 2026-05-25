@@ -41,11 +41,11 @@ export function renderResourcesBlock(resourceMap, titleText, applyRisks = true, 
             /* 12.U10: метка известна (есть ЭК с такой меткой в каталоге), но qty=0.
                Показываем «—» вместо silent skip — иначе пользователь не поймёт,
                есть ли вообще такой ресурс или это баг. Tooltip объясняет ПОЧЕМУ:
-               - applicable=false → стенд не предусмотрен (HDD на DEV/IFT/LOAD).
+               - applicable=false → стенд не предусмотрен текущим каталогом.
                - applicable=true → стенд предусмотрен, но input-данные = 0. */
             const tooltip = entry.applicable
                 ? 'При текущих ответах Опросника объём = 0. Заполните соответствующие вопросы (объёмы БД, файлов, пиковая нагрузка), чтобы появилась оценка.'
-                : 'Для этого стенда не предусмотрено. Например, холодное хранилище (HDD) каталог закладывает только на ПРОМ и ПСИ — там реальные данные, нуждающиеся в архивных копиях.';
+                : 'Для этого стенда ресурс не предусмотрен текущим каталогом ЭК. Если он нужен в проекте, добавьте применимость ресурса в справочник или включите соответствующий ЭК.';
             rows.push(el('div', { class: 'dash-resource-row dash-resource-row-empty', title: tooltip },
                 el('span', { class: 'dash-resource-row-label', text: label }),
                 el('span', { class: 'dash-resource-row-value' },

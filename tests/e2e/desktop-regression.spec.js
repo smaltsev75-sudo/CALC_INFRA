@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
     bootCleanApp,
+    expectDashboardDetailsConsistency,
     expectDashboardMatchesModel,
     expectDetailsCostCategoriesMatchModel,
     getCalculationUiModel,
@@ -51,6 +52,7 @@ test('Dashboard and Details match calculation model for a seeded desktop project
     await expect(page.getByTestId('dashboard-provider-price-actuality'))
         .not.toHaveAttribute('title', /.+/);
     await expectDashboardMatchesModel(page);
+    await expectDashboardDetailsConsistency(page);
 
     await switchTab(page, 'details');
     await expect(page.locator('.details-table-cost')).toBeVisible();
@@ -61,6 +63,7 @@ test('Dashboard and Details match calculation model for a seeded desktop project
     await expect(page.locator('.details-provider-price-actuality'))
         .not.toHaveAttribute('title', /.+/);
     await expectDetailsCostCategoriesMatchModel(page);
+    await expectDashboardDetailsConsistency(page);
 
     expect(consoleErrors).toEqual([]);
 });
@@ -81,10 +84,12 @@ test('Changing a key answer recalculates Dashboard and Details consistently', as
     await expect.poll(async () => (await getCalculationUiModel(page)).totalMonthly)
         .not.toBe(before.totalMonthly);
     await expectDashboardMatchesModel(page);
+    await expectDashboardDetailsConsistency(page);
 
     await switchTab(page, 'details');
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expectDetailsCostCategoriesMatchModel(page);
+    await expectDashboardDetailsConsistency(page);
 
     expect(consoleErrors).toEqual([]);
 });
@@ -103,10 +108,12 @@ test('Disabled stand is excluded from active totals in Dashboard and Details', a
     expect(after.totalMonthly).toBeLessThan(before.totalMonthly);
     expect(after.activeStands).not.toContain('LOAD');
     expect(after.dashboard.stands.at(-1)).toMatchObject({ id: 'LOAD', disabled: true });
+    await expectDashboardDetailsConsistency(page);
 
     await switchTab(page, 'details');
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expectDetailsCostCategoriesMatchModel(page);
+    await expectDashboardDetailsConsistency(page);
 
     expect(consoleErrors).toEqual([]);
 });
@@ -141,6 +148,7 @@ test('Risk and VAT toggles stay independent in rendered desktop totals', async (
     await switchTab(page, 'details');
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expectDetailsCostCategoriesMatchModel(page);
+    await expectDashboardDetailsConsistency(page);
 
     expect(consoleErrors).toEqual([]);
 });

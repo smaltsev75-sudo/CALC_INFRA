@@ -224,8 +224,8 @@ export function renderAiStandFactors(calc, ctx) {
  * сколько vCPU / GB RAM / TB HDD / etc. зарезервировано на каждом стенде.
  *
  * Применимость ячейки определяется по `applicableStands` ЭК с этой меткой:
- * если ни один ЭК с `dashboardResource=HDD` не применим к DEV, то ячейка (DEV,HDD) — disabled
- * с tooltip «Не предусмотрено: каталог не закладывает HDD на этом стенде».
+ * если ни один ЭК с `dashboardResource=HDD` не применим к DEV, то ячейка
+ * (DEV,HDD) — disabled с tooltip «Не предусмотрено текущим каталогом».
  *
  * PROD не показывается — эталон 1.00 для всех ресурсов (фиксированно в schema v3).
  * Калькулятор подменяет `S.standSizeRatio.<STAND>` на per-resource значение в зависимости

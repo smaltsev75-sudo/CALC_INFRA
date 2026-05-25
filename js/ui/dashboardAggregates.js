@@ -121,18 +121,22 @@ export function aggregateResources(result, dictionaryItems, disabledStands, appl
     return out;
 }
 
-/** Форматирует qty по единице измерения: все значения округлены до
- *  ближайшего целого (PATCH 2.14.16). На дашборде блок «Объёмы ресурсов»
- *  показывает агрегаты — дробные хвосты (100,64 ТБ / 9 068,76 ТБ) только
- *  отвлекают от порядка величины. Раньше ТБ выводились с 2 знаками после
- *  запятой, vCPU/ГБ — Math.ceil. Унифицировано на Math.round для всех.
+function isFractionalCapacityUnit(unit) {
+    return String(unit || '').includes('ТБ');
+}
+
+/** Форматирует qty по единице измерения.
  *
- *  PATCH 2.14.16-fixup: per-stand qty уже округлены через
- *  distributeRoundingPreservingSum (Hare/Hamilton) — здесь Math.round
- *  идемпотентен для уже-целых значений; нужен только как защита для
- *  потребителей, передающих сырые qty (тестов, в т.ч.). */
+ * CPU/RAM/шт. остаются целыми: половина vCPU или узла в Dashboard выглядит
+ * как ложная точность. Для ёмкости в ТБ дробная часть важна: 0.17 ТБ SSD или
+ * 0.10 ТБ HDD — это реальный ненулевой ресурс, и округление до 0 превращало
+ * его в прочерк на стендах DEV/ИФТ. */
 export function formatResourceQty(qty, unit) {
     if (!Number.isFinite(qty) || qty <= 0) return null;
+    if (isFractionalCapacityUnit(unit)) {
+        const max = qty < 10 ? 2 : (qty < 100 ? 1 : 0);
+        return formatNumber(qty, { min: 0, max });
+    }
     return formatNumber(Math.round(qty), { min: 0, max: 0 });
 }
 
@@ -164,6 +168,7 @@ export function distributeRoundingPreservingSum(resources, activeStands) {
     if (!resources || !resources.total || !resources.perStand) return resources;
     for (const label of Object.keys(resources.total)) {
         const totalCell = resources.total[label];
+        if (isFractionalCapacityUnit(totalCell.unit)) continue;
         const totalRaw = Number(totalCell.qty) || 0;
         const targetSum = Math.max(0, Math.round(totalRaw));
 
