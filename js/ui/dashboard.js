@@ -144,7 +144,7 @@ export function renderDashboard(state, ctx) {
     // стенд-карточку (perStand[sid]) — рядом с «Объёмами ресурсов». Блок возвращает
     // null когда в этом scope нет ни одной AI-ЭК с qty>0 — для не-AI расчётов
     // ничего не появляется.
-    const aiMetrics = aggregateAiMetrics(result, calc.dictionaries?.items || [], disabledStands, applyRisks);
+    const aiMetrics = aggregateAiMetrics(result, calc.dictionaries?.items || [], disabledStands, applyRisks, calc);
 
     return el('section', { class: 'tab-pane', attrs: { 'data-testid': 'dashboard-tab' } },
 

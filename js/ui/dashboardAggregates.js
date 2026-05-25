@@ -1,6 +1,13 @@
-import { STAND_IDS, DASHBOARD_AI_METRIC_LABELS } from '../utils/constants.js';
+import {
+    STAND_IDS,
+    DASHBOARD_AI_METRIC_LABELS,
+    DEFAULT_AI_STAND_FACTOR,
+    AGENT_STEPS_MULTIPLIER,
+    DEFAULT_AGENT_PARALLEL
+} from '../utils/constants.js';
 import { formatNumber } from '../services/format.js';
 import { SEED_ITEMS } from '../domain/seed.js';
+import { buildQuestionDefaults } from '../domain/calculator.js';
 
 // 12.U5: индекс dashboardResource из актуального SEED_ITEMS — fallback для
 // расчётов, dictionary которых был сохранён до добавления поля. UI-only.
@@ -197,10 +204,132 @@ export function distributeRoundingPreservingSum(resources, activeStands) {
     return resources;
 }
 
+function finiteNumber(value, fallback = 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+}
+
+function buildAnswerResolver(calc) {
+    const answers = calc?.answers || {};
+    const defaults = buildQuestionDefaults(calc?.dictionaries?.questions || []);
+    return (id, fallback = 0) => {
+        const value = answers[id];
+        if (value !== undefined && value !== null && value !== '') return value;
+        if (defaults[id] !== undefined && defaults[id] !== null && defaults[id] !== '') {
+            return defaults[id];
+        }
+        return fallback;
+    };
+}
+
+function aiStandRatio(calc, stand) {
+    if (stand === 'PROD') return 1;
+    const ratios = calc?.settings?.aiStandFactor;
+    const value = ratios && typeof ratios === 'object'
+        ? ratios[stand]
+        : DEFAULT_AI_STAND_FACTOR[stand];
+    return Number.isFinite(Number(value))
+        ? Number(value)
+        : (DEFAULT_AI_STAND_FACTOR[stand] ?? 1);
+}
+
+function agentStepFactor(get) {
+    if (get('ai_agent_mode', false) !== true) return 1;
+    const complexity = get('agent_complexity', 'simple');
+    const stepsBase = AGENT_STEPS_MULTIPLIER[complexity] ?? AGENT_STEPS_MULTIPLIER.simple;
+    const parallel = get('ai_agent_type', 'tool_use') === 'multi_agent'
+        ? Math.max(1, finiteNumber(get('agent_parallel_specialists', DEFAULT_AGENT_PARALLEL), DEFAULT_AGENT_PARALLEL))
+        : 1;
+    return stepsBase * parallel;
+}
+
+function ragRefreshMultiplier(value) {
+    switch (value) {
+        case 'realtime':
+        case 'daily':
+            return 30;
+        case 'weekly':
+            return 4.3;
+        case 'monthly':
+            return 1;
+        case 'quarterly':
+            return 1 / 3;
+        case 'on_demand':
+            return 0.5;
+        case 'never':
+        default:
+            return 0;
+    }
+}
+
+function deriveOnPremTokenQty(calc, stand) {
+    const get = buildAnswerResolver(calc);
+    if (get('ai_llm_used', false) !== true) return 0;
+    if (get('ai_hosting_mode', 'external_api') !== 'on_prem_gpu') return 0;
+
+    const registered = finiteNumber(get('registered_users_total', 0));
+    const dauShare = finiteNumber(get('dau_share_of_registered_percent', 0)) / 100;
+    const aiShare = finiteNumber(get('ai_users_share', 0)) / 100;
+    const requestsPerDay = finiteNumber(get('ai_requests_per_user_day', 0));
+    const inputTokens = finiteNumber(get('ai_avg_input_tokens', 0));
+    const outputTokens = finiteNumber(get('ai_avg_output_tokens', 0));
+    const cacheShare = Math.min(100, Math.max(0, finiteNumber(get('ai_caching_share', 0)))) / 100;
+    const requestsPerMonth = registered * dauShare * aiShare * requestsPerDay * 30 * agentStepFactor(get);
+    const ratio = aiStandRatio(calc, stand);
+
+    const inputMillions = requestsPerMonth * inputTokens * (1 - cacheShare) / 1_000_000 * ratio;
+    const outputMillions = requestsPerMonth * outputTokens / 1_000_000 * ratio;
+    return Math.ceil(Math.max(0, inputMillions)) + Math.ceil(Math.max(0, outputMillions));
+}
+
+function deriveOnPremEmbeddingQty(calc, stand) {
+    const get = buildAnswerResolver(calc);
+    if (get('rag_needed', false) !== true) return 0;
+    if (get('ai_hosting_mode', 'external_api') !== 'on_prem_gpu') return 0;
+
+    const corpusGb = finiteNumber(get('rag_corpus_size_gb', 0));
+    const refresh = ragRefreshMultiplier(get('rag_refresh_frequency', 'never'));
+    const ratio = aiStandRatio(calc, stand);
+    return Math.ceil(Math.max(0, corpusGb * 200 * refresh * ratio));
+}
+
+function applyOnPremOperationalAiMetricFallback(out, calc, activeStands) {
+    if (!calc || !out?.perStand || !out?.total) return out;
+
+    const fallbackSpecs = [
+        { label: 'TOKENS', unit: 'млн токенов', derive: deriveOnPremTokenQty },
+        { label: 'EMBEDDINGS', unit: 'млн токенов', derive: deriveOnPremEmbeddingQty }
+    ];
+
+    for (const spec of fallbackSpecs) {
+        let activeTotal = 0;
+        let touched = false;
+        for (const sid of STAND_IDS) {
+            const entry = out.perStand[sid]?.[spec.label];
+            if (!entry) continue;
+            const current = Number(entry.qty) || 0;
+            const derived = spec.derive(calc, sid);
+            if (current <= 0 && derived > 0) {
+                entry.qty = derived;
+                entry.unit = entry.unit || spec.unit;
+                entry.applicable = true;
+                touched = true;
+            }
+            if (activeStands.includes(sid)) activeTotal += Number(entry.qty) || 0;
+        }
+        if (touched && out.total[spec.label]) {
+            out.total[spec.label].qty = activeTotal;
+            out.total[spec.label].unit = out.total[spec.label].unit || spec.unit;
+            out.total[spec.label].applicable = true;
+        }
+    }
+    return out;
+}
+
 /* ============================================================
  * Этап 13.U6: AI / RAG / агенты — отдельная секция дашборда
  * ============================================================ */
-export function aggregateAiMetrics(result, dictionaryItems, disabledStands, applyRisks) {
+export function aggregateAiMetrics(result, dictionaryItems, disabledStands, applyRisks, calc = null) {
     const out = { perStand: {}, total: {} };
     const itemMap = new Map(dictionaryItems.map(it => [it.id, it]));
 
@@ -266,5 +395,6 @@ export function aggregateAiMetrics(result, dictionaryItems, disabledStands, appl
         }
     }
 
+    applyOnPremOperationalAiMetricFallback(out, calc, activeStands);
     return distributeRoundingPreservingSum(out, activeStands);
 }

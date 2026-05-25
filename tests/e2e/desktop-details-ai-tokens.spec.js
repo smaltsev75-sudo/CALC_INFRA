@@ -11,6 +11,18 @@ function aiSummaryRow(page, label) {
     return page.locator('.details-ai-summary-table tbody tr').filter({ hasText: label });
 }
 
+function dashboardAiRow(page, label) {
+    return page.locator('.dash-card-hero .dash-ai-metric-row').filter({ hasText: label });
+}
+
+async function expectDashboardTokensVisible(page) {
+    const row = dashboardAiRow(page, 'Токены');
+    await expect(page.locator('.dash-card-hero .dash-ai-metrics')).toBeVisible();
+    await expect(row).toBeVisible();
+    await expect(row.locator('.dash-ai-metric-row-value')).toContainText(/млн токенов \/ мес/);
+    await expect(row.locator('.dash-ai-metric-row-qty-empty')).toHaveCount(0);
+}
+
 async function expectTokensSummaryVisible(page) {
     const row = aiSummaryRow(page, 'Токены');
     await expect(row).toBeVisible();
@@ -49,6 +61,8 @@ test('Details shows calculated LLM tokens on Budget and Qty for Quick Start AI',
         presetId: 'high_ai'
     });
 
+    await expectDashboardTokensVisible(page);
+
     await clickSidebarTab(page, 'details');
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expect(page.locator('.details-ai-summary')).toBeVisible();
@@ -69,6 +83,51 @@ test('Details shows calculated LLM tokens on Budget and Qty for Quick Start AI',
     await expectTokensSummaryVisible(page);
     await expect(aiSummaryRow(page, 'CPU агентов')).toHaveCount(0);
     await expectTokenItemRowsVisible(page, '.details-table-qty');
+
+    expect(consoleErrors).toEqual([]);
+});
+
+test('Dashboard and Details show token workload when LLM is hosted on own GPU', async ({ page }) => {
+    const consoleErrors = await bootCleanApp(page);
+
+    await createCalculationFromQuickStart(page, {
+        name: 'On-prem token workload contract',
+        presetId: 'high_ai'
+    });
+
+    await page.evaluate(async () => {
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
+        store.updateActiveCalc(calc => ({
+            settings: {
+                ...calc.settings,
+                applyRiskFactors: false
+            },
+            answers: {
+                ...calc.answers,
+                ai_llm_used: true,
+                ai_hosting_mode: 'on_prem_gpu',
+                ai_avg_input_tokens: 2000,
+                ai_avg_output_tokens: 500,
+                ai_caching_share: 0,
+                rag_needed: true,
+                rag_corpus_size_gb: 2,
+                rag_refresh_frequency: 'monthly'
+            }
+        }));
+    });
+
+    await expectDashboardTokensVisible(page);
+
+    const tokenCostRows = page.locator('.dash-category-row').filter({ hasText: 'AI / LLM' });
+    await expect(tokenCostRows.first()).toBeVisible();
+
+    await clickSidebarTab(page, 'details');
+    await expect(page.locator('.details-ai-summary')).toBeVisible();
+    await expectTokensSummaryVisible(page);
+
+    await page.getByRole('button', { name: 'Объём (qty)' }).click();
+    await expect(page.locator('.details-table-qty')).toBeVisible();
+    await expectTokensSummaryVisible(page);
 
     expect(consoleErrors).toEqual([]);
 });

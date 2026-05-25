@@ -36,7 +36,7 @@ import { aggregateAiMetrics, formatResourceQty } from './dashboard.js';
      двух строк. */
 export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx, options = {}) {
     if (!calc) return null;
-    const aiMetrics = aggregateAiMetrics(result, calc.dictionaries?.items || [], disabledStands, applyRisks);
+    const aiMetrics = aggregateAiMetrics(result, calc.dictionaries?.items || [], disabledStands, applyRisks, calc);
     const total = aiMetrics.total || {};
     const perStand = aiMetrics.perStand || {};
     const hideNoBudget = !!options.hideNoBudget;

@@ -127,7 +127,7 @@ function renderAiMetricsComparisonSection(calcs, results, ctx) {
         const result = results[idx];
         const disabledStands = calc.view?.disabledStands || [];
         const applyRisks = calc.settings?.applyRiskFactors !== false;
-        const ai = aggregateAiMetrics(result, calc.dictionaries?.items || [], disabledStands, applyRisks);
+        const ai = aggregateAiMetrics(result, calc.dictionaries?.items || [], disabledStands, applyRisks, calc);
         const hasAny = DASHBOARD_AI_METRIC_LABELS.some(label => {
             const e = ai.total?.[label];
             return e && e.qty > 0;
