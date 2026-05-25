@@ -117,6 +117,53 @@ async function expectTokenItemRowsVisible(page, tableSelector) {
     await expectPositiveQtyRow(outputRow, /млн токенов/);
 }
 
+async function expectTokenBudgetSummaryMatchesCostRows(page) {
+    await expandAiCategoryIfNeeded(page, '.details-table-cost');
+    const report = await page.evaluate(() => {
+        const parseRub = (text) => {
+            const raw = String(text || '').trim();
+            if (!raw || raw === '—') return 0;
+            const normalized = raw.replace(/[^\d,-]/g, '').replace(',', '.');
+            return Number(normalized) || 0;
+        };
+        const tokenItemIds = [
+            'llm-tokens-input-1m',
+            'llm-tokens-output-1m',
+            'ai-safety-moderation-tokens-1m'
+        ];
+        const itemRows = tokenItemIds
+            .map(id => document.querySelector(`.details-table-cost tbody tr.item-row[data-item-id="${id}"]`))
+            .filter(Boolean);
+        const summaryRow = [...document.querySelectorAll('.details-ai-summary-table tbody tr')]
+            .find(row => row.textContent.includes('Токены'));
+        const mismatches = [];
+        if (!summaryRow) return { mismatches: ['summary token row missing'] };
+
+        const summaryStandCells = [...summaryRow.querySelectorAll('td.details-ai-cell-stand')];
+        for (let index = 0; index < summaryStandCells.length; index += 1) {
+            const fromRows = itemRows.reduce((sum, row) => {
+                const cell = row.querySelectorAll('td.col-stand')[index];
+                return sum + parseRub(cell?.textContent || '');
+            }, 0);
+            const fromSummary = parseRub(summaryStandCells[index]?.textContent || '');
+            if (fromRows !== fromSummary) {
+                mismatches.push(`stand#${index}: rows=${fromRows}, summary=${fromSummary}`);
+            }
+        }
+
+        const rowsTotal = itemRows.reduce((sum, row) => {
+            const cell = row.querySelector('td.col-total');
+            return sum + parseRub(cell?.textContent || '');
+        }, 0);
+        const summaryTotal = parseRub(summaryRow.querySelector('td.details-ai-cell-total')?.textContent || '');
+        if (rowsTotal !== summaryTotal) {
+            mismatches.push(`total: rows=${rowsTotal}, summary=${summaryTotal}`);
+        }
+        return { mismatches };
+    });
+    expect(report.mismatches).toEqual([]);
+}
+
 async function expectPositiveRubRow(row) {
     const total = row.locator('td.col-total').first();
     await expect(total).toContainText('₽');
@@ -158,6 +205,7 @@ test('Details shows calculated LLM tokens on Budget and Qty for Quick Start AI',
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expect(page.locator('.details-ai-summary')).toBeVisible();
     await expectTokensBudgetSummaryVisible(page);
+    await expectTokenBudgetSummaryMatchesCostRows(page);
 
     const cpuAgentsRow = aiSummaryRow(page, 'CPU агентов');
     await expect(cpuAgentsRow).toBeVisible();

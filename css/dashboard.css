@@ -1521,12 +1521,13 @@
 
 @container risk-card (max-width: 430px) {
     .dash-risk-row {
-        grid-template-columns: 88px minmax(0, 1fr) 56px;
+        grid-template-columns: 96px minmax(0, 1fr);
         grid-template-areas:
-            "label bar bar"
-            ". amount amount"
-            ". value value";
-        row-gap: 4px;
+            "label label"
+            "bar amount"
+            ". value";
+        column-gap: 12px;
+        row-gap: 6px;
     }
 
     .dash-risk-row-label {
@@ -1535,6 +1536,8 @@
 
     .dash-risk-row-bar {
         grid-area: bar;
+        width: 96px;
+        min-width: 96px;
     }
 
     .dash-risk-row-amount {

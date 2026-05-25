@@ -2824,13 +2824,13 @@ export const SEED_ITEMS = [
             'Расчёт: 0.31 ₽/ГБ·час × 730 ч ≈ 226 ₽/ГБ/мес.\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            DEV:  'ceil((ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.DEV) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb * S.standSizeRatio.DEV)',
-            IFT:  'ceil((ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.IFT) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb * S.standSizeRatio.IFT)',
-            PSI:  'ceil((ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.PSI) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb * S.standSizeRatio.PSI)',
+            DEV:  'ceil(((ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb) * S.standSizeRatio.DEV)',
+            IFT:  'ceil(((ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb) * S.standSizeRatio.IFT)',
+            PSI:  'ceil(((ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb) * S.standSizeRatio.PSI)',
             PROD: 'ceil((ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb)',
-            LOAD: 'ceil((ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.LOAD) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb * S.standSizeRatio.LOAD)'
+            LOAD: 'ceil(((ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb) * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'GB RAM = расчётный vCPU (с учётом RPS/PCU/realtime) × Q.ram_per_vcpu_ratio + Q.cache_size_gb (всё × коэф. стенда).'
+        formulaHelp: 'GB RAM = (ПРОМ vCPU после округления × RAM на vCPU + кэш) × коэф. стенда. НТ-стенд 120% от ПРОМ RAM: 56 ГБ → 68 ГБ.'
     },
     {
         id: 'storage-ssd-tb',

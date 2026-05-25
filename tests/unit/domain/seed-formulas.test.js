@@ -156,4 +156,43 @@ describe('seed-formulas: end-to-end calculate()', () => {
         assert.ok(Math.abs(loadHdd - prodHdd * loadRatio) < 1e-9,
             `LOAD HDD должен масштабировать полную PROD-базу: expected=${prodHdd * loadRatio}, got=${loadHdd}`);
     });
+
+    it('RAM Нагрузки при ratio 120% масштабируется от полного ПРОМ RAM без промежуточного округления CPU стенда', () => {
+        clearCalculationCache();
+        const calc = {
+            version: '1.0', id: 'ram-load-ratio', name: 'ram-load-ratio',
+            schemaVersion: 3,
+            createdAt: '2026-05-25T00:00:00Z',
+            updatedAt: '2026-05-25T00:00:00Z',
+            settings: {
+                ...SEED_SETTINGS,
+                applyRiskFactors: false,
+                vatEnabled: false,
+                vatRate: 0
+            },
+            answers: {
+                ...defaultAnswersFrom(dict.questions),
+                peak_rps: 100,
+                pcu_target: 0,
+                microservices_count: 6,
+                async_workers_count: 3,
+                realtime_required: true,
+                ram_per_vcpu_ratio: 4,
+                cache_size_gb: 8
+            },
+            dictionaries: dict
+        };
+
+        const r = calculate(calc);
+        const prodRam = r.items['ram-gb'].stands.PROD.qty;
+        const loadRam = r.items['ram-gb'].stands.LOAD.qty;
+        const loadRatio = calc.settings.resourceRatio.LOAD.RAM;
+
+        assert.equal(loadRatio, 1.2);
+        assert.equal(prodRam, 56, 'тестовый профиль должен давать 56 ГБ RAM на ПРОМ');
+        assert.equal(loadRam, Math.ceil(prodRam * loadRatio),
+            `LOAD RAM должен быть ceil(PROD RAM × 1.2): PROD=${prodRam}, LOAD=${loadRam}`);
+        assert.notEqual(loadRam, 66,
+            'регрессия: старое промежуточное округление CPU давало 66 ГБ вместо 68 ГБ');
+    });
 });

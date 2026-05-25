@@ -204,7 +204,7 @@ test('Quick Start renders every positive Dashboard resource and Details qty row'
     expect(consoleErrors).toEqual([]);
 });
 
-test('Dashboard stand cards show LOAD HDD above PROD when HDD ratio is 120%', async ({ page }) => {
+test('Dashboard stand cards show LOAD storage and RAM above PROD when ratio is 120%', async ({ page }) => {
     const consoleErrors = await bootCleanApp(page);
 
     await createCalculationFromQuickStart(page, {
@@ -241,10 +241,11 @@ test('Dashboard stand cards show LOAD HDD above PROD when HDD ratio is 120%', as
                 file_storage_volume_tb: 5,
                 file_storage_growth_tb_year: 1,
                 hot_data_share_percent: 30,
-                peak_rps: 80,
-                pcu_target: 50,
-                microservices_count: 5,
+                peak_rps: 100,
+                pcu_target: 0,
+                microservices_count: 6,
                 async_workers_count: 3,
+                realtime_required: true,
                 ram_per_vcpu_ratio: 4,
                 cache_size_gb: 8
             }
@@ -262,6 +263,10 @@ test('Dashboard stand cards show LOAD HDD above PROD when HDD ratio is 120%', as
         .toBeCloseTo(prodHdd * 1.2, 1);
     expect(loadRam, `LOAD RAM must be above PROD RAM: PROD=${prodRam}, LOAD=${loadRam}`)
         .toBeGreaterThan(prodRam);
+    expect(prodRam, 'fixture must keep the user-visible PROD RAM anchor at 56 GB')
+        .toBe(56);
+    expect(loadRam, `LOAD RAM must be ceil(PROD RAM × 1.2): PROD=${prodRam}, LOAD=${loadRam}`)
+        .toBe(Math.ceil(prodRam * 1.2));
 
     expect(consoleErrors).toEqual([]);
 });

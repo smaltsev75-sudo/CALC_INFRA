@@ -110,7 +110,7 @@ describe('quantityTrace: explain one ЭК quantity', () => {
         assert.equal(ratioInput.value, 0.25);
         assert.equal(ratioInput.rawValue, 0.11);
         assert.equal(ratioInput.overriddenByContext, true);
-        assert.equal(trace.qty, 16);
+        assert.equal(trace.qty, 13);
     });
 });
 

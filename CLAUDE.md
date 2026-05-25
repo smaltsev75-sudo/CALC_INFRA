@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-25, v2.20.67)
+## Current Project Lessons (2026-05-25, v2.20.68)
 
 - Do not leave questionnaire flags as silent intent. If a user-facing answer
   says DDoS, SIEM, DLP, audit logging, AI safety or fine-tune is enabled, the
@@ -53,6 +53,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - For Details stand columns, header alignment must match the numeric cells
   users compare against. Right-aligned qty/cost columns require right-aligned
   stand names and units in both the main table and the AI summary.
+- The Details AI summary is not an independent decorative table. Its stand
+  columns must align to the main Details table by measured column coordinates,
+  and the first column must state the metric unit (`₽/мес` in budget mode,
+  native qty units in qty mode).
+- Displayed AI summary money must reconcile with displayed Details rows.
+  Because `formatRub()` rounds visible row cells, the summary should aggregate
+  the same display-rounded values per stand and per item total, otherwise the
+  UI can be off by 1 ₽ while the raw model is mathematically fine.
 - Risk contribution bars must have both a stable left edge/equal width and a
   non-overlap contract with adjacent amounts. On narrow dashboard cards, wrap
   amount/percent below the bar instead of letting the bar collide with money.
@@ -61,6 +69,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   base as PROD, including additive terms such as cold file archive storage.
   Otherwise the multiplier can be mathematically applied while the stand is
   logically weaker than PROD.
+- For RAM specifically, do not round `CPU × standRatio` and then add cache.
+  Scale the complete PROD RAM baseline (`ceil(PROD vCPU) × RAM/vCPU + cache`)
+  by the resource ratio. User-visible example: `56 ГБ × 1.2 → 68 ГБ`, not
+  `66 ГБ` from intermediate CPU rounding.
 
 ## 🎨 UI/UX Review Standard для локальных ванильных веб-приложений
 
