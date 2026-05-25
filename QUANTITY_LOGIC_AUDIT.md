@@ -6,12 +6,12 @@
 
 | Проверка | Результат |
 |---|---:|
-| ЭК в справочнике | 37 |
-| Применимых qty-формул | 118 |
+| ЭК в справочнике | 46 |
+| Применимых qty-формул | 137 |
 | Ошибок на seed-расчёте | 0 |
 | Quick Start-сценариев | 2880 |
 | Ошибок в Quick Start-сценариях | 0 |
-| Проверенных ссылок Q.* и S.* в Quick Start | 1399680 |
+| Проверенных ссылок Q.* и S.* в Quick Start | 1673280 |
 
 Проверка валидирует не только итоговую сумму, а всю цепочку: ответы пользователя, формулы количества, единицы измерения, месячный множитель тарифа, риск-коэффициенты и НДС.
 
@@ -38,26 +38,26 @@
 
 | Ответ Опросника | Сколько ЭК зависит |
 |---|---:|
-| `Q.db_count` | 6 |
-| `Q.ai_hosting_mode` | 4 |
-| `Q.ai_requests_per_user_day` | 4 |
-| `Q.ai_users_share` | 4 |
+| `Q.db_count` | 7 |
+| `Q.ai_hosting_mode` | 5 |
+| `Q.ai_llm_used` | 5 |
+| `Q.ai_requests_per_user_day` | 5 |
+| `Q.ai_users_share` | 5 |
+| `Q.dau_share_of_registered_percent` | 5 |
+| `Q.registered_users_total` | 5 |
 | `Q.async_workers_count` | 4 |
-| `Q.dau_share_of_registered_percent` | 4 |
+| `Q.db_growth_gb_month` | 4 |
 | `Q.db_replicas_count` | 4 |
+| `Q.db_size_initial_gb` | 4 |
 | `Q.microservices_count` | 4 |
-| `Q.pdn_152fz` | 4 |
-| `Q.peak_rps` | 4 |
-| `Q.registered_users_total` | 4 |
-| `Q.db_growth_gb_month` | 3 |
 
 | Параметр расчёта | Сколько ЭК зависит |
 |---|---:|
-| `S.standSizeRatio.PSI` | 23 |
-| `S.standSizeRatio.LOAD` | 22 |
-| `S.standSizeRatio.IFT` | 19 |
-| `S.standSizeRatio.DEV` | 14 |
-| `S.agentStepFactor` | 2 |
+| `S.standSizeRatio.PSI` | 26 |
+| `S.standSizeRatio.LOAD` | 25 |
+| `S.standSizeRatio.IFT` | 21 |
+| `S.standSizeRatio.DEV` | 16 |
+| `S.agentStepFactor` | 3 |
 | `S.agentToolFactor` | 1 |
 
 ## Представительные сценарии
@@ -65,10 +65,10 @@
 | Сценарий | Итого/мес | vCPU ПРОМ | RAM ПРОМ, ГБ | SSD ПРОМ, ТБ | S3 ПРОМ, ТБ | WAF | LLM input, млн |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Внутренний XS | 1 581 696 ₽ | 3 | 14 | 0,5 | 0,6 | 0 | 0 |
-| B2B M | 4 271 938 ₽ | 12 | 64 | 1,72 | 5,5 | 1 | 0 |
-| FinTech M | 8 544 618 ₽ | 15 | 136 | 3,87 | 12 | 1 | 0 |
-| B2C AI M | 30 941 749 ₽ | 11 | 68 | 1,72 | 55 | 1 | 7 200 |
-| Global XL AI | 539 202 122 ₽ | 136 | 672 | 300,78 | 20 020 | 1 | 40 500 |
+| B2B M | 4 298 633 ₽ | 12 | 64 | 1,72 | 5,5 | 1 | 0 |
+| FinTech M | 9 277 389 ₽ | 15 | 136 | 3,87 | 12 | 1 | 0 |
+| B2C AI M | 31 031 643 ₽ | 11 | 68 | 1,72 | 55 | 1 | 7 200 |
+| Global XL AI | 556 920 930 ₽ | 136 | 672 | 300,78 | 20 020 | 1 | 40 500 |
 
 ## Топ-статьи в ПРОМ
 

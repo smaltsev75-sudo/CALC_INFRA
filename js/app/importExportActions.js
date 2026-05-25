@@ -1,3 +1,5 @@
+import { evaluateCalculationHealth } from '../domain/calculationHealth.js';
+
 export function importCalcAction({
     triggerEvent,
     store,
@@ -27,12 +29,13 @@ export function importCalcAction({
               'После проверки полей откройте «Элементы» → «Изменить» → «Формулы количества».'
             : '';
         store.openModal('confirm', {
-            title: `JSON: автоматически исправлено полей — ${repairs.length}`,
+            title: `JSON: режим «Автоисправить безопасное» — ${repairs.length} полей`,
             message:
                 'При загрузке JSON найдены пустые ответы, которые влияют на расчёт инфраструктуры. ' +
                 'Для них подставлены значения из defaultIfUnknown/defaultValue, чтобы CPU/RAM/SSD/HDD ' +
                 'не обнулялись молча.\n\n' +
                 sample + more + '\n\n' +
+                'Это безопасный ремонт: он не меняет смысловые ответы, а только подставляет документированные defaultIfUnknown/defaultValue или приводит числовые строки к числам.\n\n' +
                 'Можно оставить автоматический ремонт или проверить эти поля вручную.' +
                 formulaNote,
             danger: false,
@@ -43,6 +46,18 @@ export function importCalcAction({
             },
             onCancel: () => { /* автоматический ремонт принят */ }
         });
+    };
+
+    const openHealthGate = (health, repairs = [], formulaWarnings = []) => {
+        if (!health || !health.counts || health.counts.error <= 0) return false;
+        snackbar.warning('Расчёт загружен, но Health Check нашёл ошибки');
+        store.openModal('calculationHealth', {
+            gate: true,
+            source: 'jsonImport',
+            repairs,
+            formulaWarnings
+        });
+        return true;
     };
 
     const runImport = (opts) =>
@@ -59,9 +74,11 @@ export function importCalcAction({
             const repairs = Array.isArray(res.repairs) ? res.repairs : [];
             if (calc) {
                 const warnings = lintFormulas(calc.dictionaries.items, calc.dictionaries.questions);
-                if (repairs.length > 0) {
+                const health = evaluateCalculationHealth(calc);
+                const gateOpened = openHealthGate(health, repairs, warnings);
+                if (!gateOpened && repairs.length > 0) {
                     showRepairDialog(repairs, warnings);
-                } else if (warnings.length > 0) {
+                } else if (!gateOpened && warnings.length > 0) {
                     const sample = warnings.slice(0, 6).map(w => {
                         const item = calc.dictionaries.items.find(i => i.id === w.itemId);
                         const itemName = item?.name || w.itemId;

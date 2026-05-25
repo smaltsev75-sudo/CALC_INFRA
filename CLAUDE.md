@@ -2,6 +2,25 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Current Project Lessons (2026-05-25, v2.20.59)
+
+- Do not leave questionnaire flags as silent intent. If a user-facing answer
+  says DDoS, SIEM, DLP, audit logging, AI safety or fine-tune is enabled, the
+  calculation model must either have a corresponding ЭК/formula or visibly mark
+  the field as informational.
+- JSON import and Quick Start share the same trust boundary: run repair + Health
+  Check on both paths. Health `error` is a gate before trusting totals.
+- Safe repair only covers non-semantic fixes: `null`/missing critical answers,
+  documented defaults, numeric-string coercion. Semantic changes such as
+  `0.7% → 70%`, `avg_rps > peak_rps`, and seasonal coefficient application need
+  explicit user confirmation.
+- DAU below 1% is suspicious but not automatically wrong. Treat it as an
+  assumption to confirm, especially for early-stage, seasonal, or low-frequency
+  EdTech products.
+- When fixing AI token visibility, verify Dashboard, Details budget tab, Details
+  qty tab, hide-empty behavior, print/PDF, and Quick Start. A unit guard alone is
+  not enough for visible calculation trust.
+
 ## 🎨 UI/UX Review Standard для локальных ванильных веб-приложений
 
 Этот шаблон зафиксирован 2026-05-05 как обязательный формат отчёта при любом запросе на **визуальный аудит / UI/UX-ревью / вёрстку / рефакторинг CSS / создание новых экранов** на vanilla-стеке. Применяется без дополнительных уточнений и **дополняет** общий код-ревью стандарт ниже.

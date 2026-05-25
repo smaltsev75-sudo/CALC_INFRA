@@ -1964,6 +1964,18 @@
     flex-direction: column;
     gap: 16px;
 }
+.health-gate-notice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 12px 14px;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: var(--radius);
+    background: rgba(245, 158, 11, 0.10);
+    color: var(--text);
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
 .health-modal-header {
     display: flex;
     align-items: center;
@@ -2115,6 +2127,23 @@
     outline-offset: 2px;
 }
 
+.health-finding-repair-actions {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+.health-finding-repair-label {
+    color: var(--text-muted);
+    font-size: 0.84rem;
+}
+.health-finding-repair-btn {
+    min-height: 30px;
+    padding: 4px 10px;
+    font-size: 0.82rem;
+}
+
 /* ===== Светлая тема ===== */
 [data-theme="light"] .health-score-warning {
     color: #b45309;
@@ -2131,12 +2160,17 @@
     color: #0284c7;
 }
 [data-theme="light"] .health-finding-info { border-left-color: #0284c7; }
+[data-theme="light"] .health-gate-notice {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(180, 83, 9, 0.35);
+}
 
 /* ===== Печать: интерактивные health-элементы скрывать ===== */
 @media print {
     .health-sticky-chip,
     .health-modal-tabs,
-    .health-finding-fields {
+    .health-finding-fields,
+    .health-finding-repair-actions {
         display: none !important;
     }
     .health-finding-card {

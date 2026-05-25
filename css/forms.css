@@ -2349,6 +2349,44 @@ td.analytics-td-total {
     cursor: help;
 }
 
+.field-impact-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    line-height: 1.4;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border: 1px solid transparent;
+    cursor: help;
+}
+
+.field-impact-badge--active {
+    background: rgba(34, 211, 238, 0.12);
+    color: rgb(103, 232, 249);
+    border-color: rgba(34, 211, 238, 0.30);
+}
+
+.field-impact-badge--info {
+    background: rgba(148, 163, 184, 0.12);
+    color: rgb(203, 213, 225);
+    border-color: rgba(148, 163, 184, 0.24);
+}
+
+[data-theme="light"] .field-impact-badge--active {
+    background: rgba(8, 145, 178, 0.10);
+    color: rgb(14, 116, 144);
+    border-color: rgba(8, 145, 178, 0.28);
+}
+
+[data-theme="light"] .field-impact-badge--info {
+    background: rgba(71, 85, 105, 0.08);
+    color: rgb(71, 85, 105);
+    border-color: rgba(71, 85, 105, 0.22);
+}
+
 /* Профиль / Из мастера — зелёный (positive автозаполнение). */
 .field-source-badge--wizard,
 .field-source-badge--profile {

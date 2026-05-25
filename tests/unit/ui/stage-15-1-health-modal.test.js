@@ -57,7 +57,7 @@ describe('Stage 15.1 — calculationHealthModal.js', () => {
         assert.match(MODAL_SRC, /groupHealthFindings/);
     });
     it('aria-labelledby (через modalShell) — title задан', () => {
-        assert.match(MODAL_SRC, /title\s*:\s*['"]Качество расчёта['"]/);
+        assert.match(MODAL_SRC, /title\s*:\s*isGate\s*\?\s*['"]Проверка расчёта перед использованием['"]\s*:\s*['"]Качество расчёта['"]/);
     });
 });
 

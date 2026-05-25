@@ -96,9 +96,9 @@ export const PROVIDER_TRUST_MATRIX_CAPABILITIES = Object.freeze([
     }),
     Object.freeze({
         key: 'waf',
-        label: 'WAF',
-        title: TERM_HINTS.WAF,
-        itemIds: Object.freeze(['network-waf'])
+        label: 'WAF/DDoS',
+        title: `${TERM_HINTS.WAF}\n${TERM_HINTS.DDoS}`,
+        itemIds: Object.freeze(['network-waf', 'network-ddos-protection'])
     }),
     Object.freeze({
         key: 'traffic',
@@ -115,10 +115,26 @@ export const PROVIDER_TRUST_MATRIX_CAPABILITIES = Object.freeze([
 ]);
 
 export const PROVIDER_PRICE_GAPS = Object.freeze({
+    sbercloud: Object.freeze({
+        'network-ddos-protection': Object.freeze({
+            status: 'by-request',
+            description: 'DDoS-защита зависит от профиля атаки и в публичном прайсе требует отдельного КП. В расчёте используется базовый ориентир.'
+        })
+    }),
+    yandex: Object.freeze({
+        'network-ddos-protection': Object.freeze({
+            status: 'by-request',
+            description: 'DDoS-защита зависит от профиля атаки и в публичном прайсе требует отдельного КП. В расчёте используется базовый ориентир.'
+        })
+    }),
     vk: Object.freeze({
         'network-waf': Object.freeze({
             status: 'by-request',
             description: 'VK Cloud публикует цену WAF по запросу. В расчёте эта позиция остаётся на базовой оценке, пока не импортирован ручной прайс или КП.'
+        }),
+        'network-ddos-protection': Object.freeze({
+            status: 'by-request',
+            description: 'VK Cloud публикует цену DDoS-защиты по запросу. В расчёте эта позиция остаётся на базовой оценке, пока не импортирован ручной прайс или КП.'
         })
     })
 });
@@ -129,7 +145,7 @@ export const PROVIDER_PRICE_WARNINGS = Object.freeze({
             id: 'vk-waf-ddos-by-request',
             label: 'WAF/DDoS по запросу',
             title: `${TERM_HINTS.WAF}\n${TERM_HINTS.DDoS}\n\nУ VK Cloud эти защитные сервисы в публичном прайсе указаны как цена по запросу. Для финального бюджета импортируйте КП или ручной прайс.`,
-            affectedItemIds: Object.freeze(['network-waf']),
+            affectedItemIds: Object.freeze(['network-waf', 'network-ddos-protection']),
             affectedQuestionIds: Object.freeze(['waf_required', 'ddos_protection_required'])
         })
     ])

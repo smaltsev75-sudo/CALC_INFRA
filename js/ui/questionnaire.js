@@ -126,6 +126,52 @@ function renderSourceBadge(meta) {
     });
 }
 
+const QUESTION_FORMULA_IMPACT_CACHE = new WeakMap();
+const DERIVED_CALCULATION_QUESTION_IDS = new Set([
+    'ai_agent_type',
+    'agent_complexity',
+    'agent_parallel_specialists',
+    'agent_tool_use_share'
+]);
+
+function escapeRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildQuestionFormulaImpactMap(calc) {
+    if (!calc || typeof calc !== 'object') return new Map();
+    const cached = QUESTION_FORMULA_IMPACT_CACHE.get(calc);
+    if (cached) return cached;
+
+    const formulas = [];
+    for (const item of calc.dictionaries?.items || []) {
+        for (const formula of Object.values(item?.qtyFormulas || {})) {
+            if (typeof formula === 'string' && formula) formulas.push(formula);
+        }
+    }
+    const joined = formulas.join('\n');
+    const map = new Map();
+    for (const q of getRenderableQuestions(calc)) {
+        const re = new RegExp(`\\bQ\\.${escapeRegExp(q.id)}\\b`);
+        map.set(q.id, re.test(joined) || DERIVED_CALCULATION_QUESTION_IDS.has(q.id));
+    }
+    QUESTION_FORMULA_IMPACT_CACHE.set(calc, map);
+    return map;
+}
+
+function renderFormulaImpactBadge(q, calc) {
+    const impactMap = buildQuestionFormulaImpactMap(calc);
+    const affects = impactMap.get(q.id) === true;
+    const tip = affects
+        ? 'Ответ используется в формулах ЭК и влияет на расчёт бюджета.'
+        : 'Ответ сохраняется для контекста и пояснений; текущие формулы ЭК его не используют.';
+    return el('span', {
+        class: ['field-impact-badge', affects ? 'field-impact-badge--active' : 'field-impact-badge--info'],
+        attrs: { title: tip, 'aria-label': tip },
+        text: affects ? 'Влияет на расчёт' : 'Информационное поле'
+    });
+}
+
 /**
  * Объединённый источник списка вопросов для рендера + счётчиков.
  *
@@ -912,6 +958,7 @@ function renderQuestionField(q, calc, state, ctx) {
     // 14.U2: бейдж «Из профиля / Из масштаба / Вы изменили» рядом с label.
     // Скрываем для пустых полей (бессмысленно «Вы изменили» при null/'').
     const sourceBadge = !isUnknown ? renderSourceBadge(calc.answersMeta?.[q.id]) : null;
+    const formulaImpactBadge = renderFormulaImpactBadge(q, calc);
 
     // 12.U1: дублирующая ⓘ-иконка убрана — tooltip уже навешен на field-label
     // через title=fullHint (см. ниже). Это снижает визуальный шум и убирает
@@ -919,6 +966,7 @@ function renderQuestionField(q, calc, state, ctx) {
     const labelRow = el('span', { class: 'field-label', title: fullHint },
         el('span', { class: 'field-label-text', text: q.title }),
         sourceBadge,
+        formulaImpactBadge,
         warningIcon,
         unknownToggle
     );

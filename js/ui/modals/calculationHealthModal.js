@@ -73,12 +73,15 @@ export function renderCalculationHealthModal(state, ctx) {
 
     const onClose = () => ctx.closeModal('calculationHealth');
     const calc = state.activeCalc;
+    const isGate = !!m.gate;
 
     return modalShell({
-        title: 'Качество расчёта',
+        title: isGate ? 'Проверка расчёта перед использованием' : 'Качество расчёта',
         size: 'lg',
+        closeable: !isGate,
         onClose,
         children: el('div', { class: 'health-modal-body' },
+            isGate ? renderGateNotice(m) : null,
             calc ? renderBody(calc, state, ctx, onClose) : renderEmpty()
         ),
         footer: el('div', { class: 'health-modal-footer' },
@@ -107,11 +110,33 @@ export function renderCalculationHealthModal(state, ctx) {
                 : null,
             el('button', {
                 class: 'btn btn-primary',
-                title: 'Закрыть (Esc)',
+                title: isGate
+                    ? 'Продолжить с текущими допущениями после просмотра Health Check'
+                    : 'Закрыть (Esc)',
                 onClick: onClose
-            }, 'Закрыть')
+            }, isGate ? 'Проверил, продолжить' : 'Закрыть')
         )
     });
+}
+
+function renderGateNotice(modalState) {
+    const sourceText = modalState?.source === 'quickStart'
+        ? 'Расчёт создан через Quick Start и сразу прогнан через Health Check.'
+        : 'JSON загружен и перед использованием прогнан через Health Check.';
+    const repairCount = Array.isArray(modalState?.repairs) ? modalState.repairs.length : 0;
+    const formulaWarningCount = Array.isArray(modalState?.formulaWarnings)
+        ? modalState.formulaWarnings.length
+        : 0;
+    const details = [];
+    if (repairCount > 0) details.push(`безопасно автозаполнено полей: ${repairCount}`);
+    if (formulaWarningCount > 0) details.push(`замечаний к формулам: ${formulaWarningCount}`);
+    return el('div', { class: 'health-gate-notice', attrs: { role: 'note' } },
+        el('strong', { text: sourceText }),
+        details.length > 0
+            ? el('span', { text: ` Дополнительно: ${details.join(' · ')}.` })
+            : null,
+        el('span', { text: ' Проверьте ошибки и предупреждения ниже; кнопки в карточках применяют только явные исправления или фиксируют подтверждённое допущение.' })
+    );
 }
 
 /* ---------- Тело: header + tabs + список ---------- */
@@ -228,6 +253,8 @@ function renderFindingCard(f, calc, ctx, onClose) {
         }, fid)
     );
 
+    const repairActions = renderFindingRepairActions(f, calc, ctx);
+
     return el('article', {
         class: ['health-finding-card', `health-finding-${f.severity}`]
     },
@@ -253,7 +280,59 @@ function renderFindingCard(f, calc, ctx, onClose) {
                         ctx.openAssumptionsRegisterModal(f.fieldIds);
                     }
                 }, 'Допущения →'))
-            : null
+            : null,
+        repairActions
+    );
+}
+
+function renderFindingRepairActions(f, calc, ctx) {
+    const actions = [];
+    if (f.id === 'consistency-avg-rps-gt-peak') {
+        const avg = Number(calc?.answers?.avg_rps);
+        if (Number.isFinite(avg) && avg > 0 && typeof ctx.setAnswer === 'function') {
+            actions.push(el('button', {
+                class: 'btn btn-ghost health-finding-repair-btn',
+                attrs: { type: 'button' },
+                title: 'Подтвердить исправление: пиковый RPS станет не меньше среднего',
+                onClick: () => ctx.setAnswer('peak_rps', avg)
+            }, `Поднять peak RPS до ${avg}`));
+        }
+    }
+    if (f.id === 'risk-seasonal-activity-not-applied') {
+        if (typeof ctx.setSetting === 'function') {
+            actions.push(el('button', {
+                class: 'btn btn-ghost health-finding-repair-btn',
+                attrs: { type: 'button' },
+                title: 'Включить риск-коэффициенты и задать сезонную надбавку 15%',
+                onClick: () => {
+                    ctx.setSetting('applyRiskFactors', true);
+                    const current = Number(calc?.settings?.kSeasonal);
+                    if (!Number.isFinite(current) || current <= 0) ctx.setSetting('kSeasonal', 0.15);
+                }
+            }, 'Учесть сезонность 15%'));
+        }
+        if (typeof ctx.acknowledgeHealthFinding === 'function') {
+            actions.push(el('button', {
+                class: 'btn btn-ghost health-finding-repair-btn',
+                attrs: { type: 'button' },
+                title: 'Зафиксировать, что сезонный пик уже включён в параметры нагрузки',
+                onClick: () => ctx.acknowledgeHealthFinding(f.id, f.fieldIds)
+            }, 'Пик уже учтён в нагрузке'));
+        }
+    }
+    if (f.id === 'consistency-dau-share-lower-than-1-percent'
+            && typeof ctx.acknowledgeHealthFinding === 'function') {
+        actions.push(el('button', {
+            class: 'btn btn-ghost health-finding-repair-btn',
+            attrs: { type: 'button' },
+            title: 'Подтвердить низкую ежедневную активность как осознанное допущение',
+            onClick: () => ctx.acknowledgeHealthFinding(f.id, f.fieldIds)
+        }, 'Подтвердить 0,7%'));
+    }
+    if (actions.length === 0) return null;
+    return el('div', { class: 'health-finding-repair-actions' },
+        el('span', { class: 'health-finding-repair-label', text: 'Действия: ' }),
+        ...actions
     );
 }
 

@@ -140,7 +140,7 @@ describe('providerAnalytics — trust metadata reaches comparison matrix', () =>
             'traffic',
             'licenses'
         ]);
-        assert.ok(PROVIDER_TRUST_MATRIX_CAPABILITIES.some(c => c.label === 'WAF'));
+        assert.ok(PROVIDER_TRUST_MATRIX_CAPABILITIES.some(c => c.label === 'WAF/DDoS'));
     });
 
     it('VK WAF — по запросу, VK licenses — частично, Yandex compute — verified', () => {

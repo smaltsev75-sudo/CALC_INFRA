@@ -69,7 +69,7 @@ describe('app importExportActions', () => {
         assert.deepEqual(harness.snackbarCalls, [['success', 'Расчёт загружен']]);
         assert.equal(harness.modals.length, 1);
         assert.equal(harness.modals[0].type, 'confirm');
-        assert.match(harness.modals[0].payload.title, /автоматически исправлено полей/);
+        assert.match(harness.modals[0].payload.title, /Автоисправить безопасное/);
         assert.match(harness.modals[0].payload.message, /Соотношение RAM к CPU/);
         assert.match(harness.modals[0].payload.message, /замечания к формулам: 1/);
 
@@ -100,5 +100,29 @@ describe('app importExportActions', () => {
         await harness.modals[0].payload.onReplace();
         assert.equal(harness.importCalls[1].onDuplicate, 'replace');
         assert.strictEqual(harness.importCalls[1]._preloadedRepairs, repairs);
+    });
+
+    it('открывает обязательный Health gate при error после JSON-импорта', async () => {
+        const activeCalc = {
+            answers: { avg_rps: 80, peak_rps: 50 },
+            settings: {},
+            dictionaries: { items: [], questions: [] }
+        };
+        const harness = createHarness({
+            activeCalc,
+            importResult: { ok: true, repairs: [] }
+        });
+
+        await harness.run();
+
+        assert.deepEqual(harness.tabs, ['questionnaire']);
+        assert.deepEqual(harness.snackbarCalls, [
+            ['success', 'Расчёт загружен'],
+            ['warning', 'Расчёт загружен, но Health Check нашёл ошибки']
+        ]);
+        assert.equal(harness.modals.length, 1);
+        assert.equal(harness.modals[0].type, 'calculationHealth');
+        assert.equal(harness.modals[0].payload.gate, true);
+        assert.equal(harness.modals[0].payload.source, 'jsonImport');
     });
 });

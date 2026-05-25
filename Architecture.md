@@ -2,7 +2,7 @@
 
 Целевая аудитория — архитекторы, разработчики, тестировщики. Здесь только то, что не выводится из чтения README.md / UserManual.md: устройство кода, потоки данных, паттерны защиты целостности и тестовая инфраструктура.
 
-**Версия 2.20.33** (provider trust matrix, дата актуальности прайсов в UI, VK WAF/DDoS warnings в Health/Details). Schema v20.
+**Версия 2.20.59** (Health gate при JSON/Quick Start, DDoS/SIEM/DLP/audit/AI safety/fine-tune как бюджетные ЭК, статусы влияния вопросов). Schema v20.
 
 ---
 
@@ -656,7 +656,7 @@ const reduced = extractAtMediaBody(read('css/forms.css'),
 | [items-wrap-overflow.test.js](tests/unit/ui/) | Запрет `overflow: auto/hidden` на ancestor sticky-thead таблиц (3 жертвы за историю проекта) |
 | [stand-le-prod-invariant.test.js](tests/unit/architecture/) + [invariant-load-le-prod.test.js](tests/unit/domain/) | DEV/IFT/PSI не превосходят ПРОМ; LOAD допускает capacity до 1.20; AI-factor ≤ 1.00 |
 | [app-version-sync.test.js](tests/unit/architecture/) | `APP_VERSION` ↔ `package.json.version` |
-| [seed-formulas.test.js](tests/unit/domain/) | Каждая qty-формула 36 ЭК парсится и вычисляется в финитное ≥0 число |
+| [seed-formulas.test.js](tests/unit/domain/) | Каждая qty-формула 46 ЭК парсится и вычисляется в финитное ≥0 число |
 | [no-emoji-in-source.test.js](tests/unit/architecture/) | Эмодзи только в .md и комментариях, не в `text:` UI-узлов |
 | Линтер `toISOString().slice(0, N)` | Замена на `dateForFilename` / `formatDate*` |
 
@@ -733,7 +733,7 @@ const reduced = extractAtMediaBody(read('css/forms.css'),
 │   │   ├── calcImpact.js             # what-if simulation (13.3)
 │   │   ├── calcVersioning.js         # applyOverrideToItems, deltas, isCalcStale
 │   │   ├── providerOverlay.js, providerAnalytics.js
-│   │   ├── seed.js                   # 36 ЭК + 80+ вопросов + DEFAULT_SETTINGS
+│   │   ├── seed.js                   # 46 ЭК + 80+ вопросов + DEFAULT_SETTINGS
 │   │   ├── validation.js, validationFormulaLint.js
 │   │   ├── calculationHealth.js, calculationHealthChecks.js
 │   │   ├── costOptimizationPlanner*.js

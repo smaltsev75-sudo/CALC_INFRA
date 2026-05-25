@@ -12,6 +12,7 @@ import { STORAGE_KEYS, STAND_IDS } from './utils/constants.js';
 import * as calcList from './controllers/calcListController.js';
 import * as calc from './controllers/calcController.js';
 import { flushPendingCommit } from './controllers/calcController.js';
+import { evaluateCalculationHealth } from './domain/calculationHealth.js';
 import { commitActiveCalc } from './services/calcPersistence.js';
 import * as itemCtl from './controllers/itemController.js';
 import * as questionCtl from './controllers/questionController.js';
@@ -197,7 +198,16 @@ const ctx = {
        на полях опросника). Старый текст «Расчёт создан из профиля «<industry>»»
        перекрывал footer Cost Optimization Planner. */
     createCalcFromWizard(name, wizardInput) {
-        return createCalcFromWizardAction({ name, wizardInput, calcList, store, snackbar });
+        const created = createCalcFromWizardAction({ name, wizardInput, calcList, store, snackbar });
+        const calc = store.getState().activeCalc;
+        if (calc) {
+            const health = evaluateCalculationHealth(calc);
+            if (health.counts.error > 0) {
+                snackbar.warning('Quick Start создал расчёт, но Health Check нашёл ошибки');
+                store.openModal('calculationHealth', { gate: true, source: 'quickStart' });
+            }
+        }
+        return created;
     },
     openCalc(id) {
         calcList.openCalc(id);
@@ -419,6 +429,9 @@ const ctx = {
             const fn = r.anomaly.level === 'warn' ? snackbar.warning : snackbar.info;
             fn(r.anomaly.message);
         }
+    },
+    acknowledgeHealthFinding(findingId, fieldIds) {
+        return calc.acknowledgeHealthFinding(findingId, fieldIds);
     },
     setSearch(tabId, q)       { calc.setSearch(tabId, q); },
     setUi(patch)              { store.setUi(patch); },

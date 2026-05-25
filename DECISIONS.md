@@ -1,5 +1,44 @@
 # Журнал решений и допущений
 
+## 25.05.2026 · PATCH 2.20.59 — Health gate + budget coverage for security/AI flags
+
+**Контекст.** Повторный аудит пользовательского JSON показал опасный класс
+ошибок: пользователь включает DDoS, SIEM, DLP, audit logging, AI safety или
+fine-tune, а бюджет не меняется либо причина не видна. Отдельно: Health Check
+при загрузке JSON должен быть gate для ошибок, Quick Start не должен иметь
+отдельную «счастливую дорожку», а в Опроснике нужно явно показывать, какие
+вопросы влияют на формулы.
+
+**Решение.**
+
+- JSON-импорт и Quick Start после создания/загрузки прогоняют общий Health
+  Check. При `error` открывается gate-модалка без закрытия крестиком; продолжить
+  можно только явным действием «Проверил, продолжить».
+- Safe auto-repair при JSON-импорте явно назван режимом «Автоисправить
+  безопасное»: он чинит только `null`/пустые критичные ответы, out-of-range
+  критичные числа и числовые строки.
+- Confirmed repair-actions добавлены в Health-модалку: `avg_rps > peak_rps`,
+  сезонность без применения, подтверждение DAU < 1%. `dau_share=0.7%` теперь
+  трактуется как возможное осознанное допущение, а не как автоматическая
+  ошибка «0.7 вместо 70».
+- В Опроснике рядом с каждым вопросом появился статус по фактическому scan
+  `Q.<id>` в qty-формулах: «Влияет на расчёт» / «Информационное поле».
+- Seed расширен до 46 ЭК: добавлены DDoS, SIEM integration + SIEM monitoring,
+  DLP implementation + license, audit-log storage, AI safety moderation tokens,
+  AI safety service, fine-tuning run. Эти ЭК подмешиваются в legacy-расчёты через
+  `enrichLegacyDictionaryWithAgentSeed`.
+- Provider trust matrix учитывает WAF/DDoS как capability с price-by-request
+  для DDoS, чтобы benchmark не выдавал ложную точность.
+
+**Проверки.**
+
+- Новый regression-test `security-ai-flags-affect-budget`: все перечисленные
+  флаги используются в qtyFormula и включение каждого меняет итог.
+- Import flow test: при Health `error` после JSON-импорта открывается gate.
+- Business golden snapshots пересчитаны после новых ЭК безопасности/AI.
+- UserManual/README/Architecture/Wizard profiles обновлены под 46 ЭК и новые
+  статусы вопросов.
+
 ## 25.05.2026 · PATCH 2.20.58 — Dashboard AI workload tokens decoupled from external API billing
 
 **Контекст.** Пользовательский сценарий: раздел «Объём токенов» заполнен, но

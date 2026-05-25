@@ -3007,6 +3007,31 @@ export const SEED_ITEMS = [
         },
         formulaHelp: 'qty = 1 при Q.waf_required, иначе 0.'
     },
+    {
+        id: 'network-ddos-protection',
+        name: 'Защита от DDoS-атак',
+        unit: 'контур',
+        pricePerUnit: 30000,  // Ориентир из impact вопроса ddos_protection_required: базовая защита L3/L4 15-30 тыс. ₽/мес.; для L7 нужен отдельный КП.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'SECURITY',
+        resourceClass: 'NETWORK',
+        applicableStands: ['PROD'],
+        description:
+            'Базовая защита промышленного контура от DDoS-атак на уровне провайдера или специализированного сервиса.\n' +
+            'Применять при включённом требовании DDoS-защиты.\n' +
+            'Единица измерения: 1 защищённый промышленный контур.\n' +
+            'Пример: публичный EdTech/B2C-сервис → 1 контур DDoS-защиты на ПРОМ.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельный ориентир из вопроса «Требуется защита от DDoS-атак», 2026-05.\n' +
+            'Расчёт: верхняя граница базового L3/L4-диапазона 30 000 ₽/мес. без НДС.\n' +
+            'ВАЖНО: для расширенной L7-защиты и крупных атак требуется КП провайдера; публичные прайсы часто дают цену по запросу.',
+        qtyFormulas: {
+            PROD: 'if(Q.ddos_protection_required, 1, 0)'
+        },
+        formulaHelp: 'qty = 1 на ПРОМ при Q.ddos_protection_required. Расширенный L7-DDoS уточняется КП.'
+    },
 
     /* ===== LICENSE / SERVICE / TRAFFIC / AI_LLM (12 ЭК) ===== */
     {
@@ -3096,6 +3121,122 @@ export const SEED_ITEMS = [
             LOAD: 'if(Q.pdn_152fz || Q.fstec_certification_required, ceil((Q.microservices_count + Q.async_workers_count + Q.db_count * (1 + Q.db_replicas_count)) * S.standSizeRatio.LOAD), 0)'
         },
         formulaHelp: 'Узлы под СЗИ при включённых ПДн/ФСТЭК. Иначе 0.'
+    },
+    {
+        id: 'one-siem-integration',
+        name: 'Интеграция с SIEM',
+        unit: 'проект',
+        pricePerUnit: 350000,  // Ориентир из impact вопроса siem_integration_required: 200-500 тыс. ₽ разово.
+        billingInterval: 'oneTime',
+        vendor: '',
+        category: 'SECURITY',
+        resourceClass: 'ONE_TIME',
+        applicableStands: ['PROD'],
+        description:
+            'Разовая интеграция приложения и инфраструктуры с SIEM: нормализация событий, маршрутизация логов, базовые правила корреляции.\n' +
+            'Применять при Q.siem_integration_required.\n' +
+            'Единица измерения: 1 проект интеграции.\n' +
+            'Пример: продукт передаёт события ИБ в корпоративный SOC → 1 интеграционный проект.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельный ориентир из вопроса «Требуется интеграция с SIEM», 2026-05.\n' +
+            'Расчёт: середина диапазона 200-500 тыс. ₽ = 350 000 ₽ разово.\n' +
+            'ВАЖНО: точный объём зависит от SIEM-платформы, числа источников событий и требований SOC.',
+        qtyFormulas: { PROD: 'if(Q.siem_integration_required, 1, 0)' },
+        formulaHelp: 'qty = 1 при Q.siem_integration_required.'
+    },
+    {
+        id: 'security-siem-monitoring',
+        name: 'SIEM: сбор и корреляция событий',
+        unit: 'контур',
+        pricePerUnit: 50000,  // Ориентир из impact вопроса siem_integration_required: 30-80 тыс. ₽/мес. на поддержку/ингест.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'SECURITY',
+        resourceClass: 'SERVICE',
+        applicableStands: ['PROD'],
+        description:
+            'Ежемесячный расход на сбор, хранение и первичную корреляцию событий безопасности в SIEM/MSSP-контуре.\n' +
+            'Применять при Q.siem_integration_required.\n' +
+            'Единица измерения: 1 промышленный контур мониторинга.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельный ориентир из вопроса «Требуется интеграция с SIEM», 2026-05.\n' +
+            'Расчёт: середина диапазона 30-80 тыс. ₽/мес. = 50 000 ₽/мес.\n' +
+            'ВАЖНО: полноценная лицензия SIEM/SOC может быть существенно дороже; при enterprise-контуре импортируйте КП.',
+        qtyFormulas: { PROD: 'if(Q.siem_integration_required, 1, 0)' },
+        formulaHelp: 'qty = 1 при Q.siem_integration_required.'
+    },
+    {
+        id: 'security-dlp-implementation',
+        name: 'Внедрение DLP',
+        unit: 'проект',
+        pricePerUnit: 1000000,  // Ориентир ниже диапазона question-impact: внедрение/лицензии 1-5 млн ₽.
+        billingInterval: 'oneTime',
+        vendor: '',
+        category: 'SECURITY',
+        resourceClass: 'ONE_TIME',
+        applicableStands: ['PROD'],
+        description:
+            'Разовое внедрение DLP: политики, классификация данных, подключение каналов, первичная настройка правил.\n' +
+            'Применять при Q.dlp_required.\n' +
+            'Единица измерения: 1 проект внедрения.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельный ориентир из вопроса «Требуется система предотвращения утечек (DLP)», 2026-05.\n' +
+            'Расчёт: 1 000 000 ₽ разово как нижняя граница проекта внедрения.\n' +
+            'ВАЖНО: точная сумма зависит от каналов контроля, числа пользователей и выбранного DLP-вендора.',
+        qtyFormulas: { PROD: 'if(Q.dlp_required, 1, 0)' },
+        formulaHelp: 'qty = 1 при Q.dlp_required.'
+    },
+    {
+        id: 'security-dlp-license',
+        name: 'DLP: лицензия и сопровождение',
+        unit: 'контур/год',
+        pricePerUnit: 1500000,  // Ориентир из вопроса dlp_required: лицензия 1.5-5 млн ₽/год.
+        billingInterval: 'annual',
+        vendor: '',
+        category: 'SECURITY',
+        resourceClass: 'LICENSE',
+        applicableStands: ['PROD'],
+        description:
+            'Годовая лицензия и базовое сопровождение DLP-контура для предотвращения утечек данных.\n' +
+            'Применять при Q.dlp_required.\n' +
+            'Единица измерения: 1 защищаемый контур в год.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельный ориентир из вопроса «Требуется система предотвращения утечек (DLP)», 2026-05.\n' +
+            'Расчёт: нижняя граница лицензии 1 500 000 ₽/год.\n' +
+            'ВАЖНО: для банка/госсектора и большого числа рабочих мест требуется КП — публичная оценка может быть ниже реальности.',
+        qtyFormulas: { PROD: 'if(Q.dlp_required, 1, 0)' },
+        formulaHelp: 'qty = 1 при Q.dlp_required. Тариф annual.'
+    },
+    {
+        id: 'security-audit-log-storage-gb',
+        name: 'Хранилище журналов аудита',
+        unit: 'ГБ',
+        pricePerUnit: 10.07,  // Та же цена raw SSD storage, что у rag-vector-db-gb: 0.0138 ₽/ГБ·ч × 730.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'SECURITY',
+        resourceClass: 'STORAGE',
+        applicableStands: ['PSI','PROD','LOAD'],
+        description:
+            'Индексированное хранилище журналов действий пользователей и администраторов для расследований и compliance.\n' +
+            'Применять при Q.audit_logging_required.\n' +
+            'Единица измерения: 1 ГБ хранилища журналов в месяц.\n' +
+            'Пример: 200 ГБ БД × 15% аудит-логов = 30 ГБ, но PROD имеет минимальный практический объём 1000 ГБ.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: тот же raw SSD storage-ориентир, что у RAG/vector DB, 2026-03-26.\n' +
+            'Расчёт: 10.07 ₽/ГБ/мес; минимум 1 ТБ на ПРОМ для searchable audit log.\n' +
+            'ВАЖНО: WORM/архив на 3-7 лет и полноценный SIEM могут потребовать отдельного КП.',
+        qtyFormulas: {
+            PSI:  'if(Q.audit_logging_required, max(100, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15 * S.standSizeRatio.PSI), 0)',
+            PROD: 'if(Q.audit_logging_required, max(1000, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15), 0)',
+            LOAD: 'if(Q.audit_logging_required, max(100, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15 * S.standSizeRatio.LOAD), 0)'
+        },
+        formulaHelp: 'ГБ audit log = 15% от годового объёма БД × коэф. стенда; минимум 1000 ГБ на ПРОМ и 100 ГБ на ПСИ/НТ.'
     },
     {
         id: 'service-email-per-1k',
@@ -3308,6 +3449,89 @@ export const SEED_ITEMS = [
             LOAD: 'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_output_tokens * 30 / 1000000 * S.agentStepFactor * S.standSizeRatio.LOAD), 0)'
         },
         formulaHelp: 'Млн исх. токенов = DAU × доля_AI × запросов/день × токенов_ответа × 30 дн / 1M × агентский_множитель × коэф. стенда. Множитель = 1 при выключенном ai_agent_mode; 3..45 при включённом.'
+    },
+    {
+        id: 'ai-safety-moderation-tokens-1m',
+        name: 'AI safety: модерационные токены',
+        unit: 'млн токенов',
+        pricePerUnit: 500,  // Тот же ориентир, что у llm-tokens-input/output для GigaChat 2 Pro, пока нет отдельного тарифа модератора.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'AI',
+        resourceClass: 'AI_LLM',
+        dashboardAiMetric: 'TOKENS',
+        applicableStands: ['DEV','IFT','PSI','PROD','LOAD'],
+        description:
+            'Дополнительные токены классификационной/модерационной модели для AI safety layer: проверка входа и выхода, prompt-injection guard, фильтрация утечек.\n' +
+            'Применять при Q.ai_llm_used и Q.ai_safety_layer для external/private-cloud LLM.\n' +
+            'Единица измерения: 1 млн токенов модерации в месяц.\n' +
+            'Пример: если базовая LLM-нагрузка 100 млн токенов/мес, safety overhead 10% = 10 млн токенов/мес.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельный ориентир из вопроса «Слой безопасности и модерации ИИ», 2026-05.\n' +
+            'Расчёт: 10% от базовых input+output токенов LLM, цена как у основного LLM-тарифа.\n' +
+            'ВАЖНО: если provider даёт отдельный тариф на moderation endpoint, импортируйте его вручную.',
+        qtyFormulas: {
+            DEV:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor) * 0.10 * S.standSizeRatio.DEV), 0)',
+            IFT:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor) * 0.10 * S.standSizeRatio.IFT), 0)',
+            PSI:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor) * 0.10 * S.standSizeRatio.PSI), 0)',
+            PROD: 'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor) * 0.10), 0)',
+            LOAD: 'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor) * 0.10 * S.standSizeRatio.LOAD), 0)'
+        },
+        formulaHelp: 'Млн safety-токенов = 10% × (input после кэша + output) × DAU × доля_AI × запросов/день × 30 / 1M × агентский_множитель × AI-коэф. стенда.'
+    },
+    {
+        id: 'ai-safety-layer-service',
+        name: 'AI safety: сервис модерации',
+        unit: 'контур',
+        pricePerUnit: 100000,  // Ориентир из impact вопроса ai_safety_layer: 50-150 тыс. ₽/мес. на инфраструктуру модератора.
+        billingInterval: 'monthly',
+        vendor: '',
+        category: 'AI',
+        resourceClass: 'SERVICE',
+        applicableStands: ['DEV','IFT','PSI','PROD','LOAD'],
+        description:
+            'Сервисный контур AI safety layer: policy rules, moderation gateway, журналирование решений и сопровождение правил.\n' +
+            'Применять при Q.ai_llm_used и Q.ai_safety_layer.\n' +
+            'Единица измерения: 1 контур модерации в месяц.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельный ориентир из вопроса «Слой безопасности и модерации ИИ», 2026-05.\n' +
+            'Расчёт: середина диапазона 50-150 тыс. ₽/мес. = 100 000 ₽/мес.; непроизводственные стенды масштабируются AI-фактором стенда.\n' +
+            'ВАЖНО: при on-prem/GPU или enterprise-policy контуре уточняйте стоимость внедрения и сопровождения отдельно.',
+        qtyFormulas: {
+            DEV:  'if(Q.ai_llm_used && Q.ai_safety_layer, S.standSizeRatio.DEV, 0)',
+            IFT:  'if(Q.ai_llm_used && Q.ai_safety_layer, S.standSizeRatio.IFT, 0)',
+            PSI:  'if(Q.ai_llm_used && Q.ai_safety_layer, S.standSizeRatio.PSI, 0)',
+            PROD: 'if(Q.ai_llm_used && Q.ai_safety_layer, 1, 0)',
+            LOAD: 'if(Q.ai_llm_used && Q.ai_safety_layer, S.standSizeRatio.LOAD, 0)'
+        },
+        formulaHelp: 'qty = AI-коэф. стенда при включённом AI safety layer; PROD = 1.'
+    },
+    {
+        id: 'ai-finetune-run',
+        name: 'Fine-tuning модели',
+        unit: 'прогон/год',
+        pricePerUnit: 500000,  // Ориентир из вопроса ai_finetune_runs_per_year: один прогон 500 тыс. - 5 млн ₽.
+        billingInterval: 'annual',
+        vendor: '',
+        category: 'AI',
+        resourceClass: 'ONE_TIME',
+        applicableStands: ['PROD'],
+        description:
+            'Подготовка датасета, запуск и валидация одного fine-tuning прогона модели в год.\n' +
+            'Применять при Q.ai_llm_used и Q.ai_finetune_needed.\n' +
+            'Единица измерения: 1 прогон fine-tuning в год.\n' +
+            'Пример: 4 квартальных обновления модели → 4 прогона/год.\n' +
+            '\n' +
+            '— Цена-ориентир —\n' +
+            'Источник: модельный ориентир из вопроса «Прогонов дообучения модели в год», 2026-05.\n' +
+            'Расчёт: нижняя граница 500 000 ₽ за прогон.\n' +
+            'ВАЖНО: дорогие GPU, подготовка датасета и human evaluation легко поднимают цену до 5 млн ₽ за прогон; для финального бюджета нужен КП.',
+        qtyFormulas: {
+            PROD: 'if(Q.ai_llm_used && Q.ai_finetune_needed, Q.ai_finetune_runs_per_year, 0)'
+        },
+        formulaHelp: 'qty = Q.ai_finetune_runs_per_year при включённом fine-tuning. Тариф annual.'
     },
     {
         id: 'rag-embeddings-1m',
@@ -3887,7 +4111,18 @@ const _AGENT_QUESTION_IDS = [
 const _AGENT_ITEM_IDS = [
     'ai-agent-sandbox-vcpu', 'ai-agent-memory-storage-tb',
     // Stage RAG-split: новый ЭК для Managed RAG-сервиса (Cloud.ru Evolution Managed RAG и аналоги).
-    'rag-managed-knowledge-base-gb'
+    'rag-managed-knowledge-base-gb',
+    // v2.20.59: ответы DDoS/SIEM/DLP/audit/AI safety/fine-tune больше не должны быть
+    // информационными флагами без бюджета. Подмешиваем новые ЭК в legacy-расчёты.
+    'network-ddos-protection',
+    'one-siem-integration',
+    'security-siem-monitoring',
+    'security-dlp-implementation',
+    'security-dlp-license',
+    'security-audit-log-storage-gb',
+    'ai-safety-moderation-tokens-1m',
+    'ai-safety-layer-service',
+    'ai-finetune-run'
 ];
 /* Этап 13.U10: rag-embeddings-1m добавлен — у него тоже изменились qtyFormulas
    и applicableStands (появился DEV для разработческого AI-traffic'а).

@@ -41,70 +41,70 @@ const GOLDEN_SCENARIOS = Object.freeze([
         id: 'smb_b2b_m',
         wizard: { product_type: 'b2b', industry: 'corporate', scale: 'm', geography: 'ru', pdn: true, activity: 'medium', ai_used: false },
         expected: {
-            totalMonthly: 4_271_938,
-            totalAnnual: 51_263_260,
+            totalMonthly: 4_298_633,
+            totalAnnual: 51_583_601,
             topCategory: 'LICENSE',
-            byCategoryMonthly: { HW: 290_935, LICENSE: 1_846_250, TRAFFIC: 106_029, SERVICES: 1_551_038, RESERVES: 0, SECURITY: 477_686, AI: 0 }
+            byCategoryMonthly: { HW: 290_935, LICENSE: 1_846_250, TRAFFIC: 106_029, SERVICES: 1_551_038, RESERVES: 0, SECURITY: 504_381, AI: 0 }
         }
     },
     {
         id: 'edtech_b2c_m_ai',
         wizard: { product_type: 'b2c', industry: 'edtech', scale: 'm', geography: 'ru', pdn: true, activity: 'high', ai_used: true },
         expected: {
-            totalMonthly: 30_941_749,
-            totalAnnual: 371_300_992,
+            totalMonthly: 31_031_643,
+            totalAnnual: 372_379_711,
             topCategory: 'AI',
-            byCategoryMonthly: { HW: 759_474, LICENSE: 1_834_844, TRAFFIC: 205_431, SERVICES: 1_964_986, RESERVES: 0, SECURITY: 477_686, AI: 25_699_328 }
+            byCategoryMonthly: { HW: 759_474, LICENSE: 1_834_844, TRAFFIC: 205_431, SERVICES: 1_964_986, RESERVES: 0, SECURITY: 567_580, AI: 25_699_328 }
         }
     },
     {
         id: 'consumer_b2c_l_ai_global',
         wizard: { product_type: 'b2c', industry: 'consumer', scale: 'l', geography: 'global', pdn: true, activity: 'high', ai_used: true },
         expected: {
-            totalMonthly: 117_942_835,
-            totalAnnual: 1_415_314_015,
+            totalMonthly: 124_926_083,
+            totalAnnual: 1_499_113_002,
             topCategory: 'AI',
-            byCategoryMonthly: { HW: 20_930_391, LICENSE: 5_255_296, TRAFFIC: 9_244_399, SERVICES: 7_545_381, RESERVES: 0, SECURITY: 918_295, AI: 74_049_073 }
+            byCategoryMonthly: { HW: 20_930_391, LICENSE: 5_255_296, TRAFFIC: 9_244_399, SERVICES: 7_545_381, RESERVES: 0, SECURITY: 1_233_088, AI: 80_717_529 }
         }
     },
     {
         id: 'fintech_b2b_m',
         wizard: { product_type: 'b2b', industry: 'fintech', scale: 'm', geography: 'ru', pdn: true, activity: 'medium', ai_used: false },
         expected: {
-            totalMonthly: 8_544_618,
-            totalAnnual: 102_535_412,
+            totalMonthly: 9_277_389,
+            totalAnnual: 111_328_665,
             topCategory: 'LICENSE',
-            byCategoryMonthly: { HW: 680_805, LICENSE: 3_923_740, TRAFFIC: 86_149, SERVICES: 2_040_824, RESERVES: 631_981, SECURITY: 1_181_120, AI: 0 }
+            byCategoryMonthly: { HW: 680_805, LICENSE: 3_923_740, TRAFFIC: 86_149, SERVICES: 2_040_824, RESERVES: 631_981, SECURITY: 1_913_891, AI: 0 }
         }
     },
     {
         id: 'b2g_m_ru_cis',
         wizard: { product_type: 'b2g', industry: 'corporate', scale: 'm', geography: 'ru_cis', pdn: true, activity: 'medium', ai_used: false },
         expected: {
-            totalMonthly: 5_782_899,
-            totalAnnual: 69_394_784,
+            totalMonthly: 5_809_594,
+            totalAnnual: 69_715_125,
             topCategory: 'SERVICES',
-            byCategoryMonthly: { HW: 290_935, LICENSE: 1_846_250, TRAFFIC: 159_043, SERVICES: 1_872_295, RESERVES: 631_981, SECURITY: 982_394, AI: 0 }
+            byCategoryMonthly: { HW: 290_935, LICENSE: 1_846_250, TRAFFIC: 159_043, SERVICES: 1_872_295, RESERVES: 631_981, SECURITY: 1_009_089, AI: 0 }
         }
     },
     {
         id: 'enterprise_b2c_xl_ai_global',
         wizard: { product_type: 'b2c', industry: 'consumer', scale: 'xl', geography: 'global', pdn: true, activity: 'high', ai_used: true },
         expected: {
-            totalMonthly: 539_202_122,
-            totalAnnual: 6_470_425_463,
+            totalMonthly: 556_920_930,
+            totalAnnual: 6_683_051_155,
             topCategory: 'AI',
-            byCategoryMonthly: { HW: 207_402_031, LICENSE: 12_085_596, TRAFFIC: 46_221_993, SERVICES: 32_361_182, RESERVES: 0, SECURITY: 3_565_665, AI: 237_565_655 }
+            byCategoryMonthly: { HW: 207_402_031, LICENSE: 12_085_596, TRAFFIC: 46_221_993, SERVICES: 32_361_182, RESERVES: 0, SECURITY: 4_466_396, AI: 254_383_732 }
         }
     },
     {
         id: 'regulated_b2g_fintech_xl_ai_global',
         wizard: { product_type: 'b2g', industry: 'fintech', scale: 'xl', geography: 'global', pdn: true, activity: 'high', ai_used: true },
         expected: {
-            totalMonthly: 284_212_112,
-            totalAnnual: 3_410_545_340,
-            topCategory: 'SERVICES',
-            byCategoryMonthly: { HW: 40_281_242, LICENSE: 16_984_903, TRAFFIC: 6_474_392, SERVICES: 112_523_803, RESERVES: 631_981, SECURITY: 4_535_651, AI: 102_780_138 }
+            totalMonthly: 297_179_884,
+            totalAnnual: 3_566_158_608,
+            topCategory: 'AI',
+            byCategoryMonthly: { HW: 40_281_242, LICENSE: 16_984_903, TRAFFIC: 6_474_392, SERVICES: 112_523_803, RESERVES: 631_981, SECURITY: 5_996_097, AI: 114_287_466 }
         }
     }
 ]);

@@ -165,13 +165,13 @@ describe('rule: consistency-registered-gt-active (warning)', () => {
     });
 });
 
-describe('rule: consistency-dau-share-likely-percent-mistake (warning)', () => {
+describe('rule: consistency-dau-share-lower-than-1-percent (warning)', () => {
     it('срабатывает при DAU-доле меньше 1%', () => {
         const r = evaluateCalculationHealth(makeCalc({
             registered_users_total: 500,
             dau_share_of_registered_percent: 0.7
         }));
-        const f = findById(r.findings, 'consistency-dau-share-likely-percent-mistake');
+        const f = findById(r.findings, 'consistency-dau-share-lower-than-1-percent');
         assert.ok(f);
         assert.equal(f.severity, 'warning');
         assert.ok(f.fieldIds.includes('dau_share_of_registered_percent'));
@@ -182,7 +182,7 @@ describe('rule: consistency-dau-share-likely-percent-mistake (warning)', () => {
             registered_users_total: 500,
             dau_share_of_registered_percent: 1
         }));
-        assert.ok(!findById(r.findings, 'consistency-dau-share-likely-percent-mistake'));
+        assert.ok(!findById(r.findings, 'consistency-dau-share-lower-than-1-percent'));
     });
 });
 

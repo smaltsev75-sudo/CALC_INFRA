@@ -313,6 +313,28 @@ export function setSetting(key, value) {
     commit();
 }
 
+export function acknowledgeHealthFinding(findingId, fieldIds = []) {
+    const calc = store.getState().activeCalc;
+    if (!calc || !findingId) return null;
+    const values = {};
+    for (const fieldId of fieldIds || []) {
+        if (fieldId in (calc.answers || {})) values[fieldId] = calc.answers[fieldId];
+        else if (fieldId in (calc.settings || {})) values[fieldId] = calc.settings[fieldId];
+    }
+    const healthAcknowledgements = {
+        ...(calc.healthAcknowledgements || {}),
+        [findingId]: {
+            acknowledgedAt: new Date().toISOString(),
+            fieldIds: Array.isArray(fieldIds) ? fieldIds.slice() : [],
+            values
+        }
+    };
+    store.updateActiveCalc({ healthAcknowledgements });
+    store.setUi({ recentlyChangedKey: `health:${findingId}` });
+    commit();
+    return healthAcknowledgements[findingId];
+}
+
 /**
  * 14.U4: атомарно обновить provider + сбросить providerSetByWizard в false.
  * Любая ручная правка через dropdown в Опроснике = source 'manual' → бейдж

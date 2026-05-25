@@ -21,6 +21,28 @@ function setting(calc, id) {
     return calc?.settings ? calc.settings[id] : undefined;
 }
 
+function healthAck(calc, id) {
+    const ack = calc?.healthAcknowledgements?.[id];
+    return ack && typeof ack === 'object' ? ack : null;
+}
+
+function sameAckValues(calc, ack, fieldIds) {
+    const stored = ack?.values;
+    if (!stored || typeof stored !== 'object') return false;
+    for (const fieldId of fieldIds || []) {
+        const current = fieldId in (calc?.answers || {})
+            ? ans(calc, fieldId)
+            : setting(calc, fieldId);
+        if (JSON.stringify(stored[fieldId]) !== JSON.stringify(current)) return false;
+    }
+    return true;
+}
+
+function isHealthAcknowledged(calc, id, fieldIds) {
+    const ack = healthAck(calc, id);
+    return !!ack && sameAckValues(calc, ack, fieldIds);
+}
+
 /** Финитное число (не null/undefined/NaN/Infinity). */
 function isFiniteNum(v) {
     return typeof v === 'number' && Number.isFinite(v);
@@ -208,23 +230,25 @@ function checkDauShareLikelyPercentMistake(calc) {
     const share = ans(calc, 'dau_share_of_registered_percent');
     const registered = ans(calc, 'registered_users_total');
     if (!isFiniteNum(share) || share <= 0 || share >= 1) return null;
+    const fieldIds = ['dau_share_of_registered_percent', 'registered_users_total'];
+    if (isHealthAcknowledged(calc, 'consistency-dau-share-lower-than-1-percent', fieldIds)) return null;
 
     const dauText = isFiniteNum(registered)
         ? ` При ${registered} зарегистрированных это даёт ${Math.round(registered * share) / 100} DAU.`
         : '';
 
     return makeFinding({
-        id: 'consistency-dau-share-likely-percent-mistake',
+        id: 'consistency-dau-share-lower-than-1-percent',
         severity: 'warning',
         category: 'consistency',
         title: 'DAU-доля меньше 1 %',
         message:
             `dau_share_of_registered_percent=${share} означает ${share} %, а не ${share * 100} %.` +
             dauText +
-            ' Такое значение допустимо только если очень низкая активность действительно подтверждена.',
-        fieldIds: ['dau_share_of_registered_percent', 'registered_users_total'],
+            ' Для EdTech это допустимо у раннего продукта, сезонного сценария или редкого B2B-использования, но для ежедневного учебного продукта значение нужно подтвердить.',
+        fieldIds,
         suggestedAction:
-            'Если имелось в виду 70 %, введите 70. Если реально меньше 1 %, оставьте значение и зафиксируйте допущение.'
+            'Если реально меньше 1 %, подтвердите допущение. Если это опечатка, исправьте значение вручную.'
     });
 }
 
@@ -509,6 +533,8 @@ function checkSeasonalActivityNotApplied(calc) {
     const reason = riskDisabled
         ? 'риск-коэффициенты отключены'
         : 'коэффициент сезонности равен 0 %';
+    const fieldIds = ['seasonal_activity', 'kSeasonal', 'applyRiskFactors'];
+    if (isHealthAcknowledged(calc, 'risk-seasonal-activity-not-applied', fieldIds)) return null;
 
     return makeFinding({
         id: 'risk-seasonal-activity-not-applied',
@@ -518,7 +544,7 @@ function checkSeasonalActivityNotApplied(calc) {
         message:
             `В опроснике включена сезонная активность, но ${reason}. ` +
             'Сезонная надбавка к ресурсам и стоимости сейчас не применяется.',
-        fieldIds: ['seasonal_activity', 'kSeasonal', 'applyRiskFactors'],
+        fieldIds,
         suggestedAction:
             'Если сезонный пик должен попадать в бюджет, включите риск-коэффициенты и задайте kSeasonal больше 0. Если peak_rps уже включает сезонный пик, оставьте как есть.'
     });
