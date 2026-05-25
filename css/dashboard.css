@@ -1464,9 +1464,10 @@
     /* Fixed row tracks keep risk bars visually comparable. Each row is its own
        grid, so flexible label/bar tracks made bars start at different x
        positions when labels or amounts had different widths. */
-    grid-template-columns: 88px 96px minmax(112px, 1fr) 56px;
+    grid-template-columns: 88px 96px minmax(128px, 1fr) 56px;
     align-items: center;
-    gap: 8px;
+    column-gap: 12px;
+    row-gap: 8px;
     font-size: 0.82rem;
 }
 
@@ -1518,7 +1519,7 @@
     justify-self: end;
 }
 
-@container risk-card (max-width: 360px) {
+@container risk-card (max-width: 430px) {
     .dash-risk-row {
         grid-template-columns: 88px minmax(0, 1fr) 56px;
         grid-template-areas:

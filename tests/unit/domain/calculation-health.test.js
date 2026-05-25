@@ -243,7 +243,7 @@ describe('rule: ai-agent-without-llm (error)', () => {
     });
 });
 
-describe('rule: ai-token-volume-without-llm (error)', () => {
+describe('rule: ai-token-volume-without-llm (warning)', () => {
     it('срабатывает, если пользователь задал объём токенов, но LLM выключен', () => {
         const r = evaluateCalculationHealth(makeCalc({
             ai_llm_used: false,
@@ -253,7 +253,7 @@ describe('rule: ai-token-volume-without-llm (error)', () => {
         }));
         const f = findById(r.findings, 'ai-token-volume-without-llm');
         assert.ok(f);
-        assert.equal(f.severity, 'error');
+        assert.equal(f.severity, 'warning');
         assert.ok(f.fieldIds.includes('ai_llm_used'));
         assert.ok(f.fieldIds.includes('ai_avg_input_tokens'));
     });

@@ -350,12 +350,12 @@ function checkTokenVolumeWithoutLlm(calc) {
 
     return makeFinding({
         id: 'ai-token-volume-without-llm',
-        severity: 'error',
+        severity: 'warning',
         category: 'consistency',
         title: 'Заполнен объём токенов, но LLM выключен',
         message:
             'В разделе «Объём токенов» есть явные значения, но «Использовать LLM» не включено. ' +
-            'Поэтому строки «Входящие токены LLM» и «Исходящие токены LLM» в Детализации будут обнулены.',
+            'Калькулятор использует явный объём токенов для строк LLM, но настройку стоит уточнить перед согласованием расчёта.',
         fieldIds: ['ai_llm_used', ...configured],
         suggestedAction:
             'Если продукт использует LLM, включите «Использовать большие языковые модели». ' +
@@ -364,7 +364,10 @@ function checkTokenVolumeWithoutLlm(calc) {
 }
 
 function hasPositiveExternalTokenDemand(calc) {
-    if (ans(calc, 'ai_llm_used') !== true) return false;
+    if (ans(calc, 'ai_llm_used') !== true
+        && !AI_TOKEN_VOLUME_FIELDS.some(fieldId => isTokenVolumeExplicitlyConfigured(calc, fieldId))) {
+        return false;
+    }
     if (ans(calc, 'ai_hosting_mode') === 'on_prem_gpu') return false;
     const registered = ans(calc, 'registered_users_total');
     const dauShare = ans(calc, 'dau_share_of_registered_percent');

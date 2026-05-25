@@ -239,6 +239,53 @@ function buildAnswerResolver(calc) {
     };
 }
 
+function hasAnswerValue(calc, id) {
+    const answers = calc?.answers || {};
+    if (!Object.prototype.hasOwnProperty.call(answers, id)) return false;
+    const value = answers[id];
+    return value !== null && value !== undefined && value !== '';
+}
+
+function sameScalarValue(a, b) {
+    if (typeof a === 'number' || typeof b === 'number') {
+        const an = Number(a);
+        const bn = Number(b);
+        return Number.isFinite(an) && Number.isFinite(bn) && an === bn;
+    }
+    return a === b;
+}
+
+function isExplicitAnswer(calc, id) {
+    if (!hasAnswerValue(calc, id)) return false;
+    const meta = calc?.answersMeta?.[id];
+    if (meta && typeof meta === 'object') return true;
+    const defaults = buildQuestionDefaults(calc?.dictionaries?.questions || []);
+    if (!Object.prototype.hasOwnProperty.call(defaults, id)) return true;
+    return !sameScalarValue(calc.answers[id], defaults[id]);
+}
+
+function hasExplicitLlmTokenDemand(calc, get) {
+    const registered = finiteNumber(get('registered_users_total', 0));
+    const dauShare = finiteNumber(get('dau_share_of_registered_percent', 0));
+    const aiShare = finiteNumber(get('ai_users_share', 0));
+    const requestsPerDay = finiteNumber(get('ai_requests_per_user_day', 0));
+    const inputTokens = finiteNumber(get('ai_avg_input_tokens', 0));
+    const outputTokens = finiteNumber(get('ai_avg_output_tokens', 0));
+    if (![registered, dauShare, aiShare, requestsPerDay].every(v => v > 0)) return false;
+    if (![inputTokens, outputTokens].some(v => v > 0)) return false;
+    return [
+        'ai_users_share',
+        'ai_requests_per_user_day',
+        'ai_avg_input_tokens',
+        'ai_avg_output_tokens',
+        'ai_caching_share'
+    ].some(id => isExplicitAnswer(calc, id));
+}
+
+function shouldUseLlmTokenDemand(calc, get) {
+    return get('ai_llm_used', false) === true || hasExplicitLlmTokenDemand(calc, get);
+}
+
 function aiStandRatio(calc, stand) {
     if (stand === 'PROD') return 1;
     const ratios = calc?.settings?.aiStandFactor;
@@ -288,7 +335,7 @@ function ragRefreshMultiplier(value) {
 
 export function deriveLlmTokenItemQty(calc, itemId, stand) {
     const get = buildAnswerResolver(calc);
-    if (get('ai_llm_used', false) !== true) return 0;
+    if (!shouldUseLlmTokenDemand(calc, get)) return 0;
 
     const registered = finiteNumber(get('registered_users_total', 0));
     const dauShare = finiteNumber(get('dau_share_of_registered_percent', 0)) / 100;

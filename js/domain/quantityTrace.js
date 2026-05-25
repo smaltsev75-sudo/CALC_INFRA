@@ -238,7 +238,7 @@ export function buildQuantityTrace(calculation, itemId, stand, precomputedResult
     const answers = calculation?.answers || {};
     const settings = calculation?.settings || {};
     const answersMeta = calculation?.answersMeta || {};
-    const ctx = buildContext(answers, settings, questionDefaults, stand, item);
+    const ctx = buildContext(answers, settings, questionDefaults, stand, item, answersMeta);
     const result = precomputedResult || calculate(calculation);
     const cell = result.items?.[item.id]?.stands?.[stand] || {
         qty: 0,

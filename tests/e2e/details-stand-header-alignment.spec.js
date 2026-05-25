@@ -5,7 +5,7 @@ import {
     createCalculationFromQuickStart
 } from './helpers.js';
 
-test('Details stand headers are centered and aligned with stand columns', async ({ page }) => {
+test('Details stand headers are right-aligned with numeric stand columns', async ({ page }) => {
     const consoleErrors = await bootCleanApp(page);
 
     await createCalculationFromQuickStart(page, {
@@ -37,9 +37,9 @@ test('Details stand headers are centered and aligned with stand columns', async 
     });
     expect(detailsAlignment).toHaveLength(5);
     for (const cell of detailsAlignment) {
-        expect(cell.headerAlign).toBe('center');
-        expect(cell.nameAlign).toBe('center');
-        expect(cell.unitAlign).toBe('center');
+        expect(cell.headerAlign).toBe('right');
+        expect(cell.nameAlign).toBe('right');
+        expect(cell.unitAlign).toBe('right');
         expect(cell.leftDelta).toBeLessThanOrEqual(1);
         expect(cell.widthDelta).toBeLessThanOrEqual(1);
     }
@@ -61,8 +61,8 @@ test('Details stand headers are centered and aligned with stand columns', async 
     });
     expect(aiSummaryAlignment).toHaveLength(5);
     for (const cell of aiSummaryAlignment) {
-        expect(cell.headerAlign).toBe('center');
-        expect(cell.cellAlign).toBe('center');
+        expect(cell.headerAlign).toBe('right');
+        expect(cell.cellAlign).toBe('right');
         expect(cell.leftDelta).toBeLessThanOrEqual(1);
         expect(cell.widthDelta).toBeLessThanOrEqual(1);
     }

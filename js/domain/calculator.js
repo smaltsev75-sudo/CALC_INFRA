@@ -204,7 +204,7 @@ export function buildQuestionDefaults(questions) {
  * per-resource ratios / AI stand factor / agentStepFactor — диагностика
  * формул для AI-ЭК и hardware показывала неправильные значения.
  */
-export function buildContext(answers, settings, questionDefaults, stand, item = null) {
+export function buildContext(answers, settings, questionDefaults, stand, item = null, answersMeta = null) {
     let ratio = settings.standSizeRatio && typeof settings.standSizeRatio === 'object'
         ? settings.standSizeRatio
         : DEFAULT_STAND_SIZE_RATIO;
@@ -312,7 +312,8 @@ export function buildContext(answers, settings, questionDefaults, stand, item = 
             aiModelTierFactor
         },
         STAND: stand,
-        questionDefaults
+        questionDefaults,
+        answersMeta: answersMeta || {}
     };
 }
 
@@ -374,6 +375,55 @@ function answerNumber(context, id, fallback = 0) {
     return Number.isFinite(n) ? n : fallback;
 }
 
+function hasContextAnswer(context, id) {
+    const answers = context?.Q || {};
+    if (!Object.prototype.hasOwnProperty.call(answers, id)) return false;
+    const value = answers[id];
+    return value !== null && value !== undefined && value !== '';
+}
+
+function sameScalarValue(a, b) {
+    if (typeof a === 'number' || typeof b === 'number') {
+        const an = Number(a);
+        const bn = Number(b);
+        return Number.isFinite(an) && Number.isFinite(bn) && an === bn;
+    }
+    return a === b;
+}
+
+function isExplicitContextAnswer(context, id) {
+    if (!hasContextAnswer(context, id)) return false;
+    const meta = context?.answersMeta?.[id];
+    if (meta && typeof meta === 'object') return true;
+    const defaults = context?.questionDefaults || {};
+    if (!Object.prototype.hasOwnProperty.call(defaults, id)) return true;
+    return !sameScalarValue(context.Q[id], defaults[id]);
+}
+
+function hasExplicitTokenDemand(context) {
+    const registered = answerNumber(context, 'registered_users_total', 0);
+    const dauShare = answerNumber(context, 'dau_share_of_registered_percent', 0);
+    const aiShare = answerNumber(context, 'ai_users_share', 0);
+    const requestsPerUserDay = answerNumber(context, 'ai_requests_per_user_day', 0);
+    const inputTokens = answerNumber(context, 'ai_avg_input_tokens', 0);
+    const outputTokens = answerNumber(context, 'ai_avg_output_tokens', 0);
+    if (![registered, dauShare, aiShare, requestsPerUserDay].every(v => Number.isFinite(v) && v > 0)) {
+        return false;
+    }
+    if (![inputTokens, outputTokens].some(v => Number.isFinite(v) && v > 0)) return false;
+    return [
+        'ai_users_share',
+        'ai_requests_per_user_day',
+        'ai_avg_input_tokens',
+        'ai_avg_output_tokens',
+        'ai_caching_share'
+    ].some(id => isExplicitContextAnswer(context, id));
+}
+
+function shouldCalculateLlmTokenDemand(context) {
+    return answerBool(context, 'ai_llm_used', false) || hasExplicitTokenDemand(context);
+}
+
 /**
  * Domain-level fallback for external LLM token items.
  *
@@ -386,7 +436,7 @@ function answerNumber(context, id, fallback = 0) {
 function deriveExternalLlmTokenQtyFallback(item, stand, context) {
     if (!EXTERNAL_LLM_TOKEN_ITEM_IDS.has(item?.id)) return 0;
     if (!item.applicableStands?.includes(stand)) return 0;
-    if (!answerBool(context, 'ai_llm_used', false)) return 0;
+    if (!shouldCalculateLlmTokenDemand(context)) return 0;
     if (String(resolveAnswerValue(context, 'ai_hosting_mode', '')).trim() === 'on_prem_gpu') return 0;
     if (item.id === 'ai-safety-moderation-tokens-1m'
         && !answerBool(context, 'ai_safety_layer', false)) return 0;
@@ -544,7 +594,7 @@ export function calculate(calculation, revision = null) {
         const ct = getCostType(item);
 
         for (const stand of STAND_IDS) {
-            const ctx = buildContext(answers, settings, questionDefaults, stand, item);
+            const ctx = buildContext(answers, settings, questionDefaults, stand, item, calculation.answersMeta);
             const { qty: formulaQty, error: formulaError } = computeItemQty(item, stand, ctx);
             const fallbackQty = !formulaError && Number.isFinite(formulaQty) && formulaQty <= 0
                 ? deriveExternalLlmTokenQtyFallback(item, stand, ctx)

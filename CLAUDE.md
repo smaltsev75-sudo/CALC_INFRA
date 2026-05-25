@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-25, v2.20.61)
+## Current Project Lessons (2026-05-25, v2.20.66)
 
 - Do not leave questionnaire flags as silent intent. If a user-facing answer
   says DDoS, SIEM, DLP, audit logging, AI safety or fine-tune is enabled, the
@@ -44,6 +44,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   `Объём (qty)` ЭК row is visible and non-empty. Operational AI fallback covers
   both `TOKENS` and `EMBEDDINGS`, with the same capacity multiplier as the qty
   table.
+- Explicit token volume answers are calculation intent. If
+  `ai_requests_per_user_day`, input/output tokens, DAU and AI user share are
+  positive and explicitly configured, Dashboard and Details must show token
+  workload even when a legacy/imported `ai_llm_used` flag is stale/off. Keep a
+  Health warning for the inconsistent flag, but never hide the filled token
+  workload behind `—`.
+- For Details stand columns, header alignment must match the numeric cells
+  users compare against. Right-aligned qty/cost columns require right-aligned
+  stand names and units in both the main table and the AI summary.
+- Risk contribution bars must have both a stable left edge/equal width and a
+  non-overlap contract with adjacent amounts. On narrow dashboard cards, wrap
+  amount/percent below the bar instead of letting the bar collide with money.
 
 ## 🎨 UI/UX Review Standard для локальных ванильных веб-приложений
 

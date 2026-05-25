@@ -55,6 +55,7 @@ function buildLlmCalc(overrides = {}) {
             ai_agent_mode: false,
             ...overrides
         },
+        answersMeta: {},
         dictionaries: {
             items: SEED_ITEMS,
             questions: SEED_QUESTIONS
@@ -167,6 +168,26 @@ describe('Этап 13: agent multiplier — буква контракта', () =
         const calc = withZeroTokenFormulas(buildLlmCalc({
             ai_safety_layer: true
         }));
+        const r = calculate(calc);
+
+        assert.equal(getQty(r, 'llm-tokens-input-1m'), 30);
+        assert.equal(getQty(r, 'llm-tokens-output-1m'), 30);
+        assert.equal(getQty(r, 'ai-safety-moderation-tokens-1m'), 6);
+        assert.ok(r.items['llm-tokens-input-1m'].stands.PROD.costFinal > 0);
+        assert.ok(r.items['llm-tokens-output-1m'].stands.PROD.costFinal > 0);
+    });
+
+    it('explicit token volume answers produce LLM token qty even if ai_llm_used is stale/off', () => {
+        const calc = withZeroTokenFormulas(buildLlmCalc({
+            ai_llm_used: false,
+            ai_safety_layer: true
+        }));
+        calc.answersMeta = {
+            ai_requests_per_user_day: { source: 'manual' },
+            ai_avg_input_tokens: { source: 'manual' },
+            ai_avg_output_tokens: { source: 'manual' }
+        };
+
         const r = calculate(calc);
 
         assert.equal(getQty(r, 'llm-tokens-input-1m'), 30);

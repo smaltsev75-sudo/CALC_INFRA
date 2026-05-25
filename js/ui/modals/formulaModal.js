@@ -177,7 +177,8 @@ function renderResolvedRefs(formula, calc, stand, item) {
         calc.settings || {},
         questionDefaults,
         stand,
-        item || null
+        item || null,
+        calc.answersMeta || {}
     );
 
     const rows = [];

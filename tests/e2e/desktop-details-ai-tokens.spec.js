@@ -225,7 +225,7 @@ test('Dashboard and Details show token workload when LLM is hosted on own GPU', 
     expect(consoleErrors).toEqual([]);
 });
 
-test('Details AI summary restores token workload from filled answers when token rows are zero', async ({ page }) => {
+test('Details and Dashboard restore token workload from explicit token answers when token rows are zero', async ({ page }) => {
     const consoleErrors = await bootCleanApp(page);
 
     await createCalculationFromQuickStart(page, {
@@ -237,6 +237,22 @@ test('Details AI summary restores token workload from filled answers when token 
         const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
         const { STAND_IDS } = await import(new URL('js/utils/constants.js', document.baseURI).href);
         store.updateActiveCalc(calc => ({
+            answers: {
+                ...calc.answers,
+                ai_llm_used: false,
+                ai_hosting_mode: 'external_api',
+                ai_requests_per_user_day: 30,
+                ai_avg_input_tokens: 2000,
+                ai_avg_output_tokens: 500,
+                ai_caching_share: 0
+            },
+            answersMeta: {
+                ...(calc.answersMeta || {}),
+                ai_requests_per_user_day: { source: 'manual' },
+                ai_avg_input_tokens: { source: 'manual' },
+                ai_avg_output_tokens: { source: 'manual' },
+                ai_caching_share: { source: 'manual' }
+            },
             dictionaries: {
                 ...calc.dictionaries,
                 items: calc.dictionaries.items.map(item => (

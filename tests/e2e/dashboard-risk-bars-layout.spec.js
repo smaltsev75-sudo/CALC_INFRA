@@ -50,5 +50,24 @@ test('Risk contribution bars are left-aligned and have equal width', async ({ pa
         }));
     expect(overflow).toEqual([]);
 
+    const collisions = await page.locator('.dash-card-risk .dash-risk-row')
+        .evaluateAll(rows => rows.map(row => {
+            const bar = row.querySelector('.dash-risk-row-bar');
+            const fill = row.querySelector('.dash-risk-row-bar-fill');
+            const amount = row.querySelector('.dash-risk-row-amount');
+            if (!bar || !amount) return null;
+            const barRect = bar.getBoundingClientRect();
+            const fillRect = fill ? fill.getBoundingClientRect() : barRect;
+            const amountRect = amount.getBoundingClientRect();
+            const sameLine = amountRect.top < barRect.bottom && amountRect.bottom > barRect.top;
+            const gap = amountRect.left - Math.max(barRect.right, fillRect.right);
+            return {
+                text: amount.textContent.trim(),
+                sameLine,
+                gap: Math.round(gap * 100) / 100
+            };
+        }).filter(Boolean).filter(row => row.sameLine && row.gap < 12));
+    expect(collisions).toEqual([]);
+
     expect(consoleErrors).toEqual([]);
 });

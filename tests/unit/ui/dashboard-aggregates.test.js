@@ -35,7 +35,8 @@ function makeOnPremAiCalc(overrides = {}) {
             rag_corpus_size_gb: 2,
             rag_refresh_frequency: 'monthly',
             ...overrides
-        }
+        },
+        answersMeta: {}
     };
 }
 
@@ -227,6 +228,39 @@ describe('dashboardAggregates', () => {
 
         const metrics = aggregateAiMetrics(result, calc.dictionaries.items, [], false, calc);
 
+        assert.ok(metrics.perStand.PROD.TOKENS.qty > 0);
+        assert.ok(metrics.perStand.LOAD.TOKENS.qty > 0);
+        assert.ok(metrics.total.TOKENS.qty > 0);
+        assert.equal(metrics.total.TOKENS.unit, 'млн токенов');
+    });
+
+    it('aggregateAiMetrics uses explicit token volume answers when ai_llm_used is stale/off', () => {
+        const calc = makeOnPremAiCalc({
+            ai_llm_used: false,
+            ai_hosting_mode: 'external_api'
+        });
+        calc.answersMeta = {
+            ai_requests_per_user_day: { source: 'manual' },
+            ai_avg_input_tokens: { source: 'manual' },
+            ai_avg_output_tokens: { source: 'manual' }
+        };
+        calc.dictionaries = {
+            ...calc.dictionaries,
+            items: calc.dictionaries.items.map(item => (
+                item.dashboardAiMetric === 'TOKENS'
+                    ? {
+                        ...item,
+                        qtyFormulas: Object.fromEntries(STAND_IDS.map(sid => [sid, '0']))
+                    }
+                    : item
+            ))
+        };
+
+        const result = calculate(calc);
+        const metrics = aggregateAiMetrics(result, calc.dictionaries.items, [], false, calc);
+
+        assert.ok(result.items['llm-tokens-input-1m'].stands.PROD.qty > 0);
+        assert.ok(result.items['llm-tokens-output-1m'].stands.PROD.qty > 0);
         assert.ok(metrics.perStand.PROD.TOKENS.qty > 0);
         assert.ok(metrics.perStand.LOAD.TOKENS.qty > 0);
         assert.ok(metrics.total.TOKENS.qty > 0);
