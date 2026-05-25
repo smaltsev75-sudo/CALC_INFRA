@@ -31,6 +31,7 @@ function makeCalc(answers = {}, overrides = {}) {
             applyRiskFactors: true,
             ...(overrides.settings || {})
         },
+        answersMeta: overrides.answersMeta || {},
         dictionaries: overrides.dictionaries || {
             // минимальный seed-like справочник вопросов с defaultValue
             // (для completeness-too-many-defaults / -low-answer-rate)
@@ -217,7 +218,7 @@ describe('rule: consistency-traffic-*-explicit-differs-from-auto (warning)', () 
 });
 
 /* ============================================================
- * Группа: AI / RAG (4)
+ * Группа: AI / RAG (5)
  * ============================================================ */
 
 describe('rule: ai-rag-without-llm (error)', () => {
@@ -239,6 +240,52 @@ describe('rule: ai-agent-without-llm (error)', () => {
         const f = findById(r.findings, 'ai-agent-without-llm');
         assert.ok(f);
         assert.equal(f.severity, 'error');
+    });
+});
+
+describe('rule: ai-token-volume-without-llm (error)', () => {
+    it('срабатывает, если пользователь задал объём токенов, но LLM выключен', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            ai_llm_used: false,
+            ai_avg_input_tokens: 3000,
+            ai_avg_output_tokens: 500,
+            ai_caching_share: 30
+        }));
+        const f = findById(r.findings, 'ai-token-volume-without-llm');
+        assert.ok(f);
+        assert.equal(f.severity, 'error');
+        assert.ok(f.fieldIds.includes('ai_llm_used'));
+        assert.ok(f.fieldIds.includes('ai_avg_input_tokens'));
+    });
+
+    it('срабатывает даже при дефолтном числе, если поле явно изменено вручную', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            ai_llm_used: false,
+            ai_avg_input_tokens: 1500
+        }, {
+            answersMeta: { ai_avg_input_tokens: { source: 'manual' } }
+        }));
+        assert.ok(findById(r.findings, 'ai-token-volume-without-llm'));
+    });
+
+    it('НЕ срабатывает для обычных дефолтов не-AI расчёта', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            ai_llm_used: false,
+            ai_avg_input_tokens: 1500,
+            ai_avg_output_tokens: 500,
+            ai_caching_share: 20
+        }));
+        assert.ok(!findById(r.findings, 'ai-token-volume-without-llm'));
+    });
+
+    it('НЕ срабатывает, если LLM включён', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            ai_llm_used: true,
+            ai_avg_input_tokens: 3000,
+            ai_avg_output_tokens: 1000,
+            ai_caching_share: 50
+        }));
+        assert.ok(!findById(r.findings, 'ai-token-volume-without-llm'));
     });
 });
 

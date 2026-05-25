@@ -142,13 +142,11 @@ export function renderDetails(state, ctx) {
 
         renderDetailsQuantityPrintSummary(calc, result, disabledStands),
 
-        /* Сводная панель AI-метрик — qty-таблица (токены/ГБ/vCPU). Появляется
-           ТОЛЬКО на подвкладке «Объём» (subTab === 'qty'). На «Бюджет» все
-           таблицы — финансовый срез в ₽, а capacity-сводка визуально
-           ломала бы режим (qty в нижней части того же экрана с ₽ выше).
-           Дополнительно скрывается, если в расчёте нет ни одной ненулевой
-           AI-метрики — для не-AI проектов блок не возникает вовсе. */
-        subTab === 'qty' && renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx, { hideNoBudget: hideZero })
+        /* Сводная панель AI-метрик — qty-таблица (токены/ГБ/vCPU). Она видна
+           на обеих подвкладках Детализации: на «Бюджет» пользователь сразу
+           видит, что заполненный раздел «Объём токенов» реально попал в расчёт,
+           а на «Объём» получает тот же агрегат рядом с построчными qty. */
+        renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx, { hideNoBudget: hideZero })
     );
 }
 

@@ -2,7 +2,7 @@
  * AI capacity summary for the Details tab.
  *
  * Details cost/qty tables stay in detailsSections.js; this module owns only the
- * compact AI metrics rollup shown below the qty table.
+ * compact AI metrics rollup shown on the Details tab.
  */
 
 import { el, infoIcon } from './dom.js';

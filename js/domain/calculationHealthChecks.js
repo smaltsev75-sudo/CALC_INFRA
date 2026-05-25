@@ -10,7 +10,7 @@ import {
 } from '../utils/constants.js';
 import { getProviderSecurityPriceWarningForCalc } from './providerPriceTrust.js';
 import { calculate } from './calculator.js';
-import { SEED_ITEMS } from './seed.js';
+import { SEED_ITEMS, SEED_QUESTIONS } from './seed.js';
 /* ---------- Helpers ---------- */
 
 function ans(calc, id) {
@@ -53,6 +53,13 @@ const SEED_DASHBOARD_RESOURCE_BY_ID = new Map(
         .map(item => [item.id, item.dashboardResource])
 );
 
+const SEED_QUESTION_BY_ID = new Map(SEED_QUESTIONS.map(question => [question.id, question]));
+const AI_TOKEN_VOLUME_FIELDS = Object.freeze([
+    'ai_avg_input_tokens',
+    'ai_avg_output_tokens',
+    'ai_caching_share'
+]);
+
 function activeStandIds(calc) {
     const disabled = new Set(Array.isArray(calc?.view?.disabledStands)
         ? calc.view.disabledStands
@@ -86,8 +93,36 @@ function trafficDiffersMaterially(explicitTb, autoTb) {
     return ratio >= 3;
 }
 
+function seedDefaultForQuestion(id) {
+    const q = SEED_QUESTION_BY_ID.get(id);
+    if (!q) return undefined;
+    return q.defaultValue !== undefined ? q.defaultValue : q.defaultIfUnknown;
+}
+
+function sameScalarValue(a, b) {
+    if (typeof a === 'number' || typeof b === 'number') {
+        const an = Number(a);
+        const bn = Number(b);
+        return Number.isFinite(an) && Number.isFinite(bn) && an === bn;
+    }
+    return a === b;
+}
+
+function isManualOrImportedAnswer(calc, id) {
+    const source = calc?.answersMeta?.[id]?.source;
+    return source === 'manual' || source === 'import' || source === 'user';
+}
+
+function isTokenVolumeExplicitlyConfigured(calc, id) {
+    const value = ans(calc, id);
+    if (!hasAnswer(value)) return false;
+    if (isManualOrImportedAnswer(calc, id)) return true;
+    const seedDefault = seedDefaultForQuestion(id);
+    return seedDefault !== undefined && !sameScalarValue(value, seedDefault);
+}
+
 /* ============================================================
- * 27 правил проверки.
+ * 28 правил проверки.
  * Каждая функция получает (calc, options) и возвращает HealthFinding | null.
  * ============================================================ */
 
@@ -265,6 +300,27 @@ function checkAgentWithoutLlm(calc) {
         });
     }
     return null;
+}
+
+function checkTokenVolumeWithoutLlm(calc) {
+    if (ans(calc, 'ai_llm_used') === true) return null;
+    const configured = AI_TOKEN_VOLUME_FIELDS
+        .filter(fieldId => isTokenVolumeExplicitlyConfigured(calc, fieldId));
+    if (configured.length === 0) return null;
+
+    return makeFinding({
+        id: 'ai-token-volume-without-llm',
+        severity: 'error',
+        category: 'consistency',
+        title: 'Заполнен объём токенов, но LLM выключен',
+        message:
+            'В разделе «Объём токенов» есть явные значения, но «Использовать LLM» не включено. ' +
+            'Поэтому строки «Входящие токены LLM» и «Исходящие токены LLM» в Детализации будут обнулены.',
+        fieldIds: ['ai_llm_used', ...configured],
+        suggestedAction:
+            'Если продукт использует LLM, включите «Использовать большие языковые модели». ' +
+            'Если LLM нет, верните поля объёма токенов к значениям по умолчанию и зафиксируйте это допущение.'
+    });
 }
 
 function checkRagIncompleteCorpus(calc) {
@@ -690,6 +746,7 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkTrafficIngressExplicitDiffersFromAuto,
     checkRagWithoutLlm,
     checkAgentWithoutLlm,
+    checkTokenVolumeWithoutLlm,
     checkRagIncompleteCorpus,
     checkAgentIncompleteTools,
     checkPdnWithoutEncryption,

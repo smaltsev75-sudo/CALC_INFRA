@@ -1,19 +1,12 @@
 /**
  * Regression-тест: блок «Сводка AI-метрик» (qty-таблица — токены / RAG-индекс /
- * эмбеддинги / CPU агентов) появляется в Детализации ТОЛЬКО на подвкладке
- * «Объём» (subTab === 'qty'), но НЕ на «Бюджет» (subTab === 'cost').
+ * эмбеддинги / CPU агентов) должен быть виден на обеих подвкладках
+ * Детализации.
  *
- * Семантика подвкладок:
- *   - 'cost'  — деньги (₽). Все таблицы — финансовые срезы.
- *   - 'qty'   — capacity (vCPU, ГБ, токены, шт.). Все таблицы — объёмные.
- *
- * Сводка AI-метрик показывает qty (517 млн токенов, 20 ГБ RAG, …). Это
- * capacity-разрез, ему не место в режиме «Бюджет» — там пользователь
- * ожидает только рубли.
- *
- * Баг до фикса: renderAiMetricsSummary(...) вызывался безусловно после
- * subTab-switcher'а в renderDetails, и qty-таблица появлялась под
- * cost-таблицей при 'Бюджет'.
+ * Пользовательский контракт: если в Опроснике заполнен раздел «Объём токенов»,
+ * первый экран «Детализация → Бюджет (₽)» не должен визуально прятать агрегат
+ * «Токены». Построчные input/output-ЭК остаются внутри категории AI / LLM, но
+ * сводная строка нужна сразу, без раскрытия accordion'а.
  */
 
 import { describe, it } from 'node:test';
@@ -29,39 +22,23 @@ const detailsSrc = stripJsComments(readFileSync(
     'utf8'
 ));
 
-describe('Details: «Сводка AI-метрик» гейтится по subTab === "qty"', () => {
-    it('renderAiMetricsSummary вызывается под guard\'ом subTab === "qty"', () => {
+describe('Details: «Сводка AI-метрик» видна на cost и qty', () => {
+    it('renderAiMetricsSummary вызывается без subTab-gate', () => {
         const calls = detailsSrc.match(/renderAiMetricsSummary\s*\(/g) || [];
-        assert.ok(calls.length >= 1,
-            'renderAiMetricsSummary должен вызываться хотя бы один раз в renderDetails');
+        assert.equal(calls.length, 1,
+            'renderAiMetricsSummary должен вызываться один раз в renderDetails');
 
-        // Ожидаем шаблон вида `subTab === 'qty' && renderAiMetricsSummary(...)`
-        // (краткая запись, чтобы не писать тернарник с null). Допускаем любые
-        // одинарные/двойные кавычки и whitespace.
-        const guardedShortCircuit =
-            /subTab\s*===\s*['"]qty['"]\s*&&\s*renderAiMetricsSummary\s*\(/
+        const gatedToQty =
+            /subTab\s*===\s*['"]qty['"]\s*(?:&&|\?)\s*renderAiMetricsSummary\s*\(/
                 .test(detailsSrc);
-
-        // Альтернативный валидный шаблон: тернарник
-        // `subTab === 'qty' ? renderAiMetricsSummary(...) : null`.
-        const guardedTernary =
-            /subTab\s*===\s*['"]qty['"]\s*\?\s*renderAiMetricsSummary\s*\(/
-                .test(detailsSrc);
-
-        assert.ok(guardedShortCircuit || guardedTernary,
-            'renderAiMetricsSummary должен вызываться под условием subTab === "qty" ' +
-            '(`subTab === "qty" && renderAiMetricsSummary(...)` или тернарник). ' +
-            'Иначе qty-сводка появляется в режиме «Бюджет».');
+        assert.equal(gatedToQty, false,
+            'renderAiMetricsSummary не должен быть ограничен subTab === "qty": ' +
+            'иначе токены пропадают с первого экрана Детализации.');
     });
 
-    it('нет безусловного вызова renderAiMetricsSummary в JSX-подобном дереве renderDetails', () => {
-        // Безусловный вызов выглядит как `,\s*renderAiMetricsSummary(` —
-        // элемент массива/детей el(...) без тернарника/&&. Если такой найден —
-        // это и есть тот баг, который мы зафиксировали.
-        // Проверяем, что СРАЗУ перед вызовом нет «голой» запятой (без guard'а).
-        const naked = /[)\]}]\s*,\s*renderAiMetricsSummary\s*\(/.test(detailsSrc);
-        assert.equal(naked, false,
-            'найден безусловный вызов renderAiMetricsSummary как ребёнка в дереве — ' +
-            'обязательно должен быть guard subTab === "qty"');
+    it('summary получает hideNoBudget, чтобы «Скрыть без бюджета» синхронно скрывал пустые AI-строки', () => {
+        assert.match(detailsSrc,
+            /renderAiMetricsSummary\s*\([^)]*\{\s*hideNoBudget:\s*hideZero\s*\}/s,
+            'AI-сводка должна получать hideNoBudget: hideZero.');
     });
 });

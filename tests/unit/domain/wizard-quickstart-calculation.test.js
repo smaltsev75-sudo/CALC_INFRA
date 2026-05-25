@@ -15,6 +15,7 @@ import { STAND_IDS } from '../../../js/utils/constants.js';
 
 const PRODUCT_TYPES = ['internal', 'b2b', 'b2c', 'b2g'];
 const CORE_RESOURCES = ['CPU', 'RAM', 'SSD'];
+const TOKEN_ITEM_IDS = ['llm-tokens-input-1m', 'llm-tokens-output-1m'];
 
 function aggregateByResource(calc, result, resource) {
     const ids = calc.dictionaries.items
@@ -23,6 +24,15 @@ function aggregateByResource(calc, result, resource) {
     const out = {};
     for (const stand of STAND_IDS) {
         out[stand] = ids.reduce((sum, id) =>
+            sum + (Number(result.items[id]?.stands?.[stand]?.qty) || 0), 0);
+    }
+    return out;
+}
+
+function aggregateByItemIds(result, itemIds) {
+    const out = {};
+    for (const stand of STAND_IDS) {
+        out[stand] = itemIds.reduce((sum, id) =>
             sum + (Number(result.items[id]?.stands?.[stand]?.qty) || 0), 0);
     }
     return out;
@@ -90,6 +100,17 @@ describe('Quick Start calculation contract', () => {
                                         for (const stand of STAND_IDS) {
                                             assert.ok(qty[stand] > 0,
                                                 `${resource}/${stand} должен быть > 0 для ${JSON.stringify({ product_type, industry, scale, geography, activity, pdn, ai_used })}`);
+                                        }
+                                    }
+
+                                    const tokenQty = aggregateByItemIds(result, TOKEN_ITEM_IDS);
+                                    for (const stand of STAND_IDS) {
+                                        if (ai_used) {
+                                            assert.ok(tokenQty[stand] > 0,
+                                                `LLM токены/${stand} должны быть > 0 для Quick Start AI ${JSON.stringify({ product_type, industry, scale, geography, activity, pdn })}`);
+                                        } else {
+                                            assert.equal(tokenQty[stand], 0,
+                                                `LLM токены/${stand} должны быть 0 для Quick Start без AI ${JSON.stringify({ product_type, industry, scale, geography, activity, pdn })}`);
                                         }
                                     }
 
