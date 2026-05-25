@@ -148,7 +148,7 @@ export function renderDetails(state, ctx) {
            ломала бы режим (qty в нижней части того же экрана с ₽ выше).
            Дополнительно скрывается, если в расчёте нет ни одной ненулевой
            AI-метрики — для не-AI проектов блок не возникает вовсе. */
-        subTab === 'qty' && renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx)
+        subTab === 'qty' && renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx, { hideNoBudget: hideZero })
     );
 }
 
@@ -210,7 +210,7 @@ function renderHideZeroToggle(active, hiddenCount, ctx) {
         : 'Скрыть без бюджета';
     return el('button', {
         class: ['btn', 'btn-ghost', 'btn-icon-text', 'details-hide-zero', active && 'details-hide-zero-active'],
-        title: 'Скрыть ЭК, у которых ИТОГО за месяц равен 0 на активных стендах (qty=0, цена=0 или применимы только к выключенным стендам).',
+        title: 'Скрыть строки без вклада в бюджет на активных стендах: ЭК с ИТОГО за месяц 0 и пустые строки сводки AI-метрик.',
         attrs: { type: 'button', 'aria-pressed': active ? 'true' : 'false' },
         onClick: () => ctx.setUi?.({ detailsHideZero: !active })
     },

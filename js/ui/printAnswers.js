@@ -108,6 +108,7 @@ function buildPrintArea(calc, { extended = false } = {}) {
 
     // Таблица — один <table> на весь документ, заголовки СЕКЦИЙ через <tbody>.
     const table = el('table', { class: ['pa-table', extended && 'pa-table-extended'] });
+    appendPrintColgroup(table, extended);
     table.appendChild(el('thead', null,
         el('tr', null,
             el('th', { class: 'pa-th-q', text: 'Вопрос' }),
@@ -144,12 +145,11 @@ function buildPrintArea(calc, { extended = false } = {}) {
         table.appendChild(tbody);
     }
 
+    // Параметры расчёта живут в этой же таблице, а не во второй таблице:
+    // иначе Chromium PDF заново рассчитывает ширины колонок и значения
+    // settings уезжают левее колонки «Ответ» в extended-режиме.
+    table.appendChild(renderSettingsSection(calc.settings || {}, { extended }));
     root.appendChild(table);
-
-    // Параметры расчёта — в виде второй компактной таблицы.
-    // Этап 13.U5: в extended-режиме добавляется третья колонка «Пояснение»
-    // с описаниями из SETTINGS_DESCRIPTIONS (центральный источник для UI и PDF).
-    root.appendChild(renderSettingsTable(calc.settings || {}, { extended }));
 
     // Подвал
     root.appendChild(el('footer', { class: 'pa-footer' },
@@ -183,7 +183,7 @@ function formatAnswer(q, answer) {
     }
 }
 
-function renderSettingsTable(settings, { extended = false } = {}) {
+function renderSettingsSection(settings, { extended = false } = {}) {
     // Каждая запись: [label, value, settingsDescriptionsKey].
     // Ключ ссылается на SETTINGS_DESCRIPTIONS — единый источник пояснений.
     // Для НДС используем ключ vatEnabled (мастер-переключатель — там же ставка).
@@ -206,13 +206,14 @@ function renderSettingsTable(settings, { extended = false } = {}) {
     items.push(['Размеры стендов (% от ПРОМ)', ratiosText || '—', 'standSizeRatio']);
 
     const colCount = extended ? 3 : 2;
-    const table = el('table', { class: 'pa-table pa-settings-table' });
-    table.appendChild(el('thead', null,
-        el('tr', null,
-            el('th', { attrs: { colspan: colCount }, class: 'pa-settings-title', text: 'Параметры расчёта' })
-        )
+    const tbody = el('tbody', { class: 'pa-tbody pa-settings-tbody' });
+    tbody.appendChild(el('tr', { class: 'pa-group-row pa-settings-heading-row' },
+        el('td', {
+            attrs: { colspan: colCount },
+            class: ['pa-group-label', 'pa-settings-title'],
+            text: 'Параметры расчёта'
+        })
     ));
-    const tbody = el('tbody');
     for (const [label, value, descKey] of items) {
         const row = el('tr', { class: 'pa-row' },
             el('td', { class: 'pa-q-cell', text: label }),
@@ -223,8 +224,15 @@ function renderSettingsTable(settings, { extended = false } = {}) {
         }
         tbody.appendChild(row);
     }
-    table.appendChild(tbody);
-    return table;
+    return tbody;
+}
+
+function appendPrintColgroup(table, extended) {
+    table.appendChild(el('colgroup', null,
+        el('col', { class: 'pa-col-q' }),
+        el('col', { class: 'pa-col-a' }),
+        extended && el('col', { class: 'pa-col-x' })
+    ));
 }
 
 function fmtPct(v) {

@@ -215,6 +215,47 @@
         color: black !important;
     }
 
+    .details-ai-summary {
+        background: white !important;
+        border-color: #ccc !important;
+        box-shadow: none !important;
+        color: black !important;
+        page-break-inside: avoid;
+    }
+    .details-ai-summary-table,
+    .details-ai-summary-table tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    .details-ai-summary-table .details-ai-cell-metric {
+        display: table-cell !important;
+        align-items: initial !important;
+    }
+    .details-ai-summary-table .details-ai-cell-metric-name {
+        display: inline !important;
+    }
+    .details-ai-summary-title,
+    .details-ai-summary-note,
+    .details-ai-summary-table thead th,
+    .details-ai-summary-table tbody td,
+    .details-ai-cell-metric,
+    .details-ai-cell-metric-name,
+    .details-ai-cell-stand,
+    .details-ai-cell-total {
+        color: black !important;
+        background: transparent !important;
+        background-image: none !important;
+        -webkit-text-fill-color: black !important;
+        text-shadow: none !important;
+    }
+    .details-ai-summary-table thead th,
+    .details-ai-summary-table tbody td {
+        border-color: #ccc !important;
+    }
+    .details-ai-cell-disabled {
+        opacity: 0.55 !important;
+    }
+
     .details-quantity-print-summary {
         display: block !important;
         margin-top: 12px !important;
@@ -558,6 +599,7 @@ body.printing-answers-extended #print-answers-area .pa-th-x  { width: 54%; }
    через colspan. Без рекомендаций и пояснений (явный запрос пользователя). */
 #print-answers-area .pa-table {
     width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
     margin-top: 10px;
     font-size: 10pt;
@@ -574,6 +616,10 @@ body.printing-answers-extended #print-answers-area .pa-th-x  { width: 54%; }
 }
 #print-answers-area .pa-th-q { width: 60%; }
 #print-answers-area .pa-th-a { width: 40%; }
+#print-answers-area .pa-col-q { width: 60%; }
+#print-answers-area .pa-col-a { width: 40%; }
+#print-answers-area .pa-q-cell { width: 60%; }
+#print-answers-area .pa-a-cell { width: 40%; }
 #print-answers-area .pa-group-row td.pa-group-label {
     background: #f6f6f6;
     color: #222;
@@ -605,8 +651,11 @@ body.printing-answers-extended #print-answers-area .pa-th-x  { width: 54%; }
     white-space: pre-line;
 }
 
-/* Параметры расчёта — отдельная таблица с собственным заголовком */
-#print-answers-area .pa-settings-table { margin-top: 18px; }
+/* Параметры расчёта — секция общей таблицы, чтобы колонки не съезжали в PDF */
+#print-answers-area .pa-settings-tbody {
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
 #print-answers-area .pa-settings-title {
     background: #ddd !important;
     color: #111 !important;
@@ -614,7 +663,16 @@ body.printing-answers-extended #print-answers-area .pa-th-x  { width: 54%; }
     text-align: left;
     padding: 5px 8px;
     border-bottom: 1px solid #666;
+    text-transform: none;
+    letter-spacing: 0;
 }
+
+body.printing-answers-extended #print-answers-area .pa-q-cell { width: 28%; }
+body.printing-answers-extended #print-answers-area .pa-a-cell { width: 18%; }
+body.printing-answers-extended #print-answers-area .pa-x-cell { width: 54%; }
+body.printing-answers-extended #print-answers-area .pa-col-q { width: 28%; }
+body.printing-answers-extended #print-answers-area .pa-col-a { width: 18%; }
+body.printing-answers-extended #print-answers-area .pa-col-x { width: 54%; }
 
 /* Подвал */
 #print-answers-area .pa-footer {

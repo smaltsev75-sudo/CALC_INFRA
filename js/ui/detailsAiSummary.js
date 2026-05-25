@@ -24,6 +24,9 @@ import { aggregateAiMetrics, formatResourceQty } from './dashboard.js';
      calc=null              → null (нет активного расчёта).
      все qty всех метрик=0  → null (AI отключён в проекте).
      хотя бы одна qty>0     → блок появляется с заголовком + таблица.
+     hideNoBudget=true      → строки без видимых значений в активных стендах
+                              и ИТОГО скрываются синхронно с кнопкой
+                              «Скрыть без бюджета».
 
    Зачем здесь, а не только на Дэшборде:
      Детализация = разрез ИТ-аналитика. Он видит per-item суммы (токены input,
@@ -31,11 +34,12 @@ import { aggregateAiMetrics, formatResourceQty } from './dashboard.js';
      метрике (TOKENS = input + output вместе). Помогает быстро ответить на
      вопрос «сколько у нас в сумме токенов на PSI?» без ручного сложения
      двух строк. */
-export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx) {
+export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx, options = {}) {
     if (!calc) return null;
     const aiMetrics = aggregateAiMetrics(result, calc.dictionaries?.items || [], disabledStands, applyRisks);
     const total = aiMetrics.total || {};
     const perStand = aiMetrics.perStand || {};
+    const hideNoBudget = !!options.hideNoBudget;
 
     // Скрываем блок, если ВСЕ метрики пусты (AI отключён в проекте).
     const hasAny = DASHBOARD_AI_METRIC_LABELS.some(label => {
@@ -43,6 +47,12 @@ export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks,
         return e && e.qty > 0;
     });
     if (!hasAny) return null;
+
+    const visibleLabels = DASHBOARD_AI_METRIC_LABELS.filter(label => {
+        if (!hideNoBudget) return true;
+        return hasVisibleAiMetricValue(label, total, perStand, disabledStands);
+    });
+    if (visibleLabels.length === 0) return null;
 
     const fmt = (qty, unit) => {
         const v = formatResourceQty(qty, unit);
@@ -61,7 +71,7 @@ export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks,
         el('th', { class: 'details-ai-cell-total', text: 'ИТОГО' })
     );
 
-    const rows = DASHBOARD_AI_METRIC_LABELS.map(label => {
+    const rows = visibleLabels.map(label => {
         const tot = total[label];
         const title = DASHBOARD_AI_METRIC_TITLES[label] || label;
         const desc = DASHBOARD_AI_METRIC_DESCRIPTIONS[label] || '';
@@ -115,4 +125,15 @@ export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks,
             )
         )
     );
+}
+
+function hasVisibleAiMetricValue(label, total, perStand, disabledStands = []) {
+    const isVisible = (entry) => {
+        if (!entry || !(entry.qty > 0)) return false;
+        const text = formatResourceQty(entry.qty, entry.unit);
+        return text !== null && text !== '0';
+    };
+    if (isVisible(total?.[label])) return true;
+    const disabled = new Set(disabledStands);
+    return STAND_IDS.some(sid => !disabled.has(sid) && isVisible(perStand?.[sid]?.[label]));
 }
