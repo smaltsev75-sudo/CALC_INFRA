@@ -19,6 +19,8 @@ import {
     summarizeProviderQuality
 } from '../../../scripts/provider-freshness-report.mjs';
 
+const REPORT_PATH = join('docs', 'assistant', 'PROVIDER_FRESHNESS_REPORT.md');
+
 test('provider freshness summary marks fresh, stale, stub and assumed VAT states', () => {
     const providers = {
         fresh: {
@@ -137,8 +139,8 @@ test('provider quality summary separates core coverage, VAT policy, prices and s
 });
 
 test('PROVIDER_FRESHNESS_REPORT.md синхронизирован с bundled provider prices', (t) => {
-    if (!existsSync('PROVIDER_FRESHNESS_REPORT.md')) {
-        t.skip('PROVIDER_FRESHNESS_REPORT.md — maintainer-only документ и отсутствует в clean checkout.');
+    if (!existsSync(REPORT_PATH)) {
+        t.skip(`${REPORT_PATH} — maintainer-only документ и отсутствует в clean checkout.`);
         return;
     }
 
@@ -147,7 +149,7 @@ test('PROVIDER_FRESHNESS_REPORT.md синхронизирован с bundled pro
             cwd: process.cwd(),
             stdio: 'pipe'
         });
-    }, 'PROVIDER_FRESHNESS_REPORT.md устарел; обновите его командой `npm run prices:freshness`.');
+    }, `${REPORT_PATH} устарел; обновите его командой \`npm run prices:freshness\`.`);
 });
 
 test('provider freshness --check мягко пропускает отсутствующий maintainer-only отчёт', () => {

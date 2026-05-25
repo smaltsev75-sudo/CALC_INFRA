@@ -23,7 +23,7 @@ import { STAND_IDS } from '../js/utils/constants.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPORT_PATH = process.env.QUANTITY_LOGIC_AUDIT_PATH
     ? resolve(process.env.QUANTITY_LOGIC_AUDIT_PATH)
-    : resolve(__dirname, '..', 'QUANTITY_LOGIC_AUDIT.md');
+    : resolve(__dirname, '..', 'docs', 'assistant', 'QUANTITY_LOGIC_AUDIT.md');
 
 function normalizeLineEndings(value) {
     return String(value).replace(/\r\n?/g, '\n');
@@ -328,15 +328,15 @@ const mode = process.argv[2] || '';
 
 if (mode === '--write') {
     writeFileSync(REPORT_PATH, output, 'utf8');
-    console.log(`QUANTITY_LOGIC_AUDIT.md updated`);
+    console.log(`docs/assistant/QUANTITY_LOGIC_AUDIT.md updated`);
 } else if (mode === '--check') {
     if (!existsSync(REPORT_PATH)) {
-        console.error('QUANTITY_LOGIC_AUDIT.md отсутствует. Run: npm run quantity:audit');
+        console.error('docs/assistant/QUANTITY_LOGIC_AUDIT.md отсутствует. Run: npm run quantity:audit');
         process.exit(1);
     }
     const current = normalizeLineEndings(readFileSync(REPORT_PATH, 'utf8'));
     if (current !== output) {
-        console.error('QUANTITY_LOGIC_AUDIT.md is stale. Run: npm run quantity:audit');
+        console.error('docs/assistant/QUANTITY_LOGIC_AUDIT.md is stale. Run: npm run quantity:audit');
         process.exit(1);
     }
 } else if (mode) {

@@ -32,6 +32,7 @@ import { stripJsComments } from '../../_helpers/source.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..', '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf-8');
+const ASSISTANT_DOCS = join('docs', 'assistant');
 
 /* Внешний аудит #18 (PATCH 2.19.5, P1, выбор 1A): graceful skip когда
  * maintainer-only fixtures отсутствуют (tests/unit/services/, Architecture.md,
@@ -41,7 +42,8 @@ const SKIP_VALIDATE_TEST = !existsSync(join(ROOT, 'tests/unit/services/provider-
     ? 'maintainer-only: tests/unit/services/provider-price-fetch.test.js отсутствует в clean clone'
     : false;
 const SKIP_LIVE_INVARIANTS = !existsSync(join(ROOT, 'data/providers'))
-    ? 'maintainer-only: data/providers/ или Architecture.md отсутствуют в clean clone'
+    || !existsSync(join(ROOT, ASSISTANT_DOCS, 'Architecture.md'))
+    ? 'maintainer-only: data/providers/ или docs/assistant/Architecture.md отсутствуют в clean clone'
     : false;
 
 /* ============================================================
@@ -187,7 +189,7 @@ describe('Phase 5 — Live invariants', { skip: SKIP_LIVE_INVARIANTS }, () => {
     });
 
     it('Architecture.md описывает providerPriceFetch.js актуально (validate, не fetch+apply)', () => {
-        const arch = read('Architecture.md');
+        const arch = read(join(ASSISTANT_DOCS, 'Architecture.md'));
         assert.doesNotMatch(arch, /providerPriceFetch\.js\s*#\s*fetch\s*\+\s*validate\s*\+\s*apply/,
             'Architecture.md не должна описывать providerPriceFetch как fetch+validate+apply (Phase 5 cleanup).');
         assert.match(arch, /providerPriceFetch\.js\s*#\s*validate/,

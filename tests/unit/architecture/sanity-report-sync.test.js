@@ -12,9 +12,11 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+const REPORT_PATH = join('docs', 'assistant', 'SANITY_REPORT.md');
+
 test('SANITY_REPORT.md синхронизирован с текущей расчётной логикой', (t) => {
-    if (!existsSync('SANITY_REPORT.md')) {
-        t.skip('SANITY_REPORT.md — maintainer-only документ и отсутствует в clean checkout.');
+    if (!existsSync(REPORT_PATH)) {
+        t.skip(`${REPORT_PATH} — maintainer-only документ и отсутствует в clean checkout.`);
         return;
     }
 
@@ -23,7 +25,7 @@ test('SANITY_REPORT.md синхронизирован с текущей расч
             cwd: process.cwd(),
             stdio: 'pipe'
         });
-    }, 'SANITY_REPORT.md устарел; обновите его командой `npm run sanity`.');
+    }, `${REPORT_PATH} устарел; обновите его командой \`npm run sanity\`.`);
 });
 
 test('sanity-report --check мягко пропускает отсутствующий maintainer-only отчёт', () => {

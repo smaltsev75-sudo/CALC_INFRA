@@ -6,7 +6,7 @@
  * [providerPriceFetch.js](js/services/providerPriceFetch.js).
  *
  * Группы тестов (по spec-plan
- * [provider-price-schema-v2.spec-plan.md](provider-price-schema-v2.spec-plan.md)):
+ * [provider-price-schema-v2.spec-plan.md](../../../docs/assistant/provider-price-schema-v2.spec-plan.md)):
  *   A — v2 happy paths (net / gross+vatRate / net+gross+vatRate)
  *   B — v2 rejects (mismatch / gross без vatRate / invalid rate / negative price /
  *       unsupported schemaVersion)

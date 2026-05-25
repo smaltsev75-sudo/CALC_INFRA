@@ -28,7 +28,7 @@
 //
 // Тест tests/unit/architecture/app-version-sync.test.js потом проверит
 // что constants.js и package.json синхронны.
-// Не трогает DECISIONS.md / CLAUDE.md — записи добавляются вручную.
+// Не трогает docs/assistant/DECISIONS.md / docs/assistant/CLAUDE.md — записи добавляются вручную.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -98,8 +98,8 @@ console.log(`bump-version → ${currentPkg.version} → ${version}`);
 for (const c of changes) console.log(`  ${c.status.padEnd(10)} ${c.file}`);
 console.log('');
 console.log('Next steps:');
-console.log('  1. Add section to DECISIONS.md');
-console.log('  2. Update CLAUDE.md release note');
+console.log('  1. Add section to docs/assistant/DECISIONS.md');
+console.log('  2. Update docs/assistant/CLAUDE.md release note');
 console.log('  3. npm test');
 console.log('  4. git commit + push');
 console.log('  5. gh release create v' + version + ' --target HEAD --title ...');

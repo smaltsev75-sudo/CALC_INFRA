@@ -2,7 +2,7 @@
  * Stage VAT-2 Phase 1 — Double-VAT Regression (acceptance core, criterion 22).
  *
  * Группа E из spec-plan
- * [provider-price-schema-v2.spec-plan.md](../unit/services/provider-price-schema-v2.spec-plan.md).
+ * [provider-price-schema-v2.spec-plan.md](../../docs/assistant/provider-price-schema-v2.spec-plan.md).
  *
  * Главный инвариант VAT-2:
  *

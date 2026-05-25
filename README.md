@@ -4,8 +4,8 @@
 
 Работает полностью **offline**, без runtime-зависимостей. Все цены в **рублях**.
 
-Текущая версия — в [package.json](package.json) (поле `version`). Журнал ключевых решений по этапам — в [DECISIONS.md](DECISIONS.md).
-Методика расчёта бюджета — в [BUDGET_CALCULATION.md](BUDGET_CALCULATION.md).
+Текущая версия — в [package.json](package.json) (поле `version`). Журнал ключевых решений по этапам — в [DECISIONS.md](docs/assistant/DECISIONS.md).
+Методика расчёта бюджета — в [BUDGET_CALCULATION.md](docs/assistant/BUDGET_CALCULATION.md).
 
 ---
 
@@ -155,12 +155,12 @@ npm run test:integration  # только integration-сценарии
 npm run smoke:desktop     # Playwright desktop suite: smoke + UI↔domain + real user flows
 npm run smoke:published   # короткий smoke опубликованной GitHub Pages сборки
 npm run syntax-check      # node --check для js/**/*.js
-npm run sanity:check      # проверка актуальности SANITY_REPORT.md
-npm run sanity            # пересобрать SANITY_REPORT.md
-npm run prices:freshness:check # проверка PROVIDER_FRESHNESS_REPORT.md
-npm run prices:freshness       # пересобрать PROVIDER_FRESHNESS_REPORT.md
-npm run quantity:audit:check # проверка QUANTITY_LOGIC_AUDIT.md
-npm run quantity:audit       # пересобрать QUANTITY_LOGIC_AUDIT.md
+npm run sanity:check      # проверка актуальности docs/assistant/SANITY_REPORT.md
+npm run sanity            # пересобрать docs/assistant/SANITY_REPORT.md
+npm run prices:freshness:check # проверка docs/assistant/PROVIDER_FRESHNESS_REPORT.md
+npm run prices:freshness       # пересобрать docs/assistant/PROVIDER_FRESHNESS_REPORT.md
+npm run quantity:audit:check # проверка docs/assistant/QUANTITY_LOGIC_AUDIT.md
+npm run quantity:audit       # пересобрать docs/assistant/QUANTITY_LOGIC_AUDIT.md
 npm run pages:build       # собрать .pages-dist для GitHub Pages workflow
 ```
 
@@ -197,7 +197,7 @@ Dashboard, Детализацию и Сравнение на реальном ba
 Скрипт делает один retry по умолчанию и при сетевых 4xx/5xx выводит точный URL
 ресурса, а не только браузерное `Failed to load resource`.
 
-`PROVIDER_FRESHNESS_REPORT.md` содержит три таблицы: freshness
+`docs/assistant/PROVIDER_FRESHNESS_REPORT.md` содержит три таблицы: freshness
 (timestamp/age/version/VAT confidence), quality gates (core SKU coverage,
 gross→net VAT policy, неположительные цены, пустые vendor/source) и confidence
 summary по verified/source-level, assumed, unknown и stub-провайдерам. `STUB` /
@@ -219,7 +219,7 @@ structural quality проблемы до релиза. В пользовател
 (`calc.providerVersion` → bundled provider JSON), и попадает также в CSV,
 memo и печатный PDF.
 
-`QUANTITY_LOGIC_AUDIT.md` фиксирует проверку логики количества ЭК: все
+`docs/assistant/QUANTITY_LOGIC_AUDIT.md` фиксирует проверку логики количества ЭК: все
 применимые qty-формулы, ссылки `Q.*` и `S.*`, единицы измерения, месячный
 множитель тарифа, риск-коэффициенты, НДС и 2880 сценариев Quick Start.
 
@@ -231,7 +231,7 @@ memo и печатный PDF.
 deploy-from-branch. Playwright артефакты при падении загружаются из
 `.playwright-mcp/test-results`.
 
-Архитектура держится на ES-модулях без bundler'а. Исторические entry point'ы вроде `js/app.js`, `js/ui/questionnaire.js`, `js/domain/costOptimizationPlanner.js`, `js/services/providerPriceFetch.js` сохранены как стабильные фасады; узкая логика вынесена в соседние модули (`js/app/*Actions.js`, `questionnaire*`, `dashboard*`, `costOptimizationPlanner*`, `priceImportMapping*`, `providerPriceNormalize.js`, `decisionMemoFormat.js`). Актуальная карта ownership — в [Architecture.md](Architecture.md#фасады-после-модульного-рефакторинга).
+Архитектура держится на ES-модулях без bundler'а. Исторические entry point'ы вроде `js/app.js`, `js/ui/questionnaire.js`, `js/domain/costOptimizationPlanner.js`, `js/services/providerPriceFetch.js` сохранены как стабильные фасады; узкая логика вынесена в соседние модули (`js/app/*Actions.js`, `questionnaire*`, `dashboard*`, `costOptimizationPlanner*`, `priceImportMapping*`, `providerPriceNormalize.js`, `decisionMemoFormat.js`). Актуальная карта ownership — в [Architecture.md](docs/assistant/Architecture.md#фасады-после-модульного-рефакторинга).
 
 ### Встроенные ресурсы
 
@@ -250,23 +250,23 @@ deploy-from-branch. Playwright артефакты при падении загр
 - Лицензии — Tantor SE, Red OS, Kaspersky EDR.
 - Пентесты, аудиты, сертификация — медианы рынка из публичных источников (anti-malware.ru, RTM Group, BI.ZONE, ibs-qa).
 
-Цены требуют ревизии раз в 6+ месяцев (особенно LLM, SMS и конфигурационные позиции вроде WAF/DDoS; в UI у этих терминов есть русские хинты). Текущий статус bundled-прайсов — в [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md); в самом UI дата актуальности выводится как `Актуальность прайса: ДД.ММ.ГГГГ`. Регламент обновления — в [MAINTAINER_GUIDE.md](MAINTAINER_GUIDE.md).
+Цены требуют ревизии раз в 6+ месяцев (особенно LLM, SMS и конфигурационные позиции вроде WAF/DDoS; в UI у этих терминов есть русские хинты). Текущий статус bundled-прайсов — в [PROVIDER_FRESHNESS_REPORT.md](docs/assistant/PROVIDER_FRESHNESS_REPORT.md); в самом UI дата актуальности выводится как `Актуальность прайса: ДД.ММ.ГГГГ`. Регламент обновления — в [MAINTAINER_GUIDE.md](docs/assistant/MAINTAINER_GUIDE.md).
 
 ### Обновление цен
 
 Калькулятор **не делает сетевых запросов к сайтам провайдеров** (CSP `connect-src 'self'`). Runtime-цены поставляются в `js/data/providers-bundled.generated.js`; maintainer-источники лежат в `data/providers/*.json` и пересобираются командой `npm run generate:providers`. Раз в квартал maintainer обновляет эти файлы вручную; пользователи получают новые цены через **Импорт прайса JSON** в Опроснике (пользовательский workflow — в [UserManual.md → Прайс](UserManual.md#прайс)) либо автоматически после `git pull` нового bundle.
 
-Полный регламент обновления + причины, почему автоматический парсинг сайтов провайдеров не реализован — в [MAINTAINER_GUIDE.md → Provider Price Update Workflow](MAINTAINER_GUIDE.md#1-provider-price-update-workflow).
+Полный регламент обновления + причины, почему автоматический парсинг сайтов провайдеров не реализован — в [MAINTAINER_GUIDE.md → Provider Price Update Workflow](docs/assistant/MAINTAINER_GUIDE.md#1-provider-price-update-workflow).
 
 ---
 
 ## Что дальше
 
 - Подробное руководство пользователя — в [UserManual.md](UserManual.md).
-- Регламент maintainer'а (обновление прайсов, тесты, миграции) — в [MAINTAINER_GUIDE.md](MAINTAINER_GUIDE.md).
-- Архитектурный обзор для разработчиков и тестировщиков — в [Architecture.md](Architecture.md).
-- Журнал ключевых решений по этапам — в [DECISIONS.md](DECISIONS.md).
+- Регламент maintainer'а (обновление прайсов, тесты, миграции) — в [MAINTAINER_GUIDE.md](docs/assistant/MAINTAINER_GUIDE.md).
+- Архитектурный обзор для разработчиков и тестировщиков — в [Architecture.md](docs/assistant/Architecture.md).
+- Журнал ключевых решений по этапам — в [DECISIONS.md](docs/assistant/DECISIONS.md).
 - Все способы запуска и troubleshooting — в [HOW_TO_START.md](HOW_TO_START.md).
-- Sanity-check цифр на 3 типовых профилях продукта — в [SANITY_REPORT.md](SANITY_REPORT.md); расширенные business-эталоны описаны в [UserManual.md](UserManual.md#как-проверить-реалистичность-результата).
-- Свежесть bundled provider-прайсов — в [PROVIDER_FRESHNESS_REPORT.md](PROVIDER_FRESHNESS_REPORT.md).
-- Аудит логики количества ЭК и Quick Start — в [QUANTITY_LOGIC_AUDIT.md](QUANTITY_LOGIC_AUDIT.md).
+- Sanity-check цифр на 3 типовых профилях продукта — в [SANITY_REPORT.md](docs/assistant/SANITY_REPORT.md); расширенные business-эталоны описаны в [UserManual.md](UserManual.md#как-проверить-реалистичность-результата).
+- Свежесть bundled provider-прайсов — в [PROVIDER_FRESHNESS_REPORT.md](docs/assistant/PROVIDER_FRESHNESS_REPORT.md).
+- Аудит логики количества ЭК и Quick Start — в [QUANTITY_LOGIC_AUDIT.md](docs/assistant/QUANTITY_LOGIC_AUDIT.md).

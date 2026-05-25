@@ -3,8 +3,8 @@
  *
  * Режимы:
  *   node scripts/sanity-report.mjs          -> вывести Markdown в stdout
- *   node scripts/sanity-report.mjs --write  -> обновить SANITY_REPORT.md
- *   node scripts/sanity-report.mjs --check  -> проверить, что SANITY_REPORT.md свежий
+ *   node scripts/sanity-report.mjs --write  -> обновить docs/assistant/SANITY_REPORT.md
+ *   node scripts/sanity-report.mjs --check  -> проверить, что docs/assistant/SANITY_REPORT.md свежий
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -17,7 +17,7 @@ import { getVatRateForDate } from '../js/domain/vatRateTable.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPORT_PATH = process.env.SANITY_REPORT_PATH
     ? resolve(process.env.SANITY_REPORT_PATH)
-    : resolve(__dirname, '..', 'SANITY_REPORT.md');
+    : resolve(__dirname, '..', 'docs', 'assistant', 'SANITY_REPORT.md');
 
 function normalizeLineEndings(value) {
     return String(value).replace(/\r\n?/g, '\n');
@@ -185,15 +185,15 @@ const mode = process.argv[2] || '';
 
 if (mode === '--write') {
     writeFileSync(REPORT_PATH, output, 'utf8');
-    console.log(`SANITY_REPORT.md updated (${lines.length} lines)`);
+    console.log(`docs/assistant/SANITY_REPORT.md updated (${lines.length} lines)`);
 } else if (mode === '--check') {
     if (!existsSync(REPORT_PATH)) {
-        console.warn('SANITY_REPORT.md отсутствует; проверка пропущена для урезанного архива.');
+        console.warn('docs/assistant/SANITY_REPORT.md отсутствует; проверка пропущена для урезанного архива.');
         process.exit(0);
     }
     const current = normalizeLineEndings(readFileSync(REPORT_PATH, 'utf8'));
     if (current !== output) {
-        console.error('SANITY_REPORT.md is stale. Run: npm run sanity');
+        console.error('docs/assistant/SANITY_REPORT.md is stale. Run: npm run sanity');
         process.exit(1);
     }
 } else if (mode) {

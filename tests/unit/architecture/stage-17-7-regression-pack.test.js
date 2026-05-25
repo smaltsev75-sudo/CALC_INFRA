@@ -31,11 +31,12 @@ import { stripJsComments } from '../../_helpers/source.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..', '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf-8');
+const ASSISTANT_DOCS = join('docs', 'assistant');
 
 /* Внешний аудит #18 (PATCH 2.19.5, P1, выбор 1A): graceful skip BROWSER_SMOKE.md
  * блока — этот файл maintainer-only doc-артефакт, gitignored. */
-const SKIP_BROWSER_SMOKE = !existsSync(join(ROOT, 'BROWSER_SMOKE.md'))
-    ? 'maintainer-only: BROWSER_SMOKE.md отсутствует в clean clone'
+const SKIP_BROWSER_SMOKE = !existsSync(join(ROOT, ASSISTANT_DOCS, 'BROWSER_SMOKE.md'))
+    ? 'maintainer-only: docs/assistant/BROWSER_SMOKE.md отсутствует в clean clone'
     : false;
 
 /* ============================================================
@@ -177,20 +178,19 @@ describe('Stage 17.7 — UserManual.md не содержит orphan-ссылок
 
 describe('Stage 17.7 — BROWSER_SMOKE.md — doc-артефакт UX regression checklist', { skip: SKIP_BROWSER_SMOKE }, () => {
     it('файл существует', () => {
-        assert.equal(existsSync(join(ROOT, 'BROWSER_SMOKE.md')), true,
-            'BROWSER_SMOKE.md — артефакт ручного regression-чека после изменений IA. ' +
-            'Должен лежать в корне проекта.');
+        assert.equal(existsSync(join(ROOT, ASSISTANT_DOCS, 'BROWSER_SMOKE.md')), true,
+            'docs/assistant/BROWSER_SMOKE.md — артефакт ручного regression-чека после изменений IA.');
     });
 
     it('содержит секции A (Dashboard CTA dedup), B (Основные пути), C (IA / Sidebar)', () => {
-        const src = read('BROWSER_SMOKE.md');
+        const src = read(join(ASSISTANT_DOCS, 'BROWSER_SMOKE.md'));
         assert.match(src, /## A\. Dashboard CTA dedup/);
         assert.match(src, /## B\. Основные пользовательские пути/);
         assert.match(src, /## C\. IA \/ Sidebar/);
     });
 
     it('явно требует Ctrl\\+Shift\\+R перед прогоном', () => {
-        const src = read('BROWSER_SMOKE.md');
+        const src = read(join(ASSISTANT_DOCS, 'BROWSER_SMOKE.md'));
         assert.match(src, /Ctrl\+Shift\+R/i,
             'Без hard-reload ESM-кэш браузера держит старые модули — checklist бесполезен.');
     });

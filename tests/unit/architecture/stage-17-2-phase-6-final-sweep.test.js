@@ -23,11 +23,12 @@ import { stripJsComments, stripCssComments } from '../../_helpers/source.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..', '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf-8');
+const ASSISTANT_DOCS = join('docs', 'assistant');
 
 /* Внешний аудит #18 (PATCH 2.19.5, P1, выбор 1A): graceful skip для блоков,
  * читающих maintainer-only fixtures (MAINTAINER_GUIDE.md, data/providers/). */
-const SKIP_USER_DOCS = !existsSync(join(ROOT, 'MAINTAINER_GUIDE.md'))
-    ? 'maintainer-only: MAINTAINER_GUIDE.md отсутствует в clean clone'
+const SKIP_USER_DOCS = !existsSync(join(ROOT, ASSISTANT_DOCS, 'MAINTAINER_GUIDE.md'))
+    ? 'maintainer-only: docs/assistant/MAINTAINER_GUIDE.md отсутствует в clean clone'
     : false;
 const SKIP_PROVIDERS_FIXTURES = !existsSync(join(ROOT, 'data/providers'))
     ? 'maintainer-only: data/providers/ отсутствует в clean clone'
@@ -207,8 +208,8 @@ describe('Phase 6 — UserManual.md / README.md hygiene', { skip: SKIP_USER_DOCS
     });
 
     it('MAINTAINER_GUIDE.md существует и описывает Provider Price Update Workflow', () => {
-        assert.equal(existsSync(join(ROOT, 'MAINTAINER_GUIDE.md')), true);
-        const mg = read('MAINTAINER_GUIDE.md');
+        assert.equal(existsSync(join(ROOT, ASSISTANT_DOCS, 'MAINTAINER_GUIDE.md')), true);
+        const mg = read(join(ASSISTANT_DOCS, 'MAINTAINER_GUIDE.md'));
         assert.match(mg, /Provider Price Update Workflow/);
     });
 });

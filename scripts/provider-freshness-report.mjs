@@ -3,7 +3,7 @@
  *
  * Modes:
  *   node scripts/provider-freshness-report.mjs          -> print Markdown
- *   node scripts/provider-freshness-report.mjs --write  -> update PROVIDER_FRESHNESS_REPORT.md
+ *   node scripts/provider-freshness-report.mjs --write  -> update docs/assistant/PROVIDER_FRESHNESS_REPORT.md
  *   node scripts/provider-freshness-report.mjs --check  -> check the tracked report
  */
 
@@ -17,7 +17,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPORT_DATE = '2026-05-22';
 const REPORT_PATH = process.env.PROVIDER_FRESHNESS_REPORT_PATH
     ? resolve(process.env.PROVIDER_FRESHNESS_REPORT_PATH)
-    : resolve(__dirname, '..', 'PROVIDER_FRESHNESS_REPORT.md');
+    : resolve(__dirname, '..', 'docs', 'assistant', 'PROVIDER_FRESHNESS_REPORT.md');
 
 function normalizeLineEndings(value) {
     return String(value).replace(/\r\n?/g, '\n');
@@ -295,15 +295,15 @@ if (isCli) {
 
         if (mode === '--write') {
             writeFileSync(REPORT_PATH, output, 'utf8');
-            console.log(`PROVIDER_FRESHNESS_REPORT.md updated (${output.split('\n').length - 1} lines)`);
+            console.log(`docs/assistant/PROVIDER_FRESHNESS_REPORT.md updated (${output.split('\n').length - 1} lines)`);
         } else if (mode === '--check') {
             if (!existsSync(REPORT_PATH)) {
-                console.warn('PROVIDER_FRESHNESS_REPORT.md отсутствует; проверка пропущена для урезанного архива.');
+                console.warn('docs/assistant/PROVIDER_FRESHNESS_REPORT.md отсутствует; проверка пропущена для урезанного архива.');
                 process.exit(0);
             }
             const current = normalizeLineEndings(readFileSync(REPORT_PATH, 'utf8'));
             if (current !== output) {
-                console.error('PROVIDER_FRESHNESS_REPORT.md is stale. Run: npm run prices:freshness');
+                console.error('docs/assistant/PROVIDER_FRESHNESS_REPORT.md is stale. Run: npm run prices:freshness');
                 process.exit(1);
             }
         } else {
