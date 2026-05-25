@@ -115,21 +115,21 @@ function dashboardAiBlock(page, scope, standId = null) {
 }
 
 async function expectResourceRowsVisible(page, block, labels) {
-    for (const label of labels) {
+    await Promise.all(labels.map(async label => {
         const row = block.locator('.dash-resource-row').filter({ hasText: label });
         await expect(row, `Dashboard resource row "${label}" must be visible`).toBeVisible();
         await expect(row.locator('.dash-resource-row-qty-empty'), `Dashboard resource row "${label}" must not be empty`)
             .toHaveCount(0);
-    }
+    }));
 }
 
 async function expectAiRowsVisible(page, block, labels) {
-    for (const label of labels) {
+    await Promise.all(labels.map(async label => {
         const row = block.locator('.dash-ai-metric-row').filter({ hasText: label });
         await expect(row, `Dashboard AI row "${label}" must be visible`).toBeVisible();
         await expect(row.locator('.dash-ai-metric-row-qty-empty'), `Dashboard AI row "${label}" must not be empty`)
             .toHaveCount(0);
-    }
+    }));
 }
 
 async function expectDashboardPositiveRowsVisible(page) {
@@ -138,13 +138,13 @@ async function expectDashboardPositiveRowsVisible(page) {
     await expectResourceRowsVisible(page, dashboardResourceBlock(page, 'total'), expected.resources.total);
     await expectAiRowsVisible(page, dashboardAiBlock(page, 'total'), expected.ai.total);
 
-    for (const [standId, labels] of Object.entries(expected.resources.perStand)) {
+    await Promise.all(Object.entries(expected.resources.perStand).map(async ([standId, labels]) => {
         await expectResourceRowsVisible(page, dashboardResourceBlock(page, 'stand', standId), labels);
-    }
-    for (const [standId, labels] of Object.entries(expected.ai.perStand)) {
-        if (labels.length === 0) continue;
+    }));
+    await Promise.all(Object.entries(expected.ai.perStand).map(async ([standId, labels]) => {
+        if (labels.length === 0) return;
         await expectAiRowsVisible(page, dashboardAiBlock(page, 'stand', standId), labels);
-    }
+    }));
 }
 
 async function expectDetailsPositiveQtyRowsVisible(page) {
@@ -158,12 +158,34 @@ async function expectDetailsPositiveQtyRowsVisible(page) {
     });
     await expect(page.locator('.details-table-qty')).toBeVisible();
 
-    for (const item of expected.qtyItems) {
+    await Promise.all(expected.qtyItems.map(async item => {
         const row = page.locator(`.details-table-qty tbody tr.item-row[data-item-id="${item.id}"]`);
         await expect(row, `Details qty row "${item.name}" must be visible`).toBeVisible();
         await expect(row.locator('td.col-total').first(), `Details qty row "${item.name}" must have total qty`)
             .not.toHaveText('—');
-    }
+    }));
+}
+
+function parseRuNumber(text) {
+    const normalized = String(text || '')
+        .replace(/\u00a0/g, ' ')
+        .replace(/\s+/g, '')
+        .replace(',', '.');
+    const match = normalized.match(/-?\d+(?:\.\d+)?/);
+    return match ? Number(match[0]) : NaN;
+}
+
+async function standResourceQty(page, standId, label) {
+    const row = dashboardResourceBlock(page, 'stand', standId)
+        .locator('.dash-resource-row')
+        .filter({ hasText: label })
+        .first();
+    await expect(row, `${standId} ${label} resource row`).toBeVisible();
+    await expect(row.locator('.dash-resource-row-qty-empty')).toHaveCount(0);
+    const text = await row.locator('.dash-resource-row-value').innerText();
+    const qty = parseRuNumber(text);
+    expect(Number.isFinite(qty), `${standId} ${label} qty from "${text}"`).toBe(true);
+    return qty;
 }
 
 test('Quick Start renders every positive Dashboard resource and Details qty row', async ({ page }) => {
@@ -178,6 +200,68 @@ test('Quick Start renders every positive Dashboard resource and Details qty row'
     await expectDashboardPositiveRowsVisible(page);
     await expectDetailsPositiveQtyRowsVisible(page);
     await expectDashboardDetailsConsistency(page);
+
+    expect(consoleErrors).toEqual([]);
+});
+
+test('Dashboard stand cards show LOAD HDD above PROD when HDD ratio is 120%', async ({ page }) => {
+    const consoleErrors = await bootCleanApp(page);
+
+    await createCalculationFromQuickStart(page, {
+        name: 'LOAD HDD ratio contract',
+        presetId: 'high_ai'
+    });
+    await page.evaluate(async () => {
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
+        store.updateActiveCalc(calc => ({
+            settings: {
+                ...calc.settings,
+                applyRiskFactors: false,
+                vatEnabled: false,
+                vatRate: 0,
+                resourceRatio: {
+                    ...calc.settings.resourceRatio,
+                    PROD: {
+                        ...calc.settings.resourceRatio?.PROD,
+                        CPU: 1, GPU: 1, RAM: 1, SSD: 1, HDD: 1, S3: 1
+                    },
+                    LOAD: {
+                        ...calc.settings.resourceRatio?.LOAD,
+                        CPU: 1.2, GPU: 1.2, RAM: 1.2, SSD: 1.2, HDD: 1.2, S3: 1.2
+                    }
+                }
+            },
+            answers: {
+                ...calc.answers,
+                users_total: 55000,
+                db_size_initial_gb: 100,
+                db_growth_gb_month: 10,
+                db_count: 2,
+                backup_retention_days: 90,
+                file_storage_volume_tb: 5,
+                file_storage_growth_tb_year: 1,
+                hot_data_share_percent: 30,
+                peak_rps: 80,
+                pcu_target: 50,
+                microservices_count: 5,
+                async_workers_count: 3,
+                ram_per_vcpu_ratio: 4,
+                cache_size_gb: 8
+            }
+        }));
+    });
+
+    const prodHdd = await standResourceQty(page, 'PROD', 'HDD');
+    const loadHdd = await standResourceQty(page, 'LOAD', 'HDD');
+    const prodRam = await standResourceQty(page, 'PROD', 'RAM');
+    const loadRam = await standResourceQty(page, 'LOAD', 'RAM');
+
+    expect(loadHdd, `LOAD HDD must be above PROD HDD: PROD=${prodHdd}, LOAD=${loadHdd}`)
+        .toBeGreaterThan(prodHdd);
+    expect(loadHdd, `LOAD HDD must be PROD HDD × 1.2: PROD=${prodHdd}, LOAD=${loadHdd}`)
+        .toBeCloseTo(prodHdd * 1.2, 1);
+    expect(loadRam, `LOAD RAM must be above PROD RAM: PROD=${prodRam}, LOAD=${loadRam}`)
+        .toBeGreaterThan(prodRam);
 
     expect(consoleErrors).toEqual([]);
 });

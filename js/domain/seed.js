@@ -2896,9 +2896,9 @@ export const SEED_ITEMS = [
             IFT:  'max(0.2, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024) * S.standSizeRatio.IFT)',
             PSI:  'max(0.5, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024) * S.standSizeRatio.PSI)',
             PROD: 'max(1, max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024 + Q.file_storage_volume_tb * max(0, 100 - Q.hot_data_share_percent) / 100 * 0.5)',
-            LOAD: 'max(0.5, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024) * S.standSizeRatio.LOAD)'
+            LOAD: 'max(0.5, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024 + Q.file_storage_volume_tb * max(0, 100 - Q.hot_data_share_percent) / 100 * 0.5) * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'TB HDD = max(БД + рост за год, users_total × 50 КБ) × кластеров × глубина бэкапов / 1024 × коэф. стенда; на ПРОМ дополнительно 50% холодной доли файлов.'
+        formulaHelp: 'TB HDD = max(БД + рост за год, users_total × 50 КБ) × кластеров × глубина бэкапов / 1024; ПРОМ включает 50% холодной доли файлов, Нагрузка масштабирует эту же базу коэффициентом стенда.'
     },
     {
         id: 'storage-object-tb',

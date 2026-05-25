@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-25, v2.20.66)
+## Current Project Lessons (2026-05-25, v2.20.67)
 
 - Do not leave questionnaire flags as silent intent. If a user-facing answer
   says DDoS, SIEM, DLP, audit logging, AI safety or fine-tune is enabled, the
@@ -56,6 +56,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Risk contribution bars must have both a stable left edge/equal width and a
   non-overlap contract with adjacent amounts. On narrow dashboard cards, wrap
   amount/percent below the bar instead of letting the bar collide with money.
+- Per-resource stand ratios require comparable formula bases. If LOAD is 120%
+  of PROD for HDD/RAM/SSD/S3, the LOAD formula must scale the same semantic
+  base as PROD, including additive terms such as cold file archive storage.
+  Otherwise the multiplier can be mathematically applied while the stand is
+  logically weaker than PROD.
 
 ## 🎨 UI/UX Review Standard для локальных ванильных веб-приложений
 

@@ -117,4 +117,43 @@ describe('seed-formulas: end-to-end calculate()', () => {
         assert.deepEqual(errors, [],
             `Найдены ошибки в формулах:\n${errors.join('\n')}`);
     });
+
+    it('HDD Нагрузки при ratio 120% масштабирует ту же cold-storage базу, что и ПРОМ', () => {
+        clearCalculationCache();
+        const calc = {
+            version: '1.0', id: 'hdd-load-ratio', name: 'hdd-load-ratio',
+            schemaVersion: 3,
+            createdAt: '2026-05-25T00:00:00Z',
+            updatedAt: '2026-05-25T00:00:00Z',
+            settings: {
+                ...SEED_SETTINGS,
+                applyRiskFactors: false,
+                vatEnabled: false,
+                vatRate: 0
+            },
+            answers: {
+                ...defaultAnswersFrom(dict.questions),
+                users_total: 55000,
+                db_size_initial_gb: 100,
+                db_growth_gb_month: 10,
+                db_count: 2,
+                backup_retention_days: 90,
+                file_storage_volume_tb: 5,
+                file_storage_growth_tb_year: 1,
+                hot_data_share_percent: 30
+            },
+            dictionaries: dict
+        };
+
+        const r = calculate(calc);
+        const prodHdd = r.items['storage-hdd-tb'].stands.PROD.qty;
+        const loadHdd = r.items['storage-hdd-tb'].stands.LOAD.qty;
+        const loadRatio = calc.settings.resourceRatio.LOAD.HDD;
+
+        assert.equal(loadRatio, 1.2);
+        assert.ok(loadHdd > prodHdd,
+            `LOAD HDD должен быть больше PROD при ratio 1.2: PROD=${prodHdd}, LOAD=${loadHdd}`);
+        assert.ok(Math.abs(loadHdd - prodHdd * loadRatio) < 1e-9,
+            `LOAD HDD должен масштабировать полную PROD-базу: expected=${prodHdd * loadRatio}, got=${loadHdd}`);
+    });
 });
