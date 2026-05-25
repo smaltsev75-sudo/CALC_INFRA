@@ -165,7 +165,7 @@ export function riskFactor(item, stand, settings) {
 /* ---------- Контекст вычислений ---------- */
 
 /**
- * Собрать map defaultValue по questions. Зависит только от questions,
+ * Собрать map fallback-значений по questions. Зависит только от questions,
  * поэтому вычисляется один раз на calculate() и переиспользуется для
  * всех 180 (item × stand) контекстов — иначе на каждой ячейке шёл бы
  * лишний обход 80+ вопросов, ~14k property-writes на recalc.
@@ -175,6 +175,8 @@ export function buildQuestionDefaults(questions) {
     for (const q of questions) {
         if (q.defaultValue !== undefined && q.defaultValue !== null) {
             out[q.id] = q.defaultValue;
+        } else if (q.defaultIfUnknown !== undefined && q.defaultIfUnknown !== null) {
+            out[q.id] = q.defaultIfUnknown;
         }
     }
     return out;

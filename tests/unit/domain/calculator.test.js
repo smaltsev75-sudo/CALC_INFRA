@@ -105,6 +105,29 @@ describe('calculate: basic invariants on seed', () => {
         const sum = Object.values(r.byCategory).reduce((a, b) => a + b, 0);
         assert.ok(Math.abs(sum - r.totalMonthly) < 0.01);
     });
+
+    it('Q.* со значением null/undefined использует defaultIfUnknown, а явный 0 сохраняется', () => {
+        const item = {
+            id: 'fallback-item', name: 'Fallback item', unit: 'шт.', pricePerUnit: 1,
+            category: 'HW', resourceClass: 'RAM', billingInterval: 'monthly',
+            applicableStands: ['PROD'],
+            qtyFormulas: { PROD: 'Q.ram_ratio + Q.cache_gb + Q.explicit_zero' }
+        };
+        const calc = makeNeutralCalc(item);
+        calc.answers = {
+            ram_ratio: null,
+            cache_gb: undefined,
+            explicit_zero: 0
+        };
+        calc.dictionaries.questions = [
+            { id: 'ram_ratio', type: 'number', defaultIfUnknown: 4 },
+            { id: 'cache_gb', type: 'number', defaultIfUnknown: 8 },
+            { id: 'explicit_zero', type: 'number', defaultIfUnknown: 10 }
+        ];
+        const r = calculate(calc);
+        assert.equal(r.items['fallback-item'].stands.PROD.qty, 12,
+            'null/undefined должны взять defaultIfUnknown: 4 + 8, явный 0 не заменяется на 10');
+    });
 });
 
 describe('calculate: revision cache', () => {

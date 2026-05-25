@@ -6,6 +6,45 @@ export function importCalcAction({
     withLoadingButton,
     lintFormulas
 }) {
+    const repairFieldIds = (repairs = []) =>
+        [...new Set(repairs.map(r => r?.fieldId).filter(Boolean))];
+
+    const formatRepairValue = (value) => {
+        if (Array.isArray(value)) return `[${value.join(', ')}]`;
+        if (value === null || value === undefined) return '—';
+        return String(value);
+    };
+
+    const showRepairDialog = (repairs = [], formulaWarnings = []) => {
+        if (!Array.isArray(repairs) || repairs.length === 0) return;
+        const fields = repairFieldIds(repairs);
+        const sample = repairs.slice(0, 10).map(r =>
+            `• ${r.title || r.fieldId}: ${formatRepairValue(r.value)} (${r.fallbackSource})`
+        ).join('\n');
+        const more = repairs.length > 10 ? `\n… и ещё ${repairs.length - 10}` : '';
+        const formulaNote = Array.isArray(formulaWarnings) && formulaWarnings.length > 0
+            ? `\n\nТакже найдены замечания к формулам: ${formulaWarnings.length}. ` +
+              'После проверки полей откройте «Элементы» → «Изменить» → «Формулы количества».'
+            : '';
+        store.openModal('confirm', {
+            title: `JSON: автоматически исправлено полей — ${repairs.length}`,
+            message:
+                'При загрузке JSON найдены пустые ответы, которые влияют на расчёт инфраструктуры. ' +
+                'Для них подставлены значения из defaultIfUnknown/defaultValue, чтобы CPU/RAM/SSD/HDD ' +
+                'не обнулялись молча.\n\n' +
+                sample + more + '\n\n' +
+                'Можно оставить автоматический ремонт или проверить эти поля вручную.' +
+                formulaNote,
+            danger: false,
+            confirmLabel: 'Проверить вручную',
+            cancelLabel: 'Оставить так',
+            onConfirm: () => {
+                store.openModal('assumptionsRegister', { filterFieldIds: fields });
+            },
+            onCancel: () => { /* автоматический ремонт принят */ }
+        });
+    };
+
     const runImport = (opts) =>
         withLoadingButton(triggerEvent, () =>
             calcList.importCalcFromFile(opts).then(res => handleImportResult(res))
@@ -17,9 +56,12 @@ export function importCalcAction({
             snackbar.success(res.replaced ? 'Расчёт обновлён' : 'Расчёт загружен');
 
             const calc = store.getState().activeCalc;
+            const repairs = Array.isArray(res.repairs) ? res.repairs : [];
             if (calc) {
                 const warnings = lintFormulas(calc.dictionaries.items, calc.dictionaries.questions);
-                if (warnings.length > 0) {
+                if (repairs.length > 0) {
+                    showRepairDialog(repairs, warnings);
+                } else if (warnings.length > 0) {
                     const sample = warnings.slice(0, 6).map(w => {
                         const item = calc.dictionaries.items.find(i => i.id === w.itemId);
                         const itemName = item?.name || w.itemId;
@@ -36,6 +78,8 @@ export function importCalcAction({
                             'Откройте «Элементы» → «Изменить» → «Формулы количества» для исправления.'
                     });
                 }
+            } else {
+                showRepairDialog(repairs);
             }
         } else if (res?.reason === 'cancelled') {
             /* пользователь отменил */
@@ -43,8 +87,16 @@ export function importCalcAction({
             store.openModal('duplicateImport', {
                 existingName: res.existingName,
                 importedName: res.importedName,
-                onReplace: () => runImport({ onDuplicate: 'replace', preloaded: res.preloaded }),
-                onClone:   () => runImport({ onDuplicate: 'clone',   preloaded: res.preloaded }),
+                onReplace: () => runImport({
+                    onDuplicate: 'replace',
+                    preloaded: res.preloaded,
+                    _preloadedRepairs: res.repairs
+                }),
+                onClone:   () => runImport({
+                    onDuplicate: 'clone',
+                    preloaded: res.preloaded,
+                    _preloadedRepairs: res.repairs
+                }),
                 onCancel:  () => { /* пользователь отменил */ }
             });
         } else if (res?.reason === 'validation') {

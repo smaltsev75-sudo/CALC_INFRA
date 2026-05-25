@@ -31,19 +31,20 @@ import { enrichLegacyDictionaryWithAgentSeed } from '../domain/seed.js';
 import { applyVatResolver } from '../domain/vatResolver.js';
 import { hasDeprecatedQuestions } from '../domain/deprecatedQuestions.js';
 import { normalizeStandRatios } from '../domain/standRatioNormalizer.js';
+import { repairUnknownAnswersWithDefaults } from '../domain/answerRepair.js';
 
 /**
  * Подготовить calc из raw stored для use в store.
  *
  * @param {object} stored — raw calc (из persist.loadCalc / JSON-файл /
  *                          элемент bundle.calculations).
- * @returns {{ calc: object|null, needsPersist: boolean, error: Error|null }}
+ * @returns {{ calc: object|null, needsPersist: boolean, error: Error|null, repairs?: Array<object> }}
  */
 export function prepareLoadedCalc(stored) {
     /* null / undefined — нет stored, это не ошибка (caller обычно сразу
      * возвращает null до вызова — но defensive: позволяем). */
     if (stored === null || stored === undefined) {
-        return { calc: stored, needsPersist: false, error: null };
+        return { calc: stored, needsPersist: false, error: null, repairs: [] };
     }
     /* Внешний аудит #13 (2026-05-19, P1/P2#3): любой не-object вход
      * (строка/число/boolean/массив) — это битый stored, не валидный calc.
@@ -56,13 +57,13 @@ export function prepareLoadedCalc(stored) {
                 Array.isArray(stored) ? 'массив' : typeof stored
             }`
         );
-        return { calc: null, needsPersist: false, error: err };
+        return { calc: null, needsPersist: false, error: err, repairs: [] };
     }
     let calc;
     try {
         calc = migrateCalculation(stored);
     } catch (e) {
-        return { calc: null, needsPersist: false, error: e };
+        return { calc: null, needsPersist: false, error: e, repairs: [] };
     }
 
     /* enrich мутирует calc.dictionaries напрямую (push новых вопросов/ЭК
@@ -100,13 +101,24 @@ export function prepareLoadedCalc(stored) {
      * calc; возвращает true если что-то изменилось → needsPersist. */
     const normalizeChanged = normalizeStandRatios(calc);
 
+    /* v2.20.55: JSON импорт/legacy-файлы могут содержать null в числовых
+     * answers (часто это результат JSON.stringify(NaN) или явное «не знаю»).
+     * Формулы уже умеют читать defaultIfUnknown/defaultValue на лету, но при
+     * загрузке нужно ещё дать пользователю проверяемый и сохраняемый ремонт:
+     * заменяем null/undefined, приводим безопасные числовые строки и добавляем
+     * отсутствующие critical-fields из документированного fallback. Возвращаем
+     * список полей для UI-диалога «проверить вручную». */
+    const repairResult = repairUnknownAnswersWithDefaults(calc);
+    const repairChanged = repairResult.changed;
+
     const storedVersion = Number.isFinite(stored.schemaVersion) ? stored.schemaVersion : 0;
     const schemaChanged = calc.schemaVersion !== storedVersion;
     const hadDeprecated = hasDeprecatedQuestions(stored);
 
     return {
         calc,
-        needsPersist: schemaChanged || vatChanged || hadDeprecated || enrichChanged || normalizeChanged,
-        error: null
+        needsPersist: schemaChanged || vatChanged || hadDeprecated || enrichChanged || normalizeChanged || repairChanged,
+        error: null,
+        repairs: repairResult.repairs
     };
 }

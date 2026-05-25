@@ -48,12 +48,18 @@ function toBool(v) {
 
 /**
  * Получить значение ответа на вопрос с приведением к числу/массиву.
- * Если ответа нет — fallback к defaultValue вопроса (если передан).
+ * Если ответа нет или он явно помечен как неизвестный (null/undefined) —
+ * fallback к defaultValue/defaultIfUnknown вопроса (если передан).
  */
 function resolveQuestion(name, context) {
     const answers = context.Q || {};
-    if (Object.prototype.hasOwnProperty.call(answers, name)) return answers[name];
     const def = context.questionDefaults || {};
+    if (Object.prototype.hasOwnProperty.call(answers, name)) {
+        const value = answers[name];
+        if (value !== null && value !== undefined) return value;
+        if (Object.prototype.hasOwnProperty.call(def, name)) return def[name];
+        return 0;
+    }
     if (Object.prototype.hasOwnProperty.call(def, name)) return def[name];
     return 0;
 }

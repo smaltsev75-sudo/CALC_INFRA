@@ -5,9 +5,12 @@
 
 import {
     STALE_BUNDLE_THRESHOLD_MONTHS,
-    DEFAULT_THRESHOLD_RATIO
+    DEFAULT_THRESHOLD_RATIO,
+    STAND_IDS
 } from '../utils/constants.js';
 import { getProviderSecurityPriceWarningForCalc } from './providerPriceTrust.js';
+import { calculate } from './calculator.js';
+import { SEED_ITEMS } from './seed.js';
 /* ---------- Helpers ---------- */
 
 function ans(calc, id) {
@@ -39,6 +42,31 @@ function makeFinding({ id, severity, category, title, message,
         suggestedAction: suggestedAction || '',
         scenarioId: scenarioId || null
     };
+}
+
+const SEED_DASHBOARD_RESOURCE_BY_ID = new Map(
+    SEED_ITEMS.filter(item => item.dashboardResource)
+        .map(item => [item.id, item.dashboardResource])
+);
+
+function activeStandIds(calc) {
+    const disabled = new Set(Array.isArray(calc?.view?.disabledStands)
+        ? calc.view.disabledStands
+        : []);
+    return STAND_IDS.filter(stand => !disabled.has(stand));
+}
+
+function aggregateDashboardQtyByStand(calc, result, resource) {
+    const items = Array.isArray(calc?.dictionaries?.items) ? calc.dictionaries.items : [];
+    const ids = items
+        .filter(item => (item?.dashboardResource ?? SEED_DASHBOARD_RESOURCE_BY_ID.get(item?.id)) === resource)
+        .map(item => item.id);
+    const out = {};
+    for (const stand of STAND_IDS) {
+        out[stand] = ids.reduce((acc, itemId) =>
+            acc + (Number(result?.items?.[itemId]?.stands?.[stand]?.qty) || 0), 0);
+    }
+    return out;
 }
 
 /* ============================================================
@@ -485,6 +513,61 @@ function checkNoBudgetTarget(calc) {
     return null;
 }
 
+function checkInfrastructureCoreResources(calc) {
+    const stands = activeStandIds(calc);
+    if (stands.length === 0) return null;
+
+    const dictItems = Array.isArray(calc?.dictionaries?.items) ? calc.dictionaries.items : [];
+    const hasCoreItems = dictItems.some(item => {
+        const resource = item?.dashboardResource ?? SEED_DASHBOARD_RESOURCE_BY_ID.get(item?.id);
+        return resource === 'CPU' || resource === 'RAM' || resource === 'SSD';
+    });
+    if (!hasCoreItems) return null;
+
+    let result;
+    try {
+        result = calculate(calc);
+    } catch (_err) {
+        return null;
+    }
+
+    const cpu = aggregateDashboardQtyByStand(calc, result, 'CPU');
+    const ram = aggregateDashboardQtyByStand(calc, result, 'RAM');
+    const ssd = aggregateDashboardQtyByStand(calc, result, 'SSD');
+    const hdd = aggregateDashboardQtyByStand(calc, result, 'HDD');
+    const s3 = aggregateDashboardQtyByStand(calc, result, 'S3');
+
+    const missing = [];
+    for (const stand of stands) {
+        const gaps = [];
+        if (cpu[stand] <= 0) gaps.push('CPU');
+        if (ram[stand] <= 0) gaps.push('RAM');
+        if (ssd[stand] <= 0) gaps.push('SSD');
+        if ((ssd[stand] + hdd[stand] + s3[stand]) <= 0) gaps.push('хранилище');
+        if (gaps.length > 0) missing.push(`${stand}: ${gaps.join(', ')}`);
+    }
+
+    if (missing.length === 0) return null;
+
+    return makeFinding({
+        id: 'architecture-core-infrastructure-missing',
+        severity: 'error',
+        category: 'architecture',
+        title: 'На активных стендах не хватает базовых ресурсов',
+        message:
+            'Для каждого активного стенда должны быть рассчитаны процессор, оперативная память ' +
+            'и рабочее хранилище. Обнаружены нулевые объёмы: ' + missing.join('; ') + '.',
+        fieldIds: [
+            'peak_rps', 'microservices_count', 'async_workers_count',
+            'ram_per_vcpu_ratio', 'cache_size_gb',
+            'db_size_initial_gb', 'db_growth_gb_month', 'db_count'
+        ],
+        suggestedAction:
+            'Проверьте параметры нагрузки, RAM/vCPU, кэш и параметры БД. ' +
+            'Если значение неизвестно, используйте автозначение из JSON-ремонта или уточните вручную.'
+    });
+}
+
 /* ---------- Реестр всех правил ---------- */
 
 export const CALCULATION_HEALTH_CHECKS = [
@@ -509,5 +592,6 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkProviderSecurityPricesByRequest,
     checkTooManyDefaults,
     checkLowAnswerRate,
-    checkNoBudgetTarget
+    checkNoBudgetTarget,
+    checkInfrastructureCoreResources
 ];

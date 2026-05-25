@@ -647,3 +647,49 @@ describe('evaluateCalculationHealth: counts по severities', () => {
         assert.equal(r.findings.length, 0);
     });
 });
+
+describe('rule: architecture-core-infrastructure-missing', () => {
+    const coreItem = (id, resource, qty) => ({
+        id,
+        name: id,
+        unit: resource === 'RAM' ? 'ГБ' : resource === 'SSD' ? 'ТБ' : 'шт.',
+        pricePerUnit: 1,
+        billingInterval: 'monthly',
+        category: 'HW',
+        resourceClass: resource === 'SSD' ? 'STORAGE' : resource,
+        dashboardResource: resource,
+        applicableStands: ['PROD'],
+        qtyFormulas: { PROD: String(qty) }
+    });
+
+    it('ловит стенд без RAM/SSD при наличии CPU', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            target_capex_rub: 1_000_000
+        }, {
+            items: [
+                coreItem('cpu-test', 'CPU', 1),
+                coreItem('ram-test', 'RAM', 0),
+                coreItem('ssd-test', 'SSD', 0)
+            ],
+            view: { disabledStands: ['DEV', 'IFT', 'PSI', 'LOAD'] }
+        }));
+        const f = findById(r.findings, 'architecture-core-infrastructure-missing');
+        assert.ok(f, 'finding должен быть найден');
+        assert.equal(f.severity, 'error');
+        assert.match(f.message, /PROD: RAM, SSD/);
+    });
+
+    it('не ругается, когда CPU/RAM/SSD рассчитаны на активном стенде', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            target_capex_rub: 1_000_000
+        }, {
+            items: [
+                coreItem('cpu-test', 'CPU', 1),
+                coreItem('ram-test', 'RAM', 4),
+                coreItem('ssd-test', 'SSD', 0.1)
+            ],
+            view: { disabledStands: ['DEV', 'IFT', 'PSI', 'LOAD'] }
+        }));
+        assert.equal(findById(r.findings, 'architecture-core-infrastructure-missing'), undefined);
+    });
+});

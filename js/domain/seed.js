@@ -3801,6 +3801,8 @@ export function defaultAnswersFrom(questions) {
     for (const q of questions) {
         if (q.defaultValue !== undefined && q.defaultValue !== null) {
             answers[q.id] = q.defaultValue;
+        } else if (q.defaultIfUnknown !== undefined && q.defaultIfUnknown !== null) {
+            answers[q.id] = q.defaultIfUnknown;
         } else if (q.type === 'boolean') {
             answers[q.id] = false;
         } else if (q.type === 'multiselect') {

@@ -435,6 +435,7 @@ export function exportActiveCalc() {
  */
 export async function importCalcFromFile(opts = {}) {
     const onDuplicate = opts.onDuplicate || 'ask';
+    const carriedRepairs = Array.isArray(opts._preloadedRepairs) ? opts._preloadedRepairs : [];
     /* DI для тестов: подмена picker'а и читалки. Прод-вызов передаёт пустые opts. */
     const pickFn = opts._pickFile || pickFile;
     const readFn = opts._readJsonFile || readJsonFile;
@@ -467,6 +468,7 @@ export async function importCalcFromFile(opts = {}) {
      * prepareLoadedCalc — даёт applyVatResolver симметрично с openCalc.
      * До фикса auto-by-date calc из старой версии (без resolver) импортился
      * с stale vatRate. */
+    let importRepairs = carriedRepairs.slice();
     {
         const prepared = prepareLoadedCalc(data);
         if (prepared.error) {
@@ -483,6 +485,9 @@ export async function importCalcFromFile(opts = {}) {
             };
         }
         data = prepared.calc;
+        if (Array.isArray(prepared.repairs) && prepared.repairs.length > 0) {
+            importRepairs = importRepairs.concat(prepared.repairs);
+        }
     }
 
     // view — опциональный блок; если в файле его нет, дефолтим, чтобы UI имел
@@ -506,6 +511,7 @@ export async function importCalcFromFile(opts = {}) {
                 existingId: data.id,
                 existingName: existing.name || data.id,
                 importedName: data.name || data.id,
+                repairs: importRepairs,
                 // Передаём preloaded-данные обратно в payload, чтобы повторный
                 // вызов (replace/clone) не требовал заново открывать file picker.
                 preloaded: data
@@ -534,7 +540,12 @@ export async function importCalcFromFile(opts = {}) {
     clearCalculationCache();
     store.setActiveCalc(data);
     refreshCalcList();
-    return { ok: true, calc: data, replaced: !!existing && onDuplicate === 'replace' };
+    return {
+        ok: true,
+        calc: data,
+        replaced: !!existing && onDuplicate === 'replace',
+        repairs: importRepairs
+    };
 }
 
 /* ---------- Полный экспорт / импорт состояния ---------- */

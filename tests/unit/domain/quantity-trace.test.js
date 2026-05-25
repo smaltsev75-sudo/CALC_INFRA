@@ -166,4 +166,70 @@ describe('quantityTrace: audit calculation logic', () => {
             `unknownQuestion должен быть найден:\n${audit.errors.map(e => e.message).join('\n')}`
         );
     });
+
+    const coreItem = (id, resource, qty) => ({
+        id,
+        name: id,
+        unit: resource === 'RAM' ? 'ГБ' : resource === 'SSD' ? 'ТБ' : 'шт.',
+        pricePerUnit: 1,
+        billingInterval: 'monthly',
+        category: 'HW',
+        resourceClass: resource === 'SSD' ? 'STORAGE' : resource,
+        dashboardResource: resource,
+        applicableStands: ['PROD'],
+        qtyFormulas: { PROD: String(qty) },
+        formulaHelp: `${resource} test formula`
+    });
+
+    it('семантический аудит ловит активный стенд без RAM/SSD', () => {
+        const calc = buildCalc({
+            dictionaries: {
+                questions: [],
+                items: [
+                    coreItem('cpu-test', 'CPU', 1),
+                    coreItem('ram-test', 'RAM', 0),
+                    coreItem('ssd-test', 'SSD', 0)
+                ]
+            },
+            view: { disabledStands: ['DEV', 'IFT', 'PSI', 'LOAD'] }
+        });
+
+        const audit = auditQuantityLogic(calc);
+
+        assert.ok(audit.errors.some(error =>
+            error.type === 'missingCoreResource' &&
+            error.stand === 'PROD' &&
+            error.resource === 'RAM'
+        ), audit.errors.map(error => error.message).join('\n'));
+        assert.ok(audit.errors.some(error =>
+            error.type === 'missingCoreResource' &&
+            error.stand === 'PROD' &&
+            error.resource === 'SSD'
+        ), audit.errors.map(error => error.message).join('\n'));
+    });
+
+    it('семантический аудит не ругается на связку CPU/RAM/SSD для активного стенда', () => {
+        const calc = buildCalc({
+            dictionaries: {
+                questions: [],
+                items: [
+                    coreItem('cpu-test', 'CPU', 1),
+                    coreItem('ram-test', 'RAM', 4),
+                    coreItem('ssd-test', 'SSD', 0.1)
+                ]
+            },
+            answers: {
+                db_count: 0,
+                db_size_initial_gb: 0,
+                db_growth_gb_month: 0,
+                backup_retention_days: 0,
+                file_storage_volume_tb: 0,
+                file_storage_growth_tb_year: 0
+            },
+            view: { disabledStands: ['DEV', 'IFT', 'PSI', 'LOAD'] }
+        });
+
+        const audit = auditQuantityLogic(calc);
+        assert.deepEqual(audit.errors, []);
+    });
 });

@@ -21,7 +21,7 @@
  *   PATCH (1.1.X) — багфиксы, рефакторинг, мелкие UX-правки, hardening,
  *                   обновления прайсов без новых фич, compatibility-миграции
  *                   без нового формата данных. */
-export const APP_VERSION = '2.20.54';
+export const APP_VERSION = '2.20.55';
 export const APP_NAME = 'Калькулятор инфраструктуры';
 
 /* ============================================================
@@ -1171,7 +1171,9 @@ export const HEALTH_SCORE_THRESHOLDS = Object.freeze({ good: 80, warning: 50 });
     списке → confidence='low', поле попадает в секцию «Рискованные допущения». */
 export const CRITICAL_FIELDS = Object.freeze([
     'peak_rps', 'pcu_target', 'avg_rps',
-    'sla_target', 'db_size_initial_gb', 'db_replicas_count',
+    'microservices_count', 'async_workers_count',
+    'ram_per_vcpu_ratio', 'cache_size_gb',
+    'sla_target', 'db_size_initial_gb', 'db_growth_gb_month', 'db_count', 'db_replicas_count',
     'file_storage_volume_tb', 'georedundancy_required',
     'ai_users_share', 'ai_requests_per_user_day',
     'ai_avg_input_tokens', 'ai_avg_output_tokens',

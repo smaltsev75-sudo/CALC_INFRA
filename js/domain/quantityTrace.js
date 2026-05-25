@@ -17,9 +17,15 @@ import {
     billingIntervalToMonthlyMultiplier,
     riskFactor
 } from './calculator.js';
+import { SEED_ITEMS } from './seed.js';
 import { applyProviderOverlay, DEFAULT_PROVIDER } from './providerOverlay.js';
 
 const EPS = 1e-6;
+const CORE_RESOURCE_LABELS = Object.freeze(['CPU', 'RAM', 'SSD']);
+const SEED_DASHBOARD_RESOURCE_BY_ID = new Map(
+    SEED_ITEMS.filter(item => item.dashboardResource)
+        .map(item => [item.id, item.dashboardResource])
+);
 
 function hasOwn(obj, key) {
     return Object.prototype.hasOwnProperty.call(obj || {}, key);
@@ -42,6 +48,163 @@ function getEffectiveItems(calculation) {
     if (calculation?.providerVersion) return rawItems;
     const providerId = calculation?.settings?.provider || DEFAULT_PROVIDER;
     return applyProviderOverlay(rawItems, providerId);
+}
+
+function dashboardResourceOf(item) {
+    return item?.dashboardResource ?? SEED_DASHBOARD_RESOURCE_BY_ID.get(item?.id) ?? null;
+}
+
+function activeStandsOf(calculation) {
+    const disabled = new Set(Array.isArray(calculation?.view?.disabledStands)
+        ? calculation.view.disabledStands
+        : []);
+    return STAND_IDS.filter(stand => !disabled.has(stand));
+}
+
+function questionFallbackValue(questionDefaults, answers, id) {
+    const value = answers?.[id];
+    if (value !== null && value !== undefined) return value;
+    if (hasOwn(questionDefaults, id)) return questionDefaults[id];
+    return 0;
+}
+
+function numQuestion(questionDefaults, answers, id) {
+    const n = Number(questionFallbackValue(questionDefaults, answers, id));
+    return Number.isFinite(n) ? n : 0;
+}
+
+function resourceQtyByStand(result, items) {
+    const out = {};
+    for (const resource of ['CPU', 'GPU', 'RAM', 'SSD', 'HDD', 'S3']) {
+        out[resource] = Object.fromEntries(STAND_IDS.map(stand => [stand, 0]));
+    }
+    for (const item of items) {
+        const resource = dashboardResourceOf(item);
+        if (!resource || !out[resource]) continue;
+        for (const stand of STAND_IDS) {
+            out[resource][stand] += Number(result.items?.[item.id]?.stands?.[stand]?.qty) || 0;
+        }
+    }
+    return out;
+}
+
+function itemQty(result, itemId, stand) {
+    return Number(result.items?.[itemId]?.stands?.[stand]?.qty) || 0;
+}
+
+function applicableStandsOf(items, itemId) {
+    const item = items.find(it => it?.id === itemId);
+    if (!Array.isArray(item?.applicableStands)) return STAND_IDS;
+    const allowed = item.applicableStands.filter(stand => STAND_IDS.includes(stand));
+    return allowed.length > 0 ? allowed : STAND_IDS;
+}
+
+function auditSemanticInvariants(calculation, result, items) {
+    const errors = [];
+    const warnings = [];
+    const activeStands = activeStandsOf(calculation);
+    if (activeStands.length === 0) return { errors, warnings };
+
+    const resourceQty = resourceQtyByStand(result, items);
+    const answers = calculation?.answers || {};
+    const questionDefaults = buildQuestionDefaults(calculation?.dictionaries?.questions || []);
+    const hasCoreResourceItems = items.some(item => CORE_RESOURCE_LABELS.includes(dashboardResourceOf(item)));
+
+    if (hasCoreResourceItems) {
+        for (const stand of activeStands) {
+            for (const resource of CORE_RESOURCE_LABELS) {
+                if ((resourceQty[resource]?.[stand] || 0) > 0) continue;
+                errors.push({
+                    type: 'missingCoreResource',
+                    stand,
+                    resource,
+                    message: `${stand}: отсутствует обязательный ресурс ${resource}. ` +
+                        'Активный стенд не должен оставаться без CPU/RAM/рабочего SSD-хранилища.'
+                });
+            }
+
+            const cpu = resourceQty.CPU[stand] || 0;
+            const ram = resourceQty.RAM[stand] || 0;
+            if (cpu > 0 && ram > 0 && ram + EPS < cpu) {
+                errors.push({
+                    type: 'ramBelowCpu',
+                    stand,
+                    message: `${stand}: RAM=${ram} ГБ меньше CPU=${cpu} vCPU. ` +
+                        'Вопрос ram_per_vcpu_ratio имеет min=1, значит RAM не должна быть меньше CPU.'
+                });
+            }
+        }
+    }
+
+    const dbCount = numQuestion(questionDefaults, answers, 'db_count');
+    const dbSizeGb = numQuestion(questionDefaults, answers, 'db_size_initial_gb');
+    const dbGrowthGbMonth = numQuestion(questionDefaults, answers, 'db_growth_gb_month');
+    const backupRetentionDays = numQuestion(questionDefaults, answers, 'backup_retention_days');
+    const fileStorageTb = numQuestion(questionDefaults, answers, 'file_storage_volume_tb');
+    const fileGrowthTbYear = numQuestion(questionDefaults, answers, 'file_storage_growth_tb_year');
+    const hasDbData = dbCount > 0 && (dbSizeGb > 0 || dbGrowthGbMonth > 0);
+    const hasFileData = (fileStorageTb + fileGrowthTbYear) > 0;
+
+    if (hasDbData) {
+        for (const stand of activeStands) {
+            if ((resourceQty.SSD[stand] || 0) > 0) continue;
+            errors.push({
+                type: 'dbWithoutSsd',
+                stand,
+                message: `${stand}: есть параметры БД, но SSD=0. ` +
+                    'Основные данные БД должны иметь рабочее SSD/NVMe-хранилище.'
+            });
+        }
+    }
+
+    if (hasFileData) {
+        for (const stand of activeStands) {
+            if ((resourceQty.S3[stand] || 0) > 0) continue;
+            errors.push({
+                type: 'filesWithoutObjectStorage',
+                stand,
+                message: `${stand}: есть файловое хранилище, но S3=0. ` +
+                    'Пользовательские файлы должны иметь объектное хранилище.'
+            });
+        }
+    }
+
+    if (hasDbData && backupRetentionDays > 0) {
+        for (const stand of applicableStandsOf(items, 'storage-hdd-tb')) {
+            if (!activeStands.includes(stand)) continue;
+            if ((resourceQty.HDD[stand] || 0) > 0) continue;
+            errors.push({
+                type: 'backupsWithoutHdd',
+                stand,
+                message: `${stand}: есть БД и срок хранения бэкапов, но HDD=0. ` +
+                    'Архивные копии БД должны иметь холодное хранилище.'
+            });
+        }
+    }
+
+    for (const stand of activeStands) {
+        const osNodes = itemQty(result, 'license-os-per-node', stand);
+        const securityNodes = itemQty(result, 'license-siem-edr-per-node', stand);
+        const cpu = resourceQty.CPU[stand] || 0;
+        if (osNodes > 0 && cpu <= 0) {
+            errors.push({
+                type: 'licenseWithoutCompute',
+                stand,
+                message: `${stand}: лицензии ОС=${osNodes}, но CPU=0. ` +
+                    'Лицензируемые узлы должны соответствовать вычислительным ресурсам.'
+            });
+        }
+        if (securityNodes > 0 && osNodes <= 0) {
+            errors.push({
+                type: 'securityLicenseWithoutNodes',
+                stand,
+                message: `${stand}: СЗИ=${securityNodes}, но лицензии ОС/узлы=0. ` +
+                    'Средства защиты должны привязываться к существующим узлам.'
+            });
+        }
+    }
+
+    return { errors, warnings };
 }
 
 export function resolvePathValue(root, path) {
@@ -109,15 +272,18 @@ export function buildQuantityTrace(calculation, itemId, stand, precomputedResult
     const questionInputs = refs.questions.map(id => {
         const hasAnswer = hasOwn(answers, id);
         const hasDefault = hasOwn(questionDefaults, id);
-        const value = hasAnswer ? answers[id] : hasDefault ? questionDefaults[id] : 0;
+        const rawValue = hasAnswer ? answers[id] : undefined;
+        const usedFallback = (rawValue === null || rawValue === undefined) && hasDefault;
+        const value = usedFallback ? questionDefaults[id] : hasAnswer ? rawValue : 0;
         const meta = answersMeta[id];
         return {
             ref: `Q.${id}`,
             id,
             title: qById.get(id)?.title || null,
             value,
+            rawValue: hasAnswer ? rawValue : undefined,
             exists: qById.has(id),
-            source: meta?.source || (hasAnswer ? 'answer' : hasDefault ? 'default' : 'missing'),
+            source: meta?.source || (usedFallback ? 'default' : hasAnswer ? 'answer' : hasDefault ? 'default' : 'missing'),
             profileId: meta?.profileId || null
         };
     });
@@ -282,6 +448,10 @@ export function auditQuantityLogic(calculation) {
             }
         }
     }
+
+    const semantic = auditSemanticInvariants(calculation, result, items);
+    errors.push(...semantic.errors);
+    warnings.push(...semantic.warnings);
 
     return { errors, warnings, stats };
 }
