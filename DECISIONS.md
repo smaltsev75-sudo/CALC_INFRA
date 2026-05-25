@@ -1,5 +1,35 @@
 # Журнал решений и допущений
 
+## 25.05.2026 · PATCH 2.20.61 — Health guard для нулевых AI-токенов
+
+**Контекст.** После исправления Dashboard/Details и расширения ЭК остался
+критичный регрессионный риск: пользователь заполняет раздел «Объём токенов»,
+LLM включена, нагрузка пользователей положительная, но из-за поломанной формулы
+или потерянного `dashboardAiMetric` агрегат `TOKENS` снова становится нулевым.
+Такой дефект визуально выглядит как «токены не считаются», хотя пользователь
+явно ввёл токеновую нагрузку.
+
+**Решение.**
+
+- Health Check получил отдельный `error`
+  `ai-token-volume-without-token-resources`: если LLM включена, hosting не
+  `on_prem_gpu`, пользовательская и токеновая нагрузка положительная, а
+  суммарные ЭК с AI-метрикой `TOKENS` равны нулю, расчёт считается
+  недостоверным до исправления формул/метрик.
+- Для `on_prem_gpu` этот guard не срабатывает: там токены являются
+  операционной нагрузкой Dashboard/Details, но не биллинговым token-ЭК внешнего
+  провайдера.
+
+**Проверки.**
+
+- Новый regression-test фиксирует, что положительный объём токенов обязан
+  давать ненулевой `TOKENS`-агрегат.
+- Отдельный edge-case проверяет, что `on_prem_gpu` не получает ложный
+  budget-error.
+- Release-gates: `npm test` (5279/5279), Quick Start matrix (2880 комбинаций),
+  `syntax-check`, `quantity:audit:check`, `sanity:check`,
+  `prices:freshness:check`, `pages:build`, Playwright desktop smoke (36/36).
+
 ## 25.05.2026 · PATCH 2.20.60 — Health gate + full questionnaire budget coverage
 
 **Контекст.** Повторный аудит пользовательского JSON показал опасный класс
@@ -48,7 +78,7 @@ maintenance window, hot-data split, PCU, peak duration и AI model/sensitivity.
   не могут быть декоративными без explicit non-EK статуса.
 - UserManual/README/Architecture/Wizard profiles обновлены под 63 ЭК и новые
   статусы вопросов.
-- Release-gates на финальном состоянии: `npm test` (5276/5276), Quick Start
+- Release-gates на финальном состоянии: `npm test` (5279/5279), Quick Start
   matrix (2880 комбинаций), `quantity:audit:check`, `sanity:check`,
   `syntax-check`, Playwright smoke для AI-токенов/Детализации/PDF (10/10).
 

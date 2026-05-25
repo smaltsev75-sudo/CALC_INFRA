@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-25, v2.20.59)
+## Current Project Lessons (2026-05-25, v2.20.61)
 
 - Do not leave questionnaire flags as silent intent. If a user-facing answer
   says DDoS, SIEM, DLP, audit logging, AI safety or fine-tune is enabled, the
@@ -20,6 +20,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - When fixing AI token visibility, verify Dashboard, Details budget tab, Details
   qty tab, hide-empty behavior, print/PDF, and Quick Start. A unit guard alone is
   not enough for visible calculation trust.
+- If `ai_llm_used` is true and token workload inputs are positive, the model
+  must produce either visible token workload or an explicit on-prem operational
+  derivation. Add a Health `error` if token demand is positive but TOKENS ЭК
+  aggregate to zero; this catches the exact "filled token section, no tokens in
+  Dashboard/Details" failure mode before release.
 
 ## 🎨 UI/UX Review Standard для локальных ванильных веб-приложений
 

@@ -1,7 +1,7 @@
 /**
  * Unit-тесты Stage 15.1 — Calculation Health Check.
  *
- * Покрывает: 22 правила проверки + getHealthScore + groupHealthFindings +
+ * Покрывает: правила проверки + getHealthScore + groupHealthFindings +
  * edge-cases (null calc, отсутствие answers, scenario absent).
  *
  * Формат findings и шкала score зафиксированы в плане Stage 15:
@@ -218,7 +218,7 @@ describe('rule: consistency-traffic-*-explicit-differs-from-auto (warning)', () 
 });
 
 /* ============================================================
- * Группа: AI / RAG (5)
+ * Группа: AI / RAG
  * ============================================================ */
 
 describe('rule: ai-rag-without-llm (error)', () => {
@@ -286,6 +286,63 @@ describe('rule: ai-token-volume-without-llm (error)', () => {
             ai_caching_share: 50
         }));
         assert.ok(!findById(r.findings, 'ai-token-volume-without-llm'));
+    });
+});
+
+describe('rule: ai-token-volume-without-token-resources (error)', () => {
+    const tokenDemand = {
+        ai_llm_used: true,
+        ai_hosting_mode: 'external_api',
+        registered_users_total: 500,
+        dau_share_of_registered_percent: 0.7,
+        ai_users_share: 75,
+        ai_requests_per_user_day: 30,
+        ai_avg_input_tokens: 3000,
+        ai_avg_output_tokens: 500,
+        target_capex_rub: 1_000_000
+    };
+
+    const tokenItem = qty => ({
+        id: 'test-token-item',
+        name: 'Тестовые токены',
+        unit: '1 млн токенов',
+        pricePerUnit: 1,
+        billingInterval: 'monthly',
+        category: 'AI',
+        resourceClass: 'AI_LLM',
+        dashboardAiMetric: 'TOKENS',
+        applicableStands: ['PROD'],
+        qtyFormulas: { PROD: String(qty) }
+    });
+
+    it('срабатывает, если LLM и объём токенов включены, но TOKENS-ЭК дают 0', () => {
+        const r = evaluateCalculationHealth(makeCalc(tokenDemand, {
+            items: [tokenItem(0)],
+            view: { disabledStands: ['DEV', 'IFT', 'PSI', 'LOAD'] }
+        }));
+        const f = findById(r.findings, 'ai-token-volume-without-token-resources');
+        assert.ok(f);
+        assert.equal(f.severity, 'error');
+        assert.ok(f.fieldIds.includes('ai_avg_input_tokens'));
+    });
+
+    it('НЕ срабатывает, когда хотя бы один TOKENS-ЭК рассчитался', () => {
+        const r = evaluateCalculationHealth(makeCalc(tokenDemand, {
+            items: [tokenItem(1)],
+            view: { disabledStands: ['DEV', 'IFT', 'PSI', 'LOAD'] }
+        }));
+        assert.ok(!findById(r.findings, 'ai-token-volume-without-token-resources'));
+    });
+
+    it('НЕ срабатывает для собственного GPU, где токены не являются биллинговым ЭК', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            ...tokenDemand,
+            ai_hosting_mode: 'on_prem_gpu'
+        }, {
+            items: [],
+            view: { disabledStands: ['DEV', 'IFT', 'PSI', 'LOAD'] }
+        }));
+        assert.ok(!findById(r.findings, 'ai-token-volume-without-token-resources'));
     });
 });
 
