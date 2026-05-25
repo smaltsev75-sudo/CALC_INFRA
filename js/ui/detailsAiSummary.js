@@ -12,6 +12,12 @@ import {
     DASHBOARD_AI_METRIC_DESCRIPTIONS, DASHBOARD_AI_METRIC_UNIT_SUFFIX
 } from '../utils/constants.js';
 import { aggregateAiMetrics, formatResourceQty } from './dashboard.js';
+import { formatRub } from '../services/format.js';
+import { SEED_ITEMS } from '../domain/seed.js';
+
+const SEED_AI_METRIC_BY_ITEM_ID = new Map(
+    SEED_ITEMS.filter(item => item.dashboardAiMetric).map(item => [item.id, item.dashboardAiMetric])
+);
 
 /* Сводный блок AI-метрик внизу таблицы Детализации.
 
@@ -36,21 +42,29 @@ import { aggregateAiMetrics, formatResourceQty } from './dashboard.js';
      двух строк. */
 export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx, options = {}) {
     if (!calc) return null;
-    const aiMetrics = aggregateAiMetrics(result, calc.dictionaries?.items || [], disabledStands, applyRisks, calc);
-    const total = aiMetrics.total || {};
-    const perStand = aiMetrics.perStand || {};
+    const mode = options.mode === 'cost' ? 'cost' : 'qty';
+    const qtyMetrics = aggregateAiMetrics(result, calc.dictionaries?.items || [], disabledStands, applyRisks, calc);
+    const costMetrics = mode === 'cost'
+        ? aggregateAiMetricCosts(result, calc.dictionaries?.items || [], disabledStands)
+        : null;
+    const total = mode === 'cost' ? (costMetrics.total || {}) : (qtyMetrics.total || {});
+    const perStand = mode === 'cost' ? (costMetrics.perStand || {}) : (qtyMetrics.perStand || {});
     const hideNoBudget = !!options.hideNoBudget;
 
     // Скрываем блок, если ВСЕ метрики пусты (AI отключён в проекте).
     const hasAny = DASHBOARD_AI_METRIC_LABELS.some(label => {
         const e = total[label];
-        return e && e.qty > 0;
+        return mode === 'cost'
+            ? e && (e.cost > 0 || e.present)
+            : e && e.qty > 0;
     });
     if (!hasAny) return null;
 
     const visibleLabels = DASHBOARD_AI_METRIC_LABELS.filter(label => {
         if (!hideNoBudget) return true;
-        return hasVisibleAiMetricValue(label, total, perStand, disabledStands);
+        return mode === 'cost'
+            ? hasVisibleAiMetricBudget(label, total, perStand, disabledStands)
+            : hasVisibleAiMetricValue(label, total, perStand, disabledStands);
     });
     if (visibleLabels.length === 0) return null;
 
@@ -87,17 +101,25 @@ export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks,
 
         const cells = STAND_IDS.map(sid => {
             const cell = perStand[sid]?.[label];
-            const text = cell ? fmt(cell.qty, cell.unit) : '—';
+            const text = mode === 'cost'
+                ? (cell?.present ? formatRub(cell.cost || 0) : '—')
+                : (cell ? fmt(cell.qty, cell.unit) : '—');
             return el('td', {
                 class: ['details-ai-cell-stand', disabledStands.includes(sid) && 'details-ai-cell-disabled'],
-                title: cell ? `${STAND_LABELS[sid]}: ${text}${suffix}` : `${STAND_LABELS[sid]}: нет данных`,
-                text: cell && cell.qty > 0 ? `${formatResourceQty(cell.qty, cell.unit) ?? '—'}` : '—'
+                title: cell?.present || cell?.qty > 0
+                    ? `${STAND_LABELS[sid]}: ${text}${mode === 'qty' ? suffix : ''}`
+                    : `${STAND_LABELS[sid]}: нет данных`,
+                text: mode === 'cost'
+                    ? (cell?.present ? formatRub(cell.cost || 0) : '—')
+                    : (cell && cell.qty > 0 ? `${formatResourceQty(cell.qty, cell.unit) ?? '—'}` : '—')
             });
         });
 
-        const totalText = tot && tot.qty > 0
-            ? `${formatResourceQty(tot.qty, tot.unit) ?? '—'} ${tot.unit}${suffix}`
-            : '—';
+        const totalText = mode === 'cost'
+            ? (tot?.present ? formatRub(tot.cost || 0) : '—')
+            : (tot && tot.qty > 0
+                ? `${formatResourceQty(tot.qty, tot.unit) ?? '—'} ${tot.unit}${suffix}`
+                : '—');
 
         return el('tr', { class: 'details-ai-row' },
             el('td', { class: 'details-ai-cell-metric' },
@@ -109,9 +131,13 @@ export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks,
         );
     });
 
-    const modeNote = applyRisks
+    const modeNote = mode === 'cost'
+        ? (applyRisks
+            ? 'Бюджет AI-метрик, ₽/мес, с риск-коэффициентами и НДС по строкам ЭК.'
+            : 'Бюджет AI-метрик, ₽/мес, без риск-коэффициентов. НДС учитывается, если включён в расчёте.')
+        : (applyRisks
         ? 'С capacity-буферами (буферы / сезонность / сдвиг / контингент). Без VAT и инфляции — финансовые факторы, не capacity.'
-        : 'Без capacity-буферов — голый объём. Включите «Учитывать риск-коэффициенты» в Опроснике для оценки с буферами.';
+        : 'Без capacity-буферов — голый объём. Включите «Учитывать риск-коэффициенты» в Опроснике для оценки с буферами.');
 
     return el('div', { class: 'details-ai-summary' },
         el('div', { class: 'details-ai-summary-header' },
@@ -127,12 +153,55 @@ export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks,
     );
 }
 
+function aggregateAiMetricCosts(result, dictionaryItems, disabledStands = []) {
+    const disabled = new Set(disabledStands);
+    const out = {
+        total: {},
+        perStand: Object.fromEntries(STAND_IDS.map(sid => [sid, {}]))
+    };
+    for (const label of DASHBOARD_AI_METRIC_LABELS) {
+        out.total[label] = { cost: 0, present: false };
+        for (const sid of STAND_IDS) out.perStand[sid][label] = { cost: 0, present: false };
+    }
+
+    for (const item of dictionaryItems || []) {
+        const label = item.dashboardAiMetric || SEED_AI_METRIC_BY_ITEM_ID.get(item.id);
+        if (!label || !out.total[label]) continue;
+        const itemResult = result?.items?.[item.id];
+        if (!itemResult) continue;
+
+        for (const sid of STAND_IDS) {
+            const cell = itemResult.stands?.[sid];
+            if (!cell) continue;
+            const qty = Number(cell.qty) || 0;
+            const cost = Number(cell.costFinal) || 0;
+            const present = qty > 0 || cost > 0;
+            if (!present) continue;
+
+            out.perStand[sid][label].cost += cost;
+            out.perStand[sid][label].present = true;
+            if (!disabled.has(sid)) {
+                out.total[label].cost += cost;
+                out.total[label].present = true;
+            }
+        }
+    }
+    return out;
+}
+
 function hasVisibleAiMetricValue(label, total, perStand, disabledStands = []) {
     const isVisible = (entry) => {
         if (!entry || !(entry.qty > 0)) return false;
         const text = formatResourceQty(entry.qty, entry.unit);
         return text !== null && text !== '0';
     };
+    if (isVisible(total?.[label])) return true;
+    const disabled = new Set(disabledStands);
+    return STAND_IDS.some(sid => !disabled.has(sid) && isVisible(perStand?.[sid]?.[label]));
+}
+
+function hasVisibleAiMetricBudget(label, total, perStand, disabledStands = []) {
+    const isVisible = (entry) => entry && Number(entry.cost) > 0;
     if (isVisible(total?.[label])) return true;
     const disabled = new Set(disabledStands);
     return STAND_IDS.some(sid => !disabled.has(sid) && isVisible(perStand?.[sid]?.[label]));

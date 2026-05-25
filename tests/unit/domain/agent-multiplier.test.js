@@ -67,6 +67,21 @@ function getQty(result, itemId, stand = 'PROD') {
     return result.items[itemId]?.stands[stand]?.qty ?? 0;
 }
 
+function withZeroTokenFormulas(calc) {
+    const zeroFormulas = { DEV: '0', IFT: '0', PSI: '0', PROD: '0', LOAD: '0' };
+    return {
+        ...calc,
+        dictionaries: {
+            ...calc.dictionaries,
+            items: calc.dictionaries.items.map(item => (
+                ['llm-tokens-input-1m', 'llm-tokens-output-1m', 'ai-safety-moderation-tokens-1m'].includes(item.id)
+                    ? { ...item, qtyFormulas: { ...zeroFormulas } }
+                    : item
+            ))
+        }
+    };
+}
+
 describe('Этап 13: agent multiplier — буква контракта', () => {
     /* Базовая формула токенов:
        DAU × ai_users_share/100 × ai_requests_per_user_day × ai_avg_tokens × 30 / 1M
@@ -146,6 +161,33 @@ describe('Этап 13: agent multiplier — буква контракта', () =
         const r = calculate(calc);
         // 3000 × 3 (simple) × 1 (tool_use, parallel=10 игнор) = 9000, НЕ 90 000
         assert.equal(getQty(r, 'llm-tokens-input-1m'), 9000);
+    });
+
+    it('stale zero token formulas still produce external LLM token qty and cost from answers', () => {
+        const calc = withZeroTokenFormulas(buildLlmCalc({
+            ai_safety_layer: true
+        }));
+        const r = calculate(calc);
+
+        assert.equal(getQty(r, 'llm-tokens-input-1m'), 30);
+        assert.equal(getQty(r, 'llm-tokens-output-1m'), 30);
+        assert.equal(getQty(r, 'ai-safety-moderation-tokens-1m'), 6);
+        assert.ok(r.items['llm-tokens-input-1m'].stands.PROD.costFinal > 0);
+        assert.ok(r.items['llm-tokens-output-1m'].stands.PROD.costFinal > 0);
+    });
+
+    it('stale zero token formulas do not bill external tokens for on-prem GPU hosting', () => {
+        const calc = withZeroTokenFormulas(buildLlmCalc({
+            ai_hosting_mode: 'on_prem_gpu',
+            ai_safety_layer: true
+        }));
+        const r = calculate(calc);
+
+        assert.equal(getQty(r, 'llm-tokens-input-1m'), 0);
+        assert.equal(getQty(r, 'llm-tokens-output-1m'), 0);
+        assert.equal(getQty(r, 'ai-safety-moderation-tokens-1m'), 0);
+        assert.equal(r.items['llm-tokens-input-1m'].stands.PROD.costFinal, 0);
+        assert.equal(r.items['llm-tokens-output-1m'].stands.PROD.costFinal, 0);
     });
 });
 

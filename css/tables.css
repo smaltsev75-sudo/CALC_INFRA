@@ -233,6 +233,17 @@
     white-space: nowrap;
 }
 
+.details-table th.col-stand {
+    text-align: center;
+}
+
+.details-table th.col-stand .col-stand-name,
+.details-table th.col-stand .col-stand-unit {
+    display: block;
+    width: 100%;
+    text-align: center;
+}
+
 /* Колонки ИТОГО (мес/год в Бюджете, qty в Объёме) визуально отделены от
    блока стендов ТОЛЬКО в item-rows — там, где стоит «обычный» расчёт по ЭК.
    Шапка и строки итогов (.totals-row-grand/capex/opex) НЕ получают свой
@@ -799,6 +810,10 @@
 }
 .details-ai-summary-table thead th.details-ai-cell-metric {
     text-align: left;
+}
+.details-ai-summary-table thead th.details-ai-cell-stand,
+.details-ai-summary-table tbody td.details-ai-cell-stand {
+    text-align: center;
 }
 .details-ai-summary-table tbody td {
     padding: 6px 10px;

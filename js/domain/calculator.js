@@ -77,6 +77,11 @@ const AI_MODEL_TIER_FACTOR = Object.freeze({
     heavy: 3,
     frontier: 10
 });
+const EXTERNAL_LLM_TOKEN_ITEM_IDS = new Set([
+    'llm-tokens-input-1m',
+    'llm-tokens-output-1m',
+    'ai-safety-moderation-tokens-1m'
+]);
 import { LruCache } from '../utils/lru.js';
 import { getCostType, makeZeroCostTypeMap } from './costType.js';
 
@@ -339,6 +344,73 @@ function computeItemQty(item, stand, context) {
     }
 }
 
+function resolveAnswerValue(context, id, fallback = 0) {
+    const answers = context?.Q || {};
+    const defaults = context?.questionDefaults || {};
+    if (Object.prototype.hasOwnProperty.call(answers, id)) {
+        const value = answers[id];
+        if (value !== null && value !== undefined && value !== '') return value;
+    }
+    if (Object.prototype.hasOwnProperty.call(defaults, id)) {
+        const value = defaults[id];
+        if (value !== null && value !== undefined && value !== '') return value;
+    }
+    return fallback;
+}
+
+function answerBool(context, id, fallback = false) {
+    const value = resolveAnswerValue(context, id, fallback);
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        return normalized !== '' && normalized !== 'false' && normalized !== '0' && normalized !== 'нет';
+    }
+    return Boolean(value);
+}
+
+function answerNumber(context, id, fallback = 0) {
+    const n = Number(resolveAnswerValue(context, id, fallback));
+    return Number.isFinite(n) ? n : fallback;
+}
+
+/**
+ * Domain-level fallback for external LLM token items.
+ *
+ * Legacy/imported JSON can contain stale qtyFormulas for token rows (or explicit
+ * zero formulas after older migrations). UI-only recovery is not enough: the
+ * Details cost table and all totals must be based on the same calculated cells.
+ * This fallback mirrors the seed formula and runs only when the formula produced
+ * zero while answers describe a positive external/private-cloud LLM workload.
+ */
+function deriveExternalLlmTokenQtyFallback(item, stand, context) {
+    if (!EXTERNAL_LLM_TOKEN_ITEM_IDS.has(item?.id)) return 0;
+    if (!item.applicableStands?.includes(stand)) return 0;
+    if (!answerBool(context, 'ai_llm_used', false)) return 0;
+    if (String(resolveAnswerValue(context, 'ai_hosting_mode', '')).trim() === 'on_prem_gpu') return 0;
+    if (item.id === 'ai-safety-moderation-tokens-1m'
+        && !answerBool(context, 'ai_safety_layer', false)) return 0;
+
+    const registered = answerNumber(context, 'registered_users_total', 0);
+    const dauShare = answerNumber(context, 'dau_share_of_registered_percent', 0) / 100;
+    const aiShare = answerNumber(context, 'ai_users_share', 0) / 100;
+    const requestsPerUserDay = answerNumber(context, 'ai_requests_per_user_day', 0);
+    const cacheShare = Math.min(100, Math.max(0, answerNumber(context, 'ai_caching_share', 0))) / 100;
+    const inputTokens = answerNumber(context, 'ai_avg_input_tokens', 0);
+    const outputTokens = answerNumber(context, 'ai_avg_output_tokens', 0);
+    const agentStepFactor = numWithDefault(context?.S?.agentStepFactor, 1);
+    const modelFactor = numWithDefault(context?.S?.aiModelTierFactor, 1);
+    const standRatio = numWithDefault(context?.S?.standSizeRatio?.[stand], stand === 'PROD' ? 1 : 0);
+
+    const requestsPerMonth = registered * dauShare * aiShare * requestsPerUserDay * DEFAULT_DAYS_PER_MONTH * agentStepFactor;
+    const inputMillions = requestsPerMonth * inputTokens * (1 - cacheShare) / 1_000_000 * modelFactor * standRatio;
+    const outputMillions = requestsPerMonth * outputTokens / 1_000_000 * modelFactor * standRatio;
+
+    if (item.id === 'llm-tokens-input-1m') return Math.ceil(Math.max(0, inputMillions));
+    if (item.id === 'llm-tokens-output-1m') return Math.ceil(Math.max(0, outputMillions));
+    return Math.ceil(Math.max(0, (inputMillions + outputMillions) * 0.10));
+}
+
 /* ---------- LRU-кэш итогов ---------- */
 
 const _resultCache = new LruCache(CALC_CACHE_SIZE);
@@ -473,7 +545,11 @@ export function calculate(calculation, revision = null) {
 
         for (const stand of STAND_IDS) {
             const ctx = buildContext(answers, settings, questionDefaults, stand, item);
-            const { qty: rawQty, error: formulaError } = computeItemQty(item, stand, ctx);
+            const { qty: formulaQty, error: formulaError } = computeItemQty(item, stand, ctx);
+            const fallbackQty = !formulaError && Number.isFinite(formulaQty) && formulaQty <= 0
+                ? deriveExternalLlmTokenQtyFallback(item, stand, ctx)
+                : 0;
+            const rawQty = fallbackQty > 0 ? fallbackQty : formulaQty;
             const rawCostBase = rawQty * price * intervalMul;
             const breakdown = riskFactor(item, stand, settings);
             // 12.U20: VAT — независимая ось, применяется ВСЕГДА когда vatEnabled.

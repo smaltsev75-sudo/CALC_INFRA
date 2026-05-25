@@ -1432,6 +1432,11 @@
     gap: 8px;
 }
 
+.dash-card-risk {
+    container-type: inline-size;
+    container-name: risk-card;
+}
+
 .dash-card-risk .dash-card-eyebrow-sub {
     justify-content: flex-start;
 }
@@ -1450,13 +1455,18 @@
     white-space: nowrap;
 }
 
-.dash-risk-body { gap: 8px; }
+.dash-risk-body {
+    gap: 8px;
+}
 
 .dash-risk-row {
     display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto;
+    /* Fixed row tracks keep risk bars visually comparable. Each row is its own
+       grid, so flexible label/bar tracks made bars start at different x
+       positions when labels or amounts had different widths. */
+    grid-template-columns: 88px 96px minmax(112px, 1fr) 56px;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     font-size: 0.82rem;
 }
 
@@ -1468,6 +1478,8 @@
 
 .dash-risk-row-bar {
     display: block;
+    width: 96px;
+    justify-self: start;
     height: 6px;
     background: var(--bg-input);
     border-radius: 999px;
@@ -1492,6 +1504,7 @@
     font-variant-numeric: tabular-nums;
     text-align: right;
     white-space: nowrap;
+    justify-self: end;
 }
 
 .dash-risk-row-value {
@@ -1502,6 +1515,36 @@
     font-variant-numeric: tabular-nums;
     min-width: 56px;
     text-align: right;
+    justify-self: end;
+}
+
+@container risk-card (max-width: 360px) {
+    .dash-risk-row {
+        grid-template-columns: 88px minmax(0, 1fr) 56px;
+        grid-template-areas:
+            "label bar bar"
+            ". amount amount"
+            ". value value";
+        row-gap: 4px;
+    }
+
+    .dash-risk-row-label {
+        grid-area: label;
+    }
+
+    .dash-risk-row-bar {
+        grid-area: bar;
+    }
+
+    .dash-risk-row-amount {
+        grid-area: amount;
+        justify-self: start;
+    }
+
+    .dash-risk-row-value {
+        grid-area: value;
+        justify-self: start;
+    }
 }
 
 .dash-risk-surplus-amount {

@@ -220,8 +220,10 @@ describe('dashboardAggregates', () => {
             ))
         };
         const result = calculate(calc);
-        assert.equal(result.items['llm-tokens-input-1m'].stands.PROD.qty, 0);
-        assert.equal(result.items['llm-tokens-output-1m'].stands.PROD.qty, 0);
+        assert.ok(result.items['llm-tokens-input-1m'].stands.PROD.qty > 0);
+        assert.ok(result.items['llm-tokens-output-1m'].stands.PROD.qty > 0);
+        assert.ok(result.items['llm-tokens-input-1m'].stands.PROD.costFinal > 0);
+        assert.ok(result.items['llm-tokens-output-1m'].stands.PROD.costFinal > 0);
 
         const metrics = aggregateAiMetrics(result, calc.dictionaries.items, [], false, calc);
 

@@ -65,11 +65,26 @@ async function expectDashboardStorageVisible(page, standId) {
     }
 }
 
-async function expectTokensSummaryVisible(page) {
+async function expectTokensQtySummaryVisible(page) {
     const row = aiSummaryRow(page, 'Токены');
     await expect(row).toBeVisible();
     await expect(row.locator('.details-ai-cell-total')).toContainText(/млн токенов \/ мес/);
     await expect(row.locator('.details-ai-cell-total')).not.toHaveText('—');
+}
+
+async function expectTokensBudgetSummaryVisible(page) {
+    const row = aiSummaryRow(page, 'Токены');
+    await expect(row).toBeVisible();
+    await expect(row.locator('.details-ai-cell-total')).toContainText('₽');
+    await expect(row.locator('.details-ai-cell-total')).toHaveText(/[1-9]/);
+    await expect(row.locator('.details-ai-cell-total')).not.toContainText(/млн токенов/);
+}
+
+async function expectTokensBudgetSummaryZero(page) {
+    const row = aiSummaryRow(page, 'Токены');
+    await expect(row).toBeVisible();
+    await expect(row.locator('.details-ai-cell-total')).toHaveText('—');
+    await expect(row.locator('.details-ai-cell-total')).not.toContainText(/млн токенов/);
 }
 
 async function expandAiCategoryIfNeeded(page, tableSelector) {
@@ -91,8 +106,35 @@ async function expectTokenItemRowsVisible(page, tableSelector) {
     const outputRow = page.locator(`${tableSelector} tbody tr.item-row`).filter({ hasText: 'Исходящие токены LLM' });
     await expect(inputRow).toBeVisible();
     await expect(outputRow).toBeVisible();
-    await expect(inputRow.locator('td.col-total').first()).not.toHaveText('—');
-    await expect(outputRow.locator('td.col-total').first()).not.toHaveText('—');
+
+    if (tableSelector.includes('details-table-cost')) {
+        await expectPositiveRubRow(inputRow);
+        await expectPositiveRubRow(outputRow);
+        return;
+    }
+
+    await expectPositiveQtyRow(inputRow, /млн токенов/);
+    await expectPositiveQtyRow(outputRow, /млн токенов/);
+}
+
+async function expectPositiveRubRow(row) {
+    const total = row.locator('td.col-total').first();
+    await expect(total).toContainText('₽');
+    await expect(total).toHaveText(/[1-9]/);
+    await expect(total).not.toHaveText(/^\s*(?:—|0\s*₽)\s*$/);
+
+    const standTexts = await row.locator('td.col-stand').allTextContents();
+    expect(standTexts.some(text => /[1-9]/.test(text) && text.includes('₽'))).toBeTruthy();
+}
+
+async function expectPositiveQtyRow(row, unitPattern) {
+    const total = row.locator('td.col-total').first();
+    await expect(total).toContainText(unitPattern);
+    await expect(total).toHaveText(/[1-9]/);
+    await expect(total).not.toHaveText(/^\s*—\s*$/);
+
+    const standTexts = await row.locator('td.col-stand').allTextContents();
+    expect(standTexts.some(text => /[1-9]/.test(text))).toBeTruthy();
 }
 
 test('Details shows calculated LLM tokens on Budget and Qty for Quick Start AI', async ({ page }) => {
@@ -115,13 +157,13 @@ test('Details shows calculated LLM tokens on Budget and Qty for Quick Start AI',
     await clickSidebarTab(page, 'details');
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expect(page.locator('.details-ai-summary')).toBeVisible();
-    await expectTokensSummaryVisible(page);
+    await expectTokensBudgetSummaryVisible(page);
 
     const cpuAgentsRow = aiSummaryRow(page, 'CPU агентов');
     await expect(cpuAgentsRow).toBeVisible();
 
     await page.locator('.details-hide-zero').click();
-    await expectTokensSummaryVisible(page);
+    await expectTokensBudgetSummaryVisible(page);
     await expect(cpuAgentsRow).toHaveCount(0);
 
     await expectTokenItemRowsVisible(page, '.details-table-cost');
@@ -129,7 +171,7 @@ test('Details shows calculated LLM tokens on Budget and Qty for Quick Start AI',
     await page.getByRole('button', { name: 'Объём (qty)' }).click();
     await expect(page.locator('.details-table-qty')).toBeVisible();
     await expect(page.locator('.details-ai-summary')).toBeVisible();
-    await expectTokensSummaryVisible(page);
+    await expectTokensQtySummaryVisible(page);
     await expect(aiSummaryRow(page, 'CPU агентов')).toHaveCount(0);
     await expectTokenItemRowsVisible(page, '.details-table-qty');
 
@@ -173,11 +215,11 @@ test('Dashboard and Details show token workload when LLM is hosted on own GPU', 
 
     await clickSidebarTab(page, 'details');
     await expect(page.locator('.details-ai-summary')).toBeVisible();
-    await expectTokensSummaryVisible(page);
+    await expectTokensBudgetSummaryZero(page);
 
     await page.getByRole('button', { name: 'Объём (qty)' }).click();
     await expect(page.locator('.details-table-qty')).toBeVisible();
-    await expectTokensSummaryVisible(page);
+    await expectTokensQtySummaryVisible(page);
     await expectTokenItemRowsVisible(page, '.details-table-qty');
 
     expect(consoleErrors).toEqual([]);
@@ -214,10 +256,11 @@ test('Details AI summary restores token workload from filled answers when token 
 
     await clickSidebarTab(page, 'details');
     await expect(page.locator('.details-ai-summary')).toBeVisible();
-    await expectTokensSummaryVisible(page);
+    await expectTokensBudgetSummaryVisible(page);
 
     await page.locator('.details-hide-zero').click();
-    await expectTokensSummaryVisible(page);
+    await expectTokensBudgetSummaryVisible(page);
+    await expectTokenItemRowsVisible(page, '.details-table-cost');
 
     await page.getByRole('button', { name: 'Объём (qty)' }).click();
     await expect(page.locator('.details-table-qty')).toBeVisible();

@@ -146,11 +146,9 @@ export function renderDetails(state, ctx) {
 
         renderDetailsQuantityPrintSummary(calc, result, disabledStands),
 
-        /* Сводная панель AI-метрик — qty-таблица (токены/ГБ/vCPU). Она видна
-           на обеих подвкладках Детализации: на «Бюджет» пользователь сразу
-           видит, что заполненный раздел «Объём токенов» реально попал в расчёт,
-           а на «Объём» получает тот же агрегат рядом с построчными qty. */
-        renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx, { hideNoBudget: hideZero })
+        /* Сводная панель AI-метрик следует выбранной подвкладке: на «Бюджет»
+           показывает ₽/мес по AI-метрикам, на «Объём» — токены/ГБ/vCPU. */
+        renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx, { hideNoBudget: hideZero, mode: subTab })
     );
 }
 
