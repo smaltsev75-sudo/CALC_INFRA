@@ -95,10 +95,10 @@
     user-select: none;
 }
 .persist-indicator .icon { color: inherit; }
-.persist-indicator.persist-idle    { color: var(--text-muted); }
+.persist-indicator.persist-idle    { color: var(--success); border-color: var(--success); background: var(--success-faint); }
 .persist-indicator.persist-pending { color: var(--accent); border-color: var(--accent); }
 .persist-indicator.persist-pending .icon { animation: spin 0.8s linear infinite; }
-.persist-indicator.persist-saved   { color: var(--success); border-color: var(--success); }
+.persist-indicator.persist-saved   { color: var(--success); border-color: var(--success); background: var(--success-faint); }
 .persist-indicator.persist-error   { color: var(--danger); border-color: var(--danger); background: var(--danger-faint); cursor: help; }
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
