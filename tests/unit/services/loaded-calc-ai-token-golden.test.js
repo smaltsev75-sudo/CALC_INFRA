@@ -163,11 +163,19 @@ const SCENARIOS = Object.freeze([
             ai_model_tier: 'heavy',
             ai_caching_share: 30
         },
+        healthAcknowledgements: {
+            'confirmed-low-dau': {
+                values: {
+                    registered_users_total: 500,
+                    dau_share_of_registered_percent: 0.7
+                }
+            }
+        },
         expected: {
-            tokenTotalQty: 358_026,
-            tokenStandQty: { DEV: 2634, IFT: 26326, PSI: 65814, PROD: 131626, LOAD: 131626 },
-            inputQty: { DEV: 2127, IFT: 21263, PSI: 53157, PROD: 106313, LOAD: 106313 },
-            outputQty: { DEV: 507, IFT: 5063, PSI: 12657, PROD: 25313, LOAD: 25313 }
+            tokenTotalQty: 54,
+            tokenStandQty: { DEV: 2, IFT: 4, PSI: 10, PROD: 19, LOAD: 19 },
+            inputQty: { DEV: 1, IFT: 3, PSI: 8, PROD: 15, LOAD: 15 },
+            outputQty: { DEV: 1, IFT: 1, PSI: 2, PROD: 4, LOAD: 4 }
         }
     }
 ]);
@@ -198,7 +206,8 @@ function buildRawCalc(scenario) {
         },
         dictionaries,
         view: { disabledStands: [] },
-        wizard: scenario.wizard
+        wizard: scenario.wizard,
+        healthAcknowledgements: scenario.healthAcknowledgements || {}
     };
 }
 
@@ -231,10 +240,29 @@ function loadedScenarioSummary(scenario) {
     };
 }
 
+function loadedScenarioCostSummary(scenario) {
+    const prepared = prepareLoadedCalc(JSON.parse(JSON.stringify(buildRawCalc(scenario))));
+    assert.equal(prepared.error, null);
+    clearCalculationCache();
+    const result = calculate(prepared.calc);
+    return {
+        totalMonthly: Math.round(result.totalMonthly),
+        aiMonthly: Math.round(result.byCategory.AI || 0)
+    };
+}
+
 describe('loaded-calc golden: AI token visibility contract', () => {
     for (const scenario of SCENARIOS) {
         it(`${scenario.id}: prepared calc keeps expected token qty`, () => {
             assert.deepEqual(loadedScenarioSummary(scenario), scenario.expected);
         });
     }
+
+    it('degenerate recovery keeps AI cost at the acknowledged low-DAU baseline', () => {
+        const baseline = loadedScenarioCostSummary(SCENARIOS.find(s => s.id === 'low-dau-heavy'));
+        const degenerate = loadedScenarioCostSummary(SCENARIOS.find(s => s.id === 'degenerate-userbase'));
+        assert.equal(degenerate.aiMonthly, baseline.aiMonthly);
+        assert.ok(degenerate.aiMonthly < 1_000_000,
+            `degenerate recovery must not silently bill seed-scale AI costs, got ${degenerate.aiMonthly}`);
+    });
 });

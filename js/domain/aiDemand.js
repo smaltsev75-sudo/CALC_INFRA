@@ -46,6 +46,73 @@ function defaultBag(source) {
     return {};
 }
 
+function metaBag(source) {
+    if (source?.answersMeta && typeof source.answersMeta === 'object') return source.answersMeta;
+    if (source?.meta && typeof source.meta === 'object') return source.meta;
+    return {};
+}
+
+function hasAnswerValue(source, id) {
+    const answers = answerBag(source);
+    if (!Object.prototype.hasOwnProperty.call(answers, id)) return false;
+    const value = answers[id];
+    return value !== null && value !== undefined && value !== '';
+}
+
+function positiveNumber(value) {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function isManualAnswer(source, id) {
+    return metaBag(source)?.[id]?.source === 'manual';
+}
+
+function firstPositiveField(bag, id) {
+    if (!bag || typeof bag !== 'object') return null;
+    return positiveNumber(bag[id]);
+}
+
+function acknowledgedPositiveValue(source, id) {
+    const acks = source?.healthAcknowledgements;
+    if (!acks || typeof acks !== 'object') return null;
+    for (const ack of Object.values(acks)) {
+        const value = firstPositiveField(ack?.values, id);
+        if (value !== null) return value;
+    }
+    return null;
+}
+
+function recoveredPositiveValue(source, id) {
+    const acknowledged = acknowledgedPositiveValue(source, id);
+    if (acknowledged !== null) return acknowledged;
+
+    if (!isManualAnswer(source, id)) {
+        const scenarioValue = firstPositiveField(source?.activeScenarioAnswers, id);
+        if (scenarioValue !== null) return scenarioValue;
+        const wizardValue = firstPositiveField(source?.wizardAnswers, id);
+        if (wizardValue !== null) return wizardValue;
+    }
+
+    if (!hasAnswerValue(source, id)) {
+        return firstPositiveField(defaultBag(source), id);
+    }
+    return null;
+}
+
+function recoveredRegisteredValue(source) {
+    const direct = recoveredPositiveValue(source, 'registered_users_total');
+    if (direct !== null) return direct;
+
+    if (!isManualAnswer(source, 'registered_users_total')) {
+        const scenarioUsersTotal = firstPositiveField(source?.activeScenarioAnswers, 'users_total');
+        if (scenarioUsersTotal !== null) return scenarioUsersTotal / 1.5;
+        const wizardUsersTotal = firstPositiveField(source?.wizardAnswers, 'users_total');
+        if (wizardUsersTotal !== null) return wizardUsersTotal / 1.5;
+    }
+    return null;
+}
+
 export function resolveDemandAnswer(source, id, fallback = undefined) {
     const answers = answerBag(source);
     if (Object.prototype.hasOwnProperty.call(answers, id)) {
@@ -109,25 +176,25 @@ export function hasPositiveTokenDemandSignal(source) {
 
 export function getEffectiveTokenUserBase(source, options = {}) {
     const repairDegenerate = options.repairDegenerate === true;
-    const defaults = defaultBag(source);
     const rawRegistered = demandNumber(source, 'registered_users_total', 0);
     const rawDauShare = demandNumber(source, 'dau_share_of_registered_percent', 0);
     let registered = rawRegistered;
     let dauShare = rawDauShare;
+    const hasDegenerateUserBase = rawRegistered <= 0 || rawDauShare <= 0;
     const repairedFields = [];
 
     if (repairDegenerate && registered <= 0) {
-        const def = Number(defaults.registered_users_total);
-        if (Number.isFinite(def) && def > 0) {
-            registered = def;
+        const recovered = recoveredRegisteredValue(source);
+        if (recovered !== null) {
+            registered = recovered;
             repairedFields.push('registered_users_total');
         }
     }
-    if (repairDegenerate && dauShare <= 0) {
-        const def = Number(defaults.dau_share_of_registered_percent);
-        if (Number.isFinite(def) && def > 0) {
-            dauShare = def;
-            repairedFields.push('dau_share_of_registered_percent');
+    if (repairDegenerate && (dauShare <= 0 || hasDegenerateUserBase)) {
+        const recovered = recoveredPositiveValue(source, 'dau_share_of_registered_percent');
+        if (recovered !== null) {
+            dauShare = recovered;
+            if (rawDauShare !== recovered) repairedFields.push('dau_share_of_registered_percent');
         }
     }
 

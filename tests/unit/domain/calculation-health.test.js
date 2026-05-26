@@ -345,7 +345,7 @@ describe('rule: ai-token-volume-without-token-resources (error)', () => {
         assert.ok(!findById(r.findings, 'ai-token-volume-without-token-resources'));
     });
 
-    it('срабатывает для degenerate user-base, если defaults есть, но TOKENS-ЭК дают 0', () => {
+    it('срабатывает для degenerate user-base без recovery trace, если TOKENS-ЭК дают 0', () => {
         const r = evaluateCalculationHealth(makeCalc({
             ...tokenDemand,
             registered_users_total: 0,

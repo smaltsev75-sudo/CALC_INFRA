@@ -208,7 +208,7 @@ export function buildQuestionDefaults(questions) {
  * per-resource ratios / AI stand factor / agentStepFactor — диагностика
  * формул для AI-ЭК и hardware показывала неправильные значения.
  */
-export function buildContext(answers, settings, questionDefaults, stand, item = null, answersMeta = null) {
+export function buildContext(answers, settings, questionDefaults, stand, item = null, answersMeta = null, demandHints = null) {
     let ratio = settings.standSizeRatio && typeof settings.standSizeRatio === 'object'
         ? settings.standSizeRatio
         : DEFAULT_STAND_SIZE_RATIO;
@@ -318,7 +318,10 @@ export function buildContext(answers, settings, questionDefaults, stand, item = 
         },
         STAND: stand,
         questionDefaults,
-        answersMeta: answersMeta || {}
+        answersMeta: answersMeta || {},
+        healthAcknowledgements: demandHints?.healthAcknowledgements || null,
+        activeScenarioAnswers: demandHints?.activeScenarioAnswers || null,
+        wizardAnswers: demandHints?.wizardAnswers || null
     };
 }
 
@@ -619,6 +622,13 @@ export function calculate(calculation, revision = null) {
     // НДС — это налог, а не риск; пользователь либо учитывает его в бюджете, либо
     // нет — это отдельный решение от того, накручиваем ли мы риски сверху.
     const applyRisks = settings.applyRiskFactors !== false;
+    const activeScenario = Array.isArray(calculation.scenarios)
+        ? calculation.scenarios.find(s => s?.id === calculation.activeScenarioId)
+        : null;
+    const demandHints = {
+        healthAcknowledgements: calculation.healthAcknowledgements || null,
+        activeScenarioAnswers: activeScenario?.answers || null
+    };
 
     for (const item of items) {
         const intervalMul = billingIntervalToMonthlyMultiplier(
@@ -628,7 +638,15 @@ export function calculate(calculation, revision = null) {
         const ct = getCostType(item);
 
         for (const stand of STAND_IDS) {
-            const ctx = buildContext(answers, settings, questionDefaults, stand, item, calculation.answersMeta);
+            const ctx = buildContext(
+                answers,
+                settings,
+                questionDefaults,
+                stand,
+                item,
+                calculation.answersMeta,
+                demandHints
+            );
             const { qty: formulaQty, error: formulaError } = computeItemQty(item, stand, ctx);
             /* Fallback тригерится при formulaError=null И:
              *   (а) формула вернула 0/негатив (легитимный случай: явный 0 или

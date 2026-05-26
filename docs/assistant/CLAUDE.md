@@ -2,13 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-26, v2.20.77)
+## Current Project Lessons (2026-05-26, v2.20.78)
 
 - AI token visibility contract must be enforced through one shared helper,
   not copied predicates. `js/domain/aiDemand.js` is the source for positive
   LLM demand, degenerate user-base repair, external/on-prem branching and
   field lists. Calculator fallback, Health Check and tests should import it
   instead of re-implementing demand checks.
+- Token visibility must not be fixed by silent seed-scale billing. If
+  `registered_users_total=0` but LLM demand is positive, recover user-base only
+  from a concrete trace (Health acknowledgement / active scenario answers /
+  genuinely missing default). Never turn an explicit zero into the seed
+  `500_000` without that trace; otherwise a small low-DAU calc can become
+  97%+ AI/LLM cost.
 - For token visibility regressions, the first regression guard should be an
   E2E DOM test on the loaded/localStorage path. A green `calculate()` unit test
   is insufficient if `prepareLoadedCalc/openCalc`, dashboard aggregation or

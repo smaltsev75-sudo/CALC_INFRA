@@ -1,5 +1,30 @@
 # Журнал решений и допущений
 
+## 26.05.2026 · PATCH 2.20.78 — AI/LLM cost sanity for degenerate user-base
+
+**Контекст.** После фикса видимости токенов пользователь заметил новый
+симптом: AI / LLM начал занимать больше 97% общего бюджета. Проверка показала,
+что причина не в тарифе токенов, а в слишком широком degenerate-fallback:
+`registered_users_total=0` восстанавливался через seed-default `500 000`.
+Для расчёта `Акселератор - новый продукт Start` это превращало подтверждённые
+`registered=500 / dau=0.7%` в условные `25 000 DAU`, раздувая LLM до сотен
+миллионов рублей в месяц.
+
+**Решение.**
+
+- `js/domain/aiDemand.js` больше не превращает explicit `registered=0` в
+  глобальный seed-default `500 000` без recovery trace.
+- Degenerate user-base восстанавливается только из конкретного следа расчёта:
+  Health acknowledgement, active scenario answers или отсутствующий ответ с
+  default. Если следа нет, токены не биллятся искусственно.
+- Если LLM включена, demand-поля положительные, но user-base/формулы дают
+  нулевые TOKENS, Health Check показывает `ERROR` вместо молчаливого `—` или
+  завышенного бюджета.
+- Golden loaded-calc теперь проверяет не только qty, но и cost sanity:
+  degenerate recovery обязан совпадать с low-DAU baseline, а не seed-scale.
+- E2E localStorage-контракт сохранён: Dashboard и Details продолжают показывать
+  токены при наличии подтверждённых `500 / 0.7`, но без ложных 500k users.
+
 ## 26.05.2026 · PATCH 2.20.77 — AI-token visibility contract guards
 
 **Контекст.** Серия багов с токенами показала разрыв между документированным
@@ -10,7 +35,7 @@
 **Решение.**
 
 - Вынесен общий `js/domain/aiDemand.js`: единый predicate/normalizer для
-  AI LLM demand, включая repair degenerate user-base через documented defaults.
+  AI LLM demand, включая repair degenerate user-base через recovery trace.
 - Калькуляторный fallback и Health Check используют тот же helper.
 - Health Check выдаёт `error`, если LLM включена, demand-поля положительные,
   но TOKENS-ЭК агрегируются в ноль.

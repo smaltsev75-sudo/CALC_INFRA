@@ -1,9 +1,6 @@
 /**
- * Token-fallback ДОЛЖЕН использовать документированный defaultValue для
- * registered_users_total / dau_share_of_registered_percent, когда пользователь
- * явно включил AI (`ai_llm_used=true`) и задал положительные параметры
- * нагрузки (`ai_users_share`, `ai_requests_per_user_day`, токены входа/выхода),
- * но user-base параметры вырождены в 0.
+ * Token-fallback ДОЛЖЕН восстанавливать user-base только из конкретного следа
+ * расчёта, а не из глобального seed-default.
  *
  * Bug repro (пользовательский кейс, v2.20.71):
  * Пользователь импортирует JSON со сценарием high-AI (registered=500, dau=0.7),
@@ -18,13 +15,12 @@
  *   2. Details «Сводка AI-метрик» → строка «Токены»
  *   3. Details main table → AI/LLM → «Входящие/Исходящие токены LLM»
  *
- * Документированное поведение из seed.js (registered_users_total.description):
- * «Если ответ не указан («Нет информации») — расчёт пойдёт от 500 000 пользователей.»
- *
- * Fix: в `deriveExternalLlmTokenQtyFallback` при degenerate user-base
- * (registered<=0 OR dau<=0) + явный AI opt-in + положительные demand-params →
- * подставлять seed-default'ы для отсутствующих полей. Это документированный
- * safety-net против silently-zero токенов в инфраструктурной оценке.
+ * Fix v2.20.78: при degenerate user-base (registered<=0 OR dau<=0) + явный
+ * AI opt-in + положительные demand-params fallback НЕ имеет права брать
+ * `registered_users_total.defaultValue = 500_000`: для малого расчёта это
+ * превращает десятки тысяч рублей AI в сотни миллионов. Восстановление идёт
+ * только из Health acknowledgement / scenario trace; иначе Health Check должен
+ * показать ERROR вместо молчаливого завышения.
  *
  * Project lesson (CLAUDE.md §Current Project Lessons): «If `ai_llm_used` is
  * true and token workload inputs are positive, the model must produce either
@@ -79,22 +75,31 @@ function buildDegenerateUserBaseCalc(overrides = {}) {
             ai_finetune_needed: false,
             ...(overrides.answers || {})
         },
+        healthAcknowledgements: overrides.healthAcknowledgements === undefined
+            ? {
+                'confirmed-low-dau': {
+                    values: {
+                        registered_users_total: 500,
+                        dau_share_of_registered_percent: 0.7
+                    }
+                }
+            }
+            : overrides.healthAcknowledgements,
         dictionaries: dict,
         view: { disabledStands: [] }
     };
 }
 
 describe('Token qty fallback: degenerate user-base', () => {
-    it('registered=0 + dau=5 + AI opt-in + положительные demand-params → fallback использует seed-default 500_000', () => {
+    it('registered=0 + dau=5 + AI opt-in → fallback восстанавливает подтверждённые 500 / 0.7, а не seed 500_000', () => {
         const calc = buildDegenerateUserBaseCalc();
         const result = calculate(calc);
         const tokIn = result.items['llm-tokens-input-1m'];
         assert.ok(tokIn, 'llm-tokens-input-1m должен быть в результате');
-        // PROD и LOAD имеют aiStandFactor=1, должны видеть токены через fallback
-        for (const stand of ['PROD', 'LOAD']) {
-            assert.ok(tokIn.stands[stand].qty > 0,
-                `${stand} input qty должен быть > 0 (degenerate-fallback rescue), получено ${tokIn.stands[stand].qty}`);
-        }
+        assert.equal(tokIn.stands.PROD.qty, 15,
+            `PROD input qty должен восстановиться к пользовательским 500/0.7, получено ${tokIn.stands.PROD.qty}`);
+        assert.equal(tokIn.stands.LOAD.qty, 15,
+            `LOAD input qty должен восстановиться к пользовательским 500/0.7, получено ${tokIn.stands.LOAD.qty}`);
         assert.ok(tokIn.totalMonthly > 0,
             `input totalMonthly должен быть > 0, получено ${tokIn.totalMonthly}`);
     });
@@ -109,15 +114,26 @@ describe('Token qty fallback: degenerate user-base', () => {
         }
     });
 
-    it('dau=0 + registered=500 → fallback использует seed-default dau=5', () => {
-        // Симметрия: вырождение dau тоже триггерит rescue.
+    it('dau=0 + registered=500 → fallback использует подтверждённый dau=0.7', () => {
         const calc = buildDegenerateUserBaseCalc({
             answers: { registered_users_total: 500, dau_share_of_registered_percent: 0 }
         });
         const result = calculate(calc);
         const tokIn = result.items['llm-tokens-input-1m'];
-        assert.ok(tokIn.stands.PROD.qty > 0,
-            `PROD input qty при dau=0 должен быть > 0 (fallback rescue), получено ${tokIn.stands.PROD.qty}`);
+        assert.equal(tokIn.stands.PROD.qty, 15,
+            `PROD input qty при dau=0 должен восстановиться к 0.7%, получено ${tokIn.stands.PROD.qty}`);
+    });
+
+    it('registered=0 без recovery trace → НЕ подставляем seed 500_000 и не завышаем бюджет', () => {
+        const calc = buildDegenerateUserBaseCalc({
+            healthAcknowledgements: null
+        });
+        const result = calculate(calc);
+        const tokIn = result.items['llm-tokens-input-1m'];
+        for (const stand of ['PROD', 'LOAD', 'DEV', 'IFT', 'PSI']) {
+            assert.equal(tokIn.stands[stand].qty, 0,
+                `${stand}: без recovery trace fallback не должен подставлять seed 500_000, получено ${tokIn.stands[stand].qty}`);
+        }
     });
 
     it('registered=0 + AI выключен → НЕ запускаем fallback (legitимный 0)', () => {

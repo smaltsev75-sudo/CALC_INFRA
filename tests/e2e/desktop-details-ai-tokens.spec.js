@@ -378,6 +378,20 @@ test('Loaded localStorage degenerate user-base keeps tokens visible in Dashboard
                 ai_avg_output_tokens: 500,
                 ai_model_tier: 'heavy',
                 ai_caching_share: 30
+            },
+            healthAcknowledgements: {
+                ...(active.healthAcknowledgements || {}),
+                'confirmed-low-dau': {
+                    acknowledgedAt: '2026-05-26T10:00:00.000Z',
+                    fieldIds: [
+                        'dau_share_of_registered_percent',
+                        'registered_users_total'
+                    ],
+                    values: {
+                        dau_share_of_registered_percent: 0.7,
+                        registered_users_total: 500
+                    }
+                }
             }
         };
         if (!persist.saveCalc(patched)) throw new Error('Failed to persist patched calc');

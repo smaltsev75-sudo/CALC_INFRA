@@ -40,16 +40,28 @@ describe('aiDemand shared contract', () => {
         assert.equal(demandNumber({ answers: { x: '1 234,5%' } }, 'x'), 1234.5);
     });
 
-    it('repairs degenerate user-base only when caller explicitly allows it', () => {
+    it('repairs degenerate user-base from acknowledged values, not from global seed defaults', () => {
         const context = {
             Q: {
                 ...positiveAnswers,
                 registered_users_total: 0,
                 dau_share_of_registered_percent: 0
             },
+            answersMeta: {
+                registered_users_total: { source: 'manual' },
+                dau_share_of_registered_percent: { source: 'manual' }
+            },
             questionDefaults: {
                 registered_users_total: 500_000,
                 dau_share_of_registered_percent: 5
+            },
+            healthAcknowledgements: {
+                'confirmed-low-dau': {
+                    values: {
+                        registered_users_total: 500,
+                        dau_share_of_registered_percent: 0.7
+                    }
+                }
             }
         };
 
@@ -57,12 +69,34 @@ describe('aiDemand shared contract', () => {
         assert.equal(hasPositiveTokenDemandInputs(context, { repairDegenerate: true }), true);
 
         const demand = getEffectiveLlmTokenDemand(context, { repairDegenerate: true });
-        assert.equal(demand.registered, 500_000);
-        assert.equal(demand.dauShare, 5);
+        assert.equal(demand.registered, 500);
+        assert.equal(demand.dauShare, 0.7);
         assert.deepEqual(demand.repairedFields, [
             'registered_users_total',
             'dau_share_of_registered_percent'
         ]);
+    });
+
+    it('does not turn explicit registered=0 into 500k without a recovery trace', () => {
+        const context = {
+            Q: {
+                ...positiveAnswers,
+                registered_users_total: 0,
+                dau_share_of_registered_percent: 5
+            },
+            answersMeta: {
+                registered_users_total: { source: 'manual' }
+            },
+            questionDefaults: {
+                registered_users_total: 500_000,
+                dau_share_of_registered_percent: 5
+            }
+        };
+
+        const demand = getEffectiveLlmTokenDemand(context, { repairDegenerate: true });
+        assert.equal(demand.positive, false);
+        assert.equal(demand.registered, 0);
+        assert.deepEqual(demand.repairedFields, []);
     });
 
     it('does not claim visibility contract for AI off or on-prem external-only checks', () => {

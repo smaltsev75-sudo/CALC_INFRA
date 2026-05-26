@@ -2,8 +2,13 @@
 
 - Для AI-токенов не копировать predicate по файлам. Единая точка правды —
   `js/domain/aiDemand.js`: положительный LLM demand, repair вырожденной
-  user-base через documented defaults, external/on-prem branching и fieldIds
+  user-base через recovery trace, external/on-prem branching и fieldIds
   для Health Check. Любой новый fallback/guard должен переиспользовать helper.
+- При ремонте вырожденной user-base нельзя молча подставлять глобальный
+  `registered_users_total.defaultValue = 500_000` для explicit `0`: это может
+  превратить малый low-DAU расчёт в 97%+ AI/LLM бюджета. Восстанавливать можно
+  только из Health acknowledgement / active scenario answers / реально
+  отсутствующего ответа; иначе показывать Health ERROR.
 - Регрессии «токены не видны» проверять E2E по загруженному/localStorage
   расчёту: `openCalc`/`prepareLoadedCalc` → Dashboard DOM → Details budget →
   Details qty. Unit-тест `calculate()` не доказывает, что пользователь увидит

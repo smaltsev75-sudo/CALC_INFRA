@@ -14,7 +14,9 @@ import { SEED_ITEMS, SEED_QUESTIONS } from './seed.js';
 import {
     AI_LLM_TOKEN_CONTRACT_FIELDS,
     AI_TOKEN_VOLUME_FIELDS,
-    hasLlmTokenVisibilityContract
+    hasActiveLlmOptIn,
+    hasPositiveTokenDemandSignal,
+    isExternalLlmHosting
 } from './aiDemand.js';
 /* ---------- Helpers ---------- */
 
@@ -370,10 +372,10 @@ function checkTokenVolumeWithoutLlm(calc) {
 }
 
 function hasPositiveExternalTokenDemand(calc) {
-    return hasLlmTokenVisibilityContract(aiDemandSource(calc), {
-        externalOnly: true,
-        repairDegenerate: true
-    });
+    const source = aiDemandSource(calc);
+    return hasActiveLlmOptIn(source)
+        && isExternalLlmHosting(source)
+        && hasPositiveTokenDemandSignal(source);
 }
 
 function checkTokenVolumeProducesTokenResources(calc) {
@@ -400,7 +402,8 @@ function checkTokenVolumeProducesTokenResources(calc) {
         fieldIds: AI_LLM_TOKEN_CONTRACT_FIELDS,
         suggestedAction:
             'Проверьте поля нагрузки LLM, формулы ЭК «Входящие токены LLM» и «Исходящие токены LLM», ' +
-            'а также наличие dashboardAiMetric="TOKENS" у токеновых ЭК. Если user-base неизвестна, используйте documented default.'
+            'а также наличие dashboardAiMetric="TOKENS" у токеновых ЭК. Если user-base неизвестна, задайте ' +
+            '«Уже зарегистрировано пользователей сейчас» и «Доля активных в день» явно.'
     });
 }
 
