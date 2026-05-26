@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-25, v2.20.68)
+## Current Project Lessons (2026-05-26, v2.20.75)
 
 - Do not leave questionnaire flags as silent intent. If a user-facing answer
   says DDoS, SIEM, DLP, audit logging, AI safety or fine-tune is enabled, the
@@ -52,11 +52,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   workload behind `—`.
 - For Details stand columns, header alignment must match the numeric cells
   users compare against. Right-aligned qty/cost columns require right-aligned
-  stand names and units in both the main table and the AI summary.
+  stand names. Do not repeat units in stand headers or stand numeric cells when
+  the table already has a visible `Ед.изм.` column.
 - The Details AI summary is not an independent decorative table. Its stand
   columns must align to the main Details table by measured column coordinates,
-  and the first column must state the metric unit (`₽/мес` in budget mode,
-  native qty units in qty mode).
+  while `Метрика` and `Ед.изм.` stay in separate columns.
 - Displayed AI summary money must reconcile with displayed Details rows.
   Because `formatRub()` rounds visible row cells, the summary should aggregate
   the same display-rounded values per stand and per item total, otherwise the

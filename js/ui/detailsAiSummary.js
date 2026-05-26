@@ -21,10 +21,10 @@ const SEED_AI_METRIC_BY_ITEM_ID = new Map(
 
 /* Сводный блок AI-метрик внизу таблицы Детализации.
 
-   UI: маленькая таблица 4 строки x 5 столбцов стендов + ИТОГО. Каждая
+   UI: маленькая таблица 4 строки x метрика/единица/5 стендов/ИТОГО. Каждая
    строка — одна AI-метрика (Токены / RAG-индекс / Эмбеддинги / CPU агентов),
-   каждая ячейка — qty этой метрики на этом стенде с правильной единицей
-   измерения. Disabled-стенды показаны приглушёнными.
+   числовые ячейки показывают только значение, а единица вынесена в отдельный
+   столбец. Disabled-стенды показаны приглушёнными.
 
    Граничные:
      calc=null              → null (нет активного расчёта).
@@ -68,18 +68,12 @@ export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks,
     });
     if (visibleLabels.length === 0) return null;
 
-    const fmt = (qty, unit) => {
-        const v = formatResourceQty(qty, unit);
-        return v === null ? '—' : `${v} ${unit}`;
-    };
-
     const headerRow = el('tr', { class: 'details-thead-row details-thead-row-headers' },
-        el('th', { class: 'details-ai-cell-metric', text: 'Метрика / ед.' }),
+        el('th', { class: 'details-ai-cell-metric', text: 'Метрика' }),
+        el('th', { class: 'details-ai-cell-unit', text: 'Ед.изм.' }),
         ...STAND_IDS.map(sid => el('th', {
             class: ['details-ai-cell-stand', disabledStands.includes(sid) && 'details-ai-cell-disabled'],
-            title: disabledStands.includes(sid)
-                ? `${STAND_LABELS[sid]} исключён из ИТОГО (toolbar). Цифра в этой колонке остаётся для справки, но в ИТОГО не входит.`
-                : STAND_LABELS[sid],
+            title: disabledStands.includes(sid) ? 'Стенд исключён из ИТОГО' : undefined,
             text: STAND_LABELS[sid]
         })),
         el('th', { class: 'details-ai-cell-total', text: 'ИТОГО' }),
@@ -103,14 +97,9 @@ export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks,
 
         const cells = STAND_IDS.map(sid => {
             const cell = perStand[sid]?.[label];
-            const text = mode === 'cost'
-                ? (cell?.present ? formatRub(cell.cost || 0) : '—')
-                : (cell ? fmt(cell.qty, cell.unit) : '—');
             return el('td', {
                 class: ['details-ai-cell-stand', disabledStands.includes(sid) && 'details-ai-cell-disabled'],
-                title: cell?.present || cell?.qty > 0
-                    ? `${STAND_LABELS[sid]}: ${text}${mode === 'qty' ? suffix : ''}`
-                    : `${STAND_LABELS[sid]}: нет данных`,
+                title: disabledStands.includes(sid) ? 'Стенд исключён из ИТОГО' : undefined,
                 text: mode === 'cost'
                     ? (cell?.present ? formatRub(cell.cost || 0) : '—')
                     : (cell && cell.qty > 0 ? `${formatResourceQty(cell.qty, cell.unit) ?? '—'}` : '—')
@@ -120,7 +109,7 @@ export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks,
         const totalText = mode === 'cost'
             ? (tot?.present ? formatRub(tot.cost || 0) : '—')
             : (tot && tot.qty > 0
-                ? `${formatResourceQty(tot.qty, tot.unit) ?? '—'} ${tot.unit}${suffix}`
+                ? `${formatResourceQty(tot.qty, tot.unit) ?? '—'}`
                 : '—');
 
         return el('tr', { class: 'details-ai-row' },
@@ -128,9 +117,9 @@ export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks,
                 el('span', { class: 'details-ai-cell-metric-main' },
                     el('span', { class: 'details-ai-cell-metric-name', text: title }),
                     infoIcon(openHint, 'Подробное описание метрики')
-                ),
-                el('span', { class: 'details-ai-cell-metric-unit', text: unitText })
+                )
             ),
+            el('td', { class: 'details-ai-cell-unit', text: unitText }),
             ...cells,
             el('td', { class: 'details-ai-cell-total', text: totalText }),
             el('td', { class: 'details-ai-cell-spacer', attrs: { 'aria-hidden': 'true' } })
@@ -154,6 +143,7 @@ export function renderAiMetricsSummary(calc, result, disabledStands, applyRisks,
             el('table', { class: 'details-ai-summary-table' },
                 el('colgroup', null,
                     el('col', { class: 'details-ai-col-metric' }),
+                    el('col', { class: 'details-ai-col-unit' }),
                     ...STAND_IDS.map((_, index) => el('col', { class: `details-ai-col-stand details-ai-col-stand-${index}` })),
                     el('col', { class: 'details-ai-col-total' }),
                     el('col', { class: 'details-ai-col-spacer' })
@@ -200,14 +190,17 @@ function alignAiSummaryColumns(summary) {
     const totalRect = totalHeader?.getBoundingClientRect();
 
     const standWidths = standHeaders.map(th => Math.max(0, th.getBoundingClientRect().width));
-    const metricWidth = Math.max(160, firstStandRect.left - targetRect.left);
+    const preStandWidth = Math.max(160, firstStandRect.left - targetRect.left);
+    const unitWidth = Math.min(128, Math.max(72, Math.round(preStandWidth * 0.22)));
+    const metricWidth = Math.max(88, preStandWidth - unitWidth);
     const totalWidth = Math.max(88, totalRect?.width || 88);
     const spacerWidth = Math.max(0,
-        sourceRect.right - targetRect.left - metricWidth -
+        sourceRect.right - targetRect.left - metricWidth - unitWidth -
         standWidths.reduce((sum, width) => sum + width, 0) - totalWidth
     );
 
     summary.style.setProperty('--details-ai-metric-col', `${metricWidth}px`);
+    summary.style.setProperty('--details-ai-unit-col', `${unitWidth}px`);
     standWidths.forEach((width, index) => {
         summary.style.setProperty(`--details-ai-stand-col-${index}`, `${width}px`);
     });

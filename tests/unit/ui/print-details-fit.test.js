@@ -7,13 +7,10 @@
  * раздувает таблицу в 1.5–2 раза по ширине.
  *
  * Этот тест следит за тем, что:
- *   1) JS-render обёртывает число и единицу в РАЗНЫЕ узлы (.qty-num + .qty-unit),
- *      чтобы CSS мог скрыть единицу в print-режиме без правки JS.
- *   2) В @media print есть правило `.qty-unit { display: none }` —
- *      на печати в qty-ячейках остаётся только число.
- *   3) В @media print с col-name снят ellipsis / max-width, иначе длинные имена
+ *   1) JS-render выводит в qty-ячейках только число (.qty-num), без .qty-unit.
+ *   2) В @media print с col-name снят ellipsis / max-width, иначе длинные имена
  *      ЭК (например «Объектное хранилище (S3-совместимое)») обрезаются.
- *   4) `@page landscape` margin ужат до ≤ 10мм для максимальной usable-ширины.
+ *   3) `@page landscape` margin ужат до ≤ 10мм для максимальной usable-ширины.
  */
 
 import { describe, it } from 'node:test';
@@ -47,26 +44,13 @@ function extractMediaPrintBody(src) {
     return null;
 }
 
-describe('PDF Details: qty cells split number/unit, print hides unit', () => {
-    it('renderQtyItemRow обёртывает число и единицу в .qty-num / .qty-unit', () => {
+describe('PDF Details: qty cells render numbers only', () => {
+    it('renderQtyItemRow обёртывает число в .qty-num и не выводит .qty-unit', () => {
         const src = stripJsComments(readFileSync(DETAILS_JS, 'utf8'));
-        // Должны существовать оба класса в JS-рендере qty-ячеек.
         assert.ok(/class:\s*['"]qty-num['"]/.test(src),
-            'нет span.qty-num — qty-ячейки рендерятся плоским текстом, и CSS не сможет ' +
-            'скрыть единицу в @media print → таблица переполняется на A4 landscape.');
-        assert.ok(/class:\s*['"]qty-unit['"]/.test(src),
-            'нет span.qty-unit — единица не отделена от числа.');
-    });
-
-    it('@media print скрывает .qty-unit (display: none)', () => {
-        const css = readFileSync(PRINT_CSS, 'utf8');
-        const printBlock = extractMediaPrintBody(css);
-        assert.ok(printBlock, '@media print block не найден в print.css');
-        // ищем правило вида: ".qty-unit { display: none }" внутри @media print.
-        const ruleRe = /\.qty-unit\s*\{[^}]*display\s*:\s*none/i;
-        assert.ok(ruleRe.test(printBlock),
-            '.qty-unit не скрыт в @media print — единица будет дублироваться в каждой qty-ячейке ' +
-            'и колонки переполнят A4 landscape.');
+            'нет span.qty-num — qty-ячейки теряют числовой contract.');
+        assert.ok(!/class:\s*['"]qty-unit['"]/.test(src),
+            'qty-unit нельзя рендерить: единица уже есть в колонке «Ед.изм.».');
     });
 
     it('@media print снимает ellipsis с col-name (имена ЭК не обрезаются)', () => {

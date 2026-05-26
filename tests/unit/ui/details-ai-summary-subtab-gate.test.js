@@ -20,6 +20,10 @@ const detailsSrc = stripJsComments(readFileSync(
     join(__dirname, '..', '..', '..', 'js', 'ui', 'details.js'),
     'utf8'
 ));
+const detailsAiSummarySrc = stripJsComments(readFileSync(
+    join(__dirname, '..', '..', '..', 'js', 'ui', 'detailsAiSummary.js'),
+    'utf8'
+));
 
 describe('Details: «Сводка AI-метрик» видна на cost и qty', () => {
     it('renderAiMetricsSummary вызывается без subTab-gate', () => {
@@ -39,5 +43,14 @@ describe('Details: «Сводка AI-метрик» видна на cost и qty'
         assert.match(detailsSrc,
             /renderAiMetricsSummary\s*\([^)]*\{\s*hideNoBudget:\s*hideZero,\s*mode:\s*subTab\s*\}/s,
             'AI-сводка должна получать hideNoBudget: hideZero и mode: subTab.');
+    });
+
+    it('AI-сводка разделяет «Метрика» и «Ед.изм.» на разные столбцы', () => {
+        assert.doesNotMatch(detailsAiSummarySrc, /Метрика \/ ед\./,
+            'заголовок «Метрика / ед.» снова смешивает разные сущности в одном столбце');
+        assert.match(detailsAiSummarySrc, /details-ai-cell-metric['"][^}]*text:\s*['"]Метрика['"]/s,
+            'первый столбец должен называться «Метрика»');
+        assert.match(detailsAiSummarySrc, /details-ai-cell-unit['"][^}]*text:\s*['"]Ед\.изм\.['"]/s,
+            'рядом должен быть отдельный столбец «Ед.изм.»');
     });
 });

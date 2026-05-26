@@ -118,9 +118,8 @@
     text-align: right;
 }
 
-/* 12.U30-fix-2: 2-line stand-header. Name (DEV/ИФТ/ПСИ/ПРОМ/Нагрузка) — крупно,
-   unit (₽/мес или qty) — мелко, muted, под названием. text-align задан выше
-   (right), здесь только vertical-align и line-height. */
+/* Stand-header: только название стенда. Единица измерения вынесена в отдельные
+   колонки/заголовки, чтобы не дублировать её в каждом стенде. */
 .details-table th.col-stand {
     vertical-align: middle;
     line-height: 1.15;
@@ -128,16 +127,6 @@
 .details-table th.col-stand .col-stand-name {
     font-weight: 600;
     color: var(--text);
-}
-.details-table th.col-stand .col-stand-unit {
-    font-size: 0.72rem;
-    font-weight: 400;
-    color: var(--text-muted);
-    margin-top: 2px;
-    font-variant-numeric: normal;
-    font-family: inherit;
-    text-transform: none;
-    letter-spacing: 0;
 }
 
 .details-table td,
@@ -237,8 +226,11 @@
     text-align: right;
 }
 
-.details-table th.col-stand .col-stand-name,
-.details-table th.col-stand .col-stand-unit {
+.details-table th.col-unit {
+    text-align: left;
+}
+
+.details-table th.col-stand .col-stand-name {
     display: block;
     width: 100%;
     text-align: right;
@@ -800,7 +792,8 @@
     border-collapse: collapse;
     font-size: 0.85rem;
 }
-.details-ai-col-metric { width: var(--details-ai-metric-col, 30%); }
+.details-ai-col-metric { width: var(--details-ai-metric-col, 22%); }
+.details-ai-col-unit { width: var(--details-ai-unit-col, 10%); }
 .details-ai-col-stand-0 { width: var(--details-ai-stand-col-0, 10%); }
 .details-ai-col-stand-1 { width: var(--details-ai-stand-col-1, 10%); }
 .details-ai-col-stand-2 { width: var(--details-ai-stand-col-2, 10%); }
@@ -818,6 +811,9 @@
     border-bottom: 1px solid rgba(38, 212, 154, 0.25);
 }
 .details-ai-summary-table thead th.details-ai-cell-metric {
+    text-align: left;
+}
+.details-ai-summary-table thead th.details-ai-cell-unit {
     text-align: left;
 }
 .details-ai-summary-table thead th.details-ai-cell-spacer,
@@ -849,10 +845,7 @@
     color: var(--text);
 }
 .details-ai-summary-table tbody td.details-ai-cell-metric {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    text-align: left;
 }
 .details-ai-cell-metric-main {
     display: inline-flex;
@@ -866,13 +859,12 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.details-ai-cell-metric-unit {
-    display: block;
-    margin-top: 2px;
+.details-ai-cell-unit {
+    text-align: left !important;
+    font-family: var(--font-sans) !important;
     color: var(--text-muted);
-    font-size: 0.68rem;
+    font-size: 0.74rem;
     font-weight: 500;
-    line-height: 1.2;
     white-space: nowrap;
 }
 .details-ai-cell-metric .info-icon {

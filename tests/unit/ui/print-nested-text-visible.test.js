@@ -6,7 +6,7 @@
  * каскадируется на дочерний элемент со своим color (CSS !important работает
  * на element-level, не наследуется на детей с собственными правилами).
  *
- * Жертвы: 2-line stand headers (col-stand-name/col-stand-unit) и category-rows
+ * Жертвы: вложенное имя стенда (col-stand-name) и category-rows
  * (category-name/count/chevron, items-cat-*, cmp-cat-*) — на скрине печати
  * стенды и названия категорий не видны (slate-100 на белой бумаге).
  */
@@ -46,10 +46,9 @@ function extractMediaPrintBody(src) {
 }
 
 const NESTED_NODES_THAT_NEED_BLACK = [
-    /* 2-line stand headers (Детализация qty + cost) — на скрине печати
+    /* Stand headers (Детализация qty + cost) — на скрине печати
        названия стендов DEV/ИФТ/ПСИ/ПРОМ/Нагрузка не видны. */
     '.col-stand-name',
-    '.col-stand-unit',
     /* Category-rows в Детализации (qty + cost). На скрине рядом с цветной
        точкой видно только «· N», название категории невидно. */
     '.category-name',

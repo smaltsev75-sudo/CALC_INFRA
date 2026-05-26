@@ -240,6 +240,7 @@
     .details-ai-summary-table tbody td,
     .details-ai-cell-metric,
     .details-ai-cell-metric-name,
+    .details-ai-cell-unit,
     .details-ai-cell-stand,
     .details-ai-cell-total {
         color: black !important;
@@ -293,14 +294,13 @@
        `!important` на родительском th/td НЕ каскадируется на детей со своим
        color — они остаются slate-100/-muted, на белой бумаге невидимы.
        Принудительно ставим черный цвет на вложенных узлах:
-        - 2-line stand headers (Детализация qty/cost): col-stand-name, col-stand-unit;
+        - stand headers (Детализация qty/cost): col-stand-name;
         - category-rows (Детализация): category-name, category-count, category-chevron;
         - category-rows (Элементы конфигурации): items-cat-name/count/chevron;
         - category-rows (Сравнение): cmp-cat-name, cmp-cat-count.
        Также убираем background у category-count (rgba-полупрозрачный фон на белом
        бумаге читается как тёмная плашка вокруг числа). */
     .details-table th .col-stand-name,
-    .details-table th .col-stand-unit,
     .category-name, .category-count, .category-chevron,
     .items-cat-name, .items-cat-count, .items-cat-chevron,
     .cmp-cat-name, .cmp-cat-count {
@@ -442,20 +442,12 @@
         color: black !important;
         z-index: auto !important;
     }
-    /* Внутренние divs шапки стендов (col-stand-name / col-stand-unit) — текст
-       тоже на белый фон, иначе на dark-теме они остаются slate-500 и едва
-       читаемы при печати. */
-    .details-table thead th .col-stand-name,
-    .details-table thead th .col-stand-unit {
+    /* Внутренние divs шапки стендов — текст тоже на белый фон, иначе на
+       dark-теме они остаются slate-500 и едва читаемы при печати. */
+    .details-table thead th .col-stand-name {
         color: black !important;
         background: transparent !important;
     }
-
-    /* Этап 13.U2 PDF-fit: единица измерения внутри qty-ячеек дублирует колонку
-       «Ед.изм.» — на печати скрываем единицу из ячеек, освобождая ~30-40% ширины
-       числовых колонок. Текст «1,28 ТБ» в каждой ячейке × 6 stand × 34 ЭК = много
-       лишних мм, которые и приводили к обрезке правых колонок на A4 landscape. */
-    .qty-unit { display: none !important; }
 
     /* Длинные имена ЭК («Объектное хранилище (S3-совместимое)») в экранном режиме
        обрезаются ellipsis для компактности. На печати читать обрезку нельзя —

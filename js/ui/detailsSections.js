@@ -114,17 +114,16 @@ export function renderQtySection(byCat, result, ctx, disabledStands = [], applyR
                         el('th', { class: 'col-name', text: 'Элемент' }),
                         el('th', { class: 'col-vendor', text: 'Поставщик' }),
                         el('th', { class: 'col-unit', text: 'Ед.изм.' }),
-                        /* 12.U30-fix-2: 2-line header — название над подписью, центр.
-                           Версия qty: подпись просто «qty» (единицы разные по строкам). */
+                        /* Заголовок стенда содержит только название стенда.
+                           Единица измерения строки уже вынесена в колонку «Ед.изм.». */
                         ...STAND_IDS.map(sid => el('th', {
                             class: ['col-stand', disabled.has(sid) && 'stand-disabled'],
                             // title= ставим только когда есть НЕ-видимая инфа
                             // (стенд исключён). В обычном состоянии название стенда
-                            // и единица «qty» уже видны в самой ячейке — tooltip = шум.
+                            // уже видно в самой ячейке — tooltip = шум.
                             title: disabled.has(sid) ? 'Стенд исключён из ИТОГО' : undefined
                         },
-                            el('div', { class: 'col-stand-name', text: STAND_LABELS[sid] }),
-                            el('div', { class: 'col-stand-unit', text: 'qty' })
+                            el('div', { class: 'col-stand-name', text: STAND_LABELS[sid] })
                         )),
                         el('th', { class: 'col-total', text: 'ИТОГО qty',
                             title: 'Сумма qty по активным стендам. Период зависит от типа ЭК — см. суффикс в колонке «Ед.изм.»: «/ мес» (поток за месяц), «/ год», «/ за срок» (one-time за весь проект) или без суффикса (мгновенная capacity).'
@@ -217,9 +216,9 @@ function renderQtyItemRow(item, result, ctx, disabled = new Set(), applyRisks = 
                 : effectiveQtyForDisplay(cell, applyRisks);
             // qtySum считаем только по активным стендам — как и итог в таблице.
             if (!isDisabled) qtySum += displayQty;
-            // Этап 13.U2 PDF-fit: число и единица — отдельные spans. CSS @media print
-            // скрывает .qty-unit (единица уже видна в колонке «Ед.изм.»), что освобождает
-            // ~30-40% ширины числовых колонок и устраняет обрезку справа на A4 landscape.
+            // Единица уже видна в колонке «Ед.изм.». В числовых колонках
+            // стендов оставляем только значение, чтобы не дублировать смысл
+            // и не раздувать таблицу.
             return el('td', {
                 class: ['col-stand', cell.error && 'col-stand-error', isDisabled && 'stand-disabled'],
                 // title= только при НЕ-видимой инфе: ошибка вычисления или
@@ -229,14 +228,12 @@ function renderQtyItemRow(item, result, ctx, disabled = new Set(), applyRisks = 
                     ? `Ошибка: ${cell.error}`
                     : (isDisabled ? 'Стенд исключён из ИТОГО' : undefined)
             },
-                el('span', { class: 'qty-num', text: formatQtyDisplayParts(displayQty, item.unit).valueText }),
-                ' ',
-                el('span', { class: 'qty-unit', text: displayUnit })
+                el('span', { class: 'qty-num', text: formatQtyDisplayParts(displayQty, item.unit).valueText })
             );
         }),
         el('td', { class: 'col-total' },
             qtySum > 0
-                ? [el('span', { class: 'qty-num', text: formatQtyDisplayParts(qtySum, item.unit).valueText }), ' ', el('span', { class: 'qty-unit', text: displayUnit })]
+                ? el('span', { class: 'qty-num', text: formatQtyDisplayParts(qtySum, item.unit).valueText })
                 : el('span', { text: '—' })
         ),
         el('td', { class: 'col-info' })
@@ -280,13 +277,13 @@ export function renderCostSection(byCat, result, ctx, totals, isFiltered, disabl
                         el('th', { class: 'col-price', text: 'Цена/ед.' }),
                         el('th', { class: 'col-cost-type', text: 'Тип расхода',
                             title: 'CAPEX — капитальные (разовые); OPEX — операционные (регулярные). По умолчанию: oneTime → CAPEX, остальные → OPEX.' }),
-                        /* 12.U30-fix-2: 2-line header — название стенда над «₽/мес», центр. */
+                        /* Заголовок стенда содержит только название стенда. Денежный режим
+                           уже задан заголовком секции «Стоимость, ₽» и итоговыми колонками. */
                         ...STAND_IDS.map(sid => el('th', {
                             class: ['col-stand', disabled.has(sid) && 'stand-disabled'],
                             title: disabled.has(sid) ? 'Стенд исключён из ИТОГО' : undefined
                         },
-                            el('div', { class: 'col-stand-name', text: STAND_LABELS[sid] }),
-                            el('div', { class: 'col-stand-unit', text: '₽/мес' })
+                            el('div', { class: 'col-stand-name', text: STAND_LABELS[sid] })
                         )),
                         el('th', { class: 'col-total', text: 'ИТОГО / мес' }),
                         el('th', { class: 'col-total', text: 'ИТОГО / год' }),

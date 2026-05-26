@@ -17,9 +17,13 @@ test('Details stand headers are right-aligned with numeric stand columns', async
     await expect(page.locator('.details-table-cost')).toBeVisible();
     await expect(page.locator('.details-ai-summary-table')).toBeVisible();
     await expect(page.locator('.details-ai-summary-table thead th.details-ai-cell-metric'))
-        .toHaveText('Метрика / ед.');
+        .toHaveText('Метрика');
+    await expect(page.locator('.details-ai-summary-table thead th.details-ai-cell-unit'))
+        .toHaveText('Ед.изм.');
     await expect(page.locator('.details-ai-summary-table tbody tr').filter({ hasText: 'Токены' })
-        .locator('.details-ai-cell-metric-unit')).toHaveText('₽/мес');
+        .locator('.details-ai-cell-unit')).toHaveText('₽/мес');
+    await expect(page.locator('.details-table-cost thead tr.details-thead-row-headers th.col-unit')).toHaveCSS('text-align', 'left');
+    await expect(page.locator('.details-ai-summary-table thead th.details-ai-cell-unit')).toHaveCSS('text-align', 'left');
 
     const detailsAlignment = await page.locator('.details-table-cost').evaluate((table) => {
         const headers = [...table.querySelectorAll('thead tr.details-thead-row-headers th.col-stand')];
@@ -33,7 +37,7 @@ test('Details stand headers are right-aligned with numeric stand columns', async
             return {
                 headerAlign: getComputedStyle(header).textAlign,
                 nameAlign: name ? getComputedStyle(name).textAlign : '',
-                unitAlign: unit ? getComputedStyle(unit).textAlign : '',
+                hasUnit: Boolean(unit),
                 leftDelta: Math.abs(headerRect.left - totalRect.left),
                 widthDelta: Math.abs(headerRect.width - totalRect.width)
             };
@@ -43,7 +47,7 @@ test('Details stand headers are right-aligned with numeric stand columns', async
     for (const cell of detailsAlignment) {
         expect(cell.headerAlign).toBe('right');
         expect(cell.nameAlign).toBe('right');
-        expect(cell.unitAlign).toBe('right');
+        expect(cell.hasUnit).toBe(false);
         expect(cell.leftDelta).toBeLessThanOrEqual(1);
         expect(cell.widthDelta).toBeLessThanOrEqual(1);
     }
@@ -91,6 +95,22 @@ test('Details stand headers are right-aligned with numeric stand columns', async
     }), {
         message: 'AI summary stand headers must align with the Details table stand headers'
     }).toBeLessThanOrEqual(1);
+
+    await page.getByRole('button', { name: 'Объём (qty)' }).click();
+    await expect(page.locator('.details-table-qty')).toBeVisible();
+    await expect(page.locator('.details-table-qty thead tr.details-thead-row-headers th.col-unit')).toHaveCSS('text-align', 'left');
+    await expect(page.locator('.details-table-qty thead tr.details-thead-row-headers th.col-stand .col-stand-unit')).toHaveCount(0);
+    await page.locator('.details-table-qty tbody tr.category-row').filter({ hasText: 'AI / LLM' }).first().click();
+    const inputTokensQtyRow = page.locator('.details-table-qty tbody tr.item-row').filter({ hasText: 'Входящие токены LLM' }).first();
+    await expect(inputTokensQtyRow).toBeVisible();
+    await expect(inputTokensQtyRow.locator('td.col-unit')).toContainText('млн токенов / мес');
+    await expect(inputTokensQtyRow.locator('td.col-total')).not.toContainText(/млн токенов/);
+    const standCellTexts = await inputTokensQtyRow.locator('td.col-stand').allTextContents();
+    expect(standCellTexts.some(text => /[1-9]/.test(text))).toBeTruthy();
+    expect(standCellTexts.every(text => !/млн токенов/.test(text))).toBeTruthy();
+    await expect(page.locator('.details-ai-summary-table thead th.details-ai-cell-unit')).toHaveCSS('text-align', 'left');
+    await expect(page.locator('.details-ai-summary-table tbody tr').filter({ hasText: 'Токены' })
+        .locator('.details-ai-cell-unit')).toContainText('токен');
 
     expect(consoleErrors).toEqual([]);
 });
