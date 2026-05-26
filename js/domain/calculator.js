@@ -468,13 +468,44 @@ function deriveExternalLlmTokenQtyFallback(item, stand, context) {
     if (item.id === 'ai-safety-moderation-tokens-1m'
         && !answerBool(context, 'ai_safety_layer', false)) return 0;
 
-    const registered = answerNumber(context, 'registered_users_total', 0);
-    const dauShare = answerNumber(context, 'dau_share_of_registered_percent', 0) / 100;
-    const aiShare = answerNumber(context, 'ai_users_share', 0) / 100;
-    const requestsPerUserDay = answerNumber(context, 'ai_requests_per_user_day', 0);
-    const cacheShare = Math.min(100, Math.max(0, answerNumber(context, 'ai_caching_share', 0))) / 100;
+    /* v2.20.72: degenerate user-base rescue. Если пользователь явно включил AI
+     * (ai_llm_used=true) и задал положительные demand-параметры (aiShare,
+     * requestsPerUserDay, входные/выходные токены), но registered<=0 OR dau<=0,
+     * это вырожденное несогласованное состояние: AI активирован, но user-base
+     * не задана → формула × 0 = 0, fallback × 0 = 0 → токены silent-0.
+     *
+     * Документированное поведение из seed.js (registered_users_total.description):
+     * «Если ответ не указан («Нет информации») — расчёт пойдёт от 500 000.»
+     * Применяем тот же defensive-defaulting для degenerate-0 при наличии явного
+     * AI opt-in. См. CLAUDE.md §Current Project Lessons: «If ai_llm_used is true
+     * and token workload inputs are positive, the model must produce either
+     * visible token workload or an explicit on-prem operational derivation.» */
+    const aiShareRaw = answerNumber(context, 'ai_users_share', 0);
+    const requestsRaw = answerNumber(context, 'ai_requests_per_user_day', 0);
     const inputTokens = answerNumber(context, 'ai_avg_input_tokens', 0);
     const outputTokens = answerNumber(context, 'ai_avg_output_tokens', 0);
+    const positiveDemandSignal = aiShareRaw > 0 && requestsRaw > 0
+        && (inputTokens > 0 || outputTokens > 0);
+    const aiExplicitOptIn = answerBool(context, 'ai_llm_used', false);
+    const questionDefaults = context?.questionDefaults || {};
+
+    let registered = answerNumber(context, 'registered_users_total', 0);
+    let dauShareRaw = answerNumber(context, 'dau_share_of_registered_percent', 0);
+    if (aiExplicitOptIn && positiveDemandSignal) {
+        if (registered <= 0) {
+            const def = Number(questionDefaults.registered_users_total);
+            if (Number.isFinite(def) && def > 0) registered = def;
+        }
+        if (dauShareRaw <= 0) {
+            const def = Number(questionDefaults.dau_share_of_registered_percent);
+            if (Number.isFinite(def) && def > 0) dauShareRaw = def;
+        }
+    }
+
+    const dauShare = dauShareRaw / 100;
+    const aiShare = aiShareRaw / 100;
+    const requestsPerUserDay = requestsRaw;
+    const cacheShare = Math.min(100, Math.max(0, answerNumber(context, 'ai_caching_share', 0))) / 100;
     const agentStepFactor = numWithDefault(context?.S?.agentStepFactor, 1);
     const modelFactor = numWithDefault(context?.S?.aiModelTierFactor, 1);
     const standRatio = numWithDefault(context?.S?.standSizeRatio?.[stand], stand === 'PROD' ? 1 : 0);
