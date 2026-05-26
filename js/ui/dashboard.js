@@ -87,19 +87,15 @@ function periodMul(period) {
     return period === 'daily' ? 1 / 30 : period === 'annual' ? MONTHS_PER_YEAR : 1;
 }
 
-function resourcesWithTokenMetric(resourceMap = {}, aiMetricMap = {}) {
-    const token = aiMetricMap?.TOKENS;
-    const qty = Number(token?.qty) || 0;
-    if (qty <= 0) return resourceMap;
-    return {
-        ...resourceMap,
-        TOKENS: {
-            qty,
-            unit: token.unit || 'млн токенов',
-            applicable: token.applicable !== false
-        }
-    };
-}
+/* v2.20.74: removed `resourcesWithTokenMetric` helper. Прежде оно
+ * инжектировало строку «Токены» в блок «Объёмы ресурсов» — но карточка
+ * параллельно рендерит sub-block «Объёмы AI-нагрузки», где «Токены» уже
+ * есть как первая метрика. В результате на одной карточке (Hero и каждой
+ * стенд-карточке) строка «Токены» появлялась дважды — нарушение CLAUDE.md
+ * §11 «DRY ВНУТРИ scope: один индикатор на карточку». Сейчас «Объёмы
+ * ресурсов» — это строго hardware (CPU/GPU/RAM/SSD/HDD/S3), а AI-метрики
+ * (TOKENS / RAG-INDEX / EMBEDDINGS / AGENT_CPU) живут в отдельном
+ * sub-блоке ниже. */
 
 /* ---------- Допущения ---------- */
 
@@ -418,7 +414,7 @@ function renderHero(result, period, ctx, applyRisks = true, totalResources = nul
            показываем — он уже есть в шапке Hero «Итого по расчёту С РИСКАМИ / БЕЗ РИСКОВ»,
            дубль на той же карточке = визуальный шум (принцип №22). */
         totalResources ? renderResourcesBlock(
-            resourcesWithTokenMetric(totalResources, totalAiMetrics),
+            totalResources,
             'Объёмы ресурсов · ИТОГО',
             applyRisks,
             /*showModeBadge*/ false,
@@ -661,7 +657,7 @@ function renderStandCard(sid, result, period, ctx, isDisabled, standResources = 
            карточки, (2) для вертикального выравнивания «Объёмов ресурсов» между карточками
            бейдж не должен жить ВНУТРИ выравниваемого блока. */
         renderResourcesBlock(
-            resourcesWithTokenMetric(standResources, standAiMetrics),
+            standResources,
             'Объёмы ресурсов',
             applyRisks,
             /*showModeBadge*/ false,

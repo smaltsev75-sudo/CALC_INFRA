@@ -10,8 +10,6 @@ import {
 } from '../utils/constants.js';
 import { DASHBOARD_RESOURCE_ORDER, formatResourceQty } from './dashboardAggregates.js';
 
-const RESOURCE_BLOCK_AI_LABELS = ['TOKENS'];
-
 function periodSlash(period) {
     return period === 'daily' ? '/ день' : period === 'annual' ? '/ год' : '/ мес';
 }
@@ -35,19 +33,12 @@ export function renderResourcesBlock(resourceMap, titleText, applyRisks = true, 
     const modeNote = applyRisks
         ? 'Объём с capacity-буферами: задачи / проект / сезон / сдвиг / контингент. Без VAT и инфляции — это финансовые факторы, не capacity.'
         : 'Объём без capacity-буферов — голый расчёт. Включите «Учитывать риск-коэффициенты» в Опроснике для оценки с буферами.';
-    const labels = [
-        ...DASHBOARD_RESOURCE_ORDER,
-        ...RESOURCE_BLOCK_AI_LABELS.filter(label => resourceMap[label])
-    ];
-    for (const label of labels) {
+    for (const label of DASHBOARD_RESOURCE_ORDER) {
         const entry = resourceMap[label];
         if (!entry) continue;
-        const isTokenFlow = label === 'TOKENS';
-        const displayQty = isTokenFlow ? entry.qty * periodMul(period) : entry.qty;
-        const displayUnit = isTokenFlow
-            ? `${entry.unit} ${periodSlash(period)}`
-            : entry.unit;
-        const displayLabel = isTokenFlow ? DASHBOARD_AI_METRIC_TITLES.TOKENS : label;
+        const displayQty = entry.qty;
+        const displayUnit = entry.unit;
+        const displayLabel = label;
         const formatted = formatResourceQty(displayQty, entry.unit);
         if (formatted === null) {
             /* 12.U10: метка известна (есть ЭК с такой меткой в каталоге), но qty=0.

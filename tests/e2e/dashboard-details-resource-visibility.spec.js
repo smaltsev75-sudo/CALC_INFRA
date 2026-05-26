@@ -37,22 +37,8 @@ async function getExpectedPositiveVisibility(page) {
         distributeRoundingPreservingSum(resources, activeStands);
         const aiMetrics = aggregateAiMetrics(result, items, disabledStands, applyRisks, calc);
 
-        const resourceDisplayLabel = (label) =>
-            label === 'TOKENS' ? (DASHBOARD_AI_METRIC_TITLES.TOKENS || 'Токены') : label;
+        const resourceDisplayLabel = (label) => label;
         const aiDisplayLabel = (label) => DASHBOARD_AI_METRIC_TITLES[label] || label;
-        const withTokenResource = (resourceMap = {}, aiMap = {}) => {
-            const token = aiMap.TOKENS;
-            const qty = Number(token?.qty) || 0;
-            if (qty <= 0) return resourceMap;
-            return {
-                ...resourceMap,
-                TOKENS: {
-                    qty,
-                    unit: token.unit || 'млн токенов',
-                    applicable: token.applicable !== false
-                }
-            };
-        };
         const positiveLabels = (map, toLabel) => Object.entries(map || {})
             .filter(([, entry]) => Number(entry?.qty) > 0)
             .map(([label]) => toLabel(label));
@@ -72,10 +58,10 @@ async function getExpectedPositiveVisibility(page) {
 
         return {
             resources: {
-                total: positiveLabels(withTokenResource(resources.total, aiMetrics.total), resourceDisplayLabel),
+                total: positiveLabels(resources.total, resourceDisplayLabel),
                 perStand: Object.fromEntries(STAND_IDS.map(sid => [
                     sid,
-                    positiveLabels(withTokenResource(resources.perStand?.[sid], aiMetrics.perStand?.[sid]), resourceDisplayLabel)
+                    positiveLabels(resources.perStand?.[sid], resourceDisplayLabel)
                 ]))
             },
             ai: {

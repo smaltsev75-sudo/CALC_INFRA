@@ -33,6 +33,9 @@ function dashboardStandResourceRow(page, standId, label) {
 }
 
 async function expectDashboardTokensVisible(page) {
+    /* v2.20.74: «Токены» живёт ТОЛЬКО в блоке «Объёмы AI-нагрузки», а не в
+     * «Объёмы ресурсов» (CLAUDE.md §11 «DRY ВНУТРИ scope: один индикатор на
+     * карточку»). В resource-блоке проверяем ТОЛЬКО hardware. */
     const row = dashboardAiRow(page, 'Токены');
     await expect(page.locator('.dash-card-hero .dash-ai-metrics')).toBeVisible();
     await expect(page.locator('.dash-card-hero .dash-ai-metrics-title'))
@@ -40,18 +43,17 @@ async function expectDashboardTokensVisible(page) {
     await expect(row).toBeVisible();
     await expect(row.locator('.dash-ai-metric-row-value')).toContainText(/млн токенов \/ мес/);
     await expect(row.locator('.dash-ai-metric-row-qty-empty')).toHaveCount(0);
-
-    const resourceRow = dashboardHeroResourceRow(page, 'Токены');
-    await expect(resourceRow).toBeVisible();
-    await expect(resourceRow.locator('.dash-resource-row-value')).toContainText(/млн токенов \/ мес/);
-    await expect(resourceRow.locator('.dash-resource-row-qty-empty')).toHaveCount(0);
 }
 
-async function expectDashboardResourceTokensVisible(page, standId) {
-    const row = dashboardStandResourceRow(page, standId, 'Токены');
+async function expectDashboardStandTokensVisible(page, standId) {
+    /* v2.20.74: per-stand «Токены» рендерится в .dash-ai-metrics блоке
+     * стенд-карточки, не в .dash-resources. */
+    const row = page.getByTestId(`dashboard-stand-${standId}`)
+        .locator('.dash-ai-metrics .dash-ai-metric-row')
+        .filter({ hasText: 'Токены' });
     await expect(row).toBeVisible();
-    await expect(row.locator('.dash-resource-row-value')).toContainText(/млн токенов \/ мес/);
-    await expect(row.locator('.dash-resource-row-qty-empty')).toHaveCount(0);
+    await expect(row.locator('.dash-ai-metric-row-value')).toContainText(/млн токенов \/ мес/);
+    await expect(row.locator('.dash-ai-metric-row-qty-empty')).toHaveCount(0);
 }
 
 async function expectDashboardStorageVisible(page, standId) {
@@ -68,7 +70,8 @@ async function expectDashboardStorageVisible(page, standId) {
 async function expectTokensQtySummaryVisible(page) {
     const row = aiSummaryRow(page, 'Токены');
     await expect(row).toBeVisible();
-    await expect(row.locator('.details-ai-cell-total')).toContainText(/млн токенов \/ мес/);
+    await expect(row.locator('.details-ai-cell-unit')).toContainText(/млн токенов \/ мес/);
+    await expect(row.locator('.details-ai-cell-total')).not.toContainText(/млн токенов/);
     await expect(row.locator('.details-ai-cell-total')).not.toHaveText('—');
 }
 
@@ -177,12 +180,14 @@ async function expectPositiveRubRow(row) {
 
 async function expectPositiveQtyRow(row, unitPattern) {
     const total = row.locator('td.col-total').first();
-    await expect(total).toContainText(unitPattern);
+    await expect(row.locator('td.col-unit').first()).toContainText(unitPattern);
+    await expect(total).not.toContainText(unitPattern);
     await expect(total).toHaveText(/[1-9]/);
     await expect(total).not.toHaveText(/^\s*—\s*$/);
 
     const standTexts = await row.locator('td.col-stand').allTextContents();
     expect(standTexts.some(text => /[1-9]/.test(text))).toBeTruthy();
+    expect(standTexts.every(text => !unitPattern.test(text))).toBeTruthy();
 }
 
 test('Details shows calculated LLM tokens on Budget and Qty for Quick Start AI', async ({ page }) => {
@@ -195,9 +200,9 @@ test('Details shows calculated LLM tokens on Budget and Qty for Quick Start AI',
 
     await expectDashboardTokensVisible(page);
     await expectDashboardDetailsConsistency(page);
-    await expectDashboardResourceTokensVisible(page, 'DEV');
-    await expectDashboardResourceTokensVisible(page, 'IFT');
-    await expectDashboardResourceTokensVisible(page, 'LOAD');
+    await expectDashboardStandTokensVisible(page, 'DEV');
+    await expectDashboardStandTokensVisible(page, 'IFT');
+    await expectDashboardStandTokensVisible(page, 'LOAD');
     await expectDashboardStorageVisible(page, 'DEV');
     await expectDashboardStorageVisible(page, 'IFT');
     await expectDashboardStorageVisible(page, 'LOAD');
