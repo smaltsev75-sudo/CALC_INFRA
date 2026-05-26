@@ -623,7 +623,20 @@ export function calculate(calculation, revision = null) {
         for (const stand of STAND_IDS) {
             const ctx = buildContext(answers, settings, questionDefaults, stand, item, calculation.answersMeta);
             const { qty: formulaQty, error: formulaError } = computeItemQty(item, stand, ctx);
-            const fallbackQty = !formulaError && Number.isFinite(formulaQty) && formulaQty <= 0
+            /* Fallback тригерится при formulaError=null И:
+             *   (а) формула вернула 0/негатив (легитимный случай: явный 0 или
+             *       устаревшая стаб-формула после миграции);
+             *   (б) формула вернула non-finite (NaN/Infinity) — например, если
+             *       будущая ревизия formula-engine будет возвращать NaN на
+             *       missing S.<var> вместо нынешнего 0. Defensive: ни при
+             *       какой эволюции engine'а токены не должны «провалиться» в
+             *       overflow-guard и показать «—». См. CLAUDE.md §Current
+             *       Project Lessons «If `ai_llm_used` is true and token
+             *       workload inputs are positive, the model must produce
+             *       either visible token workload or an explicit on-prem
+             *       operational derivation». */
+            const formulaIsZeroOrNonFinite = !Number.isFinite(formulaQty) || formulaQty <= 0;
+            const fallbackQty = !formulaError && formulaIsZeroOrNonFinite
                 ? deriveExternalLlmTokenQtyFallback(item, stand, ctx)
                 : 0;
             const rawQty = fallbackQty > 0 ? fallbackQty : formulaQty;
