@@ -36,6 +36,7 @@ export function renderHeader(state, ctx) {
                а не текущее состояние: в тёмной теме — Sun (предложение перейти
                в светлую), в светлой — Moon. aria-label полный, для screen-reader. */
             renderThemeToggle(state, ctx),
+            renderDiagnosticButton(state, ctx),
             iconButton(ctx, {
                 iconName: 'folder-open',
                 label: 'Импорт JSON',
@@ -71,6 +72,28 @@ export function renderHeader(state, ctx) {
             })
         )
     );
+}
+
+function isDiagnosticModeEnabled() {
+    try {
+        return new URLSearchParams(window.location.search).get('diag') === '1';
+    } catch (_err) {
+        return false;
+    }
+}
+
+function renderDiagnosticButton(state, ctx) {
+    if (!isDiagnosticModeEnabled()) return null;
+    return iconButton(ctx, {
+        iconName: 'copy',
+        label: 'Диагностика',
+        title:
+            'Скопировать локальный диагностический JSON. Приложение не отправляет его автоматически; внутри могут быть параметры расчёта.',
+        ariaLabel: 'Скопировать диагностический JSON расчёта',
+        testId: 'header-copy-diagnostics',
+        disabled: !state.activeCalc,
+        onClick: () => ctx.copyDiagnosticBundle?.()
+    });
 }
 
 function renderThemeToggle(state, ctx) {

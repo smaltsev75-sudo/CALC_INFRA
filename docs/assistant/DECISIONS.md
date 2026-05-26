@@ -1,5 +1,28 @@
 # Журнал решений и допущений
 
+## 26.05.2026 · PATCH 2.20.77 — AI-token visibility contract guards
+
+**Контекст.** Серия багов с токенами показала разрыв между документированным
+контрактом и его защитой: `ai_llm_used=true` + положительные demand-поля не
+должны приводить к молчаливым `—` в Dashboard/Details, но часть проверок жила
+как приватные условия внутри калькулятора и не защищала весь UI-путь.
+
+**Решение.**
+
+- Вынесен общий `js/domain/aiDemand.js`: единый predicate/normalizer для
+  AI LLM demand, включая repair degenerate user-base через documented defaults.
+- Калькуляторный fallback и Health Check используют тот же helper.
+- Health Check выдаёт `error`, если LLM включена, demand-поля положительные,
+  но TOKENS-ЭК агрегируются в ноль.
+- Добавлены golden loaded-calc fixtures для low-DAU heavy, high-DAU light,
+  on-prem GPU, RAG-only legacy, AI-off и degenerate user-base.
+- Добавлен E2E DOM regression: расчёт открывается из localStorage через
+  `openCalc`, затем Dashboard и Details обязаны показать токены не `—`.
+- Добавлен hidden diagnostic mode `?diag=1`: шапка показывает кнопку
+  `Диагностика`, которая копирует локальный JSON bundle с answers,
+  normalizedAnswers, Health findings, aggregateAiMetrics и item qty/cost by
+  stand. Приложение ничего не отправляет автоматически.
+
 ## 26.05.2026 · PATCH 2.20.75 — Детализация без дублей единиц в stand-колонках
 
 **Контекст.** Пользователь указал, что Детализация снова дублирует единицы:

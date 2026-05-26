@@ -344,6 +344,26 @@ describe('rule: ai-token-volume-without-token-resources (error)', () => {
         }));
         assert.ok(!findById(r.findings, 'ai-token-volume-without-token-resources'));
     });
+
+    it('срабатывает для degenerate user-base, если defaults есть, но TOKENS-ЭК дают 0', () => {
+        const r = evaluateCalculationHealth(makeCalc({
+            ...tokenDemand,
+            registered_users_total: 0,
+            dau_share_of_registered_percent: 0
+        }, {
+            questions: [
+                { id: 'registered_users_total', type: 'number', defaultValue: 500_000 },
+                { id: 'dau_share_of_registered_percent', type: 'number', defaultValue: 5 },
+                { id: 'target_capex_rub', type: 'number', defaultValue: 1_000_000 }
+            ],
+            items: [tokenItem(0)],
+            view: { disabledStands: ['DEV', 'IFT', 'PSI', 'LOAD'] }
+        }));
+        const f = findById(r.findings, 'ai-token-volume-without-token-resources');
+        assert.ok(f);
+        assert.equal(f.severity, 'error');
+        assert.equal(f.title, 'LLM включена, но токены не рассчитались');
+    });
 });
 
 describe('rule: ai-rag-incomplete-corpus (warning)', () => {

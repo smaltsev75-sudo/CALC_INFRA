@@ -1,5 +1,17 @@
 ## UX / QA Lessons
 
+- Для AI-токенов не копировать predicate по файлам. Единая точка правды —
+  `js/domain/aiDemand.js`: положительный LLM demand, repair вырожденной
+  user-base через documented defaults, external/on-prem branching и fieldIds
+  для Health Check. Любой новый fallback/guard должен переиспользовать helper.
+- Регрессии «токены не видны» проверять E2E по загруженному/localStorage
+  расчёту: `openCalc`/`prepareLoadedCalc` → Dashboard DOM → Details budget →
+  Details qty. Unit-тест `calculate()` не доказывает, что пользователь увидит
+  токены.
+- Диагностика пользовательских расчётов — через hidden `?diag=1`: кнопка
+  копирует локальный JSON bundle с raw/normalized answers, Health findings,
+  `aggregateAiMetrics` и qty/cost по ЭК×стенд. Дамп может содержать
+  бизнес-параметры; приложение само его никуда не отправляет.
 - Для расчётных дефектов нельзя ограничиваться проверкой наличия ЭК в seed.
   Нужно прогонять реальный JSON пользователя через полный load pipeline
   (`prepareLoadedCalc`), затем смотреть фактические qty/cost по каждому

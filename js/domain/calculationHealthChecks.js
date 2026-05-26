@@ -9,8 +9,13 @@ import {
     STAND_IDS
 } from '../utils/constants.js';
 import { getProviderSecurityPriceWarningForCalc } from './providerPriceTrust.js';
-import { calculate } from './calculator.js';
+import { buildQuestionDefaults, calculate } from './calculator.js';
 import { SEED_ITEMS, SEED_QUESTIONS } from './seed.js';
+import {
+    AI_LLM_TOKEN_CONTRACT_FIELDS,
+    AI_TOKEN_VOLUME_FIELDS,
+    hasLlmTokenVisibilityContract
+} from './aiDemand.js';
 /* ---------- Helpers ---------- */
 
 function ans(calc, id) {
@@ -81,12 +86,6 @@ const SEED_DASHBOARD_AI_METRIC_BY_ID = new Map(
 );
 
 const SEED_QUESTION_BY_ID = new Map(SEED_QUESTIONS.map(question => [question.id, question]));
-const AI_TOKEN_VOLUME_FIELDS = Object.freeze([
-    'ai_avg_input_tokens',
-    'ai_avg_output_tokens',
-    'ai_caching_share'
-]);
-
 function activeStandIds(calc) {
     const disabled = new Set(Array.isArray(calc?.view?.disabledStands)
         ? calc.view.disabledStands
@@ -116,6 +115,13 @@ function aggregateAiMetricQty(calc, result, metric) {
         const stands = result?.items?.[itemId]?.stands || {};
         return sum + Object.values(stands).reduce((acc, row) => acc + (Number(row?.qty) || 0), 0);
     }, 0);
+}
+
+function aiDemandSource(calc) {
+    return {
+        answers: calc?.answers || {},
+        questionDefaults: buildQuestionDefaults(calc?.dictionaries?.questions || [])
+    };
 }
 
 function autoTrafficTb(avgRps, sizeKb) {
@@ -364,19 +370,10 @@ function checkTokenVolumeWithoutLlm(calc) {
 }
 
 function hasPositiveExternalTokenDemand(calc) {
-    if (ans(calc, 'ai_llm_used') !== true
-        && !AI_TOKEN_VOLUME_FIELDS.some(fieldId => isTokenVolumeExplicitlyConfigured(calc, fieldId))) {
-        return false;
-    }
-    if (ans(calc, 'ai_hosting_mode') === 'on_prem_gpu') return false;
-    const registered = ans(calc, 'registered_users_total');
-    const dauShare = ans(calc, 'dau_share_of_registered_percent');
-    const aiUsersShare = ans(calc, 'ai_users_share');
-    const requests = ans(calc, 'ai_requests_per_user_day');
-    const inputTokens = ans(calc, 'ai_avg_input_tokens');
-    const outputTokens = ans(calc, 'ai_avg_output_tokens');
-    return [registered, dauShare, aiUsersShare, requests].every(v => isFiniteNum(v) && v > 0)
-        && ((isFiniteNum(inputTokens) && inputTokens > 0) || (isFiniteNum(outputTokens) && outputTokens > 0));
+    return hasLlmTokenVisibilityContract(aiDemandSource(calc), {
+        externalOnly: true,
+        repairDegenerate: true
+    });
 }
 
 function checkTokenVolumeProducesTokenResources(calc) {
@@ -395,19 +392,15 @@ function checkTokenVolumeProducesTokenResources(calc) {
         id: 'ai-token-volume-without-token-resources',
         severity: 'error',
         category: 'architecture',
-        title: 'ИИ-токены заполнены, но токеновые ЭК не рассчитались',
+        title: 'LLM включена, но токены не рассчитались',
         message:
-            'LLM включена, объём токенов и пользовательская нагрузка больше нуля, ' +
+            'LLM включена, demand-параметры токенов больше нуля, ' +
             'но суммарный объём ЭК с AI-метрикой TOKENS равен нулю. В Dashboard и Детализации ' +
             'это выглядело бы как отсутствие токеновой нагрузки при заполненном разделе токенов.',
-        fieldIds: [
-            'ai_llm_used', 'ai_hosting_mode', 'registered_users_total',
-            'dau_share_of_registered_percent', 'ai_users_share',
-            'ai_requests_per_user_day', 'ai_avg_input_tokens', 'ai_avg_output_tokens'
-        ],
+        fieldIds: AI_LLM_TOKEN_CONTRACT_FIELDS,
         suggestedAction:
-            'Проверьте формулы ЭК «Входящие токены LLM» и «Исходящие токены LLM», ' +
-            'а также наличие dashboardAiMetric="TOKENS" у токеновых ЭК.'
+            'Проверьте поля нагрузки LLM, формулы ЭК «Входящие токены LLM» и «Исходящие токены LLM», ' +
+            'а также наличие dashboardAiMetric="TOKENS" у токеновых ЭК. Если user-base неизвестна, используйте documented default.'
     });
 }
 

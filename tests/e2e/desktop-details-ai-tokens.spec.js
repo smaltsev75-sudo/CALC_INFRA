@@ -339,6 +339,75 @@ test('Details and Dashboard restore token workload from explicit token answers w
     expect(consoleErrors).toEqual([]);
 });
 
+test('Loaded localStorage degenerate user-base keeps tokens visible in Dashboard and Details DOM', async ({ page }) => {
+    const consoleErrors = await bootCleanApp(page);
+
+    await page.evaluate(async () => {
+        const calcList = await import(new URL('js/controllers/calcListController.js', document.baseURI).href);
+        const persist = await import(new URL('js/state/persistence.js', document.baseURI).href);
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
+
+        const calc = calcList.createCalcFromWizard('Loaded degenerate token UI contract', {
+            product_type: 'b2c',
+            industry: 'edtech',
+            scale: 'm',
+            geography: 'ru',
+            provider: 'sbercloud',
+            pdn: true,
+            activity: 'high',
+            ai_used: true
+        });
+        if (!calc) throw new Error('Failed to create source calc');
+        const active = store.getState().activeCalc;
+        const patched = {
+            ...active,
+            updatedAt: '2026-05-26T10:00:00.000Z',
+            settings: {
+                ...active.settings,
+                applyRiskFactors: false
+            },
+            answers: {
+                ...active.answers,
+                ai_llm_used: true,
+                ai_hosting_mode: 'external_api',
+                registered_users_total: 0,
+                dau_share_of_registered_percent: 5,
+                ai_users_share: 75,
+                ai_requests_per_user_day: 30,
+                ai_avg_input_tokens: 3000,
+                ai_avg_output_tokens: 500,
+                ai_model_tier: 'heavy',
+                ai_caching_share: 30
+            }
+        };
+        if (!persist.saveCalc(patched)) throw new Error('Failed to persist patched calc');
+        persist.saveActiveCalcId(patched.id);
+        store.setActiveCalc(null);
+        const loaded = calcList.openCalc(patched.id);
+        if (!loaded) throw new Error('Failed to open patched calc from localStorage');
+        store.setActiveTab('dashboard');
+    });
+
+    await expect(page.getByTestId('dashboard-grid')).toBeVisible();
+
+    await expectDashboardTokensVisible(page);
+    await expectDashboardStandTokensVisible(page, 'PROD');
+    await expectDashboardStandTokensVisible(page, 'LOAD');
+    await expectDashboardDetailsConsistency(page);
+
+    await clickSidebarTab(page, 'details');
+    await expect(page.locator('.details-ai-summary')).toBeVisible();
+    await expectTokensBudgetSummaryVisible(page);
+    await expectTokenItemRowsVisible(page, '.details-table-cost');
+
+    await page.getByRole('button', { name: 'Объём (qty)' }).click();
+    await expect(page.locator('.details-table-qty')).toBeVisible();
+    await expectTokensQtySummaryVisible(page);
+    await expectTokenItemRowsVisible(page, '.details-table-qty');
+
+    expect(consoleErrors).toEqual([]);
+});
+
 test('Dashboard and Details restore tokens when RAG is active but legacy LLM master is off', async ({ page }) => {
     const consoleErrors = await bootCleanApp(page);
 

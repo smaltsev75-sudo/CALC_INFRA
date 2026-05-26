@@ -2,8 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-26, v2.20.75)
+## Current Project Lessons (2026-05-26, v2.20.77)
 
+- AI token visibility contract must be enforced through one shared helper,
+  not copied predicates. `js/domain/aiDemand.js` is the source for positive
+  LLM demand, degenerate user-base repair, external/on-prem branching and
+  field lists. Calculator fallback, Health Check and tests should import it
+  instead of re-implementing demand checks.
+- For token visibility regressions, the first regression guard should be an
+  E2E DOM test on the loaded/localStorage path. A green `calculate()` unit test
+  is insufficient if `prepareLoadedCalc/openCalc`, dashboard aggregation or
+  Details rendering can still turn positive token demand into `—`.
+- Hidden diagnostic mode is `?diag=1`. It shows a header action that copies a
+  local structured JSON bundle: raw answers, normalized answers, Health
+  findings, `aggregateAiMetrics`, and per-ЭК qty/cost by stand. The bundle may
+  contain business parameters; it is copied to clipboard only and never sent by
+  the app automatically.
 - Do not leave questionnaire flags as silent intent. If a user-facing answer
   says DDoS, SIEM, DLP, audit logging, AI safety or fine-tune is enabled, the
   calculation model must either have a corresponding ЭК/formula or visibly mark

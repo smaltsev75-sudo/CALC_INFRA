@@ -56,6 +56,10 @@ import {
 import { SEED_ITEMS } from './seed.js';
 import { applyProviderOverlay, DEFAULT_PROVIDER } from './providerOverlay.js';
 import { getCurrentVatRate } from './vatRateTable.js';
+import {
+    getEffectiveLlmTokenDemand,
+    hasPositiveTokenDemandInputs
+} from './aiDemand.js';
 
 /* 12.U12: SEED-fallback для dashboardResource у item-ов из старых расчётов
    (dictionary.items был сохранён до Этапа 12.U5, когда поле появилось).
@@ -425,17 +429,6 @@ function hasExplicitTokenDemand(context) {
     ].some(id => isExplicitContextAnswer(context, id));
 }
 
-function hasPositiveTokenDemandInputs(context) {
-    const registered = answerNumber(context, 'registered_users_total', 0);
-    const dauShare = answerNumber(context, 'dau_share_of_registered_percent', 0);
-    const aiShare = answerNumber(context, 'ai_users_share', 0);
-    const requestsPerUserDay = answerNumber(context, 'ai_requests_per_user_day', 0);
-    const inputTokens = answerNumber(context, 'ai_avg_input_tokens', 0);
-    const outputTokens = answerNumber(context, 'ai_avg_output_tokens', 0);
-    return [registered, dauShare, aiShare, requestsPerUserDay].every(v => Number.isFinite(v) && v > 0)
-        && [inputTokens, outputTokens].some(v => Number.isFinite(v) && v > 0);
-}
-
 function hasImplicitLlmFeature(context) {
     return [
         'rag_needed',
@@ -480,37 +473,20 @@ function deriveExternalLlmTokenQtyFallback(item, stand, context) {
      * AI opt-in. См. CLAUDE.md §Current Project Lessons: «If ai_llm_used is true
      * and token workload inputs are positive, the model must produce either
      * visible token workload or an explicit on-prem operational derivation.» */
-    const aiShareRaw = answerNumber(context, 'ai_users_share', 0);
-    const requestsRaw = answerNumber(context, 'ai_requests_per_user_day', 0);
-    const inputTokens = answerNumber(context, 'ai_avg_input_tokens', 0);
-    const outputTokens = answerNumber(context, 'ai_avg_output_tokens', 0);
-    const positiveDemandSignal = aiShareRaw > 0 && requestsRaw > 0
-        && (inputTokens > 0 || outputTokens > 0);
-    const aiExplicitOptIn = answerBool(context, 'ai_llm_used', false);
-    const questionDefaults = context?.questionDefaults || {};
-
-    let registered = answerNumber(context, 'registered_users_total', 0);
-    let dauShareRaw = answerNumber(context, 'dau_share_of_registered_percent', 0);
-    if (aiExplicitOptIn && positiveDemandSignal) {
-        if (registered <= 0) {
-            const def = Number(questionDefaults.registered_users_total);
-            if (Number.isFinite(def) && def > 0) registered = def;
-        }
-        if (dauShareRaw <= 0) {
-            const def = Number(questionDefaults.dau_share_of_registered_percent);
-            if (Number.isFinite(def) && def > 0) dauShareRaw = def;
-        }
-    }
-
-    const dauShare = dauShareRaw / 100;
-    const aiShare = aiShareRaw / 100;
-    const requestsPerUserDay = requestsRaw;
-    const cacheShare = Math.min(100, Math.max(0, answerNumber(context, 'ai_caching_share', 0))) / 100;
+    const demand = getEffectiveLlmTokenDemand(context, {
+        repairDegenerate: answerBool(context, 'ai_llm_used', false)
+    });
+    const dauShare = demand.dauShare / 100;
+    const aiShare = demand.aiShare / 100;
+    const requestsPerUserDay = demand.requestsPerUserDay;
+    const inputTokens = demand.inputTokens;
+    const outputTokens = demand.outputTokens;
+    const cacheShare = demand.cacheShare / 100;
     const agentStepFactor = numWithDefault(context?.S?.agentStepFactor, 1);
     const modelFactor = numWithDefault(context?.S?.aiModelTierFactor, 1);
     const standRatio = numWithDefault(context?.S?.standSizeRatio?.[stand], stand === 'PROD' ? 1 : 0);
 
-    const requestsPerMonth = registered * dauShare * aiShare * requestsPerUserDay * DEFAULT_DAYS_PER_MONTH * agentStepFactor;
+    const requestsPerMonth = demand.registered * dauShare * aiShare * requestsPerUserDay * DEFAULT_DAYS_PER_MONTH * agentStepFactor;
     const inputMillions = requestsPerMonth * inputTokens * (1 - cacheShare) / 1_000_000 * modelFactor * standRatio;
     const outputMillions = requestsPerMonth * outputTokens / 1_000_000 * modelFactor * standRatio;
 

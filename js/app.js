@@ -113,6 +113,7 @@ import {
     setHealthLastTabAction,
     resetAnswersAction
 } from './app/nextStepActions.js';
+import { copyCalculationDiagnosticBundle } from './app/diagnosticActions.js';
 
 function _handleUpdateProviderResult(result) {
     return handleUpdateProviderResult(result, snackbar);
@@ -173,6 +174,25 @@ const ctx = {
     /* 14.U3: helper-обёртка над snackbar.info для UI-слоя — UI не импортирует snackbar
        напрямую (layer purity), а зовёт через ctx. */
     snackbarInfo(message) { snackbar.info(message); },
+
+    async copyDiagnosticBundle() {
+        const state = store.getState();
+        if (!state.activeCalc) {
+            snackbar.warning('Нет активного расчёта для диагностики.');
+            return false;
+        }
+        const result = await copyCalculationDiagnosticBundle(state.activeCalc, {
+            revision: state.calcRevision
+        });
+        if (result.ok) {
+            snackbar.success(
+                'Диагностический JSON скопирован. Он локальный и не отправляется автоматически; внутри могут быть параметры расчёта.'
+            );
+        } else {
+            snackbar.error('Не удалось скопировать диагностический JSON в буфер обмена.');
+        }
+        return result.ok;
+    },
     /* 14.U5: открыть диалог подтверждения re-apply профиля.
        draftWizard — новый объект 7 макро-ответов (если юзер поменял их в QS
        edit-mode). Если undefined — re-apply работает по существующему calc.wizard.
