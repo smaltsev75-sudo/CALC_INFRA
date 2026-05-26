@@ -55,9 +55,11 @@ export function renderResourcesBlock(resourceMap, titleText, applyRisks = true, 
                есть ли вообще такой ресурс или это баг. Tooltip объясняет ПОЧЕМУ:
                - applicable=false → стенд не предусмотрен текущим каталогом.
                - applicable=true → стенд предусмотрен, но input-данные = 0. */
-            const tooltip = entry.applicable
-                ? 'При текущих ответах Опросника объём = 0. Заполните соответствующие вопросы (объёмы БД, файлов, пиковая нагрузка), чтобы появилась оценка.'
-                : 'Для этого стенда ресурс не предусмотрен текущим каталогом ЭК. Если он нужен в проекте, добавьте применимость ресурса в справочник или включите соответствующий ЭК.';
+            const tooltip = entry.zeroReasonHint
+                ? entry.zeroReasonHint
+                : (entry.applicable
+                    ? 'При текущих ответах Опросника объём = 0. Заполните соответствующие вопросы (объёмы БД, файлов, пиковая нагрузка), чтобы появилась оценка.'
+                    : 'Для этого стенда ресурс не предусмотрен текущим каталогом ЭК. Если он нужен в проекте, добавьте применимость ресурса в справочник или включите соответствующий ЭК.');
             rows.push(el('div', { class: 'dash-resource-row dash-resource-row-empty', title: tooltip },
                 el('span', { class: 'dash-resource-row-label', text: displayLabel }),
                 el('span', { class: 'dash-resource-row-value' },

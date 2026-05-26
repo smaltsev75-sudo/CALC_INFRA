@@ -148,7 +148,7 @@ export function renderDashboard(state, ctx) {
     // при «С рисками» qty включает capacity-буферы (буфер задач/проекта/сезонный/
     // сдвиг/контингент); VAT и инфляция к qty не применяются (это финансовые,
     // не capacity-факторы).
-    const resources = aggregateResources(result, calc.dictionaries?.items || [], disabledStands, applyRisks);
+    const resources = aggregateResources(result, calc.dictionaries?.items || [], disabledStands, applyRisks, calc.answers);
     // PATCH 2.14.16-fixup: распределяем округление так, чтобы
     // sum(active per-stand displayed) === total displayed для каждого ресурса.
     const _activeStandsForSum = STAND_IDS.filter(sid => !disabledStands.includes(sid));

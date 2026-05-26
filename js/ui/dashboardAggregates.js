@@ -46,7 +46,7 @@ export const DASHBOARD_RESOURCE_ORDER = ['CPU', 'GPU', 'RAM', 'SSD', 'HDD', 'S3'
  * bufferTask × bufferProject × seasonal × schedule × contingency.
  * VAT и inflation НЕ применяются (это финансовые множители, не capacity).
  */
-export function aggregateResources(result, dictionaryItems, disabledStands, applyRisks) {
+export function aggregateResources(result, dictionaryItems, disabledStands, applyRisks, answers = null) {
     const out = { perStand: {}, total: {} };
 
     const itemMap = new Map(dictionaryItems.map(it => [it.id, it]));
@@ -130,6 +130,33 @@ export function aggregateResources(result, dictionaryItems, disabledStands, appl
             }
         }
     }
+
+    /* v2.20.73: контекстный hint для строки GPU. ЭК vCPU GPU-нод считается
+     * ТОЛЬКО при ai_hosting_mode = on_prem_gpu (см. seed cpu-vcpu-gpu). Для
+     * external_api / private_cloud GPU=0 — это by design, не «надо заполнить
+     * Опросник». Generic tooltip «заполните вопросы про БД/файлы» вводит в
+     * заблуждение. Передаём в renderResourcesBlock явное объяснение. */
+    if (answers && typeof answers === 'object') {
+        const aiLlmUsed = answers.ai_llm_used === true;
+        const hostingMode = String(answers.ai_hosting_mode || '').trim();
+        if (aiLlmUsed && hostingMode && hostingMode !== 'on_prem_gpu') {
+            const gpuHint =
+                'GPU считается отдельной позицией только при ответе ' +
+                '«Собственная GPU-инфраструктура (on-premise)» в вопросе ' +
+                '«Режим размещения ИИ-модели». При размещении на внешнем API ' +
+                'или в приватном облаке стоимость GPU уже зашита в цену ' +
+                'токена у провайдера — оценка ИИ-нагрузки в этом случае ' +
+                'видна в строке «Токены» и в Детализации «Входящие/Исходящие ' +
+                'токены LLM».';
+            if (out.total.GPU) out.total.GPU.zeroReasonHint = gpuHint;
+            for (const sid of STAND_IDS) {
+                if (out.perStand[sid]?.GPU) {
+                    out.perStand[sid].GPU.zeroReasonHint = gpuHint;
+                }
+            }
+        }
+    }
+
     return out;
 }
 
