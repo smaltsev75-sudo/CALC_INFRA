@@ -30,12 +30,12 @@ const BUSINESS_SCENARIOS = Object.freeze([
             pentest_per_year: 1, load_test_per_year: 1
         },
         expected: {
-            totalMonthly: 2_684_166,
-            totalAnnual: 32_209_991,
+            totalMonthly: 2_273_729,
+            totalAnnual: 27_284_750,
             topCategory: 'SERVICES',
-            byStandMonthly: { DEV: 40_218, IFT: 198_992, PSI: 251_109, PROD: 1_635_428, LOAD: 558_419 },
-            byCategoryMonthly: { HW: 84_678, LICENSE: 499_967, TRAFFIC: 26_507, SERVICES: 1_723_764, RESERVES: 0, SECURITY: 349_249, AI: 0 },
-            topProdItemIds: ['one-deployment', 'one-pentest-external', 'license-db-per-vcpu', 'service-external-api-calls-1m', 'network-ddos-protection']
+            byStandMonthly: { DEV: 10_901, IFT: 140_358, PSI: 192_475, PROD: 1_518_160, LOAD: 411_834 },
+            byCategoryMonthly: { HW: 84_678, LICENSE: 89_531, TRAFFIC: 26_507, SERVICES: 1_723_764, RESERVES: 0, SECURITY: 349_249, AI: 0 },
+            topProdItemIds: ['one-deployment', 'one-pentest-external', 'service-external-api-calls-1m', 'network-ddos-protection', 'one-pentest-regular']
         }
     },
     {
@@ -52,12 +52,12 @@ const BUSINESS_SCENARIOS = Object.freeze([
             pentest_per_year: 2, load_test_per_year: 2
         },
         expected: {
-            totalMonthly: 5_802_494,
-            totalAnnual: 69_629_927,
-            topCategory: 'LICENSE',
-            byStandMonthly: { DEV: 184_814, IFT: 500_223, PSI: 639_833, PROD: 2_895_202, LOAD: 1_582_423 },
-            byCategoryMonthly: { HW: 297_031, LICENSE: 2_721_746, TRAFFIC: 26_507, SERVICES: 1_907_054, RESERVES: 0, SECURITY: 850_155, AI: 0 },
-            topProdItemIds: ['one-deployment', 'license-db-per-vcpu', 'one-pentest-regular', 'one-pentest-external', 'one-pentest-internal']
+            totalMonthly: 3_457_141,
+            totalAnnual: 41_485_691,
+            topCategory: 'SERVICES',
+            byStandMonthly: { DEV: 38_229, IFT: 207_054, PSI: 288_030, PROD: 2_191_596, LOAD: 732_232 },
+            byCategoryMonthly: { HW: 297_031, LICENSE: 376_393, TRAFFIC: 26_507, SERVICES: 1_907_054, RESERVES: 0, SECURITY: 850_155, AI: 0 },
+            topProdItemIds: ['one-deployment', 'one-pentest-regular', 'one-pentest-external', 'one-pentest-internal', 'license-os-per-node']
         }
     },
     {
@@ -70,7 +70,8 @@ const BUSINESS_SCENARIOS = Object.freeze([
             email_per_month: 1000000, sms_per_month: 100000, push_per_month: 50000000,
             avg_response_size_kb: 10, avg_request_size_kb: 4, ram_per_vcpu_ratio: 4, cache_size_gb: 128,
             sla_target: 99.95, georedundancy_required: true, pdn_152fz: true, encryption_at_rest: true,
-            waf_required: true, fstec_certification_required: true, pentest_external: true, pentest_internal: true,
+            waf_required: true, fstec_certification_required: true, db_commercial_license_required: true,
+            pentest_external: true, pentest_internal: true,
             load_test_before_prod: true, pentest_per_year: 4, load_test_per_year: 4
         },
         expected: {
@@ -96,12 +97,12 @@ const BUSINESS_SCENARIOS = Object.freeze([
             pentest_per_year: 0, load_test_per_year: 0
         },
         expected: {
-            totalMonthly: 2_219_075,
-            totalAnnual: 26_628_901,
+            totalMonthly: 1_808_638,
+            totalAnnual: 21_703_660,
             topCategory: 'SERVICES',
-            byStandMonthly: { DEV: 47_356, IFT: 197_855, PSI: 212_347, PROD: 1_421_813, LOAD: 339_704 },
-            byCategoryMonthly: { HW: 102_237, LICENSE: 542_100, TRAFFIC: 26_507, SERVICES: 1_456_436, RESERVES: 0, SECURITY: 91_795, AI: 0 },
-            topProdItemIds: ['one-deployment', 'license-db-per-vcpu', 'service-external-api-calls-1m', 'network-ddos-protection', 'license-os-per-node']
+            byStandMonthly: { DEV: 18_039, IFT: 139_221, PSI: 153_713, PROD: 1_304_545, LOAD: 193_119 },
+            byCategoryMonthly: { HW: 102_237, LICENSE: 131_663, TRAFFIC: 26_507, SERVICES: 1_456_436, RESERVES: 0, SECURITY: 91_795, AI: 0 },
+            topProdItemIds: ['one-deployment', 'service-external-api-calls-1m', 'network-ddos-protection', 'license-os-per-node', 'one-staff-training']
         }
     },
     {
@@ -115,7 +116,7 @@ const BUSINESS_SCENARIOS = Object.freeze([
             avg_response_size_kb: 8, avg_request_size_kb: 4, ram_per_vcpu_ratio: 4, cache_size_gb: 96,
             sla_target: 99.95, georedundancy_required: true, pdn_152fz: true, pdn_category: '2', encryption_at_rest: true,
             waf_required: true, ddos_protection_required: true, iso_27001_required: true, fstec_certification_required: true,
-            pentest_external: true, pentest_internal: true, load_test_before_prod: true,
+            db_commercial_license_required: true, pentest_external: true, pentest_internal: true, load_test_before_prod: true,
             pentest_per_year: 4, load_test_per_year: 4, security_audit_per_year: 2
         },
         expected: {
@@ -149,11 +150,11 @@ const BUSINESS_SCENARIOS = Object.freeze([
             agent_memory_used: true, agent_memory_size_gb: 250
         },
         expected: {
-            totalMonthly: 467_242_055,
-            totalAnnual: 5_606_904_665,
+            totalMonthly: 464_896_702,
+            totalAnnual: 5_578_760_429,
             topCategory: 'AI',
-            byStandMonthly: { DEV: 3_602_784, IFT: 34_466_900, PSI: 85_411_081, PROD: 172_474_280, LOAD: 171_287_011 },
-            byCategoryMonthly: { HW: 677_308, LICENSE: 2_847_211, TRAFFIC: 39_761, SERVICES: 2_511_299, RESERVES: 0, SECURITY: 913_296, AI: 460_253_181 },
+            byStandMonthly: { DEV: 3_456_199, IFT: 34_173_731, PSI: 85_059_278, PROD: 171_770_674, LOAD: 170_436_821 },
+            byCategoryMonthly: { HW: 677_308, LICENSE: 501_858, TRAFFIC: 39_761, SERVICES: 2_511_299, RESERVES: 0, SECURITY: 913_296, AI: 460_253_181 },
             topProdItemIds: ['llm-tokens-input-1m', 'llm-tokens-output-1m', 'ai-safety-moderation-tokens-1m', 'ai-agent-sandbox-vcpu', 'one-deployment']
         }
     }

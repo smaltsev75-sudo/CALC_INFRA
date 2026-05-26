@@ -96,6 +96,7 @@ export function computeCompliance({ product_type, industry, scale, pdn }) {
         // Сертификации
         fstec_certification_required: isFin || isB2G,
         iso_27001_required: isFin,
+        db_commercial_license_required: isFin || isB2G,
 
         // Шифрование и защита (waf/ddos — только при публичном периметре)
         encryption_at_rest: pdn || isFin || isB2G,

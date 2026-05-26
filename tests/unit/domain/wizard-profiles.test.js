@@ -132,6 +132,7 @@ describe('computeCompliance', () => {
                 assert.strictEqual(c.pdn_152fz, true, `fintech.${product_type}.${scale} pdn_152fz`);
                 assert.strictEqual(c.fstec_certification_required, true);
                 assert.strictEqual(c.iso_27001_required, true);
+                assert.strictEqual(c.db_commercial_license_required, true);
                 assert.strictEqual(c.waf_required, true);
                 assert.strictEqual(c.ddos_protection_required, true);
                 assert.strictEqual(c.siem_integration_required, true);
@@ -147,6 +148,7 @@ describe('computeCompliance', () => {
         const c = computeCompliance({ product_type: 'internal', industry: 'corporate', scale: 'xs', pdn: false });
         assert.strictEqual(c.pdn_152fz, false);
         assert.strictEqual(c.fstec_certification_required, false);
+        assert.strictEqual(c.db_commercial_license_required, false);
         assert.strictEqual(c.dlp_required, false);
         assert.strictEqual(c.waf_required, false);
         assert.strictEqual(c.pentest_external, false);
@@ -164,6 +166,7 @@ describe('computeCompliance', () => {
         const c = computeCompliance({ product_type: 'b2g', industry: 'corporate', scale: 'xs', pdn: false });
         assert.strictEqual(c.pdn_152fz, true);  // b2g — pdn всегда
         assert.strictEqual(c.fstec_certification_required, true);
+        assert.strictEqual(c.db_commercial_license_required, true);
         assert.strictEqual(c.audit_logging_required, true);
     });
 });
@@ -406,6 +409,7 @@ describe('wizardToAnswers — meta показывает источник каж�
         assert.strictEqual(r.answers.georedundancy_required, true);
         assert.strictEqual(r.answers.waf_required, true);
         assert.strictEqual(r.answers.fstec_certification_required, true);
+        assert.strictEqual(r.answers.db_commercial_license_required, true);
         assert.strictEqual(r.answers.pdn_152fz, true);
     });
 
@@ -416,6 +420,7 @@ describe('wizardToAnswers — meta показывает источник каж�
         });
         assert.strictEqual(r.meta.pdn_152fz.source, 'compliance');
         assert.strictEqual(r.meta.fstec_certification_required.source, 'compliance');
+        assert.strictEqual(r.meta.db_commercial_license_required.source, 'compliance');
     });
 });
 

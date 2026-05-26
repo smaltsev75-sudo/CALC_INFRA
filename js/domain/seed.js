@@ -785,6 +785,25 @@ export const SEED_QUESTIONS = [
         assumptionRisk: 'medium'
     },
     {
+        id: 'db_commercial_license_required',
+        section: 'data_storage',
+        subgroup: 'База данных',
+        order: 145,
+        title: 'Нужна коммерческая лицензия СУБД',
+        type: 'boolean',
+        defaultValue: false,
+        description:
+            'Нужна ли отдельная платная лицензия на СУБД: Postgres Pro / Tantor / Oracle / MS SQL Enterprise и аналогичные коммерческие поставки.\n\n' +
+            'Если используется open-source PostgreSQL/MySQL/MariaDB или managed-БД провайдера с лицензией, включённой в тариф, оставьте «Нет» — иначе бюджет будет завышен отдельной строкой лицензии СУБД.',
+        recommendation:
+            'Когда «Да»: Oracle/MS SQL Enterprise, Postgres Pro Enterprise, Tantor SE/Certified, сертифицированная коммерческая СУБД по требованиям заказчика или регулятора.\n' +
+            'Когда «Нет»: open-source PostgreSQL/MySQL/MariaDB, managed PostgreSQL/MySQL у облачного провайдера без отдельной лицензии, внутренняя разработка без vendor DB-лицензии.',
+        impact: 'При значении «Да» включает ЭК «СУБД (на vCPU)»: db_count × (1 + реплики) × 4 vCPU на каждый стенд. Для нескольких стендов это может стать крупнейшей статьёй лицензий.',
+        allowUnknown: true,
+        defaultIfUnknown: false,
+        assumptionRisk: 'high'
+    },
+    {
         id: 'ram_per_vcpu_ratio',
         section: 'data_storage',
         subgroup: 'База данных',
@@ -3135,13 +3154,13 @@ export const SEED_ITEMS = [
             'ВАЖНО: цена с 2025-05 — может быть устаревшей (российские СУБД-вендоры обычно индексируют +5–15%/год). ' +
             'Перепроверьте актуальную цену у вендора.',
         qtyFormulas: {
-            DEV:  'ceil(Q.db_count * (1 + Q.db_replicas_count) * 4 * S.standSizeRatio.DEV)',
-            IFT:  'ceil(Q.db_count * (1 + Q.db_replicas_count) * 4 * S.standSizeRatio.IFT)',
-            PSI:  'ceil(Q.db_count * (1 + Q.db_replicas_count) * 4 * S.standSizeRatio.PSI)',
-            PROD: 'ceil(Q.db_count * (1 + Q.db_replicas_count) * 4)',
-            LOAD: 'ceil(Q.db_count * (1 + Q.db_replicas_count) * 4 * S.standSizeRatio.LOAD)'
+            DEV:  'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * 4 * S.standSizeRatio.DEV), 0)',
+            IFT:  'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * 4 * S.standSizeRatio.IFT), 0)',
+            PSI:  'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * 4 * S.standSizeRatio.PSI), 0)',
+            PROD: 'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * 4), 0)',
+            LOAD: 'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * 4 * S.standSizeRatio.LOAD), 0)'
         },
-        formulaHelp: 'vCPU СУБД = кластеры × (1 + реплики) × 4 vCPU/узел × коэф. стенда.'
+        formulaHelp: 'Если нужна коммерческая лицензия СУБД: vCPU = кластеры × (1 + реплики) × 4 vCPU/узел × коэф. стенда. Иначе 0.'
     },
     {
         id: 'license-os-per-node',
@@ -4463,6 +4482,8 @@ const _AGENT_QUESTION_IDS = [
     'agent_memory_used', 'agent_memory_size_gb',
     // Stage RAG-split: дискриминатор «self-hosted vs managed» для хранения корпуса RAG.
     'rag_managed_used',
+    // v2.20.80: DB license is no longer unconditional; user must opt in for commercial DB licensing.
+    'db_commercial_license_required',
     // v2.20.56: Quick Start уже заполнял traffic_*_tb_month, но legacy seed
     // не содержал вопросов с этими id, а traffic-формулы их не читали.
     'traffic_egress_tb_month',
@@ -4512,6 +4533,7 @@ const _AGENT_FORMULA_REFRESH_IDS = [
     'storage-ssd-tb',
     'storage-hdd-tb',
     'storage-secure-gb',
+    'license-db-per-vcpu',
     'llm-tokens-input-1m',
     'llm-tokens-output-1m',
     'ai-safety-moderation-tokens-1m',

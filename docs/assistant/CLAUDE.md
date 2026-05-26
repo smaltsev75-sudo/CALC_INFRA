@@ -2,8 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-26, v2.20.79)
+## Current Project Lessons (2026-05-26, v2.20.80)
 
+- `license-db-per-vcpu` is opt-in, not a baseline cloud cost. Commercial DB
+  licensing must be driven by `db_commercial_license_required`; normal
+  PostgreSQL/MySQL/open-source or managed DB cases should not silently pay for
+  Tantor/Postgres Pro/Oracle/MS SQL. Quick Start may set it for regulated
+  `fintech`/`b2g` defaults only.
 - For billable package units, never use `round` where a partial paid block can
   be undercounted. The `service-external-api-calls-1m.LOAD` regression counted
   1.4M monthly calls as 1 package when LOAD ratio was 1.0. Use upward rounding,

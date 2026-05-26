@@ -62,6 +62,17 @@ describe('questionnaire fields are wired to budget items', () => {
             file_storage_volume_tb: 10,
             hot_data_share_percent: 10
         }));
+
+        assert.equal(qty('license-db-per-vcpu', {
+            db_commercial_license_required: false,
+            db_count: 2,
+            db_replicas_count: 1
+        }), 0);
+        assert.equal(qty('license-db-per-vcpu', {
+            db_commercial_license_required: true,
+            db_count: 2,
+            db_replicas_count: 1
+        }), 16);
     });
 
     it('integration/security/SLA fields activate their EK items', () => {

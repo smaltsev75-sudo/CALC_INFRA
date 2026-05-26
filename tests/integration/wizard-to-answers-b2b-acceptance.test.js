@@ -4,7 +4,8 @@
  *
  * Аудит-10 P3 нашёл, что WIZARD_PROFILES.md:450 говорил «~40 полей из 87»
  * и «НЕ заполняется 47», но реальный `wizardToAnswers()` для стандартного
- * B2B-профиля возвращал 58 answers. Тест зафиксирует контракт между кодом
+ * B2B-профиля возвращал 58 answers. После v2.20.80 добавлен явный флаг
+ * коммерческой лицензии СУБД: 59 из 90. Тест фиксирует контракт между кодом
  * и доком — изменение матрицы заполнения должно сопровождаться обновлением
  * WIZARD_PROFILES.md.
  *
@@ -20,13 +21,13 @@ import { wizardToAnswers } from '../../js/domain/wizardProfiles.js';
 import { SEED_QUESTIONS } from '../../js/domain/seed.js';
 
 describe('wizardToAnswers: acceptance B2B-standard', () => {
-    it('SEED_QUESTIONS.length = 89 — общее количество вопросов в детальном опроснике', () => {
-        // ⚠ При изменении этого числа — синхронно обновите WIZARD_PROFILES.md «X полей из 89».
-        assert.equal(SEED_QUESTIONS.length, 89,
+    it('SEED_QUESTIONS.length = 90 — общее количество вопросов в детальном опроснике', () => {
+        // ⚠ При изменении этого числа — синхронно обновите WIZARD_PROFILES.md «X полей из 90».
+        assert.equal(SEED_QUESTIONS.length, 90,
             'Если количество SEED_QUESTIONS изменилось — обновите WIZARD_PROFILES.md §7.2');
     });
 
-    it('стандартный B2B-профиль без AI заполняет 58 из 89 (не заполняется 31)', () => {
+    it('стандартный B2B-профиль без AI заполняет 59 из 90 (не заполняется 31)', () => {
         const result = wizardToAnswers({
             product_type: 'b2b',
             industry: 'corporate',
@@ -39,9 +40,9 @@ describe('wizardToAnswers: acceptance B2B-standard', () => {
         const answers = result.answers || result;
         const count = Object.keys(answers).length;
         // ⚠ При изменении этого числа — синхронно обновите WIZARD_PROFILES.md §7.2
-        //   («58 полей из 89» и «НЕ заполняется (31)»).
-        assert.equal(count, 58,
-            `wizardToAnswers(B2B-standard).count = ${count}, ожидалось 58. ` +
+        //   («59 полей из 90» и «НЕ заполняется (31)»).
+        assert.equal(count, 59,
+            `wizardToAnswers(B2B-standard).count = ${count}, ожидалось 59. ` +
             `Если матрица заполнения изменилась — обновите WIZARD_PROFILES.md §7.2.`);
     });
 
