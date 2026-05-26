@@ -128,6 +128,8 @@ describe('rule: consistency-pcu-gt-users-total (error)', () => {
         const f = findById(r.findings, 'consistency-pcu-gt-users-total');
         assert.ok(f);
         assert.equal(f.severity, 'error');
+        assert.match(f.title, /общего числа пользователей/);
+        assert.doesNotMatch(f.message, /DAU/);
     });
     it('НЕ срабатывает при pcu_target <= users_total', () => {
         const r = evaluateCalculationHealth(makeCalc({ pcu_target: 500, users_total: 1000 }));
@@ -148,20 +150,21 @@ describe('rule: consistency-peak-duration-gt-24 (error)', () => {
     });
 });
 
-describe('rule: consistency-registered-gt-active (warning)', () => {
-    it('срабатывает при registered > users_total × 100', () => {
+describe('rule: consistency-registered-gt-users-total (warning)', () => {
+    it('срабатывает при registered_users_total > users_total', () => {
         const r = evaluateCalculationHealth(makeCalc({
-            registered_users_total: 100_001, users_total: 1000
+            registered_users_total: 1_001, users_total: 1000
         }));
-        const f = findById(r.findings, 'consistency-registered-gt-active');
+        const f = findById(r.findings, 'consistency-registered-gt-users-total');
         assert.ok(f);
         assert.equal(f.severity, 'warning');
+        assert.match(f.message, /накопленное число пользователей/);
     });
-    it('НЕ срабатывает при разумном соотношении (registered/active=10)', () => {
+    it('НЕ срабатывает при users_total >= registered_users_total', () => {
         const r = evaluateCalculationHealth(makeCalc({
-            registered_users_total: 10_000, users_total: 1000
+            registered_users_total: 10_000, users_total: 15_000
         }));
-        assert.ok(!findById(r.findings, 'consistency-registered-gt-active'));
+        assert.ok(!findById(r.findings, 'consistency-registered-gt-users-total'));
     });
 });
 

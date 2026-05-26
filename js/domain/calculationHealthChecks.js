@@ -203,11 +203,11 @@ function checkPcuGtUsersTotal(calc) {
             id: 'consistency-pcu-gt-users-total',
             severity: 'error',
             category: 'consistency',
-            title: 'PCU больше DAU',
+            title: 'PCU больше общего числа пользователей',
             message: `pcu_target=${pcu} > users_total=${total}. PCU (одновременно ` +
-                `онлайн) не может превышать DAU (всех активных за день).`,
+                `онлайн) не может превышать общее число пользователей за срок жизни продукта.`,
             fieldIds: ['pcu_target', 'users_total'],
-            suggestedAction: 'PCU/DAU обычно 3-10 % для interactive-сервисов.'
+            suggestedAction: 'Проверьте оба значения. PCU обычно составляет долю от DAU и всегда меньше накопленной аудитории.'
         });
     }
     return null;
@@ -230,21 +230,21 @@ function checkPeakDurationGt24(calc) {
     return null;
 }
 
-function checkRegisteredGtActive(calc) {
+function checkRegisteredGtUsersTotal(calc) {
     const reg = ans(calc, 'registered_users_total');
-    const active = ans(calc, 'users_total');
-    if (!isFiniteNum(reg) || !isFiniteNum(active) || active <= 0) return null;
-    if (reg > active * 100) {
+    const total = ans(calc, 'users_total');
+    if (!isFiniteNum(reg) || !isFiniteNum(total) || total <= 0) return null;
+    if (reg > total) {
         return makeFinding({
-            id: 'consistency-registered-gt-active',
+            id: 'consistency-registered-gt-users-total',
             severity: 'warning',
             category: 'consistency',
-            title: 'Соотношение зарегистрированных к активным больше 100',
-            message: `registered=${reg} > users_total × 100 = ${active * 100}. ` +
-                `Похоже на ошибку в одном из значений или на крайне низкую ` +
-                `активность пользователей (<1 % активных в день от зарегистрированных).`,
+            title: 'Зарегистрированных сейчас больше, чем всего пользователей за срок',
+            message: `registered_users_total=${reg} > users_total=${total}. ` +
+                'Поле users_total — это накопленное число пользователей за весь срок жизни продукта, ' +
+                'поэтому оно не должно быть меньше уже существующей базы.',
             fieldIds: ['registered_users_total', 'users_total'],
-            suggestedAction: 'Проверьте оба значения; типовая доля активных в день от зарегистрированных = 5-30 %.'
+            suggestedAction: 'Увеличьте «Всего пользователей за весь срок жизни продукта» или уточните число уже зарегистрированных пользователей.'
         });
     }
     return null;
@@ -826,7 +826,7 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkAvgRpsGtPeak,
     checkPcuGtUsersTotal,
     checkPeakDurationGt24,
-    checkRegisteredGtActive,
+    checkRegisteredGtUsersTotal,
     checkDauShareLikelyPercentMistake,
     checkTrafficEgressExplicitDiffersFromAuto,
     checkTrafficIngressExplicitDiffersFromAuto,

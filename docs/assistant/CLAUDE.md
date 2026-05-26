@@ -2,8 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-26, v2.20.78)
+## Current Project Lessons (2026-05-26, v2.20.79)
 
+- For billable package units, never use `round` where a partial paid block can
+  be undercounted. The `service-external-api-calls-1m.LOAD` regression counted
+  1.4M monthly calls as 1 package when LOAD ratio was 1.0. Use upward rounding,
+  but cap generic LOAD over-prod multipliers for external provider calls unless
+  the monthly volume itself is explicitly higher.
+- `users_total` is lifetime accumulated audience, not DAU. Health Check copy
+  and logic must not call it "active" or compare it as DAU. Real contradiction:
+  `registered_users_total > users_total`; valid small-product growth case:
+  `registered_users_total < users_total`.
+- Formula help must not hardcode example quantities unless the example is
+  explicitly scoped. RAM LOAD can be `56 → 68` for one input set, but the
+  persistent help text should describe the rule, not a stale number pair.
 - AI token visibility contract must be enforced through one shared helper,
   not copied predicates. `js/domain/aiDemand.js` is the source for positive
   LLM demand, degenerate user-base repair, external/on-prem branching and

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { calculate, clearCalculationCache } from '../../../js/domain/calculator.js';
 import { buildSeedDictionaries, defaultAnswersFrom, SEED_SETTINGS } from '../../../js/domain/seed.js';
 
-function makeCalc(override = {}) {
+function makeCalc(override = {}, settingsOverride = {}) {
     const dictionaries = buildSeedDictionaries();
     const answers = defaultAnswersFrom(dictionaries.questions);
     Object.assign(answers, {
@@ -18,15 +18,21 @@ function makeCalc(override = {}) {
         schemaVersion: 20,
         createdAt: '2026-05-25T00:00:00Z',
         updatedAt: '2026-05-25T00:00:00Z',
-        settings: { ...SEED_SETTINGS, applyRiskFactors: false, vatEnabled: false, vatRate: 0 },
+        settings: {
+            ...SEED_SETTINGS,
+            ...settingsOverride,
+            applyRiskFactors: false,
+            vatEnabled: false,
+            vatRate: 0
+        },
         answers,
         dictionaries
     };
 }
 
-function qty(itemId, answers, stand = 'PROD') {
+function qty(itemId, answers, stand = 'PROD', settings = {}) {
     clearCalculationCache();
-    const result = calculate(makeCalc(answers));
+    const result = calculate(makeCalc(answers, settings));
     return result.items[itemId]?.stands?.[stand]?.qty ?? 0;
 }
 
@@ -68,6 +74,12 @@ describe('questionnaire fields are wired to budget items', () => {
         assert.equal(qty('service-antifraud-license', { antifraud_required: true }), 1);
         assert.equal(qty('one-edo-integration', { edo_required: true }), 1);
         assert.equal(qty('service-external-api-calls-1m', { external_api_calls_per_month: 2_500_000 }), 3);
+        assert.equal(qty(
+            'service-external-api-calls-1m',
+            { external_api_calls_per_month: 1_400_000 },
+            'LOAD',
+            { standSizeRatio: { ...SEED_SETTINGS.standSizeRatio, LOAD: 1 } }
+        ), 2);
         assert.equal(qty('res-dr-active', { rto_hours: 1, rpo_minutes: 60, sla_target: 99.9 }), 1);
         assert.equal(qty('res-blue-green-deployment', { maintenance_window_hours_month: 0 }), 1);
         assert.equal(qty('one-dr-drill', { georedundancy_required: true, dr_drills_per_year: 4 }), 4);

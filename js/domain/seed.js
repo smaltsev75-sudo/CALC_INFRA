@@ -2834,7 +2834,7 @@ export const SEED_ITEMS = [
             PROD: 'ceil((ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb)',
             LOAD: 'ceil(((ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb) * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'GB RAM = (ПРОМ vCPU после округления × RAM на vCPU + кэш) × коэф. стенда. НТ-стенд 120% от ПРОМ RAM: 56 ГБ → 68 ГБ.'
+        formulaHelp: 'GB RAM = (ПРОМ vCPU после округления × RAM на vCPU + кэш) × коэф. стенда. Для LOAD применяется текущий коэффициент стенда без жёстко заданных ГБ.'
     },
     {
         id: 'storage-ssd-tb',
@@ -3575,9 +3575,9 @@ export const SEED_ITEMS = [
             IFT:  'ceil((Q.external_api_calls_per_month / 1000000) * S.standSizeRatio.IFT)',
             PSI:  'ceil((Q.external_api_calls_per_month / 1000000) * S.standSizeRatio.PSI)',
             PROD: 'ceil(Q.external_api_calls_per_month / 1000000)',
-            LOAD: 'if(Q.external_api_calls_per_month > 0, max(1, round((Q.external_api_calls_per_month / 1000000) * S.standSizeRatio.LOAD)), 0)'
+            LOAD: 'if(Q.external_api_calls_per_month > 0, max(1, ceil((Q.external_api_calls_per_month / 1000000) * min(S.standSizeRatio.LOAD, 1))), 0)'
         },
-        formulaHelp: 'Млн вызовов = external_api_calls_per_month / 1 000 000 × коэф. стенда.'
+        formulaHelp: 'Млн вызовов = external_api_calls_per_month / 1 000 000 × коэф. стенда. Для LOAD коэффициент выше 1 не увеличивает внешние API автоматически: стресс внешних провайдеров задаётся самим monthly-объёмом.'
     },
     {
         id: 'traffic-egress-tb',
@@ -4518,6 +4518,7 @@ const _AGENT_FORMULA_REFRESH_IDS = [
     'rag-embeddings-1m',
     'rag-vector-db-gb',
     'rag-managed-knowledge-base-gb',
+    'service-external-api-calls-1m',
     'traffic-egress-tb',
     'traffic-ingress-tb',
     'res-dr-active'
