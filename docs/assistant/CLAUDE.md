@@ -2,8 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.99)
+## Current Project Lessons (2026-05-27, v2.20.100)
 
+- In `Итого по расчёту`, the paired `CAPEX/OPEX` row is dropped a few pixels
+  below the cost-structure bar via `margin-top` on `.dash-hero-cost-type-rows`,
+  so the boxes do not sit flush against the bar. Keep the label→bar gap
+  untouched (only the bar→rows gap grows) and do not move the `НДС/Риски` row.
 - In `Итого по расчёту`, compact finance rows are paired on desktop:
   `CAPEX/OPEX` share one row below the cost bar, and `НДС/Риски` share one
   row below it. Keep money/percent aligned within each left/right column and
