@@ -18,9 +18,18 @@ test('Risk contribution composition card stays aligned and non-overlapping', asy
         calcCtl.setSetting('applyRiskFactors', false);
     });
     await page.getByTestId('dashboard-period-annual').click();
-    await expect(page.locator('.dash-card-risk')).toBeVisible();
+    const riskCard = page.locator('.dash-card-risk:visible').first();
+    const riskSegments = riskCard.locator('.dash-risk-segments');
+    await expect(riskCard).toBeVisible();
+    await expect(riskSegments).toBeVisible();
+    await expect.poll(async () => riskSegments.evaluate(node => {
+        const container = node.getBoundingClientRect();
+        const widths = [...node.querySelectorAll('.dash-risk-segment')]
+            .map(seg => seg.getBoundingClientRect().width);
+        return container.width > 0 && widths.length >= 3 && widths.every(width => width > 0);
+    })).toBe(true);
 
-    const segmentSummary = await page.locator('.dash-card-risk .dash-risk-segments').evaluate(node => {
+    const segmentSummary = await riskSegments.evaluate(node => {
         const container = node.getBoundingClientRect();
         const segments = [...node.querySelectorAll('.dash-risk-segment')].map(seg => {
             const rect = seg.getBoundingClientRect();
@@ -45,7 +54,7 @@ test('Risk contribution composition card stays aligned and non-overlapping', asy
         expect(Math.abs(segment.bottom - segmentSummary.segments[0].bottom)).toBeLessThanOrEqual(1);
     }
 
-    const overflow = await page.locator('.dash-card-risk .dash-risk-row')
+    const overflow = await riskCard.locator('.dash-risk-row')
         .evaluateAll(rows => rows.flatMap(row => {
             const cardRect = row.closest('.dash-card-risk').getBoundingClientRect();
             return [...row.querySelectorAll('.dash-risk-row-label, .dash-risk-row-amount, .dash-risk-row-value')]
@@ -63,7 +72,7 @@ test('Risk contribution composition card stays aligned and non-overlapping', asy
         }));
     expect(overflow).toEqual([]);
 
-    const collisions = await page.locator('.dash-card-risk .dash-risk-row')
+    const collisions = await riskCard.locator('.dash-risk-row')
         .evaluateAll(rows => rows.flatMap(row => {
             const label = row.querySelector('.dash-risk-row-label');
             const amount = row.querySelector('.dash-risk-row-amount');
@@ -81,7 +90,7 @@ test('Risk contribution composition card stays aligned and non-overlapping', asy
         }));
     expect(collisions).toEqual([]);
 
-    const amountPctLineBreaks = await page.locator('.dash-card-risk .dash-risk-row')
+    const amountPctLineBreaks = await riskCard.locator('.dash-risk-row')
         .evaluateAll(rows => rows.flatMap(row => {
             const amount = row.querySelector('.dash-risk-row-amount');
             const value = row.querySelector('.dash-risk-row-value');
@@ -107,9 +116,18 @@ test('Category distribution composition card stays aligned and non-overlapping',
         presetId: 'high_ai'
     });
     await page.getByTestId('dashboard-period-monthly').click();
-    await expect(page.locator('.dash-card-categories')).toBeVisible();
+    const categoryCard = page.locator('.dash-card-categories:visible').first();
+    const categorySegments = categoryCard.locator('.dash-category-segments');
+    await expect(categoryCard).toBeVisible();
+    await expect(categorySegments).toBeVisible();
+    await expect.poll(async () => categorySegments.evaluate(node => {
+        const container = node.getBoundingClientRect();
+        const widths = [...node.querySelectorAll('.dash-category-segment')]
+            .map(seg => seg.getBoundingClientRect().width);
+        return container.width > 0 && widths.length >= 4 && widths.every(width => width > 0);
+    })).toBe(true);
 
-    const segmentSummary = await page.locator('.dash-card-categories .dash-category-segments').evaluate(node => {
+    const segmentSummary = await categorySegments.evaluate(node => {
         const container = node.getBoundingClientRect();
         const segments = [...node.querySelectorAll('.dash-category-segment')].map(seg => {
             const rect = seg.getBoundingClientRect();
@@ -134,7 +152,7 @@ test('Category distribution composition card stays aligned and non-overlapping',
         expect(Math.abs(segment.bottom - segmentSummary.segments[0].bottom)).toBeLessThanOrEqual(1);
     }
 
-    const overflow = await page.locator('.dash-card-categories .dash-category-row')
+    const overflow = await categoryCard.locator('.dash-category-row')
         .evaluateAll(rows => rows.flatMap(row => {
             const cardRect = row.closest('.dash-card-categories').getBoundingClientRect();
             return [...row.querySelectorAll('.dash-category-row-label, .dash-category-row-value, .dash-category-row-pct')]
@@ -152,7 +170,7 @@ test('Category distribution composition card stays aligned and non-overlapping',
         }));
     expect(overflow).toEqual([]);
 
-    const collisions = await page.locator('.dash-card-categories .dash-category-row')
+    const collisions = await categoryCard.locator('.dash-category-row')
         .evaluateAll(rows => rows.flatMap(row => {
             const label = row.querySelector('.dash-category-row-label');
             const amount = row.querySelector('.dash-category-row-value');
@@ -170,7 +188,7 @@ test('Category distribution composition card stays aligned and non-overlapping',
         }));
     expect(collisions).toEqual([]);
 
-    const amountPctLineBreaks = await page.locator('.dash-card-categories .dash-category-row')
+    const amountPctLineBreaks = await categoryCard.locator('.dash-category-row')
         .evaluateAll(rows => rows.flatMap(row => {
             const amount = row.querySelector('.dash-category-row-value');
             const value = row.querySelector('.dash-category-row-pct');

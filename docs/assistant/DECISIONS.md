@@ -1,5 +1,20 @@
 # Журнал решений и допущений
 
+## 27.05.2026 · PATCH 2.20.86 — CI-hardening for Dashboard layout contract
+
+**Контекст.** Локально `dashboard-risk-bars-layout.spec.js` проходил в Chrome и
+в CI-like Chromium, но первый GitHub smoke для v2.20.85 упал на измерении
+ширины одного risk-сегмента: DOM был корректный, а геометрия первого измерения
+в параллельном Chromium-прогоне могла быть `0`.
+
+**Решение.** E2E-контракт переведён на явную видимую карточку
+`.dash-card-risk:visible` / `.dash-card-categories:visible` и ждёт ненулевую
+геометрию сегментов через `expect.poll()` перед детальными проверками ширин,
+overflow, collisions и линии `сумма + процент`.
+
+**Защита.** Локально прогнан весь `smoke:desktop` в CI-режиме (`CI=true`,
+bundled Chromium, 2 workers): 52/52 PASS.
+
 ## 27.05.2026 · PATCH 2.20.85 — Dashboard numeric row alignment polish
 
 **Контекст.** После выравнивания верхних карточек Dashboard пользователь

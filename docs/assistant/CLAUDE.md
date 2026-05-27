@@ -2,8 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.85)
+## Current Project Lessons (2026-05-27, v2.20.86)
 
+- Playwright layout contracts for Dashboard cards should measure the visible
+  card and poll for non-zero geometry before reading segment widths. In GitHub
+  Chromium, off-viewport Dashboard cards can be present in DOM while their first
+  measured segment geometry is still zero; tests should guard the user-visible
+  contract, not a transient layout race.
 - Dashboard composition rows must keep the amount and percent on the same
   visual line. This applies to both `Распределение по категориям` and
   `Вклад риск-коэффициентов`; responsive fallbacks may move the label, but the
