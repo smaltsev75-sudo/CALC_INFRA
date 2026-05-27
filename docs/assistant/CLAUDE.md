@@ -2,8 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.100)
+## Current Project Lessons (2026-05-27, v2.20.101)
 
+- Every single-shot `hero.evaluate(...)` that reads `getComputedStyle().fontSize`
+  or geometry right after a period switch must be wrapped in `expect.poll` with a
+  `node.isConnected` guard and `Number.isFinite` checks. A detached hero (briefly
+  alive during the period rerender) keeps `querySelector`/parent links working but
+  returns an empty `fontSize` → `NaN`, so structural assertions pass while the font
+  assertion flakes only under CI load. `dashboard-risk-bars-layout.spec.js`
+  `topTotalsLayout` was the last unguarded block.
 - In `Итого по расчёту`, the paired `CAPEX/OPEX` row is dropped a few pixels
   below the cost-structure bar via `margin-top` on `.dash-hero-cost-type-rows`,
   so the boxes do not sit flush against the bar. Keep the label→bar gap

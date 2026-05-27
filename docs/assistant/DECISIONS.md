@@ -1,5 +1,36 @@
 # Журнал решений и допущений
 
+## 27.05.2026 · PATCH 2.20.101 — Harden flaky hero totals E2E measurement
+
+**Контекст.** CI-job `Desktop Playwright smoke` упал на пуше v2.20.100: тест
+`dashboard-risk-bars-layout.spec.js:274` дал `altValueFontPx: NaN` (ожидалось
+`>= 13`). Прод-код исправен — CSS-правка v2.20.100 (`margin-top: 6px` на плашках
+CAPEX/OPEX) к измеряемому `.dash-hero-alt-value` отношения не имеет. Локально
+тест стабильно зелёный (5/5 chrome, 12/12 chromium). Это тайминговая гонка: клик
+по переключателю периода запускает асинхронный ре-рендер hero, а первый блок
+замера `topTotalsLayout` читал узел одноразовым `hero.evaluate(...)` без ожидания
+оседания. Под нагрузкой CI (2 воркера × 55 тестов, chromium) замер ловил уже
+отсоединённый узел: на нём `querySelector` и parent-связи ещё работают
+(структурные проверки зелёные, detached `getBoundingClientRect` → нули → дельта
+проходит), а `getComputedStyle(el).fontSize` возвращает `''` → `parseFloat('')`
+= `NaN`. Та же нестабильность ранее роняла CI в v2.20.85/.87/.89/.91/.94 — это
+ровно тот класс, про который CLAUDE.md уже предупреждает: «Dashboard E2E geometry
+assertions must poll until the measured boxes are non-zero in GitHub Chromium».
+
+**Решение.** Блок `topTotalsLayout` обёрнут в `expect.poll` — тем же идиомом,
+что уже принят ниже в этом тесте для `heroPairedRowsLayout` и
+`expectInactiveDecoration`. Внутри `evaluate` добавлены guard'ы `node.isConnected`
+и проверки на `null` всех под-узлов, а условие poll требует `Number.isFinite`
+для обоих размеров шрифта. Замер повторяется, пока не прочитает осевший
+подключённый узел. Прод-код, CSS и контракт не менялись — только устойчивость
+теста.
+
+**Защита.** §5.bis: единственные чтения `getComputedStyle().fontSize` в e2e —
+внутри этого polled-блока; `three-views-reconcile.spec.js` читает hero-альтернативы
+через авто-retry `.allInnerTexts()` (не detached-риск). Прогоны: исправленный
+тест 8/8 зелёный на chromium с 2 воркерами; полный desktop smoke 55/55 (EXIT=0)
+на chromium; unit 5339/5339; syntax-check и whitespace чистые.
+
 ## 27.05.2026 · PATCH 2.20.100 — Space hero CAPEX/OPEX below cost bar
 
 **Контекст.** В карточке `Итого по расчёту` плашки `CAPEX/OPEX` стояли почти

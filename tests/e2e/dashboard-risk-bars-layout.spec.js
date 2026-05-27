@@ -291,22 +291,46 @@ test('Dashboard total resources live inside total card and inactive risk/VAT val
     await expect(hero.locator('> .dash-dashboard-metrics .dash-resources')).toBeVisible();
     await expect(hero.locator('> .dash-dashboard-metrics .dash-ai-metrics')).toBeVisible();
 
-    const topTotalsLayout = await hero.evaluate(node => {
-        const main = node.querySelector('.dash-hero-main');
-        const value = node.querySelector('.dash-hero-value');
-        const alt = node.querySelector('.dash-hero-alt');
-        const altValue = node.querySelector('.dash-hero-alt-value');
-        const altLabel = node.querySelector('.dash-hero-alt-label');
-        const valueRect = value.getBoundingClientRect();
-        const altRect = alt.getBoundingClientRect();
-        return {
-            altInsideMain: alt?.parentElement === main,
-            altValueCount: alt?.querySelectorAll('.dash-hero-alt-value').length || 0,
-            sameVisualLine: Math.abs(valueRect.top - altRect.top) <= 12,
-            altValueFontPx: Number.parseFloat(getComputedStyle(altValue).fontSize),
-            altLabelFontPx: Number.parseFloat(getComputedStyle(altLabel).fontSize)
-        };
-    });
+    // Замер через expect.poll, а не одноразовый evaluate: клик по периоду выше
+    // запускает асинхронный ре-рендер hero. Если читать сразу, под нагрузкой
+    // (CI, 2 воркера) можно поймать уже отсоединённый узел — на нём querySelector
+    // и parent-связи ещё работают, но getComputedStyle().fontSize возвращает ''
+    // → parseFloat('') === NaN. Guard node.isConnected + Number.isFinite + повтор
+    // дожидаются осевшего, подключённого узла. Тот же идиом, что ниже для
+    // heroPairedRowsLayout и expectInactiveDecoration.
+    let topTotalsLayout = null;
+    await expect.poll(async () => {
+        const layout = await hero.evaluate(node => {
+            if (!node.isConnected) return null;
+            const main = node.querySelector('.dash-hero-main');
+            const value = node.querySelector('.dash-hero-value');
+            const alt = node.querySelector('.dash-hero-alt');
+            const altValue = node.querySelector('.dash-hero-alt-value');
+            const altLabel = node.querySelector('.dash-hero-alt-label');
+            if (!main || !value || !alt || !altValue || !altLabel) return null;
+            const valueRect = value.getBoundingClientRect();
+            const altRect = alt.getBoundingClientRect();
+            return {
+                altInsideMain: alt.parentElement === main,
+                altValueCount: alt.querySelectorAll('.dash-hero-alt-value').length,
+                sameVisualLine: Math.abs(valueRect.top - altRect.top) <= 12,
+                altValueFontPx: Number.parseFloat(getComputedStyle(altValue).fontSize),
+                altLabelFontPx: Number.parseFloat(getComputedStyle(altLabel).fontSize)
+            };
+        });
+        if (
+            layout &&
+            layout.altInsideMain &&
+            layout.altValueCount === 2 &&
+            layout.sameVisualLine &&
+            Number.isFinite(layout.altValueFontPx) && layout.altValueFontPx >= 13 &&
+            Number.isFinite(layout.altLabelFontPx) && layout.altLabelFontPx >= 11
+        ) {
+            topTotalsLayout = layout;
+            return true;
+        }
+        return false;
+    }).toBe(true);
     expect(topTotalsLayout.altInsideMain).toBe(true);
     expect(topTotalsLayout.altValueCount).toBe(2);
     expect(topTotalsLayout.sameVisualLine).toBe(true);
