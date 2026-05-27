@@ -282,17 +282,23 @@ test('Dashboard total resources live inside total card and inactive risk/VAT val
         const main = node.querySelector('.dash-hero-main');
         const value = node.querySelector('.dash-hero-value');
         const alt = node.querySelector('.dash-hero-alt');
+        const altValue = node.querySelector('.dash-hero-alt-value');
+        const altLabel = node.querySelector('.dash-hero-alt-label');
         const valueRect = value.getBoundingClientRect();
         const altRect = alt.getBoundingClientRect();
         return {
             altInsideMain: alt?.parentElement === main,
             altValueCount: alt?.querySelectorAll('.dash-hero-alt-value').length || 0,
-            sameVisualLine: Math.abs(valueRect.top - altRect.top) <= 12
+            sameVisualLine: Math.abs(valueRect.top - altRect.top) <= 12,
+            altValueFontPx: Number.parseFloat(getComputedStyle(altValue).fontSize),
+            altLabelFontPx: Number.parseFloat(getComputedStyle(altLabel).fontSize)
         };
     });
     expect(topTotalsLayout.altInsideMain).toBe(true);
     expect(topTotalsLayout.altValueCount).toBe(2);
     expect(topTotalsLayout.sameVisualLine).toBe(true);
+    expect(topTotalsLayout.altValueFontPx).toBeGreaterThanOrEqual(13);
+    expect(topTotalsLayout.altLabelFontPx).toBeGreaterThanOrEqual(11);
 
     const totalLayout = await page.evaluate(() => {
         const heroNode = [...document.querySelectorAll('.dash-card-hero')]

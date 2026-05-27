@@ -2,8 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.97)
+## Current Project Lessons (2026-05-27, v2.20.98)
 
+- Hero inline alternate period totals must remain readable. Do not shrink the
+  right-side `.dash-hero-alt-value` into tiny annotation text; if space is
+  tight, keep compact `/д`/`/мес`/`/год` labels and verify bar alignment.
 - In `Итого по расчёту`, adjacent period totals belong in the top KPI row,
   not as separate lower rows. Keep the main selected period prominent and
   render the two alternate periods inline in `.dash-hero-main`.

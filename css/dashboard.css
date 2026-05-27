@@ -335,7 +335,7 @@
 .dash-hero-body {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     padding: 0;
     flex: 1;
     justify-content: flex-start;
@@ -501,7 +501,7 @@
     display: inline-flex;
     align-items: baseline;
     justify-content: flex-end;
-    gap: 8px;
+    gap: 10px;
     padding: 0;
     border-top: 0;
     min-width: 0;
@@ -512,14 +512,14 @@
 .dash-hero-alt-item {
     display: inline-flex;
     align-items: baseline;
-    gap: 3px;
+    gap: 4px;
     white-space: nowrap;
     min-width: 0;
 }
 
 .dash-hero-alt-value {
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: 0.86rem;
     color: var(--text);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -528,7 +528,7 @@
 
 .dash-hero-alt-label {
     font-family: var(--font-mono);
-    font-size: 0.66rem;
+    font-size: 0.74rem;
     color: var(--text-muted);
     text-transform: none;
     letter-spacing: 0;
