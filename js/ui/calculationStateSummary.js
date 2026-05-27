@@ -290,7 +290,6 @@ function renderDiagnostics(score, healthCounts, gap, ctx, calc, providerPriceWar
 function renderCostOptimizationTeaser(nextStep, ctx) {
     const rangeMin = Math.min(...PLAN_TIERS.map(t => t.range.minPercent));
     const rangeMax = Math.max(...PLAN_TIERS.map(t => t.range.maxPercent));
-    const tiers = PLAN_TIERS.map(t => t.title).join(' · ');
     const primaryIsPlanner = nextStep?.target === 'cost_optimization_planner';
 
     return el('div', { class: 'calc-state-summary-optimization' },
@@ -298,10 +297,6 @@ function renderCostOptimizationTeaser(nextStep, ctx) {
             el('span', {
                 class: 'calc-state-summary-optimization-title',
                 text: 'Оптимизация стоимости'
-            }),
-            el('span', {
-                class: 'calc-state-summary-optimization-tags',
-                text: tiers
             })
         ),
         el('p', {

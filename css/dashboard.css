@@ -3941,45 +3941,46 @@
  * ============================================================ */
 
 .calc-state-summary {
-    padding: 16px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3, 12px);
+    container-type: inline-size;
+    container-name: calc-state-summary;
+    padding: 18px 20px;
+    display: grid;
+    gap: 12px;
+    align-content: start;
 }
 
 /* ----- Header (title + badges) ----- */
 
 .calc-state-summary-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: var(--space-3, 12px);
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
 }
 
 .calc-state-summary-title {
     margin: 0;
-    font-size: var(--font-md, 1.05rem);
-    font-weight: 600;
+    font-size: 1.02rem;
+    font-weight: 700;
     color: var(--text);
-    flex-shrink: 0;
+    letter-spacing: 0;
 }
 
 .calc-state-summary-badges {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2, 8px);
-    justify-content: flex-end;
+    gap: 6px;
+    justify-content: flex-start;
 }
 
 .calc-state-summary-badge {
     display: inline-flex;
     align-items: center;
-    padding: 4px 10px;
+    padding: 4px 9px;
     border-radius: 999px;
     font-weight: 600;
-    font-size: 0.86rem;
+    font-size: 0.78rem;
     border: 1px solid transparent;
     background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
     white-space: nowrap;
@@ -4020,47 +4021,52 @@
 
 .calc-state-summary-verdict {
     margin: 0;
-    color: var(--text);
-    font-size: var(--font-sm, 0.95rem);
+    color: var(--text-muted);
+    font-size: 0.9rem;
     line-height: 1.4;
 }
-.calc-state-summary-green  .calc-state-summary-verdict { color: var(--text); }
-.calc-state-summary-yellow .calc-state-summary-verdict { color: var(--text); }
-.calc-state-summary-red    .calc-state-summary-verdict { color: var(--text); }
+.calc-state-summary-green  .calc-state-summary-verdict { color: var(--text-muted); }
+.calc-state-summary-yellow .calc-state-summary-verdict { color: var(--text-muted); }
+.calc-state-summary-red    .calc-state-summary-verdict { color: var(--text-muted); }
 
 /* ----- Diagnostic rows (Качество / Бюджет) ----- */
 
 .calc-state-summary-diagnostics {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-2, 8px);
-}
-@container (max-width: 720px) {
-    .calc-state-summary-diagnostics { grid-template-columns: 1fr; }
-}
-@media (max-width: 720px) {
-    .calc-state-summary-diagnostics { grid-template-columns: 1fr; }
+    grid-template-columns: 1fr;
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-elevated, var(--bg-card));
 }
 
 .calc-state-summary-row {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: var(--space-2, 8px) var(--space-3, 12px);
+    display: grid;
+    grid-template-columns: minmax(120px, 0.34fr) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 50px;
+    padding: 10px 12px;
     background: var(--bg-elevated, var(--bg-card));
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    border-radius: 0;
+}
+.calc-state-summary-row:last-child {
+    border-bottom: 0;
 }
 
 .calc-state-summary-row-provider-price {
-    border-left: 3px solid var(--warning);
+    box-shadow: inset 3px 0 0 var(--warning);
 }
 .calc-state-summary-row-provider-actuality {
-    border-left: 3px solid var(--accent);
+    box-shadow: inset 3px 0 0 var(--accent);
 }
 .calc-state-summary-row-note {
     color: var(--text-muted);
     font-size: var(--font-xs, 0.78rem);
+    white-space: nowrap;
 }
 
 .dashboard-price-actuality,
@@ -4104,30 +4110,44 @@
 .calc-state-summary-row-title {
     color: var(--text-muted);
     font-weight: 600;
-    font-size: var(--font-xs, 0.82rem);
+    font-size: 0.76rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+    min-width: 0;
 }
 
 .calc-state-summary-row-body {
     color: var(--text);
-    font-size: var(--font-sm, 0.92rem);
+    font-size: 0.86rem;
     line-height: 1.4;
+    min-width: 0;
 }
 
 .calc-state-summary-row-actions {
     display: flex;
     justify-content: flex-end;
-    margin-top: 4px;
+    margin-top: 0;
+    min-width: max-content;
+}
+.calc-state-summary-row-actions .btn {
+    min-height: 34px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.82rem;
 }
 
 /* ----- Next step (primary action) ----- */
 
 .calc-state-summary-next {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: var(--space-3, 12px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "label action"
+        "title action"
+        "body  action";
+    align-items: center;
+    gap: 3px 14px;
+    padding: 12px;
     border-radius: 8px;
     border: 1px solid var(--border);
     background: var(--bg-elevated, var(--bg-card));
@@ -4139,30 +4159,37 @@
 .calc-state-summary-next-info   { border-left-color: var(--text-muted); }
 
 .calc-state-summary-next-label {
+    grid-area: label;
     color: var(--text-muted);
-    font-size: var(--font-xs, 0.82rem);
+    font-size: 0.74rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     font-weight: 600;
 }
 
 .calc-state-summary-next-title {
+    grid-area: title;
     color: var(--text);
-    font-size: var(--font-md, 1.0rem);
-    font-weight: 600;
+    font-size: 0.96rem;
+    font-weight: 700;
+    min-width: 0;
 }
 
 .calc-state-summary-next-body {
+    grid-area: body;
     margin: 0;
     color: var(--text-muted);
-    font-size: var(--font-sm, 0.92rem);
+    font-size: 0.84rem;
     line-height: 1.4;
+    min-width: 0;
 }
 
 .calc-state-summary-next-actions {
+    grid-area: action;
     display: flex;
     justify-content: flex-end;
-    margin-top: var(--space-2, 8px);
+    margin-top: 0;
+    min-width: max-content;
 }
 
 .calc-state-summary-next-cta {
@@ -4178,58 +4205,108 @@
    относительно блока `.calc-state-summary-next` (там — primary CTA). */
 
 .calc-state-summary-optimization {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: var(--space-2, 8px) var(--space-3, 12px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "head action"
+        "text action";
+    align-items: center;
+    gap: 4px 14px;
+    padding: 11px 12px;
     border-radius: 8px;
-    /* Stage 18.2.x fix: bg выровнен с siblings (.calc-state-summary-row /
-       .calc-state-summary-next), которые залиты --bg-elevated. До этого
-       был `transparent` → просвечивал --bg-card родительского composite
-       (в light: #faf2db vs sibling #e3d4ad, в dark: #243044 vs #334155 —
-       визуальное «другая подложка»). Dashed-border сохраняем как явный
-       secondary-action signal (см. шапку секции 3725-3728). */
-    border: 1px dashed var(--border);
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
     background: var(--bg-elevated, var(--bg-card));
 }
 
 .calc-state-summary-optimization-head {
+    grid-area: head;
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--space-2, 8px);
+    gap: 8px;
     justify-content: space-between;
+    min-width: 0;
 }
 
 .calc-state-summary-optimization-title {
     color: var(--text);
     font-weight: 600;
-    font-size: var(--font-sm, 0.95rem);
-}
-
-.calc-state-summary-optimization-tags {
-    color: var(--text-muted);
-    font-size: var(--font-xs, 0.82rem);
-    letter-spacing: 0.04em;
+    font-size: 0.86rem;
 }
 
 .calc-state-summary-optimization-text {
+    grid-area: text;
     margin: 0;
     color: var(--text-muted);
-    font-size: var(--font-sm, 0.92rem);
+    font-size: 0.84rem;
     line-height: 1.4;
+    min-width: 0;
 }
 
 .calc-state-summary-optimization-actions {
+    grid-area: action;
     display: flex;
     justify-content: flex-end;
-    margin-top: 4px;
+    margin-top: 0;
+    min-width: max-content;
 }
 
 .calc-state-summary-optimization-cta {
     display: inline-flex;
     align-items: center;
     gap: 4px;
+}
+
+@container calc-state-summary (max-width: 460px) {
+    .calc-state-summary-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "title action"
+            "body  action";
+        align-items: center;
+    }
+    .calc-state-summary-row-title { grid-area: title; }
+    .calc-state-summary-row-body { grid-area: body; }
+    .calc-state-summary-row-actions { grid-area: action; }
+
+    .calc-state-summary-next,
+    .calc-state-summary-optimization {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "label"
+            "title"
+            "body"
+            "action";
+    }
+    .calc-state-summary-optimization {
+        grid-template-areas:
+            "head"
+            "text"
+            "action";
+    }
+    .calc-state-summary-next-actions,
+    .calc-state-summary-optimization-actions {
+        justify-content: flex-start;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 720px) {
+    .calc-state-summary-row {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "title"
+            "body"
+            "action";
+        align-items: start;
+    }
+    .calc-state-summary-row-title { grid-area: title; }
+    .calc-state-summary-row-body { grid-area: body; }
+    .calc-state-summary-row-actions {
+        grid-area: action;
+        justify-content: flex-start;
+        min-width: 0;
+    }
 }
 
 /* ----- Печать ----- */

@@ -2,8 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.90)
+## Current Project Lessons (2026-05-27, v2.20.91)
 
+- `Сводка состояния расчёта` should read as one compact operational summary,
+  not nested cards inside a card. Keep diagnostics as a single vertical signal
+  list and keep `Следующий шаг` / `Оптимизация стоимости` as action rows in
+  one visual grammar. Avoid long decorative tier text in the compact teaser;
+  detailed optimization levels belong in the modal.
 - Dashboard E2E geometry assertions must poll until the measured text/segment
   boxes are non-zero in GitHub Chromium. A locator can be visible while child
   inline spans still return zero rects during first layout; assert the stable
