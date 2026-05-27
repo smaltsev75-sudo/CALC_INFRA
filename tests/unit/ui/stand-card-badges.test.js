@@ -131,21 +131,24 @@ describe('Стенд-карточка: единый контейнер для б
     /* ============================================================
      * 12.U25-fix-2: сумма НДС в теле стенд-карточки.
      *
-     * Hero на дашборде показывает разбивку «НДС: 5 259 313 ₽ /мес» под главной
+     * Hero на дашборде показывает НДС в табличной breakdown-строке под главной
      * суммой. На стенд-карточках был только бейдж «С НДС 20%» без суммы — то
      * есть пользователь видел СТАТУС НДС, но не видел СКОЛЬКО налога именно
-     * на этом стенде. Теперь и стенд-карточки рендерят `renderVatBreakdownLine`
+     * на этом стенде. Стенд-карточки по-прежнему рендерят `renderVatBreakdownLine`
      * под основным числом стенда.
      * ============================================================ */
 
-    it('renderStandCard вызывает renderVatBreakdownLine для суммы НДС в теле карточки', () => {
-        // Должно быть как минимум 2 вызова renderVatBreakdownLine в dashboard.js:
-        //   1) в renderHero (для итога)
-        //   2) в renderStandCard (для стенда)
-        const matches = dashboardSource.match(/renderVatBreakdownLine\s*\(/g) || [];
-        assert.ok(matches.length >= 2,
-            `renderVatBreakdownLine должен вызываться минимум в 2 местах (Hero + StandCard), ` +
-            `найдено ${matches.length}`);
+    it('renderHero показывает сумму НДС отдельной breakdown-строкой', () => {
+        const heroIdx = dashboardSource.indexOf('function renderHero');
+        assert.ok(heroIdx > 0, 'функция renderHero должна существовать');
+        const nextFnIdx = dashboardSource.indexOf('\nfunction ', heroIdx + 20);
+        const heroBody = nextFnIdx > 0
+            ? dashboardSource.slice(heroIdx, nextFnIdx)
+            : dashboardSource.slice(heroIdx);
+        assert.match(heroBody, /extractVatAmount\s*\(/,
+            'renderHero должен извлекать сумму НДС из итога');
+        assert.match(heroBody, /dash-hero-breakdown-row-vat/,
+            'renderHero должен показывать НДС в .dash-hero-breakdown-row-vat');
     });
 
     it('renderVatBreakdownLine в стенд-карточке использует total стенда (data.totalMonthly/Daily/Annual)', () => {

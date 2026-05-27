@@ -13,6 +13,10 @@ test('Risk contribution composition card stays aligned and non-overlapping', asy
         name: 'Risk bars layout contract',
         presetId: 'high_ai'
     });
+    await page.evaluate(async () => {
+        const calcCtl = await import(new URL('js/controllers/calcController.js', document.baseURI).href);
+        calcCtl.setSetting('applyRiskFactors', false);
+    });
     await page.getByTestId('dashboard-period-annual').click();
     await expect(page.locator('.dash-card-risk')).toBeVisible();
 
@@ -76,6 +80,21 @@ test('Risk contribution composition card stays aligned and non-overlapping', asy
             return bad.map(type => ({ type, text: row.textContent.trim() }));
         }));
     expect(collisions).toEqual([]);
+
+    const amountPctLineBreaks = await page.locator('.dash-card-risk .dash-risk-row')
+        .evaluateAll(rows => rows.flatMap(row => {
+            const amount = row.querySelector('.dash-risk-row-amount');
+            const value = row.querySelector('.dash-risk-row-value');
+            if (!amount || !value) return [];
+            const amountRect = amount.getBoundingClientRect();
+            const valueRect = value.getBoundingClientRect();
+            const centerDelta = Math.abs(
+                (amountRect.top + amountRect.bottom) / 2 -
+                (valueRect.top + valueRect.bottom) / 2
+            );
+            return centerDelta > 2 ? [{ text: row.textContent.trim(), centerDelta }] : [];
+        }));
+    expect(amountPctLineBreaks).toEqual([]);
 
     expect(consoleErrors).toEqual([]);
 });
@@ -150,6 +169,21 @@ test('Category distribution composition card stays aligned and non-overlapping',
             return bad.map(type => ({ type, text: row.textContent.trim() }));
         }));
     expect(collisions).toEqual([]);
+
+    const amountPctLineBreaks = await page.locator('.dash-card-categories .dash-category-row')
+        .evaluateAll(rows => rows.flatMap(row => {
+            const amount = row.querySelector('.dash-category-row-value');
+            const value = row.querySelector('.dash-category-row-pct');
+            if (!amount || !value) return [];
+            const amountRect = amount.getBoundingClientRect();
+            const valueRect = value.getBoundingClientRect();
+            const centerDelta = Math.abs(
+                (amountRect.top + amountRect.bottom) / 2 -
+                (valueRect.top + valueRect.bottom) / 2
+            );
+            return centerDelta > 2 ? [{ text: row.textContent.trim(), centerDelta }] : [];
+        }));
+    expect(amountPctLineBreaks).toEqual([]);
 
     expect(consoleErrors).toEqual([]);
 });

@@ -2,8 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.84)
+## Current Project Lessons (2026-05-27, v2.20.85)
 
+- Dashboard composition rows must keep the amount and percent on the same
+  visual line. This applies to both `Распределение по категориям` and
+  `Вклад риск-коэффициентов`; responsive fallbacks may move the label, but the
+  numeric pair `сумма + доля` stays together.
+- Stacked composition segments must not shrink to zero for tiny positive
+  shares. Use non-shrinking segment items and filter out only truly zero-risk
+  contributions; otherwise a valid small factor such as schedule shift becomes
+  invisible and layout tests become flaky.
+- `Итого по расчёту` should use meaningful compact rows for NDS, risks, period
+  alternates and CAPEX/OPEX, not an empty hero area or resource blocks inside
+  the hero. Total resource/AI cards live below the top row and should not
+  stretch each other to equal height.
 - Dashboard top row cards should share one visual grammar and one row height.
   `Итого по расчёту`, `Распределение по категориям` and
   `Вклад риск-коэффициентов` use the same composition pattern: large amount,

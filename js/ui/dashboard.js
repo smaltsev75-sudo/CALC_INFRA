@@ -39,8 +39,8 @@ import { calculate } from '../domain/calculator.js';
 import { applyStandFilter } from '../domain/standsFilter.js';
 import { renderStandToggles } from './standToggles.js';
 import { icon } from './icons.js';
-import { renderVatBadge, renderVatBreakdownLine } from './vatBadge.js';
-import { renderRiskBreakdownLine } from './riskBreakdown.js';
+import { extractVatAmount, renderVatBadge, renderVatBreakdownLine, vatInfo } from './vatBadge.js';
+import { extractRiskAmount, renderRiskBreakdownLine } from './riskBreakdown.js';
 import { renderCalculationStateSummary } from './calculationStateSummary.js';
 import { renderScenarioBadge } from './scenarioBadge.js';
 import { renderCalculationProviderPriceActuality } from './providerPriceActuality.js';
@@ -281,6 +281,12 @@ function renderHero(result, period, ctx, applyRisks = true, calc = null) {
     const ctSum = (byCostType.capex || 0) + (byCostType.opex || 0);
     const capexPct = ctSum > 0 ? byCostType.capex / ctSum : 0;
     const opexPct  = ctSum > 0 ? byCostType.opex  / ctSum : 0;
+    const vat = calc ? vatInfo(calc) : null;
+    const vatAmount = vat?.enabled ? extractVatAmount(total, vat.vatMul) : 0;
+    const riskAmount = extractRiskAmount(heroCells) * mul;
+    const riskPctText = Number.isFinite(surplusPct) && Math.abs(surplusPct) >= 0.05
+        ? `${surplusPct >= 0 ? '+' : ''}${formatNumber(surplusPct, { min: 1, max: 1 })}%`
+        : null;
 
     return el('article', {
         class: ['dash-card', 'dash-card-hero', !applyRisks && 'dash-card-hero-base'],
@@ -331,19 +337,28 @@ function renderHero(result, period, ctx, applyRisks = true, calc = null) {
                 el('div', { class: 'dash-hero-value' },
                     el('span', { class: 'dash-hero-value-amount', text: fmtRubForPeriod(total, period) }),
                     el('span', { class: 'dash-hero-value-unit', text: slash })
-                ),
-                el('div', { class: 'dash-hero-kpi-lines' },
-                    /* 12.U23: разбивка НДС — «НДС: X тыс. ₽ /мес» под главной суммой.
-                       Когда НДС выключен — null (бейдж «БЕЗ НДС» сам всё сказал).
-                       useThousands=true — на Дашборде все суммы с точностью до тысяч. */
-                    calc ? renderVatBreakdownLine(calc, total, slash, { useThousands: true }) : null,
-                    /* 12.U25-fix-6/8: разбивка суммы рисков — «Риски: Y тыс. ₽ /мес [+86.6% от базы]».
-                       Inline-пилл с процентом передаётся ТОЛЬКО на Hero (для стенд-карточек
-                       процент = шум, там просто «Риски: ₽»). Раньше пилл стоял отдельной
-                       строкой над НДС/Рисками — теперь логически склеен с риск-наценкой. */
-                    renderRiskBreakdownLine(heroCells, applyRisks, mul, slash,
-                        riskInfo ? riskInfo.surplus * 100 : null, { useThousands: true })
                 )
+            ),
+            el('div', { class: 'dash-hero-breakdown' },
+                vatAmount > 0 ? el('div', {
+                    class: 'dash-hero-breakdown-row dash-hero-breakdown-row-vat',
+                    title: 'НДС рассчитан из итоговой суммы; ставка настраивается в Опроснике.'
+                },
+                    el('span', { class: 'dash-hero-breakdown-label', text: 'НДС' }),
+                    el('span', { class: 'dash-hero-breakdown-amount', text: fmtRubForPeriod(vatAmount, period) }),
+                    el('span', { class: 'dash-hero-breakdown-value', text: `${Math.round((vat?.rate || 0) * 100)}%` })
+                ) : null,
+                riskAmount > 0 ? el('div', {
+                    class: ['dash-hero-breakdown-row', 'dash-hero-breakdown-row-risk',
+                        !applyRisks && 'dash-hero-breakdown-row-risk-potential'],
+                    title: applyRisks
+                        ? 'Риск-коэффициенты уже включены в итог.'
+                        : 'Риск-коэффициенты сейчас не применены к итогу.'
+                },
+                    el('span', { class: 'dash-hero-breakdown-label', text: 'Риски' }),
+                    el('span', { class: 'dash-hero-breakdown-amount', text: fmtRubForPeriod(riskAmount, period) }),
+                    el('span', { class: 'dash-hero-breakdown-value', text: riskPctText || '—' })
+                ) : null
             ),
             /* Соседние периоды — один слева (меньший по таймскейлу: day < month < year),
                другой справа (больший). Симметрично смотрятся под главным числом. */

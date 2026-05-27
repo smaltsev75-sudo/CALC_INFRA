@@ -201,7 +201,7 @@ export function renderRiskCard(result, calc, period, applyRisks = true) {
     const surplusPeriod = surplusMonthly * mul;
 
     const visible = data.items
-        .filter(it => Math.abs(it.multiplier - 1) > 1e-6)
+        .filter(it => Math.abs(it.multiplier - 1) > 1e-6 && it.shareOfSurplus > 1e-6)
         // Сортировка по убыванию вклада в общую наценку (самый «дорогой» риск — первым).
         .sort((a, b) => b.shareOfSurplus - a.shareOfSurplus);
 

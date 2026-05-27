@@ -327,6 +327,8 @@
     flex-direction: column;
     gap: 12px;
     padding: 0;
+    flex: 1;
+    justify-content: flex-start;
 }
 
 .dash-hero-main {
@@ -381,6 +383,66 @@
     margin-top: 0;
 }
 
+.dash-hero-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.dash-hero-breakdown-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 56px;
+    align-items: center;
+    min-height: 38px;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--border) 42%, transparent);
+    background: color-mix(in srgb, var(--bg-input) 54%, transparent);
+    font-size: 0.82rem;
+}
+
+.dash-hero-breakdown-label {
+    color: var(--text);
+    font-weight: 600;
+    min-width: 0;
+}
+
+.dash-hero-breakdown-amount {
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.dash-hero-breakdown-value {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.dash-hero-breakdown-row-vat .dash-hero-breakdown-value {
+    color: #7dd3fc;
+}
+
+.dash-hero-breakdown-row-risk .dash-hero-breakdown-value,
+.dash-hero-breakdown-row-risk .dash-hero-breakdown-amount {
+    color: var(--accent);
+}
+
+.dash-hero-breakdown-row-risk-potential .dash-hero-breakdown-value,
+.dash-hero-breakdown-row-risk-potential .dash-hero-breakdown-amount {
+    color: var(--warning);
+    font-style: italic;
+}
+
 
 .dash-hero-sub {
     display: inline-flex;
@@ -404,38 +466,49 @@
 .dash-hero-delta-down { background: var(--success-faint); color: var(--success); }
 
 .dash-hero-alt {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: 7px;
     padding: 0;
     border-top: 0;
 }
 
 .dash-hero-alt-item {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
     padding: 8px 10px;
     min-height: 38px;
     border-radius: 6px;
     border: 1px solid color-mix(in srgb, var(--border) 42%, transparent);
     background: color-mix(in srgb, var(--bg-input) 54%, transparent);
 }
-.dash-hero-alt-item-left  { align-items: flex-start; text-align: left; }
-.dash-hero-alt-item-right { align-items: flex-end;   text-align: right; }
+.dash-hero-alt-item-left,
+.dash-hero-alt-item-right {
+    text-align: left;
+}
 
 .dash-hero-alt-value {
     font-family: var(--font-mono);
-    font-size: 0.95rem;
+    font-size: 0.78rem;
     color: var(--text);
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+    grid-column: 2;
+    grid-row: 1;
 }
 
 .dash-hero-alt-label {
-    font-size: 0.72rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+    grid-column: 1;
+    grid-row: 1;
 }
 
 /* === Hero: блок CAPEX/OPEX (12.U25-fix-18) ===
@@ -1344,7 +1417,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 18px;
-    align-items: stretch;
+    align-items: start;
     min-width: 0;
 }
 
@@ -1359,7 +1432,6 @@
 .dash-dashboard-metrics > .dash-resources {
     margin-top: 0;
     padding: 14px 16px;
-    height: 100%;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
@@ -1452,6 +1524,7 @@
 
 .dash-category-segment {
     display: block;
+    flex: 0 0 auto;
     min-width: 3px;
     height: 100%;
 }
@@ -1517,25 +1590,25 @@
     text-align: right;
 }
 
-@container category-card (max-width: 430px) {
+@container category-card (max-width: 320px) {
     .dash-category-row {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         grid-template-areas:
-            "label amount"
-            "label pct";
+            "label label"
+            "amount pct";
         column-gap: 10px;
         row-gap: 6px;
     }
 
     .dash-category-row-label {
         grid-area: label;
-        align-self: center;
     }
 
     .dash-category-row-value {
         grid-area: amount;
         min-width: 0;
+        text-align: right;
     }
 
     .dash-category-row-pct {
@@ -1634,6 +1707,7 @@
 
 .dash-risk-segment {
     display: block;
+    flex: 0 0 auto;
     min-width: 3px;
     height: 100%;
     background: linear-gradient(90deg, var(--risk-tone), var(--risk-tone-2));
@@ -1712,25 +1786,25 @@
     text-align: right;
 }
 
-@container risk-card (max-width: 430px) {
+@container risk-card (max-width: 320px) {
     .dash-risk-row {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         grid-template-areas:
-            "label amount"
-            "label value";
+            "label label"
+            "amount value";
         column-gap: 10px;
         row-gap: 6px;
     }
 
     .dash-risk-row-label {
         grid-area: label;
-        align-self: center;
     }
 
     .dash-risk-row-amount {
         grid-area: amount;
         min-width: 0;
+        text-align: right;
     }
 
     .dash-risk-row-value {
@@ -2071,7 +2145,6 @@
 .dash-dashboard-metrics > .dash-ai-metrics {
     margin-top: 0;
     padding: 14px 16px;
-    height: 100%;
     border: 1px solid rgba(38, 212, 154, 0.22);
     border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--accent-faint) 70%, var(--bg-card));
