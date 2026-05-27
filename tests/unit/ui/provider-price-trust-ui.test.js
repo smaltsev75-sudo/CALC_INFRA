@@ -176,6 +176,7 @@ describe('price actuality appears wherever user sees cost output', () => {
         assert.doesNotMatch(SCENARIO_CMP_SRC, /title\s*:\s*actuality\.title/);
         assert.doesNotMatch(COMPARISON_SRC, /title\s*:\s*info\.title/);
         assert.doesNotMatch(STATE_SUMMARY_SRC, /title\s*:\s*info\.title/);
+        assert.doesNotMatch(STATE_SUMMARY_SRC, /Дата актуальности/);
     });
 });
 

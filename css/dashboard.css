@@ -3945,7 +3945,7 @@
     container-name: calc-state-summary;
     padding: 18px 20px;
     display: grid;
-    gap: 12px;
+    gap: 10px;
     align-content: start;
 }
 
@@ -4053,6 +4053,9 @@
     border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
     border-radius: 0;
 }
+.calc-state-summary-row-static {
+    grid-template-columns: minmax(120px, 0.34fr) minmax(0, 1fr);
+}
 .calc-state-summary-row:last-child {
     border-bottom: 0;
 }
@@ -4062,11 +4065,6 @@
 }
 .calc-state-summary-row-provider-actuality {
     box-shadow: inset 3px 0 0 var(--accent);
-}
-.calc-state-summary-row-note {
-    color: var(--text-muted);
-    font-size: var(--font-xs, 0.78rem);
-    white-space: nowrap;
 }
 
 .dashboard-price-actuality,
@@ -4129,29 +4127,55 @@
     margin-top: 0;
     min-width: max-content;
 }
-.calc-state-summary-row-actions .btn {
+.calc-state-summary-row-actions .btn,
+.calc-state-summary-next-cta,
+.calc-state-summary-optimization-cta {
     min-height: 34px;
     padding: 6px 10px;
     border-radius: 6px;
     font-size: 0.82rem;
+    font-weight: 600;
+    box-shadow: none;
 }
 
-/* ----- Next step (primary action) ----- */
+.calc-state-summary-next-cta.btn-primary,
+.calc-state-summary-optimization-cta.btn-ghost {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+    background: transparent;
+}
+.calc-state-summary-next-cta.btn-primary:hover,
+.calc-state-summary-optimization-cta.btn-ghost:hover {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* ----- Action rows: next step + optimization ----- */
+
+.calc-state-summary-actions-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-elevated, var(--bg-card));
+}
 
 .calc-state-summary-next {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(120px, 0.34fr) minmax(0, 1fr) auto;
     grid-template-areas:
-        "label action"
-        "title action"
-        "body  action";
+        "label title action"
+        "label body  action";
     align-items: center;
-    gap: 3px 14px;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--bg-elevated, var(--bg-card));
+    gap: 3px 12px;
+    min-height: 58px;
+    padding: 10px 12px;
+    border: 0;
     border-left: 3px solid var(--accent);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    border-radius: 0;
+    background: var(--bg-elevated, var(--bg-card));
 }
 .calc-state-summary-next-high   { border-left-color: var(--danger); }
 .calc-state-summary-next-medium { border-left-color: var(--warning); }
@@ -4170,7 +4194,7 @@
 .calc-state-summary-next-title {
     grid-area: title;
     color: var(--text);
-    font-size: 0.96rem;
+    font-size: 0.9rem;
     font-weight: 700;
     min-width: 0;
 }
@@ -4196,7 +4220,6 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-weight: 600;
 }
 
 /* ----- Cost Optimization teaser (Stage 18.2.x — secondary action) -----
@@ -4206,15 +4229,16 @@
 
 .calc-state-summary-optimization {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(120px, 0.34fr) minmax(0, 1fr) auto;
     grid-template-areas:
-        "head action"
-        "text action";
+        "head text action";
     align-items: center;
-    gap: 4px 14px;
-    padding: 11px 12px;
-    border-radius: 8px;
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+    gap: 3px 12px;
+    min-height: 52px;
+    padding: 10px 12px;
+    border: 0;
+    border-left: 3px solid var(--text-muted);
+    border-radius: 0;
     background: var(--bg-elevated, var(--bg-card));
 }
 
@@ -4229,9 +4253,11 @@
 }
 
 .calc-state-summary-optimization-title {
-    color: var(--text);
+    color: var(--text-muted);
     font-weight: 600;
-    font-size: 0.86rem;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
 .calc-state-summary-optimization-text {
@@ -4255,6 +4281,10 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
+}
+
+.calc-state-summary-actions-list > :last-child {
+    border-bottom: 0;
 }
 
 @container calc-state-summary (max-width: 460px) {

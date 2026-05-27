@@ -2,8 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.92)
+## Current Project Lessons (2026-05-27, v2.20.93)
 
+- In `Сводка состояния расчёта`, do not mix diagnostic tables, promo cards
+  and oversized primary CTAs in one compact card. Keep lower blocks as one
+  row grammar: left scope, center state/description, right compact action.
+- Do not show `Дата актуальности` as a separate label when the row body already
+  contains `Актуальность прайса: <date>`; that is duplicate information in the
+  same UI scope.
 - If an E2E layout check targets a component that can rerender during startup,
   read geometry from the first visible connected DOM node, not from
   `locator(...).first()`. GitHub Chromium can briefly keep a zero-rect instance

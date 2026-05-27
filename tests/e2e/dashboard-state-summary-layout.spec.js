@@ -88,6 +88,7 @@ test('Calculation state summary keeps compact stacked rows on desktop', async ({
     await expect(summary.locator('.calc-state-summary-diagnostics > .calc-state-summary-row')).toHaveCount(3);
     await expect(summary.locator('.calc-state-summary-next')).toBeVisible();
     await expect(summary.locator('.calc-state-summary-optimization')).toBeVisible();
+    await expect(summary.getByText('Дата актуальности')).toHaveCount(0);
 
     const layout = await readSummaryLayout(page);
     expect(layout.overflow).toEqual([]);
@@ -101,7 +102,7 @@ test('Calculation state summary keeps compact stacked rows on desktop', async ({
         expect(layout.rows[i].top).toBeGreaterThanOrEqual(layout.rows[i - 1].bottom - 1);
     }
     expect(layout.next.top).toBeGreaterThan(layout.rows[layout.rows.length - 1].bottom);
-    expect(layout.optimization.top).toBeGreaterThan(layout.next.bottom);
+    expect(layout.optimization.top).toBeGreaterThanOrEqual(layout.next.bottom - 1);
 
     expect(consoleErrors).toEqual([]);
 });
@@ -119,6 +120,7 @@ test('Calculation state summary fits mobile width without horizontal overflow', 
     expect(layout.card.width).toBeGreaterThan(240);
     expect(layout.overflow).toEqual([]);
     expect(layout.rows.length).toBe(3);
+    await expect(summary.getByText('Дата актуальности')).toHaveCount(0);
     expect(layout.next.width).toBeLessThanOrEqual(layout.card.width);
     expect(layout.optimization.width).toBeLessThanOrEqual(layout.card.width);
 

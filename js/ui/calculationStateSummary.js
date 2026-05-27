@@ -224,15 +224,9 @@ function renderProviderPriceWarningRow(warning, ctx) {
 
 function renderProviderPriceActualityRow(calc) {
     const info = getCalculationPriceActualityInfo(calc);
-    return el('div', { class: ['calc-state-summary-row', 'calc-state-summary-row-provider-actuality'] },
+    return el('div', { class: ['calc-state-summary-row', 'calc-state-summary-row-provider-actuality', 'calc-state-summary-row-static'] },
         el('div', { class: 'calc-state-summary-row-title', text: 'Прайс расчёта' }),
-        el('div', { class: 'calc-state-summary-row-body', text: info.labelWithProvider }),
-        el('div', { class: 'calc-state-summary-row-actions' },
-            el('span', {
-                class: 'calc-state-summary-row-note',
-                text: 'Дата актуальности'
-            })
-        )
+        el('div', { class: 'calc-state-summary-row-body', text: info.labelWithProvider })
     );
 }
 
@@ -365,6 +359,19 @@ function renderNextStep(nextStep, ctx) {
     );
 }
 
+function renderActionRows(nextStep, ctx) {
+    const rows = [
+        renderNextStep(nextStep, ctx),
+        typeof ctx?.openCostOptimizationPlannerModal === 'function'
+            ? renderCostOptimizationTeaser(nextStep, ctx)
+            : null
+    ].filter(Boolean);
+
+    return rows.length
+        ? el('div', { class: 'calc-state-summary-actions-list' }, ...rows)
+        : null;
+}
+
 /* ============================================================
  * Public API
  * ============================================================ */
@@ -402,13 +409,10 @@ export function renderCalculationStateSummary(calc, ctx) {
         renderHeader(state, health.score, health.counts, gap),
         el('p', { class: 'calc-state-summary-verdict', text: verdictText(state, readiness) }),
         renderDiagnostics(health.score, health.counts, gap, ctx, calc, providerPriceWarning),
-        renderNextStep(nextStep, ctx),
         // Stage 18.2.x: бывшая отдельная карточка «План оптимизации стоимости»
         // встроена как secondary-action. ctx.openCostOptimizationPlannerModal
         // обязателен; модалка/контроллер/domain не тронуты.
-        typeof ctx?.openCostOptimizationPlannerModal === 'function'
-            ? renderCostOptimizationTeaser(nextStep, ctx)
-            : null
+        renderActionRows(nextStep, ctx)
     );
 }
 
