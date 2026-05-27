@@ -166,12 +166,12 @@
     display: grid;
     min-width: 0;
     /* Top row: 3 карточки в одну строку.
-       Hero — самая широкая (большая цифра + sparkline + CAPEX/OPEX),
-       Categories — donut + bars,
-       Risk — компактные pills. */
+       Hero / Categories / Risk используют единый композиционный паттерн:
+       сумма → составная шкала → строки с вкладом. */
     grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.3fr) minmax(0, 1fr);
     grid-template-areas:
         'hero       categories risk'
+        'metrics    metrics    metrics'
         'stands     stands     stands';
     gap: 18px;
 }
@@ -184,6 +184,7 @@
 .dash-stands-row      { grid-area: stands; }
 .dash-card-categories { grid-area: categories; }
 .dash-card-risk       { grid-area: risk; }
+.dash-dashboard-metrics { grid-area: metrics; }
 
 @media (max-width: 1380px) {
     .dashboard-grid {
@@ -191,6 +192,7 @@
         grid-template-areas:
             'hero       hero'
             'categories risk'
+            'metrics    metrics'
             'stands     stands';
     }
 }
@@ -202,6 +204,7 @@
             'hero'
             'categories'
             'risk'
+            'metrics'
             'stands';
     }
 }
@@ -314,24 +317,25 @@
  * ============================================================ */
 
 .dash-card-hero {
-    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-elevated) 100%);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    container-type: inline-size;
+    container-name: hero-card;
+    background: var(--bg-card);
 }
 
 .dash-hero-body {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 2px 0 2px;
+    gap: 12px;
+    padding: 0;
 }
 
 .dash-hero-main {
     display: flex;
     flex-direction: column;
-    align-items: center;          /* главная цифра по центру карточки */
-    gap: 6px;
+    align-items: flex-start;
+    gap: 7px;
     min-width: 0;
-    text-align: center;
+    text-align: left;
 }
 
 .dash-hero-value {
@@ -344,17 +348,12 @@
 
 .dash-hero-value-amount {
     font-family: var(--font-mono);
-    /* 13.U10-fix: 2.8rem → 2.2rem — главное число всё ещё доминирует
-       (tabular-nums + accent-gradient), но Hero перестаёт занимать
-       полэкрана и стенд-карточки попадают в первый viewport. */
-    font-size: 2.2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--text);
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: -0.6px;
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    letter-spacing: 0;
     line-height: 1;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
@@ -367,6 +366,19 @@
     color: var(--text-muted);
     letter-spacing: 0;
     white-space: nowrap;
+}
+
+.dash-hero-kpi-lines {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 14px;
+    min-width: 0;
+}
+
+.dash-card-hero .vat-breakdown,
+.dash-card-hero .risk-breakdown {
+    margin-top: 0;
 }
 
 
@@ -392,18 +404,22 @@
 .dash-hero-delta-down { background: var(--success-faint); color: var(--success); }
 
 .dash-hero-alt {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 12px;
-    padding-top: 6px;
-    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    padding: 0;
+    border-top: 0;
 }
 
 .dash-hero-alt-item {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    padding: 8px 10px;
+    min-height: 38px;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--border) 42%, transparent);
+    background: color-mix(in srgb, var(--bg-input) 54%, transparent);
 }
 .dash-hero-alt-item-left  { align-items: flex-start; text-align: left; }
 .dash-hero-alt-item-right { align-items: flex-end;   text-align: right; }
@@ -432,10 +448,10 @@
 .dash-hero-cost-types {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-top: 4px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
+    gap: 7px;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
 }
 
 .dash-hero-cost-type-label {
@@ -488,12 +504,12 @@
    Сегменты получают ширину inline-style'ом из JS (capexPct/opexPct в процентах). */
 .dash-hero-cost-types-bar {
     display: flex;
-    height: 8px;
+    height: 16px;
     border-radius: 999px;
     overflow: hidden;
-    background: var(--bg-elevated);
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
-    margin: 4px 0 8px;
+    background: var(--bg-input);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 60%, transparent);
+    margin: 0;
 }
 .dash-hero-cost-types-bar-capex {
     background: linear-gradient(90deg, #a78bfa 0%, #c4b5fd 100%);
@@ -509,23 +525,36 @@
 }
 
 .dash-hero-cost-types .dash-cost-row {
-    grid-template-columns: 8px 70px 1fr 60px;
-    font-size: 0.88rem;
-    align-items: baseline;
+    grid-template-columns: 8px minmax(0, 1fr) auto 56px;
+    min-height: 38px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--border) 42%, transparent);
+    background: color-mix(in srgb, var(--bg-input) 54%, transparent);
+    font-size: 0.82rem;
+    align-items: center;
     column-gap: 12px;
 }
-.dash-hero-cost-types .dash-cost-row-amount {
-    font-size: 0.92rem;
+.dash-hero-cost-types .dash-cost-row-label {
     color: var(--text);
-    font-weight: 500;
+    font-weight: 600;
+}
+.dash-hero-cost-types .dash-cost-row-amount {
+    font-size: 0.78rem;
+    color: var(--text);
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
+    min-width: 120px;
+    text-align: right;
+    white-space: nowrap;
 }
 .dash-hero-cost-types .dash-cost-row-pct {
-    font-size: 0.78rem;
-    color: var(--text-dim);
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
-    /* % — это аналитическая метрика (доля), визуально слабее money-amount; */
-    /* пользователь смотрит сначала на сумму, потом сверяется с долей. */
+    min-width: 56px;
+    text-align: right;
 }
 
 /* === Stand colors (sparkline + per-card accent) === */
@@ -1311,23 +1340,41 @@
     line-height: 1.2;
     margin-top: 1px;
 }
-/* В Hero блок «ИТОГО» — все ресурсы в одну строку (5-6 шт. равными колонками),
- * фон с лёгкой подсветкой, числа крупнее. */
-.dash-card-hero .dash-resources {
-    margin-top: 12px;
-    padding: 12px 16px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: var(--radius-sm);
-    background: rgba(0, 0, 0, 0.22);
+.dash-dashboard-metrics {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 18px;
+    align-items: stretch;
+    min-width: 0;
 }
-.dash-card-hero .dash-resources-grid {
-    /* В Hero (узкая колонка ~360px) — auto-fit с минимумом 56px поместит
-     * все 5-6 ресурсов в одну строку, на действительно узких экранах сожмёт. */
-    grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
-    gap: 6px;
+
+@media (max-width: 880px) {
+    .dash-dashboard-metrics {
+        grid-template-columns: 1fr;
+    }
 }
-.dash-card-hero .dash-resource-row {
-    padding: 8px 6px;
+
+/* Суммарные hardware/AI объёмы вынесены из hero-карточки в отдельную строку:
+ * это сохраняет видимость токенов/ресурсов, но не раздувает бюджетную карточку. */
+.dash-dashboard-metrics > .dash-resources {
+    margin-top: 0;
+    padding: 14px 16px;
+    height: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+.dash-dashboard-metrics > .dash-resources:hover {
+    border-color: var(--border-light);
+    box-shadow: var(--shadow);
+}
+.dash-dashboard-metrics .dash-resources-grid {
+    grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+    gap: 7px;
+}
+.dash-dashboard-metrics .dash-resource-row {
+    padding: 7px 6px;
     background: rgba(255, 255, 255, 0.05);
     text-align: left;
     align-items: center;
@@ -1337,10 +1384,10 @@
    («9 068,76») заметно шире unit («ТБ») → unit визуально съезжает влево.
    Дополнительный align-items: center делает qty/unit центрированными
    относительно друг друга, восстанавливая Hero-вид «всё по центру ячейки». */
-.dash-card-hero .dash-resource-row-value { align-items: center; }
-.dash-card-hero .dash-resource-row-qty { font-size: 0.98rem; }
-.dash-card-hero .dash-resource-row-unit { font-size: 0.7rem; }
-.dash-card-hero .dash-resource-row-label { font-size: 0.62rem; }
+.dash-dashboard-metrics .dash-resource-row-value { align-items: center; }
+.dash-dashboard-metrics .dash-resource-row-qty { font-size: 0.92rem; }
+.dash-dashboard-metrics .dash-resource-row-unit { font-size: 0.66rem; }
+.dash-dashboard-metrics .dash-resource-row-label { font-size: 0.62rem; }
 
 /* ============================================================
  * CATEGORIES card (составная шкала + строки)
@@ -1692,6 +1739,15 @@
     }
 }
 
+@media (min-width: 1381px) {
+    .dashboard-grid > .dash-card-hero,
+    .dashboard-grid > .dash-card-categories,
+    .dashboard-grid > .dash-card-risk {
+        align-self: stretch;
+        min-height: 390px;
+    }
+}
+
 .dash-risk-surplus-amount {
     color: var(--text);
     font-family: var(--font-mono);
@@ -2011,34 +2067,35 @@
     overflow-wrap: anywhere;
 }
 
-/* В Hero блок «· ИТОГО» — параллельный .dash-card-hero .dash-resources, чтобы
-   AI-метрики смотрелись как продолжение hardware-блока, а не инородное тело. */
-.dash-card-hero .dash-ai-metrics {
-    margin-top: 8px;
-    padding: 12px 16px;
+/* В строке суммарных объёмов AI-метрики стоят рядом с hardware-объёмами. */
+.dash-dashboard-metrics > .dash-ai-metrics {
+    margin-top: 0;
+    padding: 14px 16px;
+    height: 100%;
     border: 1px solid rgba(38, 212, 154, 0.22);
-    background: rgba(38, 212, 154, 0.08);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--accent-faint) 70%, var(--bg-card));
+    box-shadow: var(--shadow-sm);
 }
-/* PATCH 2.4.35: Hero-override фиксирует 2×2 (без auto-fit). Раньше
-   auto-fit давал 3+1 на широком Hero — асимметричный «обрубок» вместо
-   симметричной 2×2. Базовое .dash-ai-metrics-grid (PATCH 2.4.30) уже
-   2×2, но этот более-специфичный селектор перебивал каскад. Теперь
-   оба правила согласованы. */
-.dash-card-hero .dash-ai-metrics-grid {
+.dash-dashboard-metrics > .dash-ai-metrics:hover {
+    border-color: rgba(38, 212, 154, 0.34);
+    box-shadow: var(--shadow);
+}
+.dash-dashboard-metrics .dash-ai-metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
 }
-.dash-card-hero .dash-ai-metric-row {
-    padding: 8px 8px;
+.dash-dashboard-metrics .dash-ai-metric-row {
+    padding: 7px 8px;
     background: rgba(255, 255, 255, 0.05);
     text-align: left;
     /* НЕ align-items: center — иначе двухстрочный лейбл центрируется по
        вертикали, а мы хотим лейбл сверху, цифру снизу как у hardware-блока. */
     align-items: stretch;
 }
-.dash-card-hero .dash-ai-metric-row-qty { font-size: 0.98rem; }
-.dash-card-hero .dash-ai-metric-row-unit { font-size: 0.7rem; }
-.dash-card-hero .dash-ai-metric-row-label { font-size: 0.62rem; }
+.dash-dashboard-metrics .dash-ai-metric-row-qty { font-size: 0.92rem; }
+.dash-dashboard-metrics .dash-ai-metric-row-unit { font-size: 0.66rem; }
+.dash-dashboard-metrics .dash-ai-metric-row-label { font-size: 0.62rem; }
 
 /* На стенд-карточках — компактнее, чтобы не раздуть карточку. */
 .dash-stand-card .dash-ai-metrics {
@@ -2057,7 +2114,7 @@
     background: rgba(4, 120, 87, 0.10);
     border-color: rgba(4, 120, 87, 0.20);
 }
-[data-theme="light"] .dash-card-hero .dash-ai-metrics {
+[data-theme="light"] .dash-dashboard-metrics > .dash-ai-metrics {
     border-color: rgba(4, 120, 87, 0.28);
     background: rgba(4, 120, 87, 0.08);
 }

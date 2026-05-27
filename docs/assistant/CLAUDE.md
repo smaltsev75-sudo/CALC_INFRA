@@ -2,8 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.83)
+## Current Project Lessons (2026-05-27, v2.20.84)
 
+- Dashboard top row cards should share one visual grammar and one row height.
+  `Итого по расчёту`, `Распределение по категориям` and
+  `Вклад риск-коэффициентов` use the same composition pattern: large amount,
+  stacked bar and compact contribution rows. Total resource/AI workload blocks
+  belong in a separate Dashboard row, not inside the budget hero card, otherwise
+  the top row becomes uneven and visually noisy.
 - Category distribution UI should mirror the risk contribution composition when
   both cards sit together on Dashboard. `Распределение по категориям` keeps the
   `ИТОГО` badge and category-description tooltips, but uses one stacked

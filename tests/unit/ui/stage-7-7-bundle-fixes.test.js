@@ -1,8 +1,8 @@
 /**
  * PATCH 2.4.35 — Bundle of 4 user-reported UI fixes:
  *
- *   1. AI-метрики на Hero — 2×2 раскладка, не 3+1.
- *      .dash-card-hero .dash-ai-metrics-grid Hero-override raньше использовал
+ *   1. AI-метрики в суммарном блоке — 2×2 раскладка, не 3+1.
+ *      .dash-dashboard-metrics .dash-ai-metrics-grid override раньше был
  *      auto-fit minmax(140px, 1fr) и давал «обрубок» 3+1 на широком Hero.
  *      Базовое .dash-ai-metrics-grid (PATCH 2.4.30) уже было 2×2, но более
  *      специфичный селектор перебивал каскад. Пользователь просил трижды.
@@ -36,14 +36,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../../..');
 const read = rel => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
-describe('PATCH 2.4.35 / fix #1 — Hero AI-metrics 2×2', () => {
+describe('PATCH 2.4.35 / fix #1 — total AI-metrics 2×2', () => {
     const dashboardCss = read('css/dashboard.css');
 
-    it('.dash-card-hero .dash-ai-metrics-grid использует repeat(2, ...) — не auto-fit', () => {
-        const body = ruleBody(dashboardCss, '.dash-card-hero .dash-ai-metrics-grid');
+    it('.dash-dashboard-metrics .dash-ai-metrics-grid использует repeat(2, ...) — не auto-fit', () => {
+        const body = ruleBody(dashboardCss, '.dash-dashboard-metrics .dash-ai-metrics-grid');
         assert.match(body,
             /grid-template-columns:\s*repeat\(\s*2\s*,\s*minmax\(\s*0\s*,\s*1fr\s*\)\s*\)/,
-            'Hero-override должен фиксировать 2 колонки (repeat(2, minmax(0, 1fr)))');
+            'Total metrics override должен фиксировать 2 колонки (repeat(2, minmax(0, 1fr)))');
         assert.doesNotMatch(body, /auto-fit/,
             'auto-fit удалён — давал 3+1 при 4 AI-метриках на широком Hero');
     });

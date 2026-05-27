@@ -303,23 +303,19 @@
     border-bottom-color: var(--border-light);
 }
 
-/* Hero-карточка дашборда: gradient bg-card→bg-elevated в тёмной теме делает
-   красивый depth-эффект, но в светлой #ffffff→#f1f5f9 слишком сильно убивает
-   читаемость (нижняя часть Hero сливается с фоном страницы). Заменяем на
-   чистый bg-card с акцентной верхней полоской — более чистый и плоский look. */
+/* Hero-карточка дашборда держит тот же плоский фон, что и соседние
+   композиционные карточки. */
 [data-theme="light"] .dash-card-hero {
     background: var(--bg-card);
     box-shadow: var(--shadow);
 }
 
-/* dash-resources блок (ИТОГО ресурсов) в Hero: rgba(0,0,0,0.22) фон в светлой
-   теме выглядит грязно-серым; rgba(255,255,255,0.05) в стенд-карточках вообще
+/* dash-resources блок (ИТОГО ресурсов): rgba(255,255,255,0.05) в карточках
    невидим на белом. Подменяем на bg-elevated. */
-[data-theme="light"] .dash-card-hero .dash-resources {
+[data-theme="light"] .dash-dashboard-metrics > .dash-resources {
     background: var(--bg-elevated);
     border-color: var(--border-light);
 }
-[data-theme="light"] .dash-card-hero .dash-resource-row,
 [data-theme="light"] .dash-resource-row {
     background: var(--bg-card);
     border: 1px solid var(--border);

@@ -78,7 +78,7 @@ async function getExpectedPositiveVisibility(page) {
 
 function dashboardResourceBlock(page, scope, standId = null) {
     if (scope === 'total') {
-        return page.locator('.dash-card-hero .dash-resources')
+        return page.locator('.dash-dashboard-metrics .dash-resources')
             .filter({ hasText: 'Объёмы ресурсов · ИТОГО' })
             .first();
     }
@@ -90,7 +90,7 @@ function dashboardResourceBlock(page, scope, standId = null) {
 
 function dashboardAiBlock(page, scope, standId = null) {
     if (scope === 'total') {
-        return page.locator('.dash-card-hero .dash-ai-metrics')
+        return page.locator('.dash-dashboard-metrics .dash-ai-metrics')
             .filter({ hasText: 'Объёмы AI-нагрузки · ИТОГО' })
             .first();
     }

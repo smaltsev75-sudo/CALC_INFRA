@@ -153,3 +153,32 @@ test('Category distribution composition card stays aligned and non-overlapping',
 
     expect(consoleErrors).toEqual([]);
 });
+
+test('Dashboard top composition cards share the same desktop row height', async ({ page }) => {
+    await page.setViewportSize({ width: 1680, height: 900 });
+    const consoleErrors = await bootCleanApp(page);
+
+    await createCalculationFromQuickStart(page, {
+        name: 'Top composition card height contract',
+        presetId: 'high_ai'
+    });
+    await page.getByTestId('dashboard-period-monthly').click();
+
+    const heights = await page.evaluate(() => {
+        return ['.dash-card-hero', '.dash-card-categories', '.dash-card-risk'].map(selector => {
+            const rect = document.querySelector(selector).getBoundingClientRect();
+            return {
+                selector,
+                top: Math.round(rect.top),
+                height: Math.round(rect.height)
+            };
+        });
+    });
+
+    const tops = heights.map(item => item.top);
+    const rowHeights = heights.map(item => item.height);
+    expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
+    expect(Math.max(...rowHeights) - Math.min(...rowHeights)).toBeLessThanOrEqual(2);
+
+    expect(consoleErrors).toEqual([]);
+});

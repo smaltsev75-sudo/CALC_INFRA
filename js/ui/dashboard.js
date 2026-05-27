@@ -2,8 +2,7 @@
  * Дашборд — Hynex-стиль (Этап 9.6).
  *
  * Структура (асимметричная сетка):
- *   1) Hero — крупная hero-метрика ИТОГО за выбранный период + sparkline
- *      по 5 стендам. Соседние периоды (день/мес/год) — мелкими подписями.
+ *   1) Hero — крупная сумма ИТОГО за выбранный период + CAPEX/OPEX composition.
  *   2) Структура расходов — donut по категориям + легенда (ИТОГО).
  *   3) 5 карточек стендов — компактные, per-stand цветовой акцент.
  *   4) Распределение по категориям — составная шкала + строки категорий
@@ -90,7 +89,7 @@ function periodMul(period) {
 /* v2.20.74: removed `resourcesWithTokenMetric` helper. Прежде оно
  * инжектировало строку «Токены» в блок «Объёмы ресурсов» — но карточка
  * параллельно рендерит sub-block «Объёмы AI-нагрузки», где «Токены» уже
- * есть как первая метрика. В результате на одной карточке (Hero и каждой
+ * есть как первая метрика. В результате в одном scope (итого и каждый стенд)
  * стенд-карточке) строка «Токены» появлялась дважды — нарушение CLAUDE.md
  * §11 «DRY ВНУТРИ scope: один индикатор на карточку». Сейчас «Объёмы
  * ресурсов» — это строго hardware (CPU/GPU/RAM/SSD/HDD/S3), а AI-метрики
@@ -150,8 +149,8 @@ export function renderDashboard(state, ctx) {
     const _activeStandsForSum = STAND_IDS.filter(sid => !disabledStands.includes(sid));
     distributeRoundingPreservingSum(resources, _activeStandsForSum);
     // 13.U6: AI-метрики (TOKENS / RAG_VECTORS / EMBEDDINGS / AGENT_CPU) — параллельная
-    // ось к hardware-агрегатам. Встраивается как sub-block в Hero (total) и в каждую
-    // стенд-карточку (perStand[sid]) — рядом с «Объёмами ресурсов». Блок возвращает
+    // ось к hardware-агрегатам. Total-scope вынесен в отдельную строку Dashboard,
+    // per-stand scope остаётся внутри стенд-карточек. Блок возвращает
     // null когда в этом scope нет ни одной AI-ЭК с qty>0 — для не-AI расчётов
     // ничего не появляется.
     const aiMetrics = aggregateAiMetrics(result, calc.dictionaries?.items || [], disabledStands, applyRisks, calc);
@@ -182,7 +181,7 @@ export function renderDashboard(state, ctx) {
 
         /* === Grid === */
         el('div', { class: 'dashboard-grid', attrs: { 'data-testid': 'dashboard-grid' } },
-            renderHero(filtered, period, ctx, applyRisks, resources.total, calc, aiMetrics.total),
+            renderHero(filtered, period, ctx, applyRisks, calc),
             // Stage 18.2 (PATCH 2.14.12): «Сводка состояния расчёта» —
             // композитный блок, объединяющий бывшие 4 карточки (Готовность /
             // Качество / Бюджет / Следующие шаги). presentation-only, читает
@@ -190,6 +189,7 @@ export function renderDashboard(state, ctx) {
             renderCalculationStateSummary(calc, ctx),
             renderCategoriesCard(filtered, period, activeStands.length, ctx),
             renderRiskCard(filtered, calc, period, applyRisks),
+            renderDashboardTotalMetrics(resources.total, aiMetrics.total, applyRisks, ctx, period),
             // Stage 18.2.x (PATCH 2.14.13): отдельная карточка «План оптимизации
             // стоимости» удалена — entry point встроен как secondary-action
             // внутри composite-сводки (renderCostOptimizationTeaser в
@@ -247,9 +247,7 @@ function renderAssumptionsBtn(count, ctx) {
 
 /* ---------- Hero ---------- */
 
-function renderHero(result, period, ctx, applyRisks = true, totalResources = null, calc = null, totalAiMetrics = null) {
-    // period передаётся в renderAiMetricsBlock ниже — flow-метрики (TOKENS,
-    // EMBEDDINGS) пересчитаются в выбранный интервал (день/мес/год).
+function renderHero(result, period, ctx, applyRisks = true, calc = null) {
     const total = pickTotal(result, period);
     const sub = periodSubtitle(period);
     const mul = periodMul(period);
@@ -334,16 +332,18 @@ function renderHero(result, period, ctx, applyRisks = true, totalResources = nul
                     el('span', { class: 'dash-hero-value-amount', text: fmtRubForPeriod(total, period) }),
                     el('span', { class: 'dash-hero-value-unit', text: slash })
                 ),
-                /* 12.U23: разбивка НДС — «НДС: X тыс. ₽ /мес» под главной суммой.
-                   Когда НДС выключен — null (бейдж «БЕЗ НДС» сам всё сказал).
-                   useThousands=true — на Дашборде все суммы с точностью до тысяч. */
-                calc ? renderVatBreakdownLine(calc, total, slash, { useThousands: true }) : null,
-                /* 12.U25-fix-6/8: разбивка суммы рисков — «Риски: Y тыс. ₽ /мес [+86.6% от базы]».
-                   Inline-пилл с процентом передаётся ТОЛЬКО на Hero (для стенд-карточек
-                   процент = шум, там просто «Риски: ₽»). Раньше пилл стоял отдельной
-                   строкой над НДС/Рисками — теперь логически склеен с риск-наценкой. */
-                renderRiskBreakdownLine(heroCells, applyRisks, mul, slash,
-                    riskInfo ? riskInfo.surplus * 100 : null, { useThousands: true })
+                el('div', { class: 'dash-hero-kpi-lines' },
+                    /* 12.U23: разбивка НДС — «НДС: X тыс. ₽ /мес» под главной суммой.
+                       Когда НДС выключен — null (бейдж «БЕЗ НДС» сам всё сказал).
+                       useThousands=true — на Дашборде все суммы с точностью до тысяч. */
+                    calc ? renderVatBreakdownLine(calc, total, slash, { useThousands: true }) : null,
+                    /* 12.U25-fix-6/8: разбивка суммы рисков — «Риски: Y тыс. ₽ /мес [+86.6% от базы]».
+                       Inline-пилл с процентом передаётся ТОЛЬКО на Hero (для стенд-карточек
+                       процент = шум, там просто «Риски: ₽»). Раньше пилл стоял отдельной
+                       строкой над НДС/Рисками — теперь логически склеен с риск-наценкой. */
+                    renderRiskBreakdownLine(heroCells, applyRisks, mul, slash,
+                        riskInfo ? riskInfo.surplus * 100 : null, { useThousands: true })
+                )
             ),
             /* Соседние периоды — один слева (меньший по таймскейлу: day < month < year),
                другой справа (больший). Симметрично смотрятся под главным числом. */
@@ -394,7 +394,7 @@ function renderHero(result, period, ctx, applyRisks = true, totalResources = nul
                     el('span', { class: 'dash-cost-row-dot' }),
                     el('span', { class: 'dash-cost-row-label', text: 'CAPEX' }),
                     el('span', { class: 'dash-cost-row-amount',
-                        text: `${fmtRubForPeriod((byCostType.capex || 0) * mul, period)} ${slash}` }),
+                        text: fmtRubForPeriod((byCostType.capex || 0) * mul, period) }),
                     el('span', { class: 'dash-cost-row-pct', text: percent(capexPct) })
                 ),
                 el('div', { class: 'dash-cost-row dash-cost-row-opex',
@@ -403,16 +403,18 @@ function renderHero(result, period, ctx, applyRisks = true, totalResources = nul
                     el('span', { class: 'dash-cost-row-dot' }),
                     el('span', { class: 'dash-cost-row-label', text: 'OPEX' }),
                     el('span', { class: 'dash-cost-row-amount',
-                        text: `${fmtRubForPeriod((byCostType.opex || 0) * mul, period)} ${slash}` }),
+                        text: fmtRubForPeriod((byCostType.opex || 0) * mul, period) }),
                     el('span', { class: 'dash-cost-row-pct', text: percent(opexPct) })
                 )
             )
             : null,
+    );
+}
 
-        /* 12.U5/U7/U8: Объёмы ресурсов (CPU/RAM/SSD/HDD/S3 etc.) — ИТОГО по активным стендам.
-           qty учитывает applyRiskFactors так же, как и стоимости в Hero. Бейдж режима НЕ
-           показываем — он уже есть в шапке Hero «Итого по расчёту С РИСКАМИ / БЕЗ РИСКОВ»,
-           дубль на той же карточке = визуальный шум (принцип №22). */
+function renderDashboardTotalMetrics(totalResources, totalAiMetrics, applyRisks, ctx, period) {
+    if (!totalResources && !totalAiMetrics) return null;
+
+    return el('section', { class: 'dash-dashboard-metrics' },
         totalResources ? renderResourcesBlock(
             totalResources,
             'Объёмы ресурсов · ИТОГО',
@@ -420,11 +422,13 @@ function renderHero(result, period, ctx, applyRisks = true, totalResources = nul
             /*showModeBadge*/ false,
             period
         ) : null,
-
-        /* 13.U6: Метрики AI / RAG / агентов — отдельная ось, аналогично «Объёмам ресурсов».
-           Блок возвращает null если AI-нагрузки в расчёте нет — секция не появляется
-           для не-AI проектов и Hero остаётся компактным. */
-        totalAiMetrics ? renderAiMetricsBlock(totalAiMetrics, 'Объёмы AI-нагрузки · ИТОГО', applyRisks, ctx, period) : null
+        totalAiMetrics ? renderAiMetricsBlock(
+            totalAiMetrics,
+            'Объёмы AI-нагрузки · ИТОГО',
+            applyRisks,
+            ctx,
+            period
+        ) : null
     );
 }
 
@@ -687,7 +691,7 @@ function renderStandCard(sid, result, period, ctx, isDisabled, standResources = 
 
 /* AI-strip с подметриками (TOKENS / RAG_VECTORS / EMBEDDINGS / AGENT_CPU)
    ранее рендерился под прогресс-баром AI-категории. Удалён, потому что
-   та же информация уже есть в Hero-блоке «Метрики AI / RAG / агентов · ИТОГО»
+   та же информация уже есть в total-scope блоке «Объёмы AI-нагрузки · ИТОГО»
    через renderAiMetricsBlock — дубль на одном экране визуально шумит. */
 
 function renderCategoriesCard(result, period, activeStandsCount, ctx = {}) {

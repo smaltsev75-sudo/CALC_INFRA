@@ -13,14 +13,7 @@ function aiSummaryRow(page, label) {
 }
 
 function dashboardAiRow(page, label) {
-    return page.locator('.dash-card-hero .dash-ai-metric-row').filter({ hasText: label });
-}
-
-function dashboardHeroResourceRow(page, label) {
-    const block = page.locator('.dash-card-hero .dash-resources')
-        .filter({ hasText: 'Объёмы ресурсов · ИТОГО' })
-        .first();
-    return block.locator('.dash-resource-row').filter({ hasText: label });
+    return page.locator('.dash-dashboard-metrics .dash-ai-metric-row').filter({ hasText: label });
 }
 
 function dashboardStandResourceRow(page, standId, label) {
@@ -37,8 +30,8 @@ async function expectDashboardTokensVisible(page) {
      * «Объёмы ресурсов» (CLAUDE.md §11 «DRY ВНУТРИ scope: один индикатор на
      * карточку»). В resource-блоке проверяем ТОЛЬКО hardware. */
     const row = dashboardAiRow(page, 'Токены');
-    await expect(page.locator('.dash-card-hero .dash-ai-metrics')).toBeVisible();
-    await expect(page.locator('.dash-card-hero .dash-ai-metrics-title'))
+    await expect(page.locator('.dash-dashboard-metrics .dash-ai-metrics')).toBeVisible();
+    await expect(page.locator('.dash-dashboard-metrics .dash-ai-metrics-title'))
         .toHaveText('Объёмы AI-нагрузки · ИТОГО');
     await expect(row).toBeVisible();
     await expect(row.locator('.dash-ai-metric-row-value')).toContainText(/млн токенов \/ мес/);

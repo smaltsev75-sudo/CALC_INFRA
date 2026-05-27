@@ -87,16 +87,16 @@ test('.dash-resource-row-qty имеет tabular-nums (выравнивание �
     );
 });
 
-/* ----------------- Hero-override ----------------- */
+/* ----------------- Total metrics override ----------------- */
 
-test('Hero override: .dash-card-hero .dash-resource-row-value центрирует qty/unit', () => {
-    const body = ruleBody(read('css/dashboard.css'), '.dash-card-hero .dash-resource-row-value');
+test('Total metrics override: .dash-dashboard-metrics .dash-resource-row-value центрирует qty/unit', () => {
+    const body = ruleBody(read('css/dashboard.css'), '.dash-dashboard-metrics .dash-resource-row-value');
     // qty («9 068,76») заметно шире unit («ТБ») — без align-items: center
     // qty/unit стекались бы flush-left относительно блока, центрированного
     // в Hero parent'е, и unit визуально съезжал бы влево.
     assert.match(
         body, /align-items:\s*center/,
-        '.dash-card-hero .dash-resource-row-value должен иметь align-items: center ' +
-        'для визуального центрирования qty/unit относительно друг друга в Hero'
+        '.dash-dashboard-metrics .dash-resource-row-value должен иметь align-items: center ' +
+        'для визуального центрирования qty/unit относительно друг друга в total metrics'
     );
 });

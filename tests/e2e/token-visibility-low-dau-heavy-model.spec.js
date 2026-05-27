@@ -58,9 +58,9 @@ test('Dashboard, AI summary и Details token rows показывают данн�
     await importLowDauHighAiCalc(page);
 
     // 1. Dashboard «Объёмы AI-нагрузки» (ИТОГО): TOKENS > 0
-    await expect(page.locator('.dash-card-hero .dash-ai-metric-row').filter({ hasText: 'Токены' }))
+    await expect(page.locator('.dash-dashboard-metrics .dash-ai-metric-row').filter({ hasText: 'Токены' }))
         .toBeVisible();
-    await expect(page.locator('.dash-card-hero .dash-ai-metric-row').filter({ hasText: 'Токены' })
+    await expect(page.locator('.dash-dashboard-metrics .dash-ai-metric-row').filter({ hasText: 'Токены' })
         .locator('.dash-ai-metric-row-qty-empty')).toHaveCount(0);
 
     // 2. Dashboard per-stand cards: TOKENS видимы для PROD/LOAD (стенды с aiStandFactor=1)

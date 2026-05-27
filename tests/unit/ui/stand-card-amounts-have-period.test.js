@@ -38,10 +38,11 @@ describe('Стенд-карточка: суммы с интервалом вре
         assert.ok(found >= 1, 'должно быть хотя бы одно вхождение dash-stand-card-cats-legend-amount');
     });
 
-    it('dash-cost-row-amount (CAPEX/OPEX): text включает ${slash}', () => {
+    it('dash-cost-row-amount внутри renderStandCard (CAPEX/OPEX): text включает ${slash}', () => {
+        const standCardSource = dashboardSource.slice(dashboardSource.indexOf('function renderStandCard'));
         const re = /dash-cost-row-amount['"][\s\S]{0,250}?text:\s*([`'"])([\s\S]*?)\1/g;
         let found = 0;
-        for (const m of dashboardSource.matchAll(re)) {
+        for (const m of standCardSource.matchAll(re)) {
             found++;
             const textValue = m[2];
             assert.match(textValue, /\$\{slash\}/,
@@ -49,6 +50,6 @@ describe('Стенд-карточка: суммы с интервалом вре
                 `найдено: «${textValue}»`);
         }
         assert.ok(found >= 2,
-            `dash-cost-row-amount должен встречаться минимум 2 раза (Hero CAPEX/OPEX + Стенд CAPEX/OPEX), найдено ${found}`);
+            `dash-cost-row-amount должен встречаться минимум 2 раза в renderStandCard, найдено ${found}`);
     });
 });
