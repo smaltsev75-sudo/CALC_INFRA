@@ -2,8 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.93)
+## Current Project Lessons (2026-05-27, v2.20.94)
 
+- In the Dashboard top composition row, the three stacked bars
+  (`Итого по расчёту` CAPEX/OPEX, `Распределение по категориям`,
+  `Вклад риск-коэффициентов`) are one visual comparison layer. Keep their
+  top Y-coordinate aligned and protect it with Playwright geometry checks.
 - In `Сводка состояния расчёта`, do not mix diagnostic tables, promo cards
   and oversized primary CTAs in one compact card. Keep lower blocks as one
   row grammar: left scope, center state/description, right compact action.

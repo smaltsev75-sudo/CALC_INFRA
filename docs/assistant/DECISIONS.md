@@ -1,5 +1,26 @@
 # Журнал решений и допущений
 
+## 27.05.2026 · PATCH 2.20.94 — Dashboard top bars vertical alignment
+
+**Контекст.** В верхнем ряду Dashboard три составные шкалы читались как один
+сравнительный слой, но находились на разной высоте: CAPEX/OPEX bar в
+`Итого по расчёту` был ниже из-за строк НДС/Риски/периоды, а risk-bar чуть
+отставал от category-bar из-за subtitle в header.
+
+**Решение.**
+
+- Блок `Структура расходов` перенесён в верхний slot hero-card сразу после
+  главной суммы, до строк НДС/Риски/альтернативных периодов.
+- Уменьшены локальные зазоры перед CAPEX/OPEX bar и в header карточки рисков,
+  чтобы три bars совпали по вертикали без absolute-position.
+- Служебные строки НДС/Риски/периоды и итоговые resource/AI blocks остались
+  внутри карточки `Итого по расчёту` ниже bar.
+
+**Защита.** В `dashboard-risk-bars-layout.spec.js` добавлен geometry-contract:
+tops `.dash-hero-cost-types-bar`, `.dash-category-segments` и
+`.dash-risk-segments` должны отличаться не более чем на 2 px; также повторно
+проверяется, что resource/AI blocks остаются внутри hero-card.
+
 ## 27.05.2026 · PATCH 2.20.93 — State summary unified row grammar
 
 **Контекст.** После редизайна `Сводка состояния расчёта` всё ещё смешивала

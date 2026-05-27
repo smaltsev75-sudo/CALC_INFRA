@@ -286,6 +286,47 @@ function renderHero(result, period, ctx, applyRisks = true, calc = null, totalRe
     const riskPctText = Number.isFinite(surplusPct) && Math.abs(surplusPct) >= 0.05
         ? `${surplusPct >= 0 ? '+' : ''}${formatNumber(surplusPct, { min: 1, max: 1 })}%`
         : null;
+    const costTypesBlock = ctSum > 0
+        ? el('div', { class: 'dash-hero-cost-types' },
+            el('div', { class: 'dash-hero-cost-type-label', text: 'Структура расходов' }),
+            /* 12.U25-fix-19: stacked progress bar — визуально показывает пропорцию
+               CAPEX/OPEX одной полосой (фиолетовый + бирюзовый сегменты). Под ней
+               идут две строки с суммами и % — числа лежат в одной grid-сетке. */
+            el('div', {
+                class: 'dash-hero-cost-types-bar',
+                attrs: { role: 'img',
+                    'aria-label': `CAPEX ${formatNumber(capexPct * 100, { min: 1, max: 1 })}%, ` +
+                                  `OPEX ${formatNumber(opexPct * 100, { min: 1, max: 1 })}%` }
+            },
+                el('span', {
+                    class: 'dash-hero-cost-types-bar-capex',
+                    style: { width: `${(capexPct * 100).toFixed(2)}%` }
+                }),
+                el('span', {
+                    class: 'dash-hero-cost-types-bar-opex',
+                    style: { width: `${(opexPct * 100).toFixed(2)}%` }
+                })
+            ),
+            el('div', { class: 'dash-cost-row dash-cost-row-capex',
+                title: 'CAPEX — капитальные (разовые) затраты: внедрение, аттестация, аудит, обучение, единоразовая закупка лицензий и оборудования.'
+            },
+                el('span', { class: 'dash-cost-row-dot' }),
+                el('span', { class: 'dash-cost-row-label', text: 'CAPEX' }),
+                el('span', { class: 'dash-cost-row-amount',
+                    text: fmtRubForPeriod((byCostType.capex || 0) * mul, period) }),
+                el('span', { class: 'dash-cost-row-pct', text: percent(capexPct) })
+            ),
+            el('div', { class: 'dash-cost-row dash-cost-row-opex',
+                title: 'OPEX — операционные (регулярные) затраты: облако, лицензии-подписки, услуги, токены LLM, support.'
+            },
+                el('span', { class: 'dash-cost-row-dot' }),
+                el('span', { class: 'dash-cost-row-label', text: 'OPEX' }),
+                el('span', { class: 'dash-cost-row-amount',
+                    text: fmtRubForPeriod((byCostType.opex || 0) * mul, period) }),
+                el('span', { class: 'dash-cost-row-pct', text: percent(opexPct) })
+            )
+        )
+        : null;
 
     return el('article', {
         class: ['dash-card', 'dash-card-hero', !applyRisks && 'dash-card-hero-base'],
@@ -338,6 +379,9 @@ function renderHero(result, period, ctx, applyRisks = true, calc = null, totalRe
                     el('span', { class: 'dash-hero-value-unit', text: slash })
                 )
             ),
+            /* Структура расходов стоит в верхнем bar-слоте hero, чтобы CAPEX/OPEX
+               bar был выровнен с bars карточек «Распределение» и «Вклад рисков». */
+            costTypesBlock,
             el('div', { class: 'dash-hero-breakdown' },
                 vatAmount > 0 ? el('div', {
                     class: 'dash-hero-breakdown-row dash-hero-breakdown-row-vat',
@@ -376,52 +420,6 @@ function renderHero(result, period, ctx, applyRisks = true, calc = null, totalRe
                 )
                 : null
         ),
-
-        /* Структура расходов (CAPEX / OPEX) — 12.U25-fix-18:
-         * - Eyebrow «СТРУКТУРА РАСХОДОВ» делает блок отдельной семантической секцией.
-         * - Tabular alignment через grid-template-columns: dot|label|amount|pct.
-         *   Все 4 ряда лежат в одной сетке, цифры выровнены по столбцу справа. */
-        ctSum > 0
-            ? el('div', { class: 'dash-hero-cost-types' },
-                el('div', { class: 'dash-hero-cost-type-label', text: 'Структура расходов' }),
-                /* 12.U25-fix-19: stacked progress bar — визуально показывает пропорцию
-                   CAPEX/OPEX одной полосой (фиолетовый + бирюзовый сегменты). Под ней
-                   идут две строки с суммами и % — числа лежат в одной grid-сетке. */
-                el('div', {
-                    class: 'dash-hero-cost-types-bar',
-                    attrs: { role: 'img',
-                        'aria-label': `CAPEX ${formatNumber(capexPct * 100, { min: 1, max: 1 })}%, ` +
-                                      `OPEX ${formatNumber(opexPct * 100, { min: 1, max: 1 })}%` }
-                },
-                    el('span', {
-                        class: 'dash-hero-cost-types-bar-capex',
-                        style: { width: `${(capexPct * 100).toFixed(2)}%` }
-                    }),
-                    el('span', {
-                        class: 'dash-hero-cost-types-bar-opex',
-                        style: { width: `${(opexPct * 100).toFixed(2)}%` }
-                    })
-                ),
-                el('div', { class: 'dash-cost-row dash-cost-row-capex',
-                    title: 'CAPEX — капитальные (разовые) затраты: внедрение, аттестация, аудит, обучение, единоразовая закупка лицензий и оборудования.'
-                },
-                    el('span', { class: 'dash-cost-row-dot' }),
-                    el('span', { class: 'dash-cost-row-label', text: 'CAPEX' }),
-                    el('span', { class: 'dash-cost-row-amount',
-                        text: fmtRubForPeriod((byCostType.capex || 0) * mul, period) }),
-                    el('span', { class: 'dash-cost-row-pct', text: percent(capexPct) })
-                ),
-                el('div', { class: 'dash-cost-row dash-cost-row-opex',
-                    title: 'OPEX — операционные (регулярные) затраты: облако, лицензии-подписки, услуги, токены LLM, support.'
-                },
-                    el('span', { class: 'dash-cost-row-dot' }),
-                    el('span', { class: 'dash-cost-row-label', text: 'OPEX' }),
-                    el('span', { class: 'dash-cost-row-amount',
-                        text: fmtRubForPeriod((byCostType.opex || 0) * mul, period) }),
-                    el('span', { class: 'dash-cost-row-pct', text: percent(opexPct) })
-                )
-            )
-            : null,
         renderDashboardTotalMetrics(totalResources, totalAiMetrics, applyRisks, ctx, period)
     );
 }

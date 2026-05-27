@@ -524,7 +524,7 @@
 .dash-hero-cost-types {
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 3px;
     margin-top: 0;
     padding-top: 0;
     border-top: 0;
@@ -536,7 +536,7 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 600;
-    margin-bottom: 4px;
+    margin-bottom: 0;
 }
 
 /* 12.U25-fix-19: actions в правом верхнем углу Hero — кнопка «Детали расчёта» + info-icon. */
@@ -1627,7 +1627,7 @@
 .dash-card-risk .dash-card-header {
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
+    gap: 6px;
 }
 
 .dash-card-risk {

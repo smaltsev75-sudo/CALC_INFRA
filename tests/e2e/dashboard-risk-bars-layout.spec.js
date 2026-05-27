@@ -227,13 +227,30 @@ test('Dashboard top composition cards keep aligned desktop row', async ({ page }
             };
         });
     });
+    const barTops = await page.evaluate(() => {
+        return [
+            '.dash-card-hero .dash-hero-cost-types-bar',
+            '.dash-card-categories .dash-category-segments',
+            '.dash-card-risk .dash-risk-segments'
+        ].map(selector => {
+            const rect = document.querySelector(selector).getBoundingClientRect();
+            return {
+                selector,
+                top: Math.round(rect.top * 100) / 100,
+                height: Math.round(rect.height * 100) / 100
+            };
+        });
+    });
 
     const tops = heights.map(item => item.top);
+    const compositionBarTops = barTops.map(item => item.top);
     const heroHeight = heights.find(item => item.selector === '.dash-card-hero').height;
     const comparisonHeights = heights
         .filter(item => item.selector !== '.dash-card-hero')
         .map(item => item.height);
     expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
+    expect(Math.max(...compositionBarTops) - Math.min(...compositionBarTops)).toBeLessThanOrEqual(2);
+    expect(barTops.every(item => item.height === 16)).toBe(true);
     expect(Math.max(...comparisonHeights) - Math.min(...comparisonHeights)).toBeLessThanOrEqual(2);
     expect(heroHeight).toBeGreaterThanOrEqual(Math.max(...comparisonHeights));
 
