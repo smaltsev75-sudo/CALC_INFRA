@@ -181,16 +181,7 @@ export function renderDashboard(state, ctx) {
 
         /* === Grid === */
         el('div', { class: 'dashboard-grid', attrs: { 'data-testid': 'dashboard-grid' } },
-            el('section', {
-                class: 'dash-summary-stack',
-                attrs: {
-                    'data-testid': 'dashboard-summary-stack',
-                    'aria-label': 'Итого по расчёту и суммарные объёмы'
-                }
-            },
-                renderHero(filtered, period, ctx, applyRisks, calc),
-                renderDashboardTotalMetrics(resources.total, aiMetrics.total, applyRisks, ctx, period)
-            ),
+            renderHero(filtered, period, ctx, applyRisks, calc, resources.total, aiMetrics.total),
             // Stage 18.2 (PATCH 2.14.12): «Сводка состояния расчёта» —
             // композитный блок, объединяющий бывшие 4 карточки (Готовность /
             // Качество / Бюджет / Следующие шаги). presentation-only, читает
@@ -255,7 +246,7 @@ function renderAssumptionsBtn(count, ctx) {
 
 /* ---------- Hero ---------- */
 
-function renderHero(result, period, ctx, applyRisks = true, calc = null) {
+function renderHero(result, period, ctx, applyRisks = true, calc = null, totalResources = null, totalAiMetrics = null) {
     const total = pickTotal(result, period);
     const sub = periodSubtitle(period);
     const mul = periodMul(period);
@@ -431,6 +422,7 @@ function renderHero(result, period, ctx, applyRisks = true, calc = null) {
                 )
             )
             : null,
+        renderDashboardTotalMetrics(totalResources, totalAiMetrics, applyRisks, ctx, period)
     );
 }
 

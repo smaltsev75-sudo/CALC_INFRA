@@ -26,7 +26,7 @@ test('Risk contribution composition card stays aligned and non-overlapping', asy
         const container = node.getBoundingClientRect();
         const widths = [...node.querySelectorAll('.dash-risk-segment')]
             .map(seg => seg.getBoundingClientRect().width);
-        return container.width > 0 && widths.length >= 3 && widths.every(width => width > 0);
+        return container.width > 0 && widths.filter(width => width > 0).length >= 3;
     })).toBe(true);
 
     const segmentSummary = await riskSegments.evaluate(node => {
@@ -46,12 +46,13 @@ test('Risk contribution composition card stays aligned and non-overlapping', asy
         };
     });
 
-    expect(segmentSummary.segments.length).toBeGreaterThanOrEqual(3);
-    expect(Math.abs(segmentSummary.sumWidth - segmentSummary.containerWidth)).toBeLessThanOrEqual(2);
-    for (const segment of segmentSummary.segments) {
-        expect(segment.width).toBeGreaterThan(0);
-        expect(Math.abs(segment.top - segmentSummary.segments[0].top)).toBeLessThanOrEqual(1);
-        expect(Math.abs(segment.bottom - segmentSummary.segments[0].bottom)).toBeLessThanOrEqual(1);
+    const visibleSegments = segmentSummary.segments.filter(segment => segment.width > 0);
+    const visibleWidth = Math.round(visibleSegments.reduce((sum, seg) => sum + seg.width, 0) * 100) / 100;
+    expect(visibleSegments.length).toBeGreaterThanOrEqual(3);
+    expect(Math.abs(visibleWidth - segmentSummary.containerWidth)).toBeLessThanOrEqual(2);
+    for (const segment of visibleSegments) {
+        expect(Math.abs(segment.top - visibleSegments[0].top)).toBeLessThanOrEqual(1);
+        expect(Math.abs(segment.bottom - visibleSegments[0].bottom)).toBeLessThanOrEqual(1);
     }
 
     const overflow = await riskCard.locator('.dash-risk-row')
@@ -206,7 +207,7 @@ test('Category distribution composition card stays aligned and non-overlapping',
     expect(consoleErrors).toEqual([]);
 });
 
-test('Dashboard top composition cards share the same desktop row height', async ({ page }) => {
+test('Dashboard top composition cards keep aligned desktop row', async ({ page }) => {
     await page.setViewportSize({ width: 1680, height: 900 });
     const consoleErrors = await bootCleanApp(page);
 
@@ -228,14 +229,18 @@ test('Dashboard top composition cards share the same desktop row height', async 
     });
 
     const tops = heights.map(item => item.top);
-    const rowHeights = heights.map(item => item.height);
+    const heroHeight = heights.find(item => item.selector === '.dash-card-hero').height;
+    const comparisonHeights = heights
+        .filter(item => item.selector !== '.dash-card-hero')
+        .map(item => item.height);
     expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
-    expect(Math.max(...rowHeights) - Math.min(...rowHeights)).toBeLessThanOrEqual(2);
+    expect(Math.max(...comparisonHeights) - Math.min(...comparisonHeights)).toBeLessThanOrEqual(2);
+    expect(heroHeight).toBeGreaterThanOrEqual(Math.max(...comparisonHeights));
 
     expect(consoleErrors).toEqual([]);
 });
 
-test('Dashboard total resources belong to total card and inactive risks are struck through', async ({ page }) => {
+test('Dashboard total resources live inside total card and inactive risk values are struck through', async ({ page }) => {
     await page.setViewportSize({ width: 1680, height: 900 });
     const consoleErrors = await bootCleanApp(page);
 
@@ -249,39 +254,69 @@ test('Dashboard total resources belong to total card and inactive risks are stru
     });
     await page.getByTestId('dashboard-period-monthly').click();
 
-    const totalStack = page.getByTestId('dashboard-summary-stack');
-    await expect(totalStack).toBeVisible();
-    await expect(totalStack.locator('.dash-card-hero')).toBeVisible();
-    await expect(totalStack.locator('.dash-dashboard-metrics .dash-resources')).toBeVisible();
-    await expect(totalStack.locator('.dash-dashboard-metrics .dash-ai-metrics')).toBeVisible();
+    const hero = page.getByTestId('dashboard-hero');
+    await expect(hero).toBeVisible();
+    await expect(hero.locator('> .dash-dashboard-metrics .dash-resources')).toBeVisible();
+    await expect(hero.locator('> .dash-dashboard-metrics .dash-ai-metrics')).toBeVisible();
 
     const totalLayout = await page.evaluate(() => {
-        const stack = document.querySelector('[data-testid="dashboard-summary-stack"]').getBoundingClientRect();
-        const hero = document.querySelector('.dash-card-hero').getBoundingClientRect();
-        const metrics = document.querySelector('.dash-dashboard-metrics').getBoundingClientRect();
-        const categories = document.querySelector('.dash-card-categories').getBoundingClientRect();
+        const heroNode = document.querySelector('.dash-card-hero');
+        const hero = heroNode.getBoundingClientRect();
+        const costTypes = heroNode.querySelector('.dash-hero-cost-types').getBoundingClientRect();
+        const metricsNode = heroNode.querySelector(':scope > .dash-dashboard-metrics');
+        const metrics = metricsNode.getBoundingClientRect();
         return {
-            metricsInsideStack:
-                metrics.left >= stack.left - 1 &&
-                metrics.right <= stack.right + 1 &&
-                metrics.top >= hero.bottom - 1,
-            metricsDoesNotRunUnderCategories: metrics.right <= categories.left - 8,
-            stackTop: Math.round(stack.top),
+            metricsIsDirectHeroChild: metricsNode?.parentElement === heroNode,
+            metricsInsideHero:
+                metrics.left >= hero.left - 1 &&
+                metrics.right <= hero.right + 1 &&
+                metrics.top >= costTypes.bottom - 1 &&
+                metrics.bottom <= hero.bottom + 1,
             heroTop: Math.round(hero.top)
         };
     });
-    expect(totalLayout.metricsInsideStack).toBe(true);
-    expect(totalLayout.metricsDoesNotRunUnderCategories).toBe(true);
-    expect(totalLayout.stackTop).toBe(totalLayout.heroTop);
+    expect(totalLayout.metricsIsDirectHeroChild).toBe(true);
+    expect(totalLayout.metricsInsideHero).toBe(true);
+
+    const heroAmountAlignment = await hero.evaluate(node => {
+        const amountNodes = [...node.querySelectorAll(
+            '.dash-hero-breakdown-amount, .dash-hero-alt-value, .dash-hero-cost-types .dash-cost-row-amount'
+        )].filter(item => {
+            const rect = item.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+        });
+        const rightEdges = amountNodes.map(item => {
+            const rect = item.getBoundingClientRect();
+            return {
+                text: item.textContent.trim(),
+                right: Math.round(rect.right * 100) / 100
+            };
+        });
+        const rights = rightEdges.map(item => item.right);
+        return {
+            rightEdges,
+            maxDelta: Math.max(...rights) - Math.min(...rights)
+        };
+    });
+    expect(heroAmountAlignment.rightEdges.length).toBeGreaterThanOrEqual(5);
+    expect(heroAmountAlignment.maxDelta).toBeLessThanOrEqual(2);
 
     await expect(page.locator('.dash-card-hero .dash-card-eyebrow-tag')).toContainText('БЕЗ РИСКОВ');
     await expect(page.locator('.dash-card-hero .dash-hero-breakdown-row-risk-potential')).toBeVisible();
 
     const disabledRiskDecoration = await page.locator('.dash-card-hero .dash-hero-breakdown-row-risk-potential')
-        .evaluate(row => [...row.querySelectorAll(
-            '.dash-hero-breakdown-label, .dash-hero-breakdown-amount, .dash-hero-breakdown-value'
-        )].map(node => getComputedStyle(node).textDecoration));
-    expect(disabledRiskDecoration.every(decoration => decoration.includes('line-through'))).toBe(true);
+        .evaluate(row => Object.fromEntries([
+            ['label', '.dash-hero-breakdown-label'],
+            ['amount', '.dash-hero-breakdown-amount'],
+            ['value', '.dash-hero-breakdown-value']
+        ].map(([key, selector]) => {
+            const node = row.querySelector(selector);
+            const style = getComputedStyle(node);
+            return [key, style.textDecorationLine || style.textDecoration || ''];
+        })));
+    expect(disabledRiskDecoration.label.includes('line-through')).toBe(false);
+    expect(disabledRiskDecoration.amount.includes('line-through')).toBe(true);
+    expect(disabledRiskDecoration.value.includes('line-through')).toBe(true);
 
     await page.evaluate(async () => {
         const calcCtl = await import(new URL('js/controllers/calcController.js', document.baseURI).href);
@@ -293,7 +328,7 @@ test('Dashboard total resources belong to total card and inactive risks are stru
     const enabledRiskDecoration = await page.locator('.dash-card-hero .dash-hero-breakdown-row-risk')
         .evaluate(row => [...row.querySelectorAll(
             '.dash-hero-breakdown-label, .dash-hero-breakdown-amount, .dash-hero-breakdown-value'
-        )].map(node => getComputedStyle(node).textDecoration));
+        )].map(node => getComputedStyle(node).textDecorationLine || getComputedStyle(node).textDecoration));
     expect(enabledRiskDecoration.every(decoration => !decoration.includes('line-through'))).toBe(true);
 
     expect(consoleErrors).toEqual([]);

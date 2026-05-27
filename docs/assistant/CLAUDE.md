@@ -2,19 +2,24 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.88)
+## Current Project Lessons (2026-05-27, v2.20.89)
 
+- Dashboard total resource/AI cards must be physically inside the
+  `Итого по расчёту` hero card border. `Объёмы ресурсов · ИТОГО` and
+  `Объёмы AI-нагрузки · ИТОГО` are direct hero children via
+  `.dash-dashboard-metrics`; do not move them back to an adjacent
+  `dash-summary-stack` or a full-width dashboard row.
+- When `applyRiskFactors=false`, the hero `Риски` row shows potential risk
+  values as inactive information: strike through only the amount and percent.
+  The label `Риски` itself is the row name and must never be struck through.
+- Hero budget rows must keep all money amounts on one vertical right edge:
+  VAT, risks, alternative periods and CAPEX/OPEX share the same amount column.
+  If a row has no percent, keep the empty percent column instead of letting the
+  amount jump to the card edge.
 - Dashboard top-card height guards must account for Linux/Windows font metric
   drift. If the contract says the three composition cards share one height,
   set a CSS min-height with enough headroom for GitHub Chromium rather than
   depending on a value that only barely fits locally.
-- Dashboard total resource/AI cards are part of the `Итого по расчёту` scope.
-  Keep `Объёмы ресурсов · ИТОГО` and `Объёмы AI-нагрузки · ИТОГО` inside the
-  same left `dash-summary-stack` as the budget hero; do not place them as a
-  full-width dashboard row where they look unrelated to the total card.
-- When `applyRiskFactors=false`, the hero row `Риски` shows the potential risk
-  amount only as crossed-out information. When risks are enabled, the same row
-  is active and must not be struck through.
 - Playwright layout contracts for Dashboard cards should measure the visible
   card and poll for non-zero geometry before reading segment widths. In GitHub
   Chromium, off-viewport Dashboard cards can be present in DOM while their first
@@ -29,15 +34,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   contributions; otherwise a valid small factor such as schedule shift becomes
   invisible and layout tests become flaky.
 - `Итого по расчёту` should use meaningful compact rows for NDS, risks, period
-  alternates and CAPEX/OPEX, not an empty hero area. Total resource/AI cards
-  stay below the hero within the same left summary stack, so the budget card
-  stays compact while total-scope ownership remains visible.
+  alternates, CAPEX/OPEX and its own total resource/AI sections, not an empty
+  hero area and not detached cards elsewhere on the dashboard.
 - Dashboard top row cards should share one visual grammar and one row height.
   `Итого по расчёту`, `Распределение по категориям` and
   `Вклад риск-коэффициентов` use the same composition pattern: large amount,
   stacked bar and compact contribution rows. Total resource/AI workload blocks
-  belong below the hero in its summary stack, not inside the hero body and not
-  as a page-wide row.
+  belong to the hero card itself, below the budget composition.
 - Category distribution UI should mirror the risk contribution composition when
   both cards sit together on Dashboard. `Распределение по категориям` keeps the
   `ИТОГО` badge and category-description tooltips, but uses one stacked

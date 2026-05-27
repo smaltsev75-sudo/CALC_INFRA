@@ -180,18 +180,9 @@
 }
 
 .dash-card-hero       { grid-area: hero; }
-.dash-summary-stack   { grid-area: hero; }
 .dash-stands-row      { grid-area: stands; }
 .dash-card-categories { grid-area: categories; }
 .dash-card-risk       { grid-area: risk; }
-
-.dash-summary-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    min-width: 0;
-    align-self: start;
-}
 
 @media (max-width: 1380px) {
     .dashboard-grid {
@@ -448,7 +439,6 @@
     font-style: italic;
 }
 
-.dash-hero-breakdown-row-risk-potential .dash-hero-breakdown-label,
 .dash-hero-breakdown-row-risk-potential .dash-hero-breakdown-amount,
 .dash-hero-breakdown-row-risk-potential .dash-hero-breakdown-value {
     text-decoration: line-through;
@@ -488,7 +478,7 @@
 
 .dash-hero-alt-item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto 56px;
     align-items: center;
     gap: 12px;
     padding: 8px 10px;
@@ -1434,9 +1424,8 @@
     min-width: 0;
 }
 
-/* Суммарные hardware/AI объёмы остаются отдельными карточками, но живут
- * внутри левого total-stack под «Итого по расчёту»: это показывает
- * принадлежность к total-scope и не раздувает саму бюджетную hero-карточку. */
+/* Суммарные hardware/AI объёмы живут внутри hero-карточки «Итого по расчёту»:
+ * это не соседние карточки сетки, а внутренние total-секции того же scope. */
 .dash-dashboard-metrics > .dash-resources {
     margin-top: 0;
     padding: 14px 16px;
@@ -1822,8 +1811,8 @@
 }
 
 @media (min-width: 1381px) {
-    .dashboard-grid > .dash-summary-stack > .dash-card-hero {
-        align-self: stretch;
+    .dashboard-grid > .dash-card-hero {
+        align-self: start;
         min-height: 436px;
     }
 
