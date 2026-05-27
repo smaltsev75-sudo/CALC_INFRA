@@ -2,8 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.81)
+## Current Project Lessons (2026-05-27, v2.20.82)
 
+- Do not repeat risk mode copy inside the same card. In
+  `Вклад риск-коэффициентов`, the phrase "если применить риски" belongs in the
+  subtitle when risks are disabled; do not add a second line under the amount
+  saying the same thing.
 - Risk contribution UI should show one composition, not repeated bars. The
   Dashboard card keeps the title `Вклад риск-коэффициентов` and `ИТОГО` badge,
   but the body uses a single stacked composition bar plus rows with amount and

@@ -1,6 +1,15 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { computeRiskContribution } from '../../../js/ui/dashboardRiskCard.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const source = readFileSync(
+    join(__dirname, '..', '..', '..', 'js', 'ui', 'dashboardRiskCard.js'),
+    'utf8'
+);
 
 function approx(actual, expected, message) {
     assert.ok(
@@ -85,5 +94,12 @@ describe('dashboardRiskCard', () => {
             }),
             null
         );
+    });
+
+    it('does not render duplicate "если применить" copy under the surcharge amount', () => {
+        assert.doesNotMatch(source, /dash-risk-surplus-note/,
+            'не добавлять отдельную строку под суммой: режим уже указан в подзаголовке');
+        assert.doesNotMatch(source, /text:\s*['"]если применить['"]/,
+            'нижняя строка "если применить" дублирует подзаголовок карточки');
     });
 });

@@ -1491,12 +1491,6 @@
     white-space: nowrap;
 }
 
-.dash-risk-surplus-note {
-    color: var(--text-muted);
-    font-size: 0.76rem;
-    margin-top: -6px;
-}
-
 .dash-risk-segments {
     display: flex;
     width: 100%;

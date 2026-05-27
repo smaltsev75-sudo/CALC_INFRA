@@ -234,11 +234,6 @@ export function renderRiskCard(result, calc, period, applyRisks = true) {
                     text: `${totalSurplusPct >= 0 ? '+' : ''}${formatNumber(totalSurplusPct, { min: 1, max: 1 })}%`
                 })
             ),
-            !applyRisks
-                ? el('div', { class: 'dash-risk-surplus-note',
-                    title: 'Сейчас риск-коэффициенты ВЫКЛЮЧЕНЫ в Опроснике — итог считается без них. Это сумма, на которую вырос бы итог, если бы вы их включили.',
-                    text: 'если применить' })
-                : null,
             el('div', { class: 'dash-risk-segments',
                 attrs: {
                     role: 'img',
