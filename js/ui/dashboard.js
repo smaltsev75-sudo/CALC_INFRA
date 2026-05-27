@@ -6,7 +6,7 @@
  *      по 5 стендам. Соседние периоды (день/мес/год) — мелкими подписями.
  *   2) Структура расходов — donut по категориям + легенда (ИТОГО).
  *   3) 5 карточек стендов — компактные, per-stand цветовой акцент.
- *   4) Распределение по категориям — горизонтальные progress-bars
+ *   4) Распределение по категориям — составная шкала + строки категорий
  *      (ИТОГО или по N активным стендам).
  *   5) Вклад рисков — pills с компонентами наценки.
  *
@@ -721,37 +721,57 @@ function renderCategoriesCard(result, period, activeStandsCount, ctx = {}) {
             })
         ),
         el('div', { class: 'dash-card-body dash-categories-body' },
+            el('div', { class: 'dash-category-summary' },
+                el('div', { class: 'dash-category-summary-main' },
+                    el('span', { class: 'dash-category-summary-amount',
+                        text: fmtRubForPeriod(total * periodMul(period), period)
+                    }),
+                    el('span', { class: 'dash-category-summary-period', text: slash })
+                )
+            ),
+            el('div', { class: 'dash-category-segments',
+                attrs: {
+                    role: 'img',
+                    'aria-label': 'Доли категорий в общем бюджете'
+                }
+            },
+                ...sorted.map(cat => {
+                    const v = byCat[cat] || 0;
+                    const share = total > 0 ? v / total : 0;
+                    return el('span', {
+                        class: 'dash-category-segment',
+                        style: {
+                            width: `${(share * 100).toFixed(2)}%`,
+                            background: CATEGORY_COLORS[cat]
+                        },
+                        title: `${CATEGORY_LABELS[cat]}: ${percent(share)} бюджета`
+                    });
+                })
+            ),
+            el('div', { class: 'dash-category-table' },
             ...sorted.map(cat => {
                 const v = byCat[cat] || 0;
                 const share = total > 0 ? v / total : 0;
                 return el('div', { class: 'dash-category-row' },
-                    el('div', { class: 'dash-category-row-head' },
-                        el('span', { class: 'dash-category-row-dot', style: { background: CATEGORY_COLORS[cat] } }),
+                    el('span', {
+                        class: 'dash-category-row-label',
                         /* title= с расшифровкой содержания категории — что именно
                            попадает в эту группу расходов. Дополняет короткий ярлык
                            («Услуги», «Резервы»), не дублирует его. */
-                        el('span', {
-                            class: 'dash-category-row-label',
-                            text: CATEGORY_LABELS[cat],
-                            title: CATEGORY_DESCRIPTIONS[cat]
-                        }),
-                        /* 12.U25-fix-14: сначала сумма (главное число), затем % (вторичная метрика).
-                           Раньше «34,3% 2 444 тыс. ₽» — цифры читались справа налево; теперь
-                           «2 444 тыс. ₽ 34,3%» — типичный финансовый порядок (number → share). */
-                        el('span', { class: 'dash-category-row-value',
-                            text: `${fmtRubForPeriod(v * periodMul(period), period)} ${slash}` }),
-                        el('span', { class: 'dash-category-row-pct', text: percent(share) })
+                        title: CATEGORY_DESCRIPTIONS[cat]
+                    },
+                        el('span', { class: 'dash-category-row-dot', style: { background: CATEGORY_COLORS[cat] } }),
+                        el('span', { text: CATEGORY_LABELS[cat] })
                     ),
-                    el('div', { class: 'dash-category-row-bar' },
-                        el('span', { class: 'dash-category-row-bar-fill',
-                            style: {
-                                width: `${(share * 100).toFixed(2)}%`,
-                                background: CATEGORY_COLORS[cat]
-                            }
-                        })
-                    )
+                    /* 12.U25-fix-14: сначала сумма (главное число), затем % (вторичная метрика).
+                       Раньше «34,3% 2 444 тыс. ₽» — цифры читались справа налево; теперь
+                       «2 444 тыс. ₽ 34,3%» — типичный финансовый порядок (number → share). */
+                    el('span', { class: 'dash-category-row-value',
+                        text: fmtRubForPeriod(v * periodMul(period), period) }),
+                    el('span', { class: 'dash-category-row-pct', text: percent(share) })
                 );
             })
+            )
         )
     );
 }

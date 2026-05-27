@@ -182,11 +182,11 @@
         color: #333 !important;
     }
 
-    /* Прогресс-бары в категории/риск-карточках — на печати ничего не значат
+    /* Составные шкалы в категории/риск-карточках — на печати ничего не значат
      * (визуальная подсказка длины), убираем фон. Числа справа сами по себе
      * передают информацию. */
-    .dash-category-row-bar,
-    .dash-category-row-bar-fill,
+    .dash-category-segments,
+    .dash-category-segment,
     .dash-risk-segments,
     .dash-risk-segment,
     .dash-hero-cost-types-bar,

@@ -256,7 +256,7 @@ export async function getCalculationUiModel(page) {
                     id: cat,
                     label: CATEGORY_LABELS[cat],
                     monthly,
-                    valueText: `${fmtDash(monthly * periodMul(period))} ${periodSlash(period)}`
+                    valueText: fmtDash(monthly * periodMul(period))
                 };
             });
 
@@ -315,6 +315,8 @@ export async function getCalculationUiModel(page) {
             dashboard: {
                 heroAmount: fmtDash(pickTotal(filtered, period)),
                 heroUnit: periodSlash(period),
+                categorySummaryAmount: fmtDash(filtered.totalMonthly * periodMul(period)),
+                categorySummaryPeriod: periodSlash(period),
                 categories: dashboardCategories,
                 stands: dashboardStands
             },
@@ -520,6 +522,8 @@ export async function readDashboardUi(page) {
     return page.evaluate(() => ({
         heroAmount: document.querySelector('.dash-hero-value-amount')?.textContent?.trim() || '',
         heroUnit: document.querySelector('.dash-hero-value-unit')?.textContent?.trim() || '',
+        categorySummaryAmount: document.querySelector('.dash-category-summary-amount')?.textContent?.trim() || '',
+        categorySummaryPeriod: document.querySelector('.dash-category-summary-period')?.textContent?.trim() || '',
         categories: Array.from(document.querySelectorAll('.dash-card-categories .dash-category-row')).map(row => ({
             label: row.querySelector('.dash-category-row-label')?.textContent?.trim() || '',
             valueText: row.querySelector('.dash-category-row-value')?.textContent?.trim() || ''
@@ -556,6 +560,8 @@ export async function expectDashboardMatchesModel(page) {
 
     expect(ui.heroAmount).toBe(model.dashboard.heroAmount);
     expect(ui.heroUnit).toBe(model.dashboard.heroUnit);
+    expect(ui.categorySummaryAmount).toBe(model.dashboard.categorySummaryAmount);
+    expect(ui.categorySummaryPeriod).toBe(model.dashboard.categorySummaryPeriod);
     expect(ui.categories).toEqual(model.dashboard.categories.map(({ label, valueText }) => ({ label, valueText })));
     expect(ui.stands).toEqual(model.dashboard.stands.map(({ label, disabled, valueText, unitText }) => ({
         label,

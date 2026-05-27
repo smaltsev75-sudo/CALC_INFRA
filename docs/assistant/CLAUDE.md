@@ -2,8 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.82)
+## Current Project Lessons (2026-05-27, v2.20.83)
 
+- Category distribution UI should mirror the risk contribution composition when
+  both cards sit together on Dashboard. `Распределение по категориям` keeps the
+  `ИТОГО` badge and category-description tooltips, but uses one stacked
+  composition bar plus rows with amount and share; do not bring back per-row
+  mini-bars that duplicate the same percentage encoding.
 - Do not repeat risk mode copy inside the same card. In
   `Вклад риск-коэффициентов`, the phrase "если применить риски" belongs in the
   subtitle when risks are disabled; do not add a second line under the amount

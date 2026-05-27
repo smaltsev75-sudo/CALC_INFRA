@@ -1343,7 +1343,7 @@
 .dash-card-hero .dash-resource-row-label { font-size: 0.62rem; }
 
 /* ============================================================
- * CATEGORIES card (горизонтальные progress-bars)
+ * CATEGORIES card (составная шкала + строки)
  * ============================================================ */
 
 .dash-categories-empty {
@@ -1352,29 +1352,100 @@
     padding: 24px 0;
 }
 
-.dash-categories-body { gap: 8px; }
-
-.dash-category-row {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+.dash-card-categories {
+    container-type: inline-size;
+    container-name: category-card;
+    align-self: start;
 }
 
-.dash-category-row-head {
+.dash-categories-body {
+    gap: 12px;
+}
+
+.dash-category-summary {
     display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    min-width: 0;
+}
+
+.dash-category-summary-main {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+}
+
+.dash-category-summary-amount {
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 1.38rem;
+    font-weight: 700;
+    line-height: 1.05;
+    white-space: nowrap;
+}
+
+.dash-category-summary-period {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.dash-category-segments {
+    display: flex;
+    width: 100%;
+    height: 16px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--bg-input);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.dash-category-segment {
+    display: block;
+    min-width: 3px;
+    height: 100%;
+}
+
+.dash-category-table {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.dash-category-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
+    min-height: 38px;
+    padding: 8px 10px;
+    background: color-mix(in srgb, var(--bg-input) 54%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border) 42%, transparent);
+    border-radius: 6px;
     font-size: 0.82rem;
 }
 
 .dash-category-row-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 2px;
-    flex-shrink: 0;
+    flex: 0 0 auto;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
-.dash-category-row-label { flex: 1; color: var(--text); }
+.dash-category-row-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-weight: 600;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
 /* 12.U30-fix: согласовано с .dash-risk-row-* (Вклад риск-коэффициентов).
  * Сумма — акцент (`text` + 600), % — приглушённый (text-muted + 500).
  * Раньше было ровно наоборот: сумма приглушена, % жирный → пользователь
@@ -1399,18 +1470,31 @@
     text-align: right;
 }
 
-.dash-category-row-bar {
-    height: 6px;
-    background: var(--bg-input);
-    border-radius: 999px;
-    overflow: hidden;
-}
+@container category-card (max-width: 430px) {
+    .dash-category-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "label amount"
+            "label pct";
+        column-gap: 10px;
+        row-gap: 6px;
+    }
 
-.dash-category-row-bar-fill {
-    display: block;
-    height: 100%;
-    border-radius: 999px;
-    transition: width var(--t-base);
+    .dash-category-row-label {
+        grid-area: label;
+        align-self: center;
+    }
+
+    .dash-category-row-value {
+        grid-area: amount;
+        min-width: 0;
+    }
+
+    .dash-category-row-pct {
+        grid-area: pct;
+        min-width: 0;
+    }
 }
 
 /* ============================================================

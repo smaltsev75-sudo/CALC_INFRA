@@ -120,10 +120,10 @@ describe('Светлая тема — читабельность', () => {
             'icon-плейсхолдер должен использовать bg-elevated в светлой теме');
     });
 
-    it('cats-bar / category-row-bar / risk-segments используют bg-elevated в светлой теме', () => {
+    it('cats-bar / category-segments / risk-segments используют bg-elevated в светлой теме', () => {
         // Раньше bg-input #ffffff на белой карточке был невидим.
         assert.match(baseCss,
-            /\[data-theme="light"\][\s\S]*?\.dash-stand-card-cats-bar[\s\S]*?background\s*:\s*var\(--bg-elevated\)/,
+            /\[data-theme="light"\][\s\S]*?\.dash-stand-card-cats-bar[\s\S]*?\.dash-category-segments[\s\S]*?\.dash-risk-segments[\s\S]*?background\s*:\s*var\(--bg-elevated\)/,
             'progress tracks должны использовать bg-elevated как track в светлой теме');
     });
 
