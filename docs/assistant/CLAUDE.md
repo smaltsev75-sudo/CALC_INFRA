@@ -2,8 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.96)
+## Current Project Lessons (2026-05-27, v2.20.97)
 
+- In `Итого по расчёту`, adjacent period totals belong in the top KPI row,
+  not as separate lower rows. Keep the main selected period prominent and
+  render the two alternate periods inline in `.dash-hero-main`.
 - In `Итого по расчёту`, disabled VAT should mirror disabled risks: keep the
   `НДС` row visible as potential cost, strike through only the amount and
   percent, and never strike the row label.

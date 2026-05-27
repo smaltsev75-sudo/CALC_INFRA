@@ -82,6 +82,10 @@ function periodSlash(period) {
     return period === 'daily' ? '/ день' : period === 'annual' ? '/ год' : '/ мес';
 }
 
+function periodSlashCompact(period) {
+    return period === 'daily' ? '/д' : period === 'annual' ? '/год' : '/мес';
+}
+
 function periodMul(period) {
     return period === 'daily' ? 1 / 30 : period === 'annual' ? MONTHS_PER_YEAR : 1;
 }
@@ -380,7 +384,17 @@ function renderHero(result, period, ctx, applyRisks = true, calc = null, totalRe
                 el('div', { class: 'dash-hero-value' },
                     el('span', { class: 'dash-hero-value-amount', text: fmtRubForPeriod(total, period) }),
                     el('span', { class: 'dash-hero-value-unit', text: slash })
-                )
+                ),
+                altPeriods.length === 2
+                    ? el('div', { class: 'dash-hero-alt' },
+                        ...altPeriods.map(altPeriod => el('div', { class: 'dash-hero-alt-item' },
+                            el('span', { class: 'dash-hero-alt-value',
+                                text: fmtRubForPeriod(altPeriod.value, altPeriod.id) }),
+                            el('span', { class: 'dash-hero-alt-label',
+                                text: periodSlashCompact(altPeriod.id) })
+                        ))
+                    )
+                    : null
             ),
             /* Структура расходов стоит в верхнем bar-слоте hero, чтобы CAPEX/OPEX
                bar был выровнен с bars карточек «Распределение» и «Вклад рисков». */
@@ -408,23 +422,7 @@ function renderHero(result, period, ctx, applyRisks = true, calc = null, totalRe
                     el('span', { class: 'dash-hero-breakdown-amount', text: fmtRubForPeriod(riskAmount, period) }),
                     el('span', { class: 'dash-hero-breakdown-value', text: riskPctText || '—' })
                 ) : null
-            ),
-            /* Соседние периоды — один слева (меньший по таймскейлу: day < month < year),
-               другой справа (больший). Симметрично смотрятся под главным числом. */
-            altPeriods.length === 2
-                ? el('div', { class: 'dash-hero-alt' },
-                    el('div', { class: 'dash-hero-alt-item dash-hero-alt-item-left' },
-                        el('span', { class: 'dash-hero-alt-value',
-                            text: fmtRubForPeriod(altPeriods[0].value, altPeriods[0].id) }),
-                        el('span', { class: 'dash-hero-alt-label', text: altPeriods[0].label })
-                    ),
-                    el('div', { class: 'dash-hero-alt-item dash-hero-alt-item-right' },
-                        el('span', { class: 'dash-hero-alt-value',
-                            text: fmtRubForPeriod(altPeriods[1].value, altPeriods[1].id) }),
-                        el('span', { class: 'dash-hero-alt-label', text: altPeriods[1].label })
-                    )
-                )
-                : null
+            )
         ),
         renderDashboardTotalMetrics(totalResources, totalAiMetrics, applyRisks, ctx, period)
     );

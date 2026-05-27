@@ -278,6 +278,22 @@ test('Dashboard total resources live inside total card and inactive risk/VAT val
     await expect(hero.locator('> .dash-dashboard-metrics .dash-resources')).toBeVisible();
     await expect(hero.locator('> .dash-dashboard-metrics .dash-ai-metrics')).toBeVisible();
 
+    const topTotalsLayout = await hero.evaluate(node => {
+        const main = node.querySelector('.dash-hero-main');
+        const value = node.querySelector('.dash-hero-value');
+        const alt = node.querySelector('.dash-hero-alt');
+        const valueRect = value.getBoundingClientRect();
+        const altRect = alt.getBoundingClientRect();
+        return {
+            altInsideMain: alt?.parentElement === main,
+            altValueCount: alt?.querySelectorAll('.dash-hero-alt-value').length || 0,
+            sameVisualLine: Math.abs(valueRect.top - altRect.top) <= 12
+        };
+    });
+    expect(topTotalsLayout.altInsideMain).toBe(true);
+    expect(topTotalsLayout.altValueCount).toBe(2);
+    expect(topTotalsLayout.sameVisualLine).toBe(true);
+
     const totalLayout = await page.evaluate(() => {
         const heroNode = [...document.querySelectorAll('.dash-card-hero')]
             .find(node => {
@@ -303,7 +319,7 @@ test('Dashboard total resources live inside total card and inactive risk/VAT val
 
     const readHeroAmountAlignment = () => hero.evaluate(node => {
         const amountNodes = [...node.querySelectorAll(
-            '.dash-hero-breakdown-amount, .dash-hero-alt-value, .dash-hero-cost-types .dash-cost-row-amount'
+            '.dash-hero-breakdown-amount, .dash-hero-cost-types .dash-cost-row-amount'
         )].filter(item => {
             const rect = item.getBoundingClientRect();
             return rect.width > 0 && rect.height > 0;
@@ -325,18 +341,18 @@ test('Dashboard total resources live inside total card and inactive risk/VAT val
     await expect.poll(async () => {
         const alignment = await readHeroAmountAlignment();
         if (
-            alignment.rightEdges.length >= 5 &&
+            alignment.rightEdges.length >= 4 &&
             Number.isFinite(alignment.maxDelta) &&
             alignment.maxDelta <= 2
         ) {
             heroAmountAlignment = alignment;
             return true;
         }
-        return alignment.rightEdges.length >= 5 &&
+        return alignment.rightEdges.length >= 4 &&
             Number.isFinite(alignment.maxDelta) &&
             alignment.maxDelta <= 2;
     }).toBe(true);
-    expect(heroAmountAlignment.rightEdges.length).toBeGreaterThanOrEqual(5);
+    expect(heroAmountAlignment.rightEdges.length).toBeGreaterThanOrEqual(4);
     expect(heroAmountAlignment.maxDelta).toBeLessThanOrEqual(2);
 
     const readBreakdownDecoration = rowLocator => rowLocator.evaluate(row => Object.fromEntries([
