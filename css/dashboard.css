@@ -1432,6 +1432,7 @@
 .dash-card-risk {
     container-type: inline-size;
     container-name: risk-card;
+    align-self: start;
 }
 
 .dash-card-risk .dash-card-eyebrow-sub {
@@ -1453,45 +1454,114 @@
 }
 
 .dash-risk-body {
-    gap: 8px;
+    gap: 12px;
 }
 
 .dash-risk-row {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 38px;
+    padding: 8px 10px;
+    background: color-mix(in srgb, var(--bg-input) 54%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border) 42%, transparent);
     font-size: 0.82rem;
 }
 
-.dash-risk-row-head {
+.dash-risk-summary {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
     min-width: 0;
 }
 
+.dash-risk-summary-main {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+}
+
+.dash-risk-summary-period {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.dash-risk-surplus-note {
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    margin-top: -6px;
+}
+
+.dash-risk-segments {
+    display: flex;
+    width: 100%;
+    height: 16px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--bg-input);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.dash-risk-segment {
+    display: block;
+    min-width: 3px;
+    height: 100%;
+    background: linear-gradient(90deg, var(--risk-tone), var(--risk-tone-2));
+}
+
+.dash-risk-table {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
 .dash-risk-row-label {
-    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     color: var(--text);
+    font-weight: 600;
     min-width: 0;
     overflow-wrap: anywhere;
 }
 
-.dash-risk-row-bar {
-    display: block;
-    width: 100%;
-    height: 6px;
-    background: var(--bg-input);
-    border-radius: 999px;
-    overflow: hidden;
+.dash-risk-row-dot {
+    flex: 0 0 auto;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--risk-tone);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--risk-tone) 16%, transparent);
 }
 
-.dash-risk-row-bar-fill {
-    display: block;
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 100%);
-    border-radius: 999px;
-    transition: width var(--t-base);
+.dash-risk-tone-buffer {
+    --risk-tone: var(--accent);
+    --risk-tone-2: var(--accent-2);
+}
+
+.dash-risk-tone-inflation {
+    --risk-tone: #4fc3f7;
+    --risk-tone-2: #83d9ff;
+}
+
+.dash-risk-tone-seasonal {
+    --risk-tone: #8bd66f;
+    --risk-tone-2: #b7ec8c;
+}
+
+.dash-risk-tone-schedule {
+    --risk-tone: #ff8a65;
+    --risk-tone-2: #ffb199;
+}
+
+.dash-risk-tone-contingency {
+    --risk-tone: var(--warning);
+    --risk-tone-2: #ffe082;
 }
 
 /* 12.U30-fix: согласовано с .dash-category-row-* — сумма акцент (text + 600),
@@ -1518,7 +1588,7 @@
 }
 
 @container risk-card (max-width: 430px) {
-    .dash-risk-row-head {
+    .dash-risk-row {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         grid-template-areas:
@@ -1545,9 +1615,11 @@
 }
 
 .dash-risk-surplus-amount {
-    color: var(--text-muted);
+    color: var(--text);
     font-family: var(--font-mono);
-    font-size: 0.78rem;
+    font-size: 1.38rem;
+    font-weight: 700;
+    line-height: 1.05;
     /* 12.U25-fix-9: «· 75 тыс. ₽ / день» — атомарная единица; иначе при
      * flex-wrap родителя ломается «75 тыс.» на одну строку, «₽ / день» — на другую. */
     white-space: nowrap;

@@ -120,11 +120,11 @@ describe('Светлая тема — читабельность', () => {
             'icon-плейсхолдер должен использовать bg-elevated в светлой теме');
     });
 
-    it('cats-bar / category-row-bar / risk-row-bar используют bg-elevated в светлой теме', () => {
+    it('cats-bar / category-row-bar / risk-segments используют bg-elevated в светлой теме', () => {
         // Раньше bg-input #ffffff на белой карточке был невидим.
         assert.match(baseCss,
             /\[data-theme="light"\][\s\S]*?\.dash-stand-card-cats-bar[\s\S]*?background\s*:\s*var\(--bg-elevated\)/,
-            'progress-bars должны использовать bg-elevated как track в светлой теме');
+            'progress tracks должны использовать bg-elevated как track в светлой теме');
     });
 
     it('кастомный scrollbar получает thumb с тёплым undertone в светлой теме', () => {

@@ -30,6 +30,22 @@ const RISK_COMPONENT_LABELS = Object.freeze({
     contingencyMul: 'Резерв на риски'
 });
 
+const RISK_COMPONENT_SHORT_LABELS = Object.freeze({
+    bufferFactor:   'Буферы',
+    inflationMul:   'Инфляция',
+    seasonalMul:    'Сезонность',
+    scheduleMul:    'Сдвиг',
+    contingencyMul: 'Резерв'
+});
+
+const RISK_COMPONENT_CLASSES = Object.freeze({
+    bufferFactor:   'dash-risk-tone-buffer',
+    inflationMul:   'dash-risk-tone-inflation',
+    seasonalMul:    'dash-risk-tone-seasonal',
+    scheduleMul:    'dash-risk-tone-schedule',
+    contingencyMul: 'dash-risk-tone-contingency'
+});
+
 export function computeRiskContribution(result, disabledStands = []) {
     const components = ['bufferFactor', 'inflationMul', 'seasonalMul', 'scheduleMul', 'contingencyMul'];
     const sum = { totalBase: 0, totalFinal: 0 };
@@ -199,55 +215,68 @@ export function renderRiskCard(result, calc, period, applyRisks = true) {
                     attrs: { role: 'note', tabindex: '0', 'aria-label': 'Как считается вклад' }
                 }, icon('info', { size: 12 }))
             ),
-            el('div', { class: 'dash-card-eyebrow-sub' },
-                el('span', { text: applyRisks ? 'Общая наценка ' : 'Потенциальная наценка ' }),
-                el('span', { class: 'dash-risk-surplus',
-                    /* 12.U26-fix: единый формат процента ru-RU (запятая) — согласовано с
-                       «Распределение по категориям», где percent() даёт «41,7%». Раньше
-                       .toFixed(1) выдавал «56.0%» (точка) → визуальный диссонанс. */
-                    text: `${totalSurplusPct >= 0 ? '+' : ''}${formatNumber(totalSurplusPct, { min: 1, max: 1 })}%`
-                }),
-                el('span', { class: 'dash-risk-surplus-amount',
-                    /* 12.U25-fix-14: убрана точка-разделитель «·» — пользователь воспринимал её как
-                       мусор перед числом. column-gap родителя (.dash-card-eyebrow-sub) даёт
-                       визуальную границу между процент-пиллом и суммой. */
-                    text: `${fmtRubForPeriod(surplusPeriod, period)} ${slash}`
-                }),
-                !applyRisks
-                    ? el('span', { class: 'dash-risk-surplus-note',
-                        title: 'Сейчас риск-коэффициенты ВЫКЛЮЧЕНЫ в Опроснике — итог считается без них. Это сумма, на которую вырос бы итог, если бы вы их включили.',
-                        text: ' (если применить)' })
-                    : null
-            )
+            el('div', { class: 'dash-card-eyebrow-sub',
+                text: applyRisks
+                    ? 'Наценка уже включена в итог бюджета'
+                    : 'Потенциальная наценка, если применить риски' })
         ),
         el('div', { class: 'dash-card-body dash-risk-body' },
+            el('div', { class: 'dash-risk-summary' },
+                el('div', { class: 'dash-risk-summary-main' },
+                    el('span', { class: 'dash-risk-surplus-amount',
+                        text: `${surplusPeriod >= 0 ? '+' : ''}${fmtRubForPeriod(surplusPeriod, period)}`
+                    }),
+                    el('span', { class: 'dash-risk-summary-period', text: slash })
+                ),
+                el('span', { class: 'dash-risk-surplus',
+                    /* 12.U26-fix: единый формат процента ru-RU (запятая) — согласовано с
+                       «Распределение по категориям», где percent() даёт «41,7%». */
+                    text: `${totalSurplusPct >= 0 ? '+' : ''}${formatNumber(totalSurplusPct, { min: 1, max: 1 })}%`
+                })
+            ),
+            !applyRisks
+                ? el('div', { class: 'dash-risk-surplus-note',
+                    title: 'Сейчас риск-коэффициенты ВЫКЛЮЧЕНЫ в Опроснике — итог считается без них. Это сумма, на которую вырос бы итог, если бы вы их включили.',
+                    text: 'если применить' })
+                : null,
+            el('div', { class: 'dash-risk-segments',
+                attrs: {
+                    role: 'img',
+                    'aria-label': 'Доли факторов в общей риск-наценке'
+                }
+            },
+                ...visible.map(it => {
+                    const sharePct = Math.max(0, it.shareOfSurplus * 100);
+                    return el('span', {
+                        class: ['dash-risk-segment', RISK_COMPONENT_CLASSES[it.id]],
+                        style: { width: `${Math.min(100, sharePct)}%` },
+                        title: `${RISK_COMPONENT_LABELS[it.id]}: ${formatNumber(sharePct, { min: 1, max: 1 })}% общей наценки`
+                    });
+                })
+            ),
+            el('div', { class: 'dash-risk-table' },
             ...visible.map(it => {
                 const contribPct = it.shareOfSurplus * data.surplus * 100;
                 const contribAmount = surplusPeriod * it.shareOfSurplus;
+                const sharePct = it.shareOfSurplus * 100;
                 return el('div', { class: 'dash-risk-row',
                     title: buildRiskRowTooltip(it.id, calc, contribPct, contribAmount, slash, it.multiplier),
                     attrs: { tabindex: '0' }
                 },
-                    el('div', { class: 'dash-risk-row-head' },
-                        el('span', { class: 'dash-risk-row-label', text: it.label }),
+                    el('span', { class: 'dash-risk-row-label' },
+                        el('span', { class: ['dash-risk-row-dot', RISK_COMPONENT_CLASSES[it.id]] }),
+                        el('span', { text: RISK_COMPONENT_SHORT_LABELS[it.id] || it.label })
+                    ),
                         el('span', { class: 'dash-risk-row-amount',
-                            /* 12.U25-fix-16: единица времени (/ год / мес / день) обязательна — без неё
-                               «+25 817 тыс. ₽» оторвано от шапки «Общая наценка ... / год» и пользователь
-                               вынужден помнить, в каком периоде смотрит дашборд. */
-                            text: `${contribAmount >= 0 ? '+' : ''}${fmtRubForPeriod(contribAmount, period)} ${slash}`
+                            text: `${contribAmount >= 0 ? '+' : ''}${fmtRubForPeriod(contribAmount, period)}`
                         }),
                         el('span', { class: 'dash-risk-row-value',
-                            /* 12.U26-fix: ru-RU формат (запятая), согласован с категории. */
-                            text: `${contribPct >= 0 ? '+' : ''}${formatNumber(contribPct, { min: 1, max: 1 })}%`
+                            title: 'Доля фактора в общей риск-наценке',
+                            text: `${formatNumber(sharePct, { min: 1, max: 1 })}%`
                         })
-                    ),
-                    el('span', { class: 'dash-risk-row-bar' },
-                        el('span', { class: 'dash-risk-row-bar-fill',
-                            style: { width: `${Math.max(0, Math.min(100, Math.abs(it.shareOfSurplus) * 100))}%` }
-                        })
-                    )
                 );
             })
+            )
         )
     );
 }

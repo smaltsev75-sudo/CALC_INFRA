@@ -2,8 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-26, v2.20.80)
+## Current Project Lessons (2026-05-27, v2.20.81)
 
+- Risk contribution UI should show one composition, not repeated bars. The
+  Dashboard card keeps the title `Вклад риск-коэффициентов` and `ИТОГО` badge,
+  but the body uses a single stacked composition bar plus rows with amount and
+  share of the total surcharge. Per-factor tooltips still carry the deeper
+  multiplicative explanation.
 - `license-db-per-vcpu` is opt-in, not a baseline cloud cost. Commercial DB
   licensing must be driven by `db_commercial_license_required`; normal
   PostgreSQL/MySQL/open-source or managed DB cases should not silently pay for

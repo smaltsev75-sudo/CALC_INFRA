@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Макеты карточки риск-коэффициентов</title>
+  <style>
+    :root {
+      --page: #0b1220;
+      --panel: #1f2e45;
+      --panel-2: #22334c;
+      --panel-3: #18263b;
+      --border: #31445f;
+      --text: #f3f8ff;
+      --muted: #9cb3d0;
+      --soft: #c8d7ec;
+      --green: #34d3b2;
+      --cyan: #4fc3f7;
+      --violet: #a98bff;
+      --yellow: #f2c94c;
+      --orange: #ff9f43;
+      --red: #ff6b6b;
+      --track: #111c2e;
+      --shadow: 0 24px 55px rgba(0, 0, 0, .34);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(52, 211, 178, .09), transparent 34%),
+        radial-gradient(circle at 80% 10%, rgba(169, 139, 255, .10), transparent 32%),
+        var(--page);
+      color: var(--text);
+      font: 14px/1.45 "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      letter-spacing: 0;
+    }
+
+    .page {
+      width: 1360px;
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 34px 34px 42px;
+    }
+
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 24px;
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.16;
+      font-weight: 760;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .source-note {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: right;
+      max-width: 340px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+      align-items: start;
+    }
+
+    .variant {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .variant-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--soft);
+      font-weight: 720;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding-left: 2px;
+    }
+
+    .variant-label span {
+      display: inline-grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      background: rgba(52, 211, 178, .14);
+      color: #6ff3d1;
+      border: 1px solid rgba(52, 211, 178, .35);
+      letter-spacing: 0;
+    }
+
+    .card {
+      min-height: 520px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: linear-gradient(180deg, var(--panel), #1b2a40);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-pad { padding: 22px; }
+
+    .eyebrow {
+      color: #9eb4d2;
+      font-size: 12px;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: .10em;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-top: 12px;
+      margin-bottom: 14px;
+    }
+
+    .big-money {
+      font-size: 32px;
+      line-height: 1;
+      font-weight: 820;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .big-money small {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+      margin-left: 4px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      height: 26px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(242, 201, 76, .16);
+      border: 1px solid rgba(242, 201, 76, .35);
+      color: #ffd767;
+      font-weight: 760;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .muted { color: var(--muted); }
+
+    .fine {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .divider {
+      height: 1px;
+      background: rgba(255, 255, 255, .08);
+      margin: 18px 0;
+    }
+
+    .factor-list {
+      display: grid;
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .factor-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .factor-name {
+      font-size: 14px;
+      font-weight: 760;
+      color: #ffffff;
+    }
+
+    .factor-value {
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .factor-value em {
+      color: var(--muted);
+      font-style: normal;
+      font-weight: 650;
+      margin-left: 8px;
+    }
+
+    .bar {
+      height: 7px;
+      background: var(--track);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar > i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--green), var(--violet));
+    }
+
+    .rank-row {
+      position: relative;
+      padding: 13px 0 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, .07);
+    }
+
+    .rank-row:last-child { border-bottom: 0; }
+
+    .rank-row .bar { height: 6px; }
+
+    .two-stat {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .stat-tile {
+      border: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(8, 18, 32, .25);
+      border-radius: 7px;
+      padding: 12px;
+    }
+
+    .stat-tile strong {
+      display: block;
+      font-size: 18px;
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+
+    .stat-tile span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .waterfall {
+      display: grid;
+      gap: 11px;
+      margin-top: 18px;
+    }
+
+    .water-step {
+      display: grid;
+      grid-template-columns: 92px 1fr 92px;
+      align-items: center;
+      gap: 12px;
+      min-height: 48px;
+    }
+
+    .water-label {
+      color: var(--soft);
+      font-weight: 730;
+    }
+
+    .water-value {
+      text-align: right;
+      font-weight: 820;
+      color: white;
+      white-space: nowrap;
+    }
+
+    .water-track {
+      position: relative;
+      height: 30px;
+      border-radius: 6px;
+      background: rgba(12, 25, 42, .75);
+      border: 1px solid rgba(255, 255, 255, .07);
+      overflow: hidden;
+    }
+
+    .water-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(52, 211, 178, .9), rgba(169, 139, 255, .9));
+    }
+
+    .water-fill.base { background: linear-gradient(90deg, #38536f, #526d92); }
+    .water-fill.green { background: linear-gradient(90deg, #30c8aa, #58dfc2); }
+    .water-fill.cyan { background: linear-gradient(90deg, #37a9e6, #79d0ff); }
+    .water-fill.yellow { background: linear-gradient(90deg, #e7b841, #ffe079); }
+    .water-fill.red { background: linear-gradient(90deg, #f07070, #ffae8d); }
+
+    .water-total {
+      margin-top: 12px;
+      padding: 16px;
+      border-radius: 7px;
+      background: rgba(52, 211, 178, .10);
+      border: 1px solid rgba(52, 211, 178, .25);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .water-total span {
+      color: #9ff2dc;
+      font-weight: 760;
+    }
+
+    .water-total strong {
+      font-size: 22px;
+      white-space: nowrap;
+    }
+
+    .segmented {
+      height: 18px;
+      display: flex;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--track);
+      margin: 22px 0 16px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+    }
+
+    .segmented i {
+      display: block;
+      height: 100%;
+    }
+
+    .legend-table {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .legend-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 12px;
+      min-height: 42px;
+      padding: 9px 10px;
+      border-radius: 7px;
+      background: rgba(9, 18, 32, .28);
+      border: 1px solid rgba(255, 255, 255, .06);
+    }
+
+    .legend-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      font-weight: 720;
+    }
+
+    .chip {
+      flex: 0 0 auto;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .legend-money {
+      font-weight: 820;
+      white-space: nowrap;
+    }
+
+    .legend-pct {
+      color: var(--muted);
+      font-weight: 700;
+      width: 52px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .insight {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: start;
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 7px;
+      background: rgba(79, 195, 247, .08);
+      border: 1px solid rgba(79, 195, 247, .18);
+      color: #cfeaff;
+      font-size: 12px;
+    }
+
+    .insight b {
+      color: #7cd7ff;
+      font-size: 13px;
+    }
+
+    .sparkline {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      align-items: end;
+      gap: 7px;
+      height: 84px;
+      margin-top: 18px;
+      padding: 12px;
+      border-radius: 7px;
+      background: rgba(8, 18, 32, .25);
+      border: 1px solid rgba(255, 255, 255, .07);
+    }
+
+    .sparkbar {
+      border-radius: 5px 5px 2px 2px;
+      min-height: 8px;
+      background: linear-gradient(180deg, var(--green), var(--violet));
+      opacity: .96;
+    }
+
+    .footer-note {
+      margin-top: 10px;
+      color: #7892b3;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="title-row">
+      <div>
+        <h1>Карточка «Вклад риск-коэффициентов»: 3 варианта</h1>
+        <div class="subtitle">Все варианты используют те же данные: +721 тыс. ₽ / мес, +42,8% если применить.</div>
+      </div>
+      <div class="source-note">Тёмная тема, размеры близки к текущей карточке дашборда.</div>
+    </div>
+
+    <section class="grid">
+      <div class="variant">
+        <div class="variant-label"><span>A</span>Компактный рейтинг</div>
+        <article class="card card-pad">
+          <div class="eyebrow">Вклад риск-коэффициентов</div>
+          <div class="metric-row">
+            <div>
+              <div class="big-money">+721 <small>тыс. ₽ / мес</small></div>
+              <div class="fine">Потенциальная наценка, если применить риски</div>
+            </div>
+            <div class="badge">+42,8%</div>
+          </div>
+
+          <div class="two-stat">
+            <div class="stat-tile">
+              <strong>+386</strong>
+              <span>тыс. ₽ дают буферы</span>
+            </div>
+            <div class="stat-tile">
+              <strong>54%</strong>
+              <span>наценки в одном факторе</span>
+            </div>
+          </div>
+
+          <div class="factor-list">
+            <div class="rank-row">
+              <div class="factor-head">
+                <div class="factor-name">Буферы</div>
+                <div class="factor-value">+386 тыс. ₽ <em>22,9%</em></div>
+              </div>
+              <div class="bar"><i style="width: 100%"></i></div>
+            </div>
+            <div class="rank-row">
+              <div class="factor-head">
+                <div class="factor-name">Инфляция</div>
+                <div class="factor-value">+193 тыс. ₽ <em>11,5%</em></div>
+              </div>
+              <div class="bar"><i style="width: 50%"></i></div>
+            </div>
+            <div class="rank-row">
+              <div class="factor-head">
+                <div class="factor-name">Резерв на риски</div>
+                <div class="factor-value">+99 тыс. ₽ <em>5,9%</em></div>
+              </div>
+              <div class="bar"><i style="width: 26%"></i></div>
+            </div>
+            <div class="rank-row">
+              <div class="factor-head">
+                <div class="factor-name">Сдвиг расписания</div>
+                <div class="factor-value">+43 тыс. ₽ <em>2,6%</em></div>
+              </div>
+              <div class="bar"><i style="width: 11%"></i></div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div class="variant">
+        <div class="variant-label"><span>B</span>Водопад бюджета</div>
+        <article class="card card-pad">
+          <div class="eyebrow">Как растёт бюджет</div>
+          <div class="metric-row">
+            <div>
+              <div class="big-money">1,68 → 2,40 <small>млн ₽ / мес</small></div>
+              <div class="fine">База плюс риск-коэффициенты</div>
+            </div>
+            <div class="badge">+721 тыс.</div>
+          </div>
+
+          <div class="waterfall">
+            <div class="water-step">
+              <div class="water-label">База</div>
+              <div class="water-track"><i class="water-fill base" style="width: 70%"></i></div>
+              <div class="water-value">1,68 млн</div>
+            </div>
+            <div class="water-step">
+              <div class="water-label">Буферы</div>
+              <div class="water-track"><i class="water-fill green" style="width: 54%"></i></div>
+              <div class="water-value">+386 тыс.</div>
+            </div>
+            <div class="water-step">
+              <div class="water-label">Инфляция</div>
+              <div class="water-track"><i class="water-fill cyan" style="width: 27%"></i></div>
+              <div class="water-value">+193 тыс.</div>
+            </div>
+            <div class="water-step">
+              <div class="water-label">Резерв</div>
+              <div class="water-track"><i class="water-fill yellow" style="width: 14%"></i></div>
+              <div class="water-value">+99 тыс.</div>
+            </div>
+            <div class="water-step">
+              <div class="water-label">Сдвиг</div>
+              <div class="water-track"><i class="water-fill red" style="width: 6%"></i></div>
+              <div class="water-value">+43 тыс.</div>
+            </div>
+          </div>
+
+          <div class="water-total">
+            <span>Итого с рисками</span>
+            <strong>2,40 млн ₽ / мес</strong>
+          </div>
+
+          <div class="insight">
+            <b>!</b>
+            <div>Этот вариант лучше объясняет рост суммы: пользователь видит путь от базы к бюджету с рисками.</div>
+          </div>
+        </article>
+      </div>
+
+      <div class="variant">
+        <div class="variant-label"><span>C</span>Составная шкала</div>
+        <article class="card card-pad">
+          <div class="eyebrow">Состав наценки</div>
+          <div class="metric-row">
+            <div>
+              <div class="big-money">+721 <small>тыс. ₽ / мес</small></div>
+              <div class="fine">Потенциальная наценка к базе</div>
+            </div>
+            <div class="badge">+42,8%</div>
+          </div>
+
+          <div class="segmented" aria-hidden="true">
+            <i style="width: 53.5%; background: linear-gradient(90deg, #34d3b2, #61e3cb)"></i>
+            <i style="width: 26.8%; background: linear-gradient(90deg, #4fc3f7, #7fd8ff)"></i>
+            <i style="width: 13.7%; background: linear-gradient(90deg, #f2c94c, #ffe285)"></i>
+            <i style="width: 6.0%; background: linear-gradient(90deg, #ff8a65, #ffb199)"></i>
+          </div>
+
+          <div class="legend-table">
+            <div class="legend-row">
+              <div class="legend-name"><i class="chip" style="background:#34d3b2"></i>Буферы</div>
+              <div class="legend-money">+386 тыс. ₽</div>
+              <div class="legend-pct">53,5%</div>
+            </div>
+            <div class="legend-row">
+              <div class="legend-name"><i class="chip" style="background:#4fc3f7"></i>Инфляция</div>
+              <div class="legend-money">+193 тыс. ₽</div>
+              <div class="legend-pct">26,8%</div>
+            </div>
+            <div class="legend-row">
+              <div class="legend-name"><i class="chip" style="background:#f2c94c"></i>Резерв</div>
+              <div class="legend-money">+99 тыс. ₽</div>
+              <div class="legend-pct">13,7%</div>
+            </div>
+            <div class="legend-row">
+              <div class="legend-name"><i class="chip" style="background:#ff8a65"></i>Сдвиг</div>
+              <div class="legend-money">+43 тыс. ₽</div>
+              <div class="legend-pct">6,0%</div>
+            </div>
+          </div>
+
+          <div class="sparkline" aria-hidden="true">
+            <i class="sparkbar" style="height: 62%; background: linear-gradient(180deg,#38536f,#526d92)"></i>
+            <i class="sparkbar" style="height: 78%; background: linear-gradient(180deg,#34d3b2,#61e3cb)"></i>
+            <i class="sparkbar" style="height: 87%; background: linear-gradient(180deg,#4fc3f7,#7fd8ff)"></i>
+            <i class="sparkbar" style="height: 92%; background: linear-gradient(180deg,#f2c94c,#ffe285)"></i>
+            <i class="sparkbar" style="height: 100%; background: linear-gradient(180deg,#ff8a65,#ffb199)"></i>
+          </div>
+          <div class="footer-note">Минимум повторов: одна шкала показывает доли, таблица даёт точные суммы.</div>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

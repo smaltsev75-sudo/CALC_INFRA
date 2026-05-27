@@ -117,6 +117,7 @@
     .dash-card-eyebrow-tag,
     .dash-risk-surplus,
     .dash-risk-surplus-amount,
+    .dash-risk-summary-period,
     .dash-category-row-value,
     .dash-category-row-pct,
     .dash-risk-row-amount,
@@ -186,8 +187,8 @@
      * передают информацию. */
     .dash-category-row-bar,
     .dash-category-row-bar-fill,
-    .dash-risk-row-bar,
-    .dash-risk-row-bar-fill,
+    .dash-risk-segments,
+    .dash-risk-segment,
     .dash-hero-cost-types-bar,
     .dash-hero-cost-types-bar-capex,
     .dash-hero-cost-types-bar-opex {

@@ -345,7 +345,7 @@
 /* Stand-card cats-bar: bg-input #ffffff на белой карточке — невидим. */
 [data-theme="light"] .dash-stand-card-cats-bar,
 [data-theme="light"] .dash-category-row-bar,
-[data-theme="light"] .dash-risk-row-bar {
+[data-theme="light"] .dash-risk-segments {
     background: var(--bg-elevated);
 }
 
