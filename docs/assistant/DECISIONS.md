@@ -1,5 +1,31 @@
 # Журнал решений и допущений
 
+## 27.05.2026 · PATCH 2.20.95 — Top bars CI wrap hardening
+
+**Контекст.** `v2.20.94` локально выровнял три top-row bars, но GitHub
+Chromium/Linux завернул `Распределение по категориям` и бейдж `ИТОГО` на две
+строки. Из-за этого category-bar ушёл на 26 px относительно hero/risk bars.
+
+**Решение.**
+
+- Для category/risk eyebrow в top composition row запрещён перенос текста
+  заголовка и бейджей.
+- Правая подпись карточки категорий сокращена с `Сумма по N активным стендам`
+  до `N активных стендов`, чтобы она помещалась рядом с заголовком.
+- Для category header введён фиксированный минимальный slot, чтобы no-wrap
+  вариант оставался выровнен с hero/risk bars.
+- Breakpoint двухколоночного Dashboard поднят до `1500px`: на 1440px с
+  боковым меню no-wrap русские заголовки уже не помещаются в три колонки без
+  горизонтального overflow.
+
+**Защита.** Geometry-contract в `dashboard-risk-bars-layout.spec.js` оставлен
+строгим (`<= 2 px`) и теперь печатает фактические top-координаты bars в тексте
+ошибки, чтобы GitHub wrap-регрессии диагностировались сразу; общий
+`desktop-viewports` smoke дополнительно охраняет отсутствие horizontal overflow
+на 1440px. Проверка hero resource/AI ownership переведена на видимую
+`.dash-card-hero` и poll стабильных computed-style значений; это убирает
+flaky-падения от временного zero-rect DOM-экземпляра при rerender.
+
 ## 27.05.2026 · PATCH 2.20.94 — Dashboard top bars vertical alignment
 
 **Контекст.** В верхнем ряду Dashboard три составные шкалы читались как один

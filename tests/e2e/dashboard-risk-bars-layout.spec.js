@@ -249,7 +249,8 @@ test('Dashboard top composition cards keep aligned desktop row', async ({ page }
         .filter(item => item.selector !== '.dash-card-hero')
         .map(item => item.height);
     expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
-    expect(Math.max(...compositionBarTops) - Math.min(...compositionBarTops)).toBeLessThanOrEqual(2);
+    const maxBarTopDelta = Math.max(...compositionBarTops) - Math.min(...compositionBarTops);
+    expect(maxBarTopDelta, JSON.stringify(barTops, null, 2)).toBeLessThanOrEqual(2);
     expect(barTops.every(item => item.height === 16)).toBe(true);
     expect(Math.max(...comparisonHeights) - Math.min(...comparisonHeights)).toBeLessThanOrEqual(2);
     expect(heroHeight).toBeGreaterThanOrEqual(Math.max(...comparisonHeights));
@@ -271,13 +272,17 @@ test('Dashboard total resources live inside total card and inactive risk values 
     });
     await page.getByTestId('dashboard-period-monthly').click();
 
-    const hero = page.getByTestId('dashboard-hero');
+    const hero = page.locator('.dash-card-hero:visible').first();
     await expect(hero).toBeVisible();
     await expect(hero.locator('> .dash-dashboard-metrics .dash-resources')).toBeVisible();
     await expect(hero.locator('> .dash-dashboard-metrics .dash-ai-metrics')).toBeVisible();
 
     const totalLayout = await page.evaluate(() => {
-        const heroNode = document.querySelector('.dash-card-hero');
+        const heroNode = [...document.querySelectorAll('.dash-card-hero')]
+            .find(node => {
+                const rect = node.getBoundingClientRect();
+                return node.isConnected && rect.width > 0 && rect.height > 0;
+            });
         const hero = heroNode.getBoundingClientRect();
         const costTypes = heroNode.querySelector('.dash-hero-cost-types').getBoundingClientRect();
         const metricsNode = heroNode.querySelector(':scope > .dash-dashboard-metrics');
@@ -315,21 +320,30 @@ test('Dashboard total resources live inside total card and inactive risk values 
             maxDelta: Math.max(...rights) - Math.min(...rights)
         };
     });
+    let heroAmountAlignment = null;
     await expect.poll(async () => {
         const alignment = await readHeroAmountAlignment();
+        if (
+            alignment.rightEdges.length >= 5 &&
+            Number.isFinite(alignment.maxDelta) &&
+            alignment.maxDelta <= 2
+        ) {
+            heroAmountAlignment = alignment;
+            return true;
+        }
         return alignment.rightEdges.length >= 5 &&
             Number.isFinite(alignment.maxDelta) &&
             alignment.maxDelta <= 2;
     }).toBe(true);
-    const heroAmountAlignment = await readHeroAmountAlignment();
     expect(heroAmountAlignment.rightEdges.length).toBeGreaterThanOrEqual(5);
     expect(heroAmountAlignment.maxDelta).toBeLessThanOrEqual(2);
 
-    await expect(page.locator('.dash-card-hero .dash-card-eyebrow-tag')).toContainText('БЕЗ РИСКОВ');
-    await expect(page.locator('.dash-card-hero .dash-hero-breakdown-row-risk-potential')).toBeVisible();
+    await expect(hero.locator('.dash-card-eyebrow-tag')).toContainText('БЕЗ РИСКОВ');
+    const disabledRiskRow = hero.locator('.dash-hero-breakdown-row-risk-potential');
+    await expect(disabledRiskRow).toBeVisible();
 
-    const disabledRiskDecoration = await page.locator('.dash-card-hero .dash-hero-breakdown-row-risk-potential')
-        .evaluate(row => Object.fromEntries([
+    let disabledRiskDecoration = null;
+    await expect.poll(async () => disabledRiskRow.evaluate(row => Object.fromEntries([
             ['label', '.dash-hero-breakdown-label'],
             ['amount', '.dash-hero-breakdown-amount'],
             ['value', '.dash-hero-breakdown-value']
@@ -337,7 +351,17 @@ test('Dashboard total resources live inside total card and inactive risk values 
             const node = row.querySelector(selector);
             const style = getComputedStyle(node);
             return [key, style.textDecorationLine || style.textDecoration || ''];
-        })));
+        }))).then(decoration => {
+            if (
+                !decoration.label.includes('line-through') &&
+                decoration.amount.includes('line-through') &&
+                decoration.value.includes('line-through')
+            ) {
+                disabledRiskDecoration = decoration;
+                return true;
+            }
+            return false;
+        })).toBe(true);
     expect(disabledRiskDecoration.label.includes('line-through')).toBe(false);
     expect(disabledRiskDecoration.amount.includes('line-through')).toBe(true);
     expect(disabledRiskDecoration.value.includes('line-through')).toBe(true);
@@ -346,10 +370,10 @@ test('Dashboard total resources live inside total card and inactive risk values 
         const calcCtl = await import(new URL('js/controllers/calcController.js', document.baseURI).href);
         calcCtl.setSetting('applyRiskFactors', true);
     });
-    await expect(page.locator('.dash-card-hero .dash-card-eyebrow-tag')).toContainText('С РИСКАМИ');
-    await expect(page.locator('.dash-card-hero .dash-hero-breakdown-row-risk-potential')).toHaveCount(0);
+    await expect(hero.locator('.dash-card-eyebrow-tag')).toContainText('С РИСКАМИ');
+    await expect(hero.locator('.dash-hero-breakdown-row-risk-potential')).toHaveCount(0);
 
-    const enabledRiskDecoration = await page.locator('.dash-card-hero .dash-hero-breakdown-row-risk')
+    const enabledRiskDecoration = await hero.locator('.dash-hero-breakdown-row-risk')
         .evaluate(row => [...row.querySelectorAll(
             '.dash-hero-breakdown-label, .dash-hero-breakdown-amount, .dash-hero-breakdown-value'
         )].map(node => getComputedStyle(node).textDecorationLine || getComputedStyle(node).textDecoration));

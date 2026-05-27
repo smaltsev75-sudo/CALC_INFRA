@@ -184,7 +184,7 @@
 .dash-card-categories { grid-area: categories; }
 .dash-card-risk       { grid-area: risk; }
 
-@media (max-width: 1380px) {
+@media (max-width: 1500px) {
     .dashboard-grid {
         grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
         grid-template-areas:
@@ -249,6 +249,16 @@
 }
 .dash-card-eyebrow .icon { color: var(--accent); }
 
+.dash-card-categories .dash-card-eyebrow,
+.dash-card-risk .dash-card-eyebrow {
+    flex-wrap: nowrap;
+}
+
+.dash-card-categories .dash-card-eyebrow > span:first-child,
+.dash-card-risk .dash-card-eyebrow > span:first-child {
+    white-space: nowrap;
+}
+
 .dash-card-eyebrow-tag {
     display: inline-block;
     padding: 2px 8px;
@@ -282,6 +292,10 @@
     align-items: baseline;
     column-gap: 4px;
     row-gap: 2px;
+}
+
+.dash-card-categories .dash-card-eyebrow-sub {
+    white-space: nowrap;
 }
 
 .dash-card-body {
@@ -1472,6 +1486,10 @@
     container-type: inline-size;
     container-name: category-card;
     align-self: start;
+}
+
+.dash-card-categories .dash-card-header {
+    min-height: 46px;
 }
 
 .dash-categories-body {

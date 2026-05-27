@@ -2,8 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.94)
+## Current Project Lessons (2026-05-27, v2.20.95)
 
+- Dashboard composition-card bar alignment must account for GitHub/Linux font
+  wrapping. Do not let `Распределение по категориям` or
+  `Вклад риск-коэффициентов` eyebrow text wrap inside the top row; reserve a
+  fixed header slot when needed so the bar layer remains aligned.
+- Do not force the three Dashboard composition cards into one row on narrow
+  desktop widths. At 1440px with sidebar, no-wrap Russian headers can exceed
+  their columns; switch to the two-row dashboard layout before horizontal
+  overflow appears.
+- Dashboard E2E tests that inspect hero geometry/styles should target the
+  visible `.dash-card-hero`, not the first matching DOM node. During quick
+  rerenders a stale or zero-rect hero can exist briefly and make CI flaky.
 - In the Dashboard top composition row, the three stacked bars
   (`Итого по расчёту` CAPEX/OPEX, `Распределение по категориям`,
   `Вклад риск-коэффициентов`) are one visual comparison layer. Keep their

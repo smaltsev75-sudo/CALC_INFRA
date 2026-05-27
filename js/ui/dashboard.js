@@ -734,7 +734,7 @@ function renderCategoriesCard(result, period, activeStandsCount, ctx = {}) {
                 el('span', { class: 'dash-card-eyebrow-tag', text: 'ИТОГО' })
             ),
             el('div', { class: 'dash-card-eyebrow-sub',
-                text: `Сумма по ${activeStandsCount} ${activeStandsCount === 1 ? 'активному стенду' : 'активным стендам'}`
+                text: `${activeStandsCount} ${activeStandsCount === 1 ? 'активный стенд' : 'активных стендов'}`
             })
         ),
         el('div', { class: 'dash-card-body dash-categories-body' },
