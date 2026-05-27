@@ -1,5 +1,24 @@
 # Журнал решений и допущений
 
+## 27.05.2026 · PATCH 2.20.92 — State summary mobile layout CI hardening
+
+**Контекст.** `v2.20.91` локально прошёл полный smoke, но GitHub Chromium
+поймал zero-rect `.calc-state-summary` в новом mobile layout test: видимая
+сводка уже была на странице, но `locator(...).first()` мог попасть в экземпляр,
+который оставался в DOM в момент перерендера. Параллельно один Details PDF
+spec дал старый flaky-click на навигации; отдельно он проходит и к редизайну
+сводки не относится.
+
+**Решение.** E2E helper `readSummaryLayout()` теперь выбирает первый connected
+и видимый `.calc-state-summary` через `document.querySelectorAll()` + rect
+filter. Mobile wait также ждёт видимую геометрию через DOM-query, а не через
+первый locator.
+
+**Защита.** Focused `dashboard-state-summary-layout.spec.js` и упавший
+`Details PDF print mode uses full-width landscape table layout` пройдены
+локально; полный release-gate и `CI=true npm run smoke:desktop` пройдены заново
+для `v2.20.92`.
+
 ## 27.05.2026 · PATCH 2.20.91 — Calculation state summary redesign
 
 **Контекст.** Карточка `Сводка состояния расчёта` выглядела как набор

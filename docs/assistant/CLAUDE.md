@@ -2,8 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.91)
+## Current Project Lessons (2026-05-27, v2.20.92)
 
+- If an E2E layout check targets a component that can rerender during startup,
+  read geometry from the first visible connected DOM node, not from
+  `locator(...).first()`. GitHub Chromium can briefly keep a zero-rect instance
+  around while the visible component is already rendered.
 - `Сводка состояния расчёта` should read as one compact operational summary,
   not nested cards inside a card. Keep diagnostics as a single vertical signal
   list and keep `Следующий шаг` / `Оптимизация стоимости` as action rows in

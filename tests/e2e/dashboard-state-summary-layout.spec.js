@@ -7,7 +7,21 @@ import {
 test.describe.configure({ mode: 'parallel' });
 
 function readSummaryLayout(page) {
-    return page.locator('.calc-state-summary').first().evaluate(card => {
+    return page.evaluate(() => {
+        const card = [...document.querySelectorAll('.calc-state-summary')]
+            .find(node => {
+                const rect = node.getBoundingClientRect();
+                return node.isConnected && rect.width > 0 && rect.height > 0;
+            });
+        if (!card) {
+            return {
+                card: { left: 0, right: 0, width: 0 },
+                rows: [],
+                next: null,
+                optimization: null,
+                overflow: [{ className: 'missing', text: 'visible .calc-state-summary not found' }]
+            };
+        }
         const cardRect = card.getBoundingClientRect();
         const rows = [...card.querySelectorAll('.calc-state-summary-diagnostics > .calc-state-summary-row')]
             .map(row => {
@@ -54,6 +68,17 @@ function readSummaryLayout(page) {
     });
 }
 
+function waitForVisibleSummaryGeometry(page) {
+    return expect.poll(async () => page.evaluate(() => {
+        const card = [...document.querySelectorAll('.calc-state-summary')]
+            .find(node => {
+                const rect = node.getBoundingClientRect();
+                return node.isConnected && rect.width > 240 && rect.height > 240;
+            });
+        return Boolean(card);
+    })).toBe(true);
+}
+
 test('Calculation state summary keeps compact stacked rows on desktop', async ({ page }) => {
     const consoleErrors = await bootCleanApp(page);
     await seedCalculations(page);
@@ -88,10 +113,7 @@ test('Calculation state summary fits mobile width without horizontal overflow', 
 
     const summary = page.locator('.calc-state-summary').first();
     await expect(summary).toBeVisible();
-    await expect.poll(async () => summary.evaluate(card => {
-        const rect = card.getBoundingClientRect();
-        return card.isConnected && rect.width > 240 && rect.height > 240;
-    })).toBe(true);
+    await waitForVisibleSummaryGeometry(page);
 
     const layout = await readSummaryLayout(page);
     expect(layout.card.width).toBeGreaterThan(240);
