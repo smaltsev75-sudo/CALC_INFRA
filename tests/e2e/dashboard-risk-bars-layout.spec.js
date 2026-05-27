@@ -278,7 +278,7 @@ test('Dashboard total resources live inside total card and inactive risk values 
     expect(totalLayout.metricsIsDirectHeroChild).toBe(true);
     expect(totalLayout.metricsInsideHero).toBe(true);
 
-    const heroAmountAlignment = await hero.evaluate(node => {
+    const readHeroAmountAlignment = () => hero.evaluate(node => {
         const amountNodes = [...node.querySelectorAll(
             '.dash-hero-breakdown-amount, .dash-hero-alt-value, .dash-hero-cost-types .dash-cost-row-amount'
         )].filter(item => {
@@ -298,6 +298,13 @@ test('Dashboard total resources live inside total card and inactive risk values 
             maxDelta: Math.max(...rights) - Math.min(...rights)
         };
     });
+    await expect.poll(async () => {
+        const alignment = await readHeroAmountAlignment();
+        return alignment.rightEdges.length >= 5 &&
+            Number.isFinite(alignment.maxDelta) &&
+            alignment.maxDelta <= 2;
+    }).toBe(true);
+    const heroAmountAlignment = await readHeroAmountAlignment();
     expect(heroAmountAlignment.rightEdges.length).toBeGreaterThanOrEqual(5);
     expect(heroAmountAlignment.maxDelta).toBeLessThanOrEqual(2);
 

@@ -1,5 +1,22 @@
 # Журнал решений и допущений
 
+## 27.05.2026 · PATCH 2.20.90 — CI hardening for hero amount alignment
+
+**Контекст.** `v2.20.89` локально прошёл focused Playwright и
+`CI=true npm run smoke:desktop`, но в GitHub Chromium новый alignment-check
+для hero amount column прочитал 0 видимых span-элементов в первый момент после
+рендера. Это не UI-дефект: остальные проверки и screenshot уже видели hero,
+но child inline geometry ещё не стабилизировалась.
+
+**Решение.** Проверка правого края сумм переведена на `expect.poll()`:
+сначала ждём минимум 5 видимых money spans с finite geometry и `maxDelta <= 2`,
+затем фиксируем итоговые значения. UI-изменения `v2.20.89` сохранены без
+изменений.
+
+**Защита.** Локально повторно пройден focused
+`dashboard-risk-bars-layout.spec.js`; полный release-gate выполняется заново
+для `v2.20.90`.
+
 ## 27.05.2026 · PATCH 2.20.89 — Dashboard hero owns total metrics
 
 **Контекст.** После `v2.20.88` суммарные карточки

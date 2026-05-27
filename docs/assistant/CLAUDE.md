@@ -2,8 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.89)
+## Current Project Lessons (2026-05-27, v2.20.90)
 
+- Dashboard E2E geometry assertions must poll until the measured text/segment
+  boxes are non-zero in GitHub Chromium. A locator can be visible while child
+  inline spans still return zero rects during first layout; assert the stable
+  visual contract after geometry settles.
 - Dashboard total resource/AI cards must be physically inside the
   `Итого по расчёту` hero card border. `Объёмы ресурсов · ИТОГО` and
   `Объёмы AI-нагрузки · ИТОГО` are direct hero children via
