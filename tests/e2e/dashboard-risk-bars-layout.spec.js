@@ -234,3 +234,67 @@ test('Dashboard top composition cards share the same desktop row height', async 
 
     expect(consoleErrors).toEqual([]);
 });
+
+test('Dashboard total resources belong to total card and inactive risks are struck through', async ({ page }) => {
+    await page.setViewportSize({ width: 1680, height: 900 });
+    const consoleErrors = await bootCleanApp(page);
+
+    await createCalculationFromQuickStart(page, {
+        name: 'Total stack ownership contract',
+        presetId: 'high_ai'
+    });
+    await page.evaluate(async () => {
+        const calcCtl = await import(new URL('js/controllers/calcController.js', document.baseURI).href);
+        calcCtl.setSetting('applyRiskFactors', false);
+    });
+    await page.getByTestId('dashboard-period-monthly').click();
+
+    const totalStack = page.getByTestId('dashboard-summary-stack');
+    await expect(totalStack).toBeVisible();
+    await expect(totalStack.locator('.dash-card-hero')).toBeVisible();
+    await expect(totalStack.locator('.dash-dashboard-metrics .dash-resources')).toBeVisible();
+    await expect(totalStack.locator('.dash-dashboard-metrics .dash-ai-metrics')).toBeVisible();
+
+    const totalLayout = await page.evaluate(() => {
+        const stack = document.querySelector('[data-testid="dashboard-summary-stack"]').getBoundingClientRect();
+        const hero = document.querySelector('.dash-card-hero').getBoundingClientRect();
+        const metrics = document.querySelector('.dash-dashboard-metrics').getBoundingClientRect();
+        const categories = document.querySelector('.dash-card-categories').getBoundingClientRect();
+        return {
+            metricsInsideStack:
+                metrics.left >= stack.left - 1 &&
+                metrics.right <= stack.right + 1 &&
+                metrics.top >= hero.bottom - 1,
+            metricsDoesNotRunUnderCategories: metrics.right <= categories.left - 8,
+            stackTop: Math.round(stack.top),
+            heroTop: Math.round(hero.top)
+        };
+    });
+    expect(totalLayout.metricsInsideStack).toBe(true);
+    expect(totalLayout.metricsDoesNotRunUnderCategories).toBe(true);
+    expect(totalLayout.stackTop).toBe(totalLayout.heroTop);
+
+    await expect(page.locator('.dash-card-hero .dash-card-eyebrow-tag')).toContainText('БЕЗ РИСКОВ');
+    await expect(page.locator('.dash-card-hero .dash-hero-breakdown-row-risk-potential')).toBeVisible();
+
+    const disabledRiskDecoration = await page.locator('.dash-card-hero .dash-hero-breakdown-row-risk-potential')
+        .evaluate(row => [...row.querySelectorAll(
+            '.dash-hero-breakdown-label, .dash-hero-breakdown-amount, .dash-hero-breakdown-value'
+        )].map(node => getComputedStyle(node).textDecoration));
+    expect(disabledRiskDecoration.every(decoration => decoration.includes('line-through'))).toBe(true);
+
+    await page.evaluate(async () => {
+        const calcCtl = await import(new URL('js/controllers/calcController.js', document.baseURI).href);
+        calcCtl.setSetting('applyRiskFactors', true);
+    });
+    await expect(page.locator('.dash-card-hero .dash-card-eyebrow-tag')).toContainText('С РИСКАМИ');
+    await expect(page.locator('.dash-card-hero .dash-hero-breakdown-row-risk-potential')).toHaveCount(0);
+
+    const enabledRiskDecoration = await page.locator('.dash-card-hero .dash-hero-breakdown-row-risk')
+        .evaluate(row => [...row.querySelectorAll(
+            '.dash-hero-breakdown-label, .dash-hero-breakdown-amount, .dash-hero-breakdown-value'
+        )].map(node => getComputedStyle(node).textDecoration));
+    expect(enabledRiskDecoration.every(decoration => !decoration.includes('line-through'))).toBe(true);
+
+    expect(consoleErrors).toEqual([]);
+});

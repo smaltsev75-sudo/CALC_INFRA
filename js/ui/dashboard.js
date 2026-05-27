@@ -181,7 +181,16 @@ export function renderDashboard(state, ctx) {
 
         /* === Grid === */
         el('div', { class: 'dashboard-grid', attrs: { 'data-testid': 'dashboard-grid' } },
-            renderHero(filtered, period, ctx, applyRisks, calc),
+            el('section', {
+                class: 'dash-summary-stack',
+                attrs: {
+                    'data-testid': 'dashboard-summary-stack',
+                    'aria-label': 'Итого по расчёту и суммарные объёмы'
+                }
+            },
+                renderHero(filtered, period, ctx, applyRisks, calc),
+                renderDashboardTotalMetrics(resources.total, aiMetrics.total, applyRisks, ctx, period)
+            ),
             // Stage 18.2 (PATCH 2.14.12): «Сводка состояния расчёта» —
             // композитный блок, объединяющий бывшие 4 карточки (Готовность /
             // Качество / Бюджет / Следующие шаги). presentation-only, читает
@@ -189,7 +198,6 @@ export function renderDashboard(state, ctx) {
             renderCalculationStateSummary(calc, ctx),
             renderCategoriesCard(filtered, period, activeStands.length, ctx),
             renderRiskCard(filtered, calc, period, applyRisks),
-            renderDashboardTotalMetrics(resources.total, aiMetrics.total, applyRisks, ctx, period),
             // Stage 18.2.x (PATCH 2.14.13): отдельная карточка «План оптимизации
             // стоимости» удалена — entry point встроен как secondary-action
             // внутри composite-сводки (renderCostOptimizationTeaser в

@@ -171,7 +171,6 @@
     grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.3fr) minmax(0, 1fr);
     grid-template-areas:
         'hero       categories risk'
-        'metrics    metrics    metrics'
         'stands     stands     stands';
     gap: 18px;
 }
@@ -181,10 +180,18 @@
 }
 
 .dash-card-hero       { grid-area: hero; }
+.dash-summary-stack   { grid-area: hero; }
 .dash-stands-row      { grid-area: stands; }
 .dash-card-categories { grid-area: categories; }
 .dash-card-risk       { grid-area: risk; }
-.dash-dashboard-metrics { grid-area: metrics; }
+
+.dash-summary-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+    align-self: start;
+}
 
 @media (max-width: 1380px) {
     .dashboard-grid {
@@ -192,7 +199,6 @@
         grid-template-areas:
             'hero       hero'
             'categories risk'
-            'metrics    metrics'
             'stands     stands';
     }
 }
@@ -204,7 +210,6 @@
             'hero'
             'categories'
             'risk'
-            'metrics'
             'stands';
     }
 }
@@ -441,6 +446,14 @@
 .dash-hero-breakdown-row-risk-potential .dash-hero-breakdown-amount {
     color: var(--warning);
     font-style: italic;
+}
+
+.dash-hero-breakdown-row-risk-potential .dash-hero-breakdown-label,
+.dash-hero-breakdown-row-risk-potential .dash-hero-breakdown-amount,
+.dash-hero-breakdown-row-risk-potential .dash-hero-breakdown-value {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+    text-decoration-color: currentColor;
 }
 
 
@@ -1415,20 +1428,15 @@
 }
 .dash-dashboard-metrics {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 18px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
     align-items: start;
     min-width: 0;
 }
 
-@media (max-width: 880px) {
-    .dash-dashboard-metrics {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Суммарные hardware/AI объёмы вынесены из hero-карточки в отдельную строку:
- * это сохраняет видимость токенов/ресурсов, но не раздувает бюджетную карточку. */
+/* Суммарные hardware/AI объёмы остаются отдельными карточками, но живут
+ * внутри левого total-stack под «Итого по расчёту»: это показывает
+ * принадлежность к total-scope и не раздувает саму бюджетную hero-карточку. */
 .dash-dashboard-metrics > .dash-resources {
     margin-top: 0;
     padding: 14px 16px;
@@ -1442,7 +1450,7 @@
     box-shadow: var(--shadow);
 }
 .dash-dashboard-metrics .dash-resources-grid {
-    grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
     gap: 7px;
 }
 .dash-dashboard-metrics .dash-resource-row {
@@ -1814,11 +1822,15 @@
 }
 
 @media (min-width: 1381px) {
-    .dashboard-grid > .dash-card-hero,
+    .dashboard-grid > .dash-summary-stack > .dash-card-hero {
+        align-self: stretch;
+        min-height: 424px;
+    }
+
     .dashboard-grid > .dash-card-categories,
     .dashboard-grid > .dash-card-risk {
-        align-self: stretch;
-        min-height: 390px;
+        align-self: start;
+        min-height: 424px;
     }
 }
 

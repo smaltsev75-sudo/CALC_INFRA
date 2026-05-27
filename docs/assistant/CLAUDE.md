@@ -2,8 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.86)
+## Current Project Lessons (2026-05-27, v2.20.87)
 
+- Dashboard total resource/AI cards are part of the `Итого по расчёту` scope.
+  Keep `Объёмы ресурсов · ИТОГО` and `Объёмы AI-нагрузки · ИТОГО` inside the
+  same left `dash-summary-stack` as the budget hero; do not place them as a
+  full-width dashboard row where they look unrelated to the total card.
+- When `applyRiskFactors=false`, the hero row `Риски` shows the potential risk
+  amount only as crossed-out information. When risks are enabled, the same row
+  is active and must not be struck through.
 - Playwright layout contracts for Dashboard cards should measure the visible
   card and poll for non-zero geometry before reading segment widths. In GitHub
   Chromium, off-viewport Dashboard cards can be present in DOM while their first
@@ -18,15 +25,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   contributions; otherwise a valid small factor such as schedule shift becomes
   invisible and layout tests become flaky.
 - `Итого по расчёту` should use meaningful compact rows for NDS, risks, period
-  alternates and CAPEX/OPEX, not an empty hero area or resource blocks inside
-  the hero. Total resource/AI cards live below the top row and should not
-  stretch each other to equal height.
+  alternates and CAPEX/OPEX, not an empty hero area. Total resource/AI cards
+  stay below the hero within the same left summary stack, so the budget card
+  stays compact while total-scope ownership remains visible.
 - Dashboard top row cards should share one visual grammar and one row height.
   `Итого по расчёту`, `Распределение по категориям` and
   `Вклад риск-коэффициентов` use the same composition pattern: large amount,
   stacked bar and compact contribution rows. Total resource/AI workload blocks
-  belong in a separate Dashboard row, not inside the budget hero card, otherwise
-  the top row becomes uneven and visually noisy.
+  belong below the hero in its summary stack, not inside the hero body and not
+  as a page-wide row.
 - Category distribution UI should mirror the risk contribution composition when
   both cards sit together on Dashboard. `Распределение по категориям` keeps the
   `ИТОГО` badge and category-description tooltips, but uses one stacked
