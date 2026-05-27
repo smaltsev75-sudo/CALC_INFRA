@@ -2,8 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.98)
+## Current Project Lessons (2026-05-27, v2.20.99)
 
+- In `Итого по расчёту`, compact finance rows are paired on desktop:
+  `CAPEX/OPEX` share one row below the cost bar, and `НДС/Риски` share one
+  row below it. Keep money/percent aligned within each left/right column and
+  fall back to one column only when the hero card is narrow.
 - Hero inline alternate period totals must remain readable. Do not shrink the
   right-side `.dash-hero-alt-value` into tiny annotation text; if space is
   tight, keep compact `/д`/`/мес`/`/год` labels and verify bar alignment.
@@ -55,9 +59,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - When `applyRiskFactors=false`, the hero `Риски` row shows potential risk
   values as inactive information: strike through only the amount and percent.
   The label `Риски` itself is the row name and must never be struck through.
-- Hero budget rows must keep all money amounts on one vertical right edge:
-  VAT, risks, alternative periods and CAPEX/OPEX share the same amount column.
-  If a row has no percent, keep the empty percent column instead of letting the
+- Hero budget rows must keep stable numeric columns. In the paired desktop
+  layout, align money and percent inside each left/right column; in the narrow
+  one-column fallback, keep the empty percent column instead of letting the
   amount jump to the card edge.
 - Dashboard top-card height guards must account for Linux/Windows font metric
   drift. If the contract says the three composition cards share one height,

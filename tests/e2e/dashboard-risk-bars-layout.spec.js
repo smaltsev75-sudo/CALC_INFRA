@@ -29,22 +29,35 @@ test('Risk contribution composition card stays aligned and non-overlapping', asy
         return container.width > 0 && widths.filter(width => width > 0).length >= 3;
     })).toBe(true);
 
-    const segmentSummary = await riskSegments.evaluate(node => {
-        const container = node.getBoundingClientRect();
-        const segments = [...node.querySelectorAll('.dash-risk-segment')].map(seg => {
-            const rect = seg.getBoundingClientRect();
+    let segmentSummary = null;
+    await expect.poll(async () => {
+        const summary = await riskSegments.evaluate(node => {
+            const container = node.getBoundingClientRect();
+            const segments = [...node.querySelectorAll('.dash-risk-segment')].map(seg => {
+                const rect = seg.getBoundingClientRect();
+                return {
+                    width: Math.round(rect.width * 100) / 100,
+                    top: Math.round(rect.top * 100) / 100,
+                    bottom: Math.round(rect.bottom * 100) / 100
+                };
+            });
             return {
-                width: Math.round(rect.width * 100) / 100,
-                top: Math.round(rect.top * 100) / 100,
-                bottom: Math.round(rect.bottom * 100) / 100
+                containerWidth: Math.round(container.width * 100) / 100,
+                segments,
+                sumWidth: Math.round(segments.reduce((sum, seg) => sum + seg.width, 0) * 100) / 100
             };
         });
-        return {
-            containerWidth: Math.round(container.width * 100) / 100,
-            segments,
-            sumWidth: Math.round(segments.reduce((sum, seg) => sum + seg.width, 0) * 100) / 100
-        };
-    });
+        const visible = summary.segments.filter(segment => segment.width > 0);
+        const visibleWidth = Math.round(visible.reduce((sum, seg) => sum + seg.width, 0) * 100) / 100;
+        const stable = visible.length >= 3 &&
+            Math.abs(visibleWidth - summary.containerWidth) <= 2 &&
+            visible.every(segment =>
+                Math.abs(segment.top - visible[0].top) <= 1 &&
+                Math.abs(segment.bottom - visible[0].bottom) <= 1
+            );
+        if (stable) segmentSummary = summary;
+        return stable;
+    }).toBe(true);
 
     const visibleSegments = segmentSummary.segments.filter(segment => segment.width > 0);
     const visibleWidth = Math.round(visibleSegments.reduce((sum, seg) => sum + seg.width, 0) * 100) / 100;
@@ -323,43 +336,88 @@ test('Dashboard total resources live inside total card and inactive risk/VAT val
     expect(totalLayout.metricsIsDirectHeroChild).toBe(true);
     expect(totalLayout.metricsInsideHero).toBe(true);
 
-    const readHeroAmountAlignment = () => hero.evaluate(node => {
-        const amountNodes = [...node.querySelectorAll(
-            '.dash-hero-breakdown-amount, .dash-hero-cost-types .dash-cost-row-amount'
-        )].filter(item => {
-            const rect = item.getBoundingClientRect();
-            return rect.width > 0 && rect.height > 0;
-        });
-        const rightEdges = amountNodes.map(item => {
-            const rect = item.getBoundingClientRect();
+    const readHeroPairedRowsLayout = () => hero.evaluate(node => {
+        const rowInfo = selector => {
+            const row = node.querySelector(selector);
+            const rect = row?.getBoundingClientRect();
+            return row && rect.width > 0 && rect.height > 0
+                ? { top: rect.top, left: rect.left, right: rect.right, parentClass: row.parentElement?.className || '' }
+                : null;
+        };
+        const capex = rowInfo('.dash-cost-row-capex');
+        const opex = rowInfo('.dash-cost-row-opex');
+        const vatRow = rowInfo('.dash-hero-breakdown-row-vat');
+        const riskRow = rowInfo('.dash-hero-breakdown-row-risk, .dash-hero-breakdown-row-risk-potential');
+        const heroRect = node.getBoundingClientRect();
+        const rowNodes = [...node.querySelectorAll('.dash-cost-row, .dash-hero-breakdown-row')]
+            .filter(row => {
+                const rect = row.getBoundingClientRect();
+                return rect.width > 0 && rect.height > 0;
+            });
+        const rowMeasures = rowNodes.map(row => {
+            const rowRect = row.getBoundingClientRect();
+            const amount = row.querySelector('.dash-cost-row-amount, .dash-hero-breakdown-amount');
+            const pct = row.querySelector('.dash-cost-row-pct, .dash-hero-breakdown-value');
+            const amountRect = amount.getBoundingClientRect();
+            const pctRect = pct.getBoundingClientRect();
+            const amountCenter = (amountRect.top + amountRect.bottom) / 2;
+            const pctCenter = (pctRect.top + pctRect.bottom) / 2;
             return {
-                text: item.textContent.trim(),
-                right: Math.round(rect.right * 100) / 100
+                text: row.textContent.trim(),
+                rowLeft: rowRect.left,
+                amountRight: Math.round(amountRect.right * 100) / 100,
+                amountPctCenterDelta: Math.abs(amountCenter - pctCenter),
+                overflow:
+                    rowRect.left < heroRect.left - 1 ||
+                    rowRect.right > heroRect.right + 1 ||
+                    amountRect.right > rowRect.right + 1 ||
+                    pctRect.right > rowRect.right + 1
             };
         });
-        const rights = rightEdges.map(item => item.right);
+        const mid = heroRect.left + heroRect.width / 2;
+        const columnDeltas = ['left', 'right'].map(side => {
+            const column = rowMeasures.filter(item => side === 'left' ? item.rowLeft < mid : item.rowLeft >= mid);
+            const rights = column.map(item => item.amountRight);
+            return {
+                side,
+                count: column.length,
+                maxDelta: rights.length ? Math.max(...rights) - Math.min(...rights) : null
+            };
+        });
         return {
-            rightEdges,
-            maxDelta: Math.max(...rights) - Math.min(...rights)
+            costRowsShareWrapper: capex?.parentClass.includes('dash-hero-cost-type-rows') &&
+                opex?.parentClass.includes('dash-hero-cost-type-rows'),
+            breakdownRowsShareWrapper: vatRow?.parentClass.includes('dash-hero-breakdown-rows') &&
+                riskRow?.parentClass.includes('dash-hero-breakdown-rows'),
+            costRowsSameLine: capex && opex ? Math.abs(capex.top - opex.top) <= 2 : false,
+            breakdownRowsSameLine: vatRow && riskRow ? Math.abs(vatRow.top - riskRow.top) <= 2 : false,
+            columnDeltas,
+            amountPctLineBreaks: rowMeasures
+                .filter(item => item.amountPctCenterDelta > 2)
+                .map(item => ({ text: item.text, centerDelta: item.amountPctCenterDelta })),
+            overflow: rowMeasures.filter(item => item.overflow).map(item => item.text)
         };
     });
-    let heroAmountAlignment = null;
+    let heroPairedRowsLayout = null;
     await expect.poll(async () => {
-        const alignment = await readHeroAmountAlignment();
+        const layout = await readHeroPairedRowsLayout();
         if (
-            alignment.rightEdges.length >= 4 &&
-            Number.isFinite(alignment.maxDelta) &&
-            alignment.maxDelta <= 2
+            layout.costRowsShareWrapper &&
+            layout.breakdownRowsShareWrapper &&
+            layout.costRowsSameLine &&
+            layout.breakdownRowsSameLine &&
+            layout.amountPctLineBreaks.length === 0 &&
+            layout.overflow.length === 0 &&
+            layout.columnDeltas.every(item => item.count >= 2 && Number.isFinite(item.maxDelta) && item.maxDelta <= 2)
         ) {
-            heroAmountAlignment = alignment;
+            heroPairedRowsLayout = layout;
             return true;
         }
-        return alignment.rightEdges.length >= 4 &&
-            Number.isFinite(alignment.maxDelta) &&
-            alignment.maxDelta <= 2;
+        return false;
     }).toBe(true);
-    expect(heroAmountAlignment.rightEdges.length).toBeGreaterThanOrEqual(4);
-    expect(heroAmountAlignment.maxDelta).toBeLessThanOrEqual(2);
+    expect(heroPairedRowsLayout.costRowsSameLine).toBe(true);
+    expect(heroPairedRowsLayout.breakdownRowsSameLine).toBe(true);
+    expect(heroPairedRowsLayout.columnDeltas.every(item => item.maxDelta <= 2)).toBe(true);
 
     const readBreakdownDecoration = rowLocator => rowLocator.evaluate(row => Object.fromEntries([
             ['label', '.dash-hero-breakdown-label'],

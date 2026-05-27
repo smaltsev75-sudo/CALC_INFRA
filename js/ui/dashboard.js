@@ -314,23 +314,25 @@ function renderHero(result, period, ctx, applyRisks = true, calc = null, totalRe
                     style: { width: `${(opexPct * 100).toFixed(2)}%` }
                 })
             ),
-            el('div', { class: 'dash-cost-row dash-cost-row-capex',
-                title: 'CAPEX — капитальные (разовые) затраты: внедрение, аттестация, аудит, обучение, единоразовая закупка лицензий и оборудования.'
-            },
-                el('span', { class: 'dash-cost-row-dot' }),
-                el('span', { class: 'dash-cost-row-label', text: 'CAPEX' }),
-                el('span', { class: 'dash-cost-row-amount',
-                    text: fmtRubForPeriod((byCostType.capex || 0) * mul, period) }),
-                el('span', { class: 'dash-cost-row-pct', text: percent(capexPct) })
-            ),
-            el('div', { class: 'dash-cost-row dash-cost-row-opex',
-                title: 'OPEX — операционные (регулярные) затраты: облако, лицензии-подписки, услуги, токены LLM, support.'
-            },
-                el('span', { class: 'dash-cost-row-dot' }),
-                el('span', { class: 'dash-cost-row-label', text: 'OPEX' }),
-                el('span', { class: 'dash-cost-row-amount',
-                    text: fmtRubForPeriod((byCostType.opex || 0) * mul, period) }),
-                el('span', { class: 'dash-cost-row-pct', text: percent(opexPct) })
+            el('div', { class: 'dash-hero-cost-type-rows' },
+                el('div', { class: 'dash-cost-row dash-cost-row-capex',
+                    title: 'CAPEX — капитальные (разовые) затраты: внедрение, аттестация, аудит, обучение, единоразовая закупка лицензий и оборудования.'
+                },
+                    el('span', { class: 'dash-cost-row-dot' }),
+                    el('span', { class: 'dash-cost-row-label', text: 'CAPEX' }),
+                    el('span', { class: 'dash-cost-row-amount',
+                        text: fmtRubForPeriod((byCostType.capex || 0) * mul, period) }),
+                    el('span', { class: 'dash-cost-row-pct', text: percent(capexPct) })
+                ),
+                el('div', { class: 'dash-cost-row dash-cost-row-opex',
+                    title: 'OPEX — операционные (регулярные) затраты: облако, лицензии-подписки, услуги, токены LLM, support.'
+                },
+                    el('span', { class: 'dash-cost-row-dot' }),
+                    el('span', { class: 'dash-cost-row-label', text: 'OPEX' }),
+                    el('span', { class: 'dash-cost-row-amount',
+                        text: fmtRubForPeriod((byCostType.opex || 0) * mul, period) }),
+                    el('span', { class: 'dash-cost-row-pct', text: percent(opexPct) })
+                )
             )
         )
         : null;
@@ -400,28 +402,30 @@ function renderHero(result, period, ctx, applyRisks = true, calc = null, totalRe
                bar был выровнен с bars карточек «Распределение» и «Вклад рисков». */
             costTypesBlock,
             el('div', { class: 'dash-hero-breakdown' },
-                vatAmount > 0 ? el('div', {
-                    class: ['dash-hero-breakdown-row', 'dash-hero-breakdown-row-vat',
-                        vat && !vat.enabled && 'dash-hero-breakdown-row-vat-potential'],
-                    title: vat?.enabled
-                        ? 'НДС рассчитан из итоговой суммы; ставка настраивается в Опроснике.'
-                        : 'НДС сейчас не применён к итогу.'
-                },
-                    el('span', { class: 'dash-hero-breakdown-label', text: 'НДС' }),
-                    el('span', { class: 'dash-hero-breakdown-amount', text: fmtRubForPeriod(vatAmount, period) }),
-                    el('span', { class: 'dash-hero-breakdown-value', text: `${Math.round(vatRate * 100)}%` })
-                ) : null,
-                riskAmount > 0 ? el('div', {
-                    class: ['dash-hero-breakdown-row', 'dash-hero-breakdown-row-risk',
-                        !applyRisks && 'dash-hero-breakdown-row-risk-potential'],
-                    title: applyRisks
-                        ? 'Риск-коэффициенты уже включены в итог.'
-                        : 'Риск-коэффициенты сейчас не применены к итогу.'
-                },
-                    el('span', { class: 'dash-hero-breakdown-label', text: 'Риски' }),
-                    el('span', { class: 'dash-hero-breakdown-amount', text: fmtRubForPeriod(riskAmount, period) }),
-                    el('span', { class: 'dash-hero-breakdown-value', text: riskPctText || '—' })
-                ) : null
+                el('div', { class: 'dash-hero-breakdown-rows' },
+                    vatAmount > 0 ? el('div', {
+                        class: ['dash-hero-breakdown-row', 'dash-hero-breakdown-row-vat',
+                            vat && !vat.enabled && 'dash-hero-breakdown-row-vat-potential'],
+                        title: vat?.enabled
+                            ? 'НДС рассчитан из итоговой суммы; ставка настраивается в Опроснике.'
+                            : 'НДС сейчас не применён к итогу.'
+                    },
+                        el('span', { class: 'dash-hero-breakdown-label', text: 'НДС' }),
+                        el('span', { class: 'dash-hero-breakdown-amount', text: fmtRubForPeriod(vatAmount, period) }),
+                        el('span', { class: 'dash-hero-breakdown-value', text: `${Math.round(vatRate * 100)}%` })
+                    ) : null,
+                    riskAmount > 0 ? el('div', {
+                        class: ['dash-hero-breakdown-row', 'dash-hero-breakdown-row-risk',
+                            !applyRisks && 'dash-hero-breakdown-row-risk-potential'],
+                        title: applyRisks
+                            ? 'Риск-коэффициенты уже включены в итог.'
+                            : 'Риск-коэффициенты сейчас не применены к итогу.'
+                    },
+                        el('span', { class: 'dash-hero-breakdown-label', text: 'Риски' }),
+                        el('span', { class: 'dash-hero-breakdown-amount', text: fmtRubForPeriod(riskAmount, period) }),
+                        el('span', { class: 'dash-hero-breakdown-value', text: riskPctText || '—' })
+                    ) : null
+                )
             )
         ),
         renderDashboardTotalMetrics(totalResources, totalAiMetrics, applyRisks, ctx, period)
