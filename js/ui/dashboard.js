@@ -281,7 +281,10 @@ function renderHero(result, period, ctx, applyRisks = true, calc = null, totalRe
     const capexPct = ctSum > 0 ? byCostType.capex / ctSum : 0;
     const opexPct  = ctSum > 0 ? byCostType.opex  / ctSum : 0;
     const vat = calc ? vatInfo(calc) : null;
-    const vatAmount = vat?.enabled ? extractVatAmount(total, vat.vatMul) : 0;
+    const vatRate = vat?.rate || 0;
+    const vatAmount = vat
+        ? (vat.enabled ? extractVatAmount(total, vat.vatMul) : total * vatRate)
+        : 0;
     const riskAmount = extractRiskAmount(heroCells) * mul;
     const riskPctText = Number.isFinite(surplusPct) && Math.abs(surplusPct) >= 0.05
         ? `${surplusPct >= 0 ? '+' : ''}${formatNumber(surplusPct, { min: 1, max: 1 })}%`
@@ -384,12 +387,15 @@ function renderHero(result, period, ctx, applyRisks = true, calc = null, totalRe
             costTypesBlock,
             el('div', { class: 'dash-hero-breakdown' },
                 vatAmount > 0 ? el('div', {
-                    class: 'dash-hero-breakdown-row dash-hero-breakdown-row-vat',
-                    title: 'НДС рассчитан из итоговой суммы; ставка настраивается в Опроснике.'
+                    class: ['dash-hero-breakdown-row', 'dash-hero-breakdown-row-vat',
+                        vat && !vat.enabled && 'dash-hero-breakdown-row-vat-potential'],
+                    title: vat?.enabled
+                        ? 'НДС рассчитан из итоговой суммы; ставка настраивается в Опроснике.'
+                        : 'НДС сейчас не применён к итогу.'
                 },
                     el('span', { class: 'dash-hero-breakdown-label', text: 'НДС' }),
                     el('span', { class: 'dash-hero-breakdown-amount', text: fmtRubForPeriod(vatAmount, period) }),
-                    el('span', { class: 'dash-hero-breakdown-value', text: `${Math.round((vat?.rate || 0) * 100)}%` })
+                    el('span', { class: 'dash-hero-breakdown-value', text: `${Math.round(vatRate * 100)}%` })
                 ) : null,
                 riskAmount > 0 ? el('div', {
                     class: ['dash-hero-breakdown-row', 'dash-hero-breakdown-row-risk',

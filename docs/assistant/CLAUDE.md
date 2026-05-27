@@ -2,8 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.95)
+## Current Project Lessons (2026-05-27, v2.20.96)
 
+- In `Итого по расчёту`, disabled VAT should mirror disabled risks: keep the
+  `НДС` row visible as potential cost, strike through only the amount and
+  percent, and never strike the row label.
 - Dashboard composition-card bar alignment must account for GitHub/Linux font
   wrapping. Do not let `Распределение по категориям` or
   `Вклад риск-коэффициентов` eyebrow text wrap inside the top row; reserve a

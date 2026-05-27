@@ -258,7 +258,7 @@ test('Dashboard top composition cards keep aligned desktop row', async ({ page }
     expect(consoleErrors).toEqual([]);
 });
 
-test('Dashboard total resources live inside total card and inactive risk values are struck through', async ({ page }) => {
+test('Dashboard total resources live inside total card and inactive risk/VAT values are struck through', async ({ page }) => {
     await page.setViewportSize({ width: 1680, height: 900 });
     const consoleErrors = await bootCleanApp(page);
 
@@ -269,6 +269,7 @@ test('Dashboard total resources live inside total card and inactive risk values 
     await page.evaluate(async () => {
         const calcCtl = await import(new URL('js/controllers/calcController.js', document.baseURI).href);
         calcCtl.setSetting('applyRiskFactors', false);
+        calcCtl.setSetting('vatEnabled', false);
     });
     await page.getByTestId('dashboard-period-monthly').click();
 
@@ -338,12 +339,7 @@ test('Dashboard total resources live inside total card and inactive risk values 
     expect(heroAmountAlignment.rightEdges.length).toBeGreaterThanOrEqual(5);
     expect(heroAmountAlignment.maxDelta).toBeLessThanOrEqual(2);
 
-    await expect(hero.locator('.dash-card-eyebrow-tag')).toContainText('БЕЗ РИСКОВ');
-    const disabledRiskRow = hero.locator('.dash-hero-breakdown-row-risk-potential');
-    await expect(disabledRiskRow).toBeVisible();
-
-    let disabledRiskDecoration = null;
-    await expect.poll(async () => disabledRiskRow.evaluate(row => Object.fromEntries([
+    const readBreakdownDecoration = rowLocator => rowLocator.evaluate(row => Object.fromEntries([
             ['label', '.dash-hero-breakdown-label'],
             ['amount', '.dash-hero-breakdown-amount'],
             ['value', '.dash-hero-breakdown-value']
@@ -351,33 +347,59 @@ test('Dashboard total resources live inside total card and inactive risk values 
             const node = row.querySelector(selector);
             const style = getComputedStyle(node);
             return [key, style.textDecorationLine || style.textDecoration || ''];
-        }))).then(decoration => {
+        })));
+    const expectInactiveDecoration = async (rowLocator) => {
+        let stableDecoration = null;
+        await expect.poll(async () => readBreakdownDecoration(rowLocator).then(decoration => {
             if (
                 !decoration.label.includes('line-through') &&
                 decoration.amount.includes('line-through') &&
                 decoration.value.includes('line-through')
             ) {
-                disabledRiskDecoration = decoration;
+                stableDecoration = decoration;
                 return true;
             }
             return false;
         })).toBe(true);
+        return stableDecoration;
+    };
+
+    await expect(hero.locator('.dash-card-eyebrow-tag')).toContainText('БЕЗ РИСКОВ');
+    const disabledRiskRow = hero.locator('.dash-hero-breakdown-row-risk-potential');
+    await expect(disabledRiskRow).toBeVisible();
+    const disabledRiskDecoration = await expectInactiveDecoration(disabledRiskRow);
     expect(disabledRiskDecoration.label.includes('line-through')).toBe(false);
     expect(disabledRiskDecoration.amount.includes('line-through')).toBe(true);
     expect(disabledRiskDecoration.value.includes('line-through')).toBe(true);
 
+    await expect(hero.locator('.vat-badge')).toContainText('БЕЗ НДС');
+    const disabledVatRow = hero.locator('.dash-hero-breakdown-row-vat-potential');
+    await expect(disabledVatRow).toBeVisible();
+    const disabledVatDecoration = await expectInactiveDecoration(disabledVatRow);
+    expect(disabledVatDecoration.label.includes('line-through')).toBe(false);
+    expect(disabledVatDecoration.amount.includes('line-through')).toBe(true);
+    expect(disabledVatDecoration.value.includes('line-through')).toBe(true);
+
     await page.evaluate(async () => {
         const calcCtl = await import(new URL('js/controllers/calcController.js', document.baseURI).href);
         calcCtl.setSetting('applyRiskFactors', true);
+        calcCtl.setSetting('vatEnabled', true);
     });
     await expect(hero.locator('.dash-card-eyebrow-tag')).toContainText('С РИСКАМИ');
     await expect(hero.locator('.dash-hero-breakdown-row-risk-potential')).toHaveCount(0);
+    await expect(hero.locator('.vat-badge')).toContainText('С НДС');
+    await expect(hero.locator('.dash-hero-breakdown-row-vat-potential')).toHaveCount(0);
 
     const enabledRiskDecoration = await hero.locator('.dash-hero-breakdown-row-risk')
         .evaluate(row => [...row.querySelectorAll(
             '.dash-hero-breakdown-label, .dash-hero-breakdown-amount, .dash-hero-breakdown-value'
         )].map(node => getComputedStyle(node).textDecorationLine || getComputedStyle(node).textDecoration));
     expect(enabledRiskDecoration.every(decoration => !decoration.includes('line-through'))).toBe(true);
+    const enabledVatDecoration = await hero.locator('.dash-hero-breakdown-row-vat')
+        .evaluate(row => [...row.querySelectorAll(
+            '.dash-hero-breakdown-label, .dash-hero-breakdown-amount, .dash-hero-breakdown-value'
+        )].map(node => getComputedStyle(node).textDecorationLine || getComputedStyle(node).textDecoration));
+    expect(enabledVatDecoration.every(decoration => !decoration.includes('line-through'))).toBe(true);
 
     expect(consoleErrors).toEqual([]);
 });

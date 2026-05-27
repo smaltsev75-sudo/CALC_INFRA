@@ -442,6 +442,19 @@
     color: #7dd3fc;
 }
 
+.dash-hero-breakdown-row-vat-potential .dash-hero-breakdown-value,
+.dash-hero-breakdown-row-vat-potential .dash-hero-breakdown-amount {
+    color: #7dd3fc;
+    font-style: italic;
+}
+
+.dash-hero-breakdown-row-vat-potential .dash-hero-breakdown-amount,
+.dash-hero-breakdown-row-vat-potential .dash-hero-breakdown-value {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+    text-decoration-color: currentColor;
+}
+
 .dash-hero-breakdown-row-risk .dash-hero-breakdown-value,
 .dash-hero-breakdown-row-risk .dash-hero-breakdown-amount {
     color: var(--accent);
