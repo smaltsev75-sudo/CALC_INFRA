@@ -2,8 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.87)
+## Current Project Lessons (2026-05-27, v2.20.88)
 
+- Dashboard top-card height guards must account for Linux/Windows font metric
+  drift. If the contract says the three composition cards share one height,
+  set a CSS min-height with enough headroom for GitHub Chromium rather than
+  depending on a value that only barely fits locally.
 - Dashboard total resource/AI cards are part of the `Итого по расчёту` scope.
   Keep `Объёмы ресурсов · ИТОГО` and `Объёмы AI-нагрузки · ИТОГО` inside the
   same left `dash-summary-stack` as the budget hero; do not place them as a

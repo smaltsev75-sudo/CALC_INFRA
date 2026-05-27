@@ -1,5 +1,21 @@
 # Журнал решений и допущений
 
+## 27.05.2026 · PATCH 2.20.88 — Dashboard top-height CI hardening
+
+**Контекст.** `v2.20.87` локально проходил `CI=true npm run smoke:desktop`,
+но GitHub Linux Chromium дал расхождение высоты верхних Dashboard-карточек
+на 8px из-за font metrics. Это не возвращало разброс total-блоков, но валило
+strict layout-contract.
+
+**Решение.** Desktop `min-height` для трёх top composition cards поднят до
+436px: `Итого`, `Распределение по категориям` и `Вклад риск-коэффициентов`
+получают стабильную общую высоту и не зависят от минимального локального
+значения, которое едва помещало контент.
+
+**Защита.** Локально снова пройден focused Playwright
+`dashboard-risk-bars-layout.spec.js` и UI unit-suite. Финальный release-gate
+для v2.20.88 выполняется полным набором перед публикацией.
+
 ## 27.05.2026 · PATCH 2.20.87 — Dashboard total-stack ownership
 
 **Контекст.** После предыдущего выравнивания верхних карточек Dashboard блоки

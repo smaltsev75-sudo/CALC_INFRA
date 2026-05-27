@@ -1824,13 +1824,13 @@
 @media (min-width: 1381px) {
     .dashboard-grid > .dash-summary-stack > .dash-card-hero {
         align-self: stretch;
-        min-height: 424px;
+        min-height: 436px;
     }
 
     .dashboard-grid > .dash-card-categories,
     .dashboard-grid > .dash-card-risk {
         align-self: start;
-        min-height: 424px;
+        min-height: 436px;
     }
 }
 
