@@ -655,3 +655,20 @@
     line-height: 1.4;
 }
 .comparison-vat-warning-text { color: inherit; }
+
+/* UX-ревью 2026-05-31 (#3): предупреждение о смешанном режиме рисков —
+   та же подача, что у НДС-warning. */
+.comparison-risk-warning {
+    margin-bottom: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(251, 191, 36, 0.30);
+    background: var(--warning-faint);
+    color: var(--warning);
+    font-size: var(--font-sm);
+    line-height: 1.4;
+}
+.comparison-risk-warning-text { color: inherit; }
+/* Чип «без рисков» — мягкий акцент (как pill-warn в AI-блоке), чтобы исключение
+   было заметнее обычного «с рисками». */
+.comparison-risk-chip-off { color: var(--warning); }

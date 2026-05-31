@@ -31,8 +31,12 @@ export function renderCalcList(state, ctx) {
                    (secondary, опытный пользователь хочет пустой шаблон). */
                 /* Stage 4.9/4.14 → Stage 17.2: единственная точка входа в создание — Quick Start.
                    3 preset'а после Stage 17.2 (4-й «Пустой расчёт» удалён, дублировал
-                   ctx.createCalc(name, null) из CRUD-flow). */
-                el('button', {
+                   ctx.createCalc(name, null) из CRUD-flow).
+                   UX-ревью 2026-05-31 (#9): в empty-state Quick Start дублирует крупную
+                   hero-CTA, а «Полный экспорт» бессмыслен (экспортировать нечего) — оба
+                   показываем только когда есть расчёты. «Полный импорт» остаётся всегда
+                   (восстановление резервной копии на чистой установке). */
+                list.length > 0 && el('button', {
                     class: 'btn btn-primary btn-icon-text',
                     title: 'Открыть Quick Start: заполнить 8 параметров (готовый расчёт за пару минут) — Ctrl+Alt+N.',
                     attrs: { type: 'button', 'data-testid': 'quickstart-open-toolbar' },
@@ -41,8 +45,8 @@ export function renderCalcList(state, ctx) {
                     icon('sparkles', { size: 16 }),
                     el('span', { text: 'Quick Start' })
                 ),
-                el('span', { class: 'toolbar-divider' }),
-                el('button', {
+                list.length > 0 && el('span', { class: 'toolbar-divider' }),
+                list.length > 0 && el('button', {
                     class: 'btn btn-ghost btn-icon-text',
                     title: 'Скачать резервную копию всех расчётов и справочников одним файлом. Полезно для backup и переноса на другой компьютер.',
                     attrs: { type: 'button', 'data-testid': 'bundle-export' },

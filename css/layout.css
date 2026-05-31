@@ -39,7 +39,13 @@
     z-index: 40;
     display: flex;
     align-items: center;
+    /* UX-ревью 2026-05-31 (#5): wrap разрешён, чтобы при нехватке ширины
+       (ноутбуки 1280–1600px) actions переносились на вторую строку, а имя
+       активного расчёта (.app-topbar-title) получало полную строку и не
+       обрезалось в «Текущий...». Широкие экраны остаются в одну строку. */
+    flex-wrap: wrap;
     gap: 12px;
+    row-gap: 8px;
     padding: 14px 24px;
     background: linear-gradient(180deg, var(--bg-main) 0%, rgba(10, 15, 26, 0.92) 90%, transparent 100%);
     backdrop-filter: blur(8px);
@@ -61,7 +67,11 @@
     color: var(--text);
     margin: 0;
     flex: 1;
-    min-width: 0;
+    /* UX-ревью 2026-05-31 (#5): min-width 14rem (вместо 0) резервирует место под
+       имя расчёта. Когда actions не помещаются рядом — они переносятся (flex-wrap
+       на .app-topbar), а title получает полную строку. На ≤720px правило ниже
+       возвращает min-width: 0 + flex-basis: 100% (своя строка на мобильном). */
+    min-width: 14rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

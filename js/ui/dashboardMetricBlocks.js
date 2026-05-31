@@ -110,10 +110,16 @@ export function renderResourcesBlock(resourceMap, titleText, applyRisks = true, 
    (RAG_VECTORS — размер индекса в ГБ, AGENT_CPU — кол-во vCPU) от
    периода не зависят: размер на стенде сегодня = такой же завтра. */
 export function renderAiMetricsBlock(metricMap, titleText, applyRisks, ctx, period = 'monthly') {
-    // Скрываем блок, если в этом scope (total или per-stand) нет ни одной AI-ЭК.
+    // Скрываем блок, если в этом scope (total или per-stand) нет ни одной AI-ЭК
+    // с НЕНУЛЕВЫМ qty. UX-ревью 2026-05-31: прежнее условие `qty>0 || applicable`
+    // было qty-независимым (applicable=true для любого расчёта, т.к. все AI-ЭК
+    // применимы ко всем стендам в seed) → для не-AI расчёта рендерилось 6 блоков
+    // из одних «—». Теперь зеркалит соседние экраны (comparison.js / detailsAiSummary.js,
+    // оба `e.qty > 0`): блок виден только когда AI реально используется. Отдельные
+    // нулевые метрики при настроенном AI остаются «—» внутри (см. isEmpty ниже).
     const hasAnyValue = DASHBOARD_AI_METRIC_LABELS.some(label => {
         const e = metricMap[label];
-        return e && (e.qty > 0 || e.applicable);
+        return e && e.qty > 0;
     });
     if (!hasAnyValue) return null;
 

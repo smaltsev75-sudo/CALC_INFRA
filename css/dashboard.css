@@ -452,6 +452,16 @@
     color: #7dd3fc;
 }
 
+/* UX-ревью 2026-05-31: НДС-голубой #7dd3fc нечитаем на песочном фоне светлой
+ * темы (контраст ~1.4:1). cyan-800 override → ~6.5:1, как в .field-impact-badge--planning. */
+[data-theme="light"] .dash-hero-breakdown-row-vat .dash-hero-breakdown-value {
+    color: rgb(21, 94, 117);
+}
+[data-theme="light"] .dash-hero-breakdown-row-vat-potential .dash-hero-breakdown-value,
+[data-theme="light"] .dash-hero-breakdown-row-vat-potential .dash-hero-breakdown-amount {
+    color: rgb(21, 94, 117);
+}
+
 .dash-hero-breakdown-row-vat-potential .dash-hero-breakdown-value,
 .dash-hero-breakdown-row-vat-potential .dash-hero-breakdown-amount {
     color: #7dd3fc;
@@ -1298,6 +1308,12 @@
     color: #cbd5e1;
     border: 1px solid rgba(148, 163, 184, 0.35);
 }
+/* UX-ревью 2026-05-31: светлая тема — НДС-бейдж стенд-карточки/Hero. */
+[data-theme="light"] .vat-badge-on {
+    background: rgba(14, 116, 144, 0.10);
+    color: rgb(21, 94, 117);
+    border-color: rgba(14, 116, 144, 0.40);
+}
 
 /* Строка под главной суммой Hero / в section-title Детализации:
  * «в т.ч. НДС 20%: 200 000 ₽ /мес» либо просто «без НДС». */
@@ -1320,6 +1336,10 @@
     color: #7dd3fc;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
+}
+/* UX-ревью 2026-05-31: светлая тема — сумма НДС под Hero / в section-title. */
+[data-theme="light"] .vat-breakdown-amount {
+    color: rgb(21, 94, 117);
 }
 .vat-breakdown-off {
     font-style: italic;

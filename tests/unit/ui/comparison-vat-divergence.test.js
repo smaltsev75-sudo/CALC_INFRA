@@ -82,8 +82,10 @@ describe('Comparison VAT: chip per calc', () => {
 
 describe('Comparison VAT: warning ВКЛЮЧЁН в render-pipeline', () => {
     it('renderComparisonVatWarning(calcs) вызывается перед renderUnifiedTable', () => {
-        /* Проверяем, что в comparison-content порядок: warning → renderUnifiedTable. */
-        const re = /renderComparisonVatWarning\(calcs\),\s*\n\s*renderUnifiedTable\(calcs/;
+        /* Проверяем, что в comparison-content VAT-warning идёт ДО renderUnifiedTable.
+           UX-ревью 2026-05-31 (#3): между ними добавлен renderComparisonRiskModeWarning,
+           поэтому допускаем строки между warning и таблицей (порядок сохранён). */
+        const re = /renderComparisonVatWarning\(calcs\),[\s\S]*?renderUnifiedTable\(calcs/;
         assert.match(SRC, re);
     });
 });

@@ -1,5 +1,66 @@
 # Журнал решений и допущений
 
+## 31.05.2026 · PATCH 2.20.102 — UX-ревью: 10 точечных правок UX/UI
+
+**Контекст.** Всесторонний UX/UI-аудит приложения (browser-смоук всех экранов в
+обеих темах и на ширинах 1366/1440/1920 + многоагентный код-аудит с adversarial-
+верификацией). Из 16 кандидатов 4 отбраковано как false-positive (jump-links уже
+есть через `focusQuestion`; sensitivity advanced-only — задокументированное решение
+Stage 17.4; «Анализ расчёта» в UserManual — раздел справки, не UI-обещание;
+polite-snackbar — документированный инвариант). 10 подтверждённых правок реализованы:
+
+1. **НДС-бейджи в светлой теме (HIGH).** sky-300 `#7dd3fc` хардкодом давал контраст
+   ~1.4:1 на песочном `--bg-card` (WCAG AA fail). Добавлены `[data-theme="light"]`-
+   override'ы той же cyan-палитрой, что у `.field-impact-badge--planning` (~6.5:1),
+   для `.calc-card-chip-vat` (components.css), `.vat-badge-on` / `.vat-breakdown-amount`
+   / `.dash-hero-breakdown-row-vat` (dashboard.css). Тест вычисляет реальный WCAG-
+   контраст: [vat-badge-light-contrast.test.js](tests/unit/ui/vat-badge-light-contrast.test.js).
+2. **Пустые AI-блоки на дашборде (MEDIUM).** `renderAiMetricsBlock` предикат
+   `qty>0 || applicable` был qty-независим (`applicable=true` для любого расчёта) →
+   для не-AI расчёта рендерилось 6 блоков «Объёмы AI-нагрузки» из одних «—».
+   Убрана ветка `|| applicable` — зеркалит соседние экраны (comparison.js /
+   detailsAiSummary.js, оба `qty>0`). При настроенном AI отдельные нулевые метрики
+   остаются «—» внутри (правило 12.U10). [dashboard-ai-block-hidden-when-no-ai.test.js](tests/unit/ui/dashboard-ai-block-hidden-when-no-ai.test.js).
+3. **Сравнение: режим рисков (MEDIUM).** `applyRiskFactors` меняет итог
+   (`costFinal × riskTotal`), но Сравнение не показывало бейдж режима в основной
+   таблице и не предупреждало о смешивании «с рисками»/«без рисков» (warning был
+   только для НДС). Добавлены `renderComparisonRiskModeChip` (в шапку колонки рядом
+   с НДС-chip) и `renderComparisonRiskModeWarning` (зеркало VAT-warning) + CSS
+   `.comparison-risk-warning` / `.comparison-risk-chip-off`.
+4. **Сравнение: пустое состояние при 0 расчётах (MEDIUM).** `renderEmptyState`
+   безусловно звал «Отметьте 2-4 расчёта в селекторе выше», но при 0 расчётов
+   селектора нет (`renderPicker→null`). Текст разведён по `state.calcList.length`:
+   при 0 — «Создайте расчёт во вкладке „Расчёты“…».
+5. **Топбар: имя расчёта (MEDIUM).** На ноутбучных ширинах (1280–1600px) кластер
+   из 8 кнопок вытеснял `.app-topbar-title` → «Текущий...» (clientWidth 85px vs
+   scrollWidth 248px на 1440px). `.app-topbar { flex-wrap: wrap }` + title
+   `min-width: 14rem` → actions переносятся на вторую строку, имя получает полную
+   строку; широкие экраны остаются в одну строку. [topbar-title-no-truncation.test.js](tests/unit/ui/topbar-title-no-truncation.test.js).
+6. **Decision Memo: прямой вход (MEDIUM).** «Обоснование расчёта» открывалось только
+   как top-1 «Следующий шаг» или из модалок Бюджет/Проверка. Добавлена постоянная
+   кнопка «Обоснование» (icon `file-text`) в toolbar Дашборда рядом с «Допущения»,
+   переиспользует `ctx.openDecisionMemoModal`. (Изначально пробовал строку в «Сводке
+   состояния расчёта» — но e2e пинит ровно 3 диагностических строки, и memo — это
+   action, а не diagnostic; перенёс в toolbar.) [decision-memo-direct-entry.test.js](tests/unit/ui/decision-memo-direct-entry.test.js).
+7. **Кнопка сброса Опросника (LOW).** Сырой глиф `↺` → `icon('rotate-ccw')` +
+   `btn-icon-text`, как у всех reset-кнопок проекта (правило «глифы в UI запрещены»).
+8. **Сравнение: фантомная дельта (LOW).** `renderDeltaInline` использовал строгий
+   `delta === 0` вместо `isZeroMoney` → почти равные расчёты давали цветную «+0 ₽
+   (+0,0%)» из-за float-остатка. Согласовано с обработкой ячеек (`isZeroMoney`).
+9. **Первый запуск: дубль CTA (LOW).** Toolbar рендерился безусловно, а empty-state
+   hero добавлял 2-ю «Quick Start» + импорт. В empty-state дублирующий Quick Start и
+   бессмысленный «Полный экспорт» убраны; «Полный импорт» оставлен (восстановление
+   бэкапа на чистой установке). [calclist-empty-no-duplicate-cta.test.js](tests/unit/ui/calclist-empty-no-duplicate-cta.test.js).
+10. **HOW_TO_START.md:69 (LOW).** «➕ Новый расчёт» (кнопка удалена в Stage 17.2) →
+   актуальный путь через «Quick Start».
+
+**Метрики.** Unit 5363/5363 PASS, syntax-check clean, desktop e2e 55/55 PASS
+(real Chromium 1365/1440/1920). 0 регрессий. Один существующий тест обновлён:
+`comparison-vat-divergence.test.js` (адъяcентность VAT-warning→table ослаблена до
+«перед», т.к. между ними добавлен risk-warning). Версия: PATCH (UX-полировка, без
+нового persistent-контракта / формата данных / schema — как все недавние dashboard-
+редизайны). Bump 2.20.101 → 2.20.102.
+
 ## 27.05.2026 · PATCH 2.20.101 — Harden flaky hero totals E2E measurement
 
 **Контекст.** CI-job `Desktop Playwright smoke` упал на пуше v2.20.100: тест

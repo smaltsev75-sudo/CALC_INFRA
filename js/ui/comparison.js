@@ -85,6 +85,7 @@ export function renderComparison(state, ctx) {
             : el('div', { class: 'comparison-content' },
                 renderComparisonPriceActuality(calcs),
                 renderComparisonVatWarning(calcs),
+                renderComparisonRiskModeWarning(calcs),
                 renderUnifiedTable(calcs, results, ctx, state),
                 /* Раздел AI-метрик: на каждый выбранный расчёт — мини-таблица
                    4 метрики × 5 стендов + ИТОГО. Помогает увидеть, какой
@@ -298,13 +299,20 @@ function renderPicker(state, selectedCalcs, ctx) {
     );
 }
 
-function renderEmptyState(state, ctx) {
+/* UX-ревью 2026-05-31 (#4): два случая пустого состояния. При 0 расчётов
+   селектора «выше» нет (renderPicker→null), поэтому прежний единый текст
+   «Отметьте 2-4 расчёта в селекторе выше» вёл в тупик. Разводим по state.calcList.
+   Экспортируется для тестов. */
+export function renderEmptyState(state, ctx) {
+    const hasCalcs = Array.isArray(state?.calcList) && state.calcList.length > 0;
     return el('div', { class: 'empty-state empty-state-compact' },
         el('div', { class: 'empty-state-icon' }, icon('git-compare', { size: 48 })),
-        el('div', { class: 'empty-state-title', text: 'Выберите расчёты для сравнения' }),
+        el('div', { class: 'empty-state-title',
+            text: hasCalcs ? 'Выберите расчёты для сравнения' : 'Пока нет ни одного расчёта' }),
         el('div', { class: 'empty-state-subtitle' },
-            'Отметьте 2-4 расчёта в селекторе выше — таблица сравнения появится автоматически. ',
-            'Полезно для оценки альтернативных конфигураций (MVP / v1 / v2, разные показатели пиковой одновременной аудитории и нагрузки).'
+            hasCalcs
+                ? 'Отметьте 2-4 расчёта в селекторе выше — таблица сравнения появится автоматически. Полезно для оценки альтернативных конфигураций (MVP / v1 / v2, разные показатели пиковой одновременной аудитории и нагрузки).'
+                : 'Создайте расчёт во вкладке «Расчёты» (или через Quick Start), затем вернитесь сюда, чтобы сравнить варианты.'
         )
     );
 }
@@ -435,6 +443,37 @@ function renderComparisonVatChip(calc) {
     });
 }
 
+/* UX-ревью 2026-05-31 (#3): режим риск-коэффициентов каждого расчёта в шапке
+   колонки, рядом с НДС-chip. applyRiskFactors=false убирает наценку из итога
+   (calculator.js: costFinal × (applyRisks ? riskTotal : 1)), поэтому «без рисков»
+   несопоставимо с «с рисками». Базовый класс — тот же muted sub-line, что у VAT. */
+function renderComparisonRiskModeChip(calc) {
+    const applyRisks = calc?.settings?.applyRiskFactors !== false;
+    return el('div', {
+        class: ['comparison-vat-chip', 'comparison-risk-chip', !applyRisks && 'comparison-risk-chip-off'],
+        title: applyRisks
+            ? `Расчёт «${calc?.name || '—'}» — с риск-коэффициентами (буферы, инфляция, сезонность учтены в итоге).`
+            : `Расчёт «${calc?.name || '—'}» — без риск-коэффициентов. Итог несопоставим с расчётами «с рисками».`,
+        text: applyRisks ? 'с рисками' : 'без рисков'
+    });
+}
+
+/* UX-ревью 2026-05-31 (#3): warning над таблицей, если выбраны расчёты в РАЗНЫХ
+   режимах рисков. Параллельно renderComparisonVatWarning — режим рисков двигает
+   итог сильнее НДС, а предупреждения для него раньше не было. Экспортируется для тестов. */
+export function renderComparisonRiskModeWarning(calcs) {
+    if (!Array.isArray(calcs) || calcs.length < 2) return null;
+    const modes = new Set(calcs.map(c => c?.settings?.applyRiskFactors !== false));
+    if (modes.size <= 1) return null;
+    return el('div', {
+        class: 'comparison-risk-warning',
+        attrs: { role: 'status', 'aria-live': 'polite' }
+    },
+        el('span', { class: 'comparison-risk-warning-text',
+            text: 'Расчёты посчитаны в разных режимах рисков (с рисками / без рисков) — итоги не сопоставимы напрямую.' })
+    );
+}
+
 function renderUnifiedTable(calcs, results, ctx, state) {
     /* --- Сбор всех ЭК и группировка по категориям --- */
     const itemMap = new Map();
@@ -550,7 +589,9 @@ function renderUnifiedTable(calcs, results, ctx, state) {
                                 i > 0 ? el('div', { class: 'cmp-calc-baseline', text: `vs ${calcs[0].name}` }) : null,
                                 /* VAT-1 Phase 5: ставка НДС каждого расчёта.
                                    Показывает «НДС 22% · авто» или «без НДС». */
-                                renderComparisonVatChip(c)
+                                renderComparisonVatChip(c),
+                                /* UX-ревью 2026-05-31 (#3): режим рисков расчёта. */
+                                renderComparisonRiskModeChip(c)
                             );
                         })
                     ),
@@ -610,10 +651,15 @@ function renderTotalsRow(calcs, results, { rowClass, levelClass, label, get }) {
     );
 }
 
-/** Inline-подстрока Δ в value-ячейке: «+5 000 ₽ (+1,2%)» с цветом up/down/zero. */
-function renderDeltaInline(value, baseValue) {
+/** Inline-подстрока Δ в value-ячейке: «+5 000 ₽ (+1,2%)» с цветом up/down/zero.
+ *  Экспортируется для тестов. */
+export function renderDeltaInline(value, baseValue) {
     const delta = value - baseValue;
-    if (delta === 0) {
+    /* UX-ревью 2026-05-31 (#8): isZeroMoney вместо строгого delta===0. После
+       6+ накопленных умножений (риски × НДС) почти равные расчёты дают остаток
+       порядка долей копейки → раньше рендерилась цветная «+0 ₽ (+0,0%)» вместо
+       нейтрального «нет разницы». Согласовано с обработкой ячеек (isZeroMoney). */
+    if (isZeroMoney(delta)) {
         return el('div', { class: 'cmp-delta-inline cmp-delta-zero', text: '— нет разницы' });
     }
     const deltaPct = baseValue !== 0 ? delta / baseValue : 0;

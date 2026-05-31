@@ -2,7 +2,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-27, v2.20.101)
+## Current Project Lessons (2026-05-31, v2.20.102)
+
+- UX-ревью 2026-05-31 (PATCH 2.20.102): 10 точечных правок UX/UI. Светлая тема —
+  НДС-бейджи (`.calc-card-chip-vat` / `.vat-badge-on` / `.vat-breakdown-amount` /
+  `.dash-hero-breakdown-row-vat`) получили `[data-theme="light"]` cyan-override
+  (контраст 1.4:1 → 6.5:1). Дашборд скрывает блок «Объёмы AI-нагрузки» для не-AI
+  расчёта (предикат `qty>0` без `|| applicable`, как в comparison/details). Сравнение
+  получило бейдж режима рисков + warning о смешивании режимов, дельта через
+  `isZeroMoney`, и осмысленный empty-state при 0 расчётов. Топбар: `flex-wrap` +
+  title `min-width: 14rem` — имя расчёта не обрезается на ноутбуках. Прямой вход в
+  «Обоснование расчёта» (Decision Memo) — кнопка в toolbar Дашборда. Кнопка сброса
+  Опросника — Lucide `rotate-ccw` вместо глифа `↺`. Empty-state «Расчёты» без дубля
+  Quick Start. **Урок**: «Сводка состояния расчёта» пинит ровно 3 диагностических
+  строки в e2e — новые action-сущности (memo) идут в toolbar/action-rows, не в
+  diagnostics. Метрики: unit 5363/5363, e2e 55/55, 0 регрессий.
 
 - Every single-shot `hero.evaluate(...)` that reads `getComputedStyle().fontSize`
   or geometry right after a period switch must be wrapped in `expect.poll` with a

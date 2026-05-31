@@ -170,7 +170,8 @@ export function renderDashboard(state, ctx) {
             el('div', { class: 'tab-toolbar-actions' },
                 renderPeriodSwitcher(period, ctx),
                 renderStandToggles(disabledStands, ctx),
-                renderAssumptionsBtn(assumptionCount, ctx)
+                renderAssumptionsBtn(assumptionCount, ctx),
+                renderDecisionMemoBtn(ctx)
             )
         ),
 
@@ -245,6 +246,23 @@ function renderAssumptionsBtn(count, ctx) {
     },
         icon('alert-triangle', { size: 16 }),
         el('span', { text: `Допущения${hasAssumptions ? ` (${count})` : ''}` })
+    );
+}
+
+/* UX-ревью 2026-05-31 (#6): прямой постоянный вход в «Обоснование расчёта»
+   (Decision Memo) — экспортируемый документ для согласования бюджета. Раньше
+   открывался только как top-1 «Следующий шаг» или из модалок Бюджет/Проверка;
+   sidebar/header/хоткей его не открывали. Переиспользует ctx.openDecisionMemoModal. */
+function renderDecisionMemoBtn(ctx) {
+    if (typeof ctx?.openDecisionMemoModal !== 'function') return null;
+    return el('button', {
+        class: ['btn', 'btn-ghost', 'btn-icon-text'],
+        title: 'Открыть «Обоснование расчёта»: сводка параметров и допущений, экспорт в Markdown / .md для согласования бюджета',
+        attrs: { type: 'button', 'data-testid': 'open-decision-memo' },
+        onClick: () => ctx.openDecisionMemoModal?.()
+    },
+        icon('file-text', { size: 16 }),
+        el('span', { text: 'Обоснование' })
     );
 }
 

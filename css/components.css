@@ -754,6 +754,14 @@ span.info-icon,
     color: #7dd3fc;
     border-color: rgba(125, 211, 252, 0.30);
 }
+/* UX-ревью 2026-05-31: на песочном фоне светлой темы sky-300 #7dd3fc даёт
+ * контраст ~1.4:1 (WCAG AA fail). Override той же cyan-палитрой, что у
+ * .field-impact-badge--planning (forms.css) — контраст ~6.5:1. */
+[data-theme="light"] .calc-card-chip-vat {
+    background: rgba(14, 116, 144, 0.10);
+    color: rgb(21, 94, 117);
+    border-color: rgba(14, 116, 144, 0.30);
+}
 .calc-card-chip-novat {
     background: var(--bg-elevated);
     color: var(--text-muted);

@@ -278,7 +278,7 @@ export function renderQuestionnaire(state, ctx) {
            кнопка-сброс. */
         el('div', { class: 'questionnaire-footer' },
             el('button', {
-                class: 'btn btn-ghost',
+                class: 'btn btn-ghost btn-icon-text',
                 title: 'Вернуть все ответы к рекомендуемым значениям. Сам расчёт не удаляется.',
                 onClick: () => ctx.confirm({
                     title: 'Сбросить ответы',
@@ -286,7 +286,12 @@ export function renderQuestionnaire(state, ctx) {
                     confirmLabel: 'Сбросить',
                     onConfirm: () => ctx.resetAnswers()
                 })
-            }, '↺ Сбросить ответы к рекомендуемым')
+            },
+                /* UX-ревью 2026-05-31 (#7): сырой глиф ↺ заменён на Lucide-иконку
+                   rotate-ccw, как у всех прочих reset-кнопок проекта. */
+                icon('rotate-ccw', { size: 16 }),
+                el('span', { text: 'Сбросить ответы к рекомендуемым' })
+            )
         )
     );
 }
