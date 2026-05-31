@@ -21,7 +21,7 @@
  *   PATCH (1.1.X) — багфиксы, рефакторинг, мелкие UX-правки, hardening,
  *                   обновления прайсов без новых фич, compatibility-миграции
  *                   без нового формата данных. */
-export const APP_VERSION = '2.20.102';
+export const APP_VERSION = '2.20.103';
 export const APP_NAME = 'Калькулятор инфраструктуры';
 
 /* ============================================================
@@ -604,7 +604,10 @@ export const DEFAULT_K_INFLATION = 0.10;
 /** Сезонный коэффициент. По умолчанию 0 — пользователь включает явно. */
 export const DEFAULT_K_SEASONAL = 0;
 
-/** Сдвиг расписания: +15%. Применяется к LOAD-стенду и ко всем oneTime. */
+/** Сдвиг расписания: +15%. Применяется ТОЛЬКО к разовым затратам
+ *  (billingInterval='oneTime'). Привязка к LOAD-стенду убрана в 13.U10 —
+ *  стенд НТ (LOAD) не должен превышать ПРОМ по qty/cost (см. calculator.js
+ *  riskFactor: scheduleApplies = item.billingInterval === 'oneTime'). */
 export const DEFAULT_K_SCHEDULE_SHIFT = 0.15;
 
 /** Резерв на непредвиденные обстоятельства: +5% поверх всего. */

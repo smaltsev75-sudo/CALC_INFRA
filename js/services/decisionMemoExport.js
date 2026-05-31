@@ -17,7 +17,11 @@
  *     (escape-first), так что raw HTML в memo не попадёт.
  */
 
-import { URL_REVOKE_DELAY_MS, CATEGORY_LABELS } from '../utils/constants.js';
+import {
+    URL_REVOKE_DELAY_MS, CATEGORY_LABELS,
+    DEFAULT_BUFFER_TASK, DEFAULT_BUFFER_PROJECT, DEFAULT_K_INFLATION,
+    DEFAULT_K_SEASONAL, DEFAULT_K_SCHEDULE_SHIFT, DEFAULT_K_CONTINGENCY
+} from '../utils/constants.js';
 import { formatDate, formatDateTime, formatNumber } from './format.js';
 import { getCurrentVatRate } from '../domain/vatRateTable.js';
 import {
@@ -258,7 +262,66 @@ function buildKeyParamsSection(calc) {
     if (printed === 0) {
         lines.push('- _Параметры не заполнены._');
     }
+
+    // Аудит коэффициентов (2026-05-31): прозрачность по AI-предложенным дефолтам.
+    lines.push(...buildDefaultCoefficientsLines(calc));
     return lines.join('\n');
+}
+
+/* Аудит коэффициентов (2026-05-31): видимый список «допущений по умолчанию».
+   Риск-коэффициенты и AI-факторы стендов — инженерные оценки, заложенные в
+   модель разработчиком на основе типовых IT-практик, а НЕ отраслевой норматив.
+   Выносим их в memo с явным дисклеймером и пометкой «по умолчанию» (значение
+   ещё не уточнено пользователем) vs «уточнено». Помогает согласующему бюджет
+   понять, какие числа стоит проверить под конкретный проект. */
+function buildDefaultCoefficientsLines(calc) {
+    const s = calc?.settings || {};
+    const ans = calc?.answers || {};
+    const out = [];
+
+    const pct = (v) => `+${formatNumber((v || 0) * 100, { min: 0, max: 1 })} %`;
+    const num = (v, def) => Number.isFinite(v) ? v : def;
+    const mark = (v, def) => Math.abs(num(v, def) - def) < 1e-9 ? '_(по умолчанию)_' : '_(уточнено)_';
+
+    const riskItems = [];
+    // Риск-коэффициенты применяются к итогу только в режиме «с рисками».
+    if (s.applyRiskFactors !== false) {
+        const bt = num(s.bufferTask, DEFAULT_BUFFER_TASK);
+        const bp = num(s.bufferProject, DEFAULT_BUFFER_PROJECT);
+        const ki = num(s.kInflation, DEFAULT_K_INFLATION);
+        const ks = num(s.kSeasonal, DEFAULT_K_SEASONAL);
+        const ksh = num(s.kScheduleShift, DEFAULT_K_SCHEDULE_SHIFT);
+        const kc = num(s.kContingency, DEFAULT_K_CONTINGENCY);
+        riskItems.push(`  - Буфер задач: ${pct(bt)} ${mark(bt, DEFAULT_BUFFER_TASK)}`);
+        riskItems.push(`  - Буфер проекта: ${pct(bp)} ${mark(bp, DEFAULT_BUFFER_PROJECT)}`);
+        riskItems.push(`  - Инфляция: ${pct(ki)} в год ${mark(ki, DEFAULT_K_INFLATION)}`);
+        riskItems.push(`  - Сезонность: ${ks > 0 ? pct(ks) : 'выкл.'} ${mark(ks, DEFAULT_K_SEASONAL)}`);
+        riskItems.push(`  - Сдвиг расписания: ${pct(ksh)}, только разовые затраты ${mark(ksh, DEFAULT_K_SCHEDULE_SHIFT)}`);
+        riskItems.push(`  - Непредвиденные: ${pct(kc)} ${mark(kc, DEFAULT_K_CONTINGENCY)}`);
+    }
+
+    // AI-факторы стендов — только если AI реально используется в расчёте.
+    const aiUsed = ans.ai_llm_used === true || ans.ai_agent_mode === true;
+    let aiLine = null;
+    if (aiUsed && s.aiStandFactor && typeof s.aiStandFactor === 'object') {
+        const order = [['DEV', 'DEV'], ['IFT', 'ИФТ'], ['PSI', 'ПСИ'], ['LOAD', 'НТ'], ['PROD', 'ПРОМ']];
+        const parts = [];
+        for (const [id, label] of order) {
+            const v = s.aiStandFactor[id];
+            if (Number.isFinite(v)) parts.push(`${label} ${Math.round(v * 100)}%`);
+        }
+        if (parts.length > 0) aiLine = `  - AI-нагрузка на стендах: ${parts.join(' · ')} (доля от ПРОМ)`;
+    }
+
+    if (riskItems.length === 0 && !aiLine) return out;
+
+    out.push('');
+    out.push('**Допущения по умолчанию (инженерная оценка, не норматив):**');
+    out.push(...riskItems);
+    if (aiLine) out.push(aiLine);
+    out.push('');
+    out.push('_Эти значения — типовые IT-оценки, заложенные в модель разработчиком, а не отраслевой норматив. Проверьте их под конкретный проект; изменить можно в Опроснике → «Параметры расчёта»._');
+    return out;
 }
 
 function buildProviderSection(ctx) {

@@ -2,7 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-31, v2.20.102)
+## Current Project Lessons (2026-05-31, v2.20.103)
+
+- PATCH 2.20.103 — прозрачность коэффициентов. (1) Исправлен stale-комментарий
+  `DEFAULT_K_SCHEDULE_SHIFT` ([constants.js](js/utils/constants.js)): сдвиг
+  применяется ТОЛЬКО к `oneTime`, привязку к LOAD убрали в 13.U10. (2) Decision
+  Memo §3 получил блок «Допущения по умолчанию (инженерная оценка, не норматив)»
+  ([decisionMemoExport.js](js/services/decisionMemoExport.js) `buildDefaultCoefficientsLines`):
+  риск-коэффициенты (при «с рисками») + AI-факторы стендов (при использовании AI),
+  с пометкой `(по умолчанию)`/`(уточнено)` и дисклеймером. **Урок**: AI-asserted
+  дефолты (риск-буферы, `aiStandFactor.DEV=0.02`) — инженерные оценки, не нормативы;
+  делать их видимыми пользователю, а не прятать. **Ловушка**: линтер
+  `stand-nt-naming.test.js` запрещает «нагрузочный стенд» даже в комментариях —
+  использовать «стенд НТ». Метрики: unit 5367/5367, e2e 55/55.
 
 - UX-ревью 2026-05-31 (PATCH 2.20.102): 10 точечных правок UX/UI. Светлая тема —
   НДС-бейджи (`.calc-card-chip-vat` / `.vat-badge-on` / `.vat-breakdown-amount` /
