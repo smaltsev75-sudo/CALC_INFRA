@@ -715,7 +715,7 @@ const ctx = {
         return setHealthLastTabAction({ tab, store });
     },
     resetAnswers() {
-        return resetAnswersAction({ calc, snackbar });
+        return resetAnswersAction({ calc, store, snackbar });
     },
 
     /* CRUD ЭК */
@@ -912,7 +912,20 @@ const appInstanceLockRuntime = createAppInstanceLockRuntime({
     acquireAppInstanceLock,
     releaseAppInstanceLock,
     startAppInstanceHeartbeat,
-    renderInstanceBlockedScreen
+    renderInstanceBlockedScreen,
+    /* T-RISK-8 (data-safety review 2026-06-13): сбой записи heartbeat'а (quota
+       mid-session) больше не молчит — предупреждаем пользователя, что блокировка
+       экземпляра может протухнуть и стоит сохранить расчёты в файл. */
+    onWriteFailed: () => snackbar.warning(
+        'Не удалось обновить блокировку экземпляра (возможно, заканчивается место в хранилище). ' +
+        'Сохраните важные расчёты в файл (экспорт JSON).'
+    ),
+    /* T-RISK-8: после восстановления из BFCache перечитываем состояние из
+       storage — другая вкладка могла изменить расчёт за время заморозки.
+       Передаём ССЫЛКУ на функцию (без вызова), чтобы единственный текстовый
+       вызов initFromStorage оставался в boot() ПОСЛЕ acquire — инвариант
+       «lock до чтения storage» (app-instance-lock.test.js). */
+    reinitFromStorage: calcList.initFromStorage
 });
 
 /* Внешний аудит «Жёсткая проверка» (2026-05-20, P1#2): storage-listener

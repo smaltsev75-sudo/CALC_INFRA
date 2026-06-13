@@ -30,23 +30,26 @@ import { getCalculationProviderPriceActuality } from '../domain/providerPriceTru
 import { calculate } from '../domain/calculator.js';
 
 /* ============================================================
- * Кэш sensitivity (module-scope, keyed by calcRevision)
+ * Кэш sensitivity (module-scope, keyed by calc reference — RISK-2)
  *
  * NB: sensitivityAnalysisModal.js и budgetGuardrailsController.js держат
  * каждый свой module-scope кэш. Дублирование намеренное — изоляция модулей
  * важнее экономии 30кб; consensus pattern по проекту.
+ *
+ * Ключ — ИДЕНТИЧНОСТЬ объекта calc (store создаёт новый объект на каждую
+ * мутацию). Прежний calc.calcRevision был всегда undefined (revision живёт
+ * на store-root) → memo не срабатывал, sensitivity перебирался каждый вызов.
  * ============================================================ */
 
-let _cachedRevision = null;
+let _cachedCalc = null;
 let _cachedSensitivity = null;
 
 function getOrRunSensitivity(calc) {
     if (!calc) return { results: [], notAvailable: [] };
-    const rev = calc.calcRevision ?? null;
-    if (rev !== null && rev === _cachedRevision && _cachedSensitivity) {
+    if (calc === _cachedCalc && _cachedSensitivity) {
         return _cachedSensitivity;
     }
-    _cachedRevision = rev;
+    _cachedCalc = calc;
     _cachedSensitivity = runSensitivityAnalysis(calc);
     return _cachedSensitivity;
 }

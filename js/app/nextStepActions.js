@@ -15,7 +15,20 @@ export function setHealthLastTabAction({ tab, store }) {
     store.setUi({ healthLastTab: tab });
 }
 
-export function resetAnswersAction({ calc, snackbar }) {
+export function resetAnswersAction({ calc, store, snackbar }) {
+    /* T-RISK-5 (data-safety review 2026-06-13): сброс ответов теперь обратим —
+       снимаем backup ДО сброса и показываем undo-snackbar (симметрично
+       deleteItem/deleteQuestion). Раньше сброс был необратим: success-snackbar
+       без undo, при том что confirm есть (questionnaire.js), но backup — нет. */
+    const active = store.getState().activeCalc;
+    if (!active) return;
+    const backup = {
+        answers: { ...(active.answers || {}) },
+        answersMeta: { ...(active.answersMeta || {}) }
+    };
     calc.resetAnswers();
-    snackbar.success('Ответы сброшены к значениям по умолчанию');
+    snackbar.showUndoableSnackbar(
+        'Ответы сброшены к значениям по умолчанию',
+        () => { calc.restoreAnswers(backup); }
+    );
 }

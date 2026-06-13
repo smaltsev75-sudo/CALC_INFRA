@@ -30,14 +30,35 @@ describe('app/nextStepActions', () => {
         assert.deepEqual(store.uiPatches, [{ healthLastTab: 'warning' }]);
     });
 
-    it('resetAnswersAction delegates to controller and shows success toast', () => {
+    it('resetAnswersAction: backup + reset + undoable-snackbar; undo восстанавливает (T-RISK-5)', () => {
+        const active = { answers: { a: 5 }, answersMeta: { a: { source: 'manual' } } };
+        const store = makeStore({ activeCalc: active });
         const calls = [];
-        const calc = { resetAnswers() { calls.push('reset'); } };
-        const snackbar = { calls: [], success(message) { this.calls.push(message); } };
+        const calc = {
+            resetAnswers() { calls.push('reset'); },
+            restoreAnswers(backup) { calls.push(['restore', backup]); }
+        };
+        let undoFn = null;
+        const snackbar = {
+            msg: null,
+            showUndoableSnackbar(message, onUndo) { this.msg = message; undoFn = onUndo; }
+        };
 
-        resetAnswersAction({ calc, snackbar });
+        resetAnswersAction({ calc, store, snackbar });
 
-        assert.deepEqual(calls, ['reset']);
-        assert.deepEqual(snackbar.calls, ['Ответы сброшены к значениям по умолчанию']);
+        assert.deepEqual(calls, ['reset'], 'сброс выполнен');
+        assert.equal(snackbar.msg, 'Ответы сброшены к значениям по умолчанию');
+        assert.ok(typeof undoFn === 'function', 'показан undoable-snackbar с колбэком отмены');
+
+        undoFn();
+        assert.deepEqual(calls[1], ['restore', { answers: { a: 5 }, answersMeta: { a: { source: 'manual' } } }],
+            'undo восстанавливает прежние answers/answersMeta из backup');
+    });
+
+    it('resetAnswersAction: нет активного calc → no-op без падения (T-RISK-5)', () => {
+        const store = makeStore({ activeCalc: null });
+        const calc = { resetAnswers() { throw new Error('не должен вызываться'); } };
+        const snackbar = { showUndoableSnackbar() { throw new Error('не должен вызываться'); } };
+        assert.doesNotThrow(() => resetAnswersAction({ calc, store, snackbar }));
     });
 });

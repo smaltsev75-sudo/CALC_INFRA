@@ -2,13 +2,14 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createAppInstanceLockRuntime } from '../../../js/app/instanceLockRuntime.js';
 
-function createRuntime(overrides = {}) {
+function createRuntime(overrides = {}, extraDeps = {}) {
     const calls = {
         acquire: [],
         release: [],
         heartbeatStarts: [],
         heartbeatStops: 0,
-        blocked: []
+        blocked: [],
+        reinit: 0
     };
     const heartbeatHandle = {
         stop() { calls.heartbeatStops++; }
@@ -29,7 +30,9 @@ function createRuntime(overrides = {}) {
         },
         renderInstanceBlockedScreen: lockResult => {
             calls.blocked.push(lockResult);
-        }
+        },
+        reinitFromStorage: () => { calls.reinit++; },
+        ...extraDeps
     });
     return { runtime, calls };
 }
@@ -91,5 +94,38 @@ describe('createAppInstanceLockRuntime', () => {
 
         assert.equal(calls.heartbeatStops, 1);
         assert.deepEqual(calls.release, ['owner-current']);
+    });
+
+    /* T-RISK-8 (data-safety review): heartbeat onWriteFailed подключён в runtime;
+       BFCache-restore перечитывает state из storage. */
+    it('start передаёт onWriteFailed в heartbeat (раньше callback был мёртв)', () => {
+        let writeFailed = 0;
+        const { runtime, calls } = createRuntime({}, { onWriteFailed: () => { writeFailed++; } });
+
+        runtime.start('o1');
+
+        const opts = calls.heartbeatStarts[0].opts;
+        assert.equal(typeof opts.onWriteFailed, 'function', 'onWriteFailed проброшен в heartbeat');
+        opts.onWriteFailed('write-failed');
+        assert.equal(writeFailed, 1, 'callback вызывается при write-failed');
+    });
+
+    it('handlePageshow(persisted) после успешного re-acquire перечитывает state из storage', () => {
+        const { runtime, calls } = createRuntime();
+
+        runtime.start('old');
+        runtime.handlePageshow({ persisted: true });
+
+        assert.equal(calls.reinit, 1, 'reinitFromStorage вызван (stale in-memory calc обновлён)');
+    });
+
+    it('handlePageshow: при неудачном re-acquire reinitFromStorage НЕ вызывается', () => {
+        const failed = { ok: false, reason: 'occupied', existing: { ownerId: 'other' } };
+        const { runtime, calls } = createRuntime({ acquireResult: failed });
+
+        runtime.start('old');
+        runtime.handlePageshow({ persisted: true });
+
+        assert.equal(calls.reinit, 0, 'blocked-state не должен перечитывать state');
     });
 });

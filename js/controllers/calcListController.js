@@ -273,6 +273,21 @@ export function openCalc(id) {
      * пользователя в заблуждение «calc открыт». Теперь при persist-fail
      * миграции — calc НЕ открывается, явный error-banner с инструкцией. */
     if (needsPersist) {
+        /* RISK-1 (+ data-safety review 2026-06-13): durable backup ОРИГИНАЛА —
+         * ОБЯЗАТЕЛЬНАЯ предпосылка перезаписи. needsPersist=true для ЛЮБОЙ
+         * необратимой трансформации (schema-миграция / repair null-ответов /
+         * normalize / vat / enrich), не только смены схемы (DATA-SAFETY-2).
+         * GATE (DATA-SAFETY-1): если backup не записан (quota) — НЕ
+         * перезаписываем оригинал и НЕ открываем calc. Best-effort был
+         * небезопасен: commit перезаписывает существующий ключ payload'ом
+         * ≤ размера и проходит под quota, пока backup нового ключа падает. */
+        const fromVersion = Number.isFinite(stored.schemaVersion) ? stored.schemaVersion : 0;
+        if (!persist.backupCalcBeforeMigration(id, stored, fromVersion)) {
+            store.setPersistStatus('error',
+                `Не удалось создать резервную копию перед обновлением расчёта «${stored.name || id}» (quota?). ` +
+                `Расчёт НЕ изменён — освободите место (экспорт JSON + удаление старых расчётов) и повторите открытие.`);
+            return null;
+        }
         if (!commitMigratedCalc(calc)) {
             const name = stored.name || id;
             store.setPersistStatus('error',
@@ -757,6 +772,20 @@ export function initFromStorage() {
              * boot завершается без активного calc'а, пользователь видит
              * persist-error-banner с инструкцией. */
             if (needsPersist) {
+                /* RISK-1 (+ data-safety review): durable backup ОРИГИНАЛА —
+                 * GATE перед перезаписью (симметрично openCalc; DATA-SAFETY-1/2).
+                 * Если backup не записан (quota) — оригинал не трогаем, активный
+                 * calc не ставим, сбрасываем activeId для повтора на след. boot. */
+                const fromVersion = Number.isFinite(stored.schemaVersion) ? stored.schemaVersion : 0;
+                if (!persist.backupCalcBeforeMigration(activeId, stored, fromVersion)) {
+                    store.setPersistStatus('error',
+                        `Не удалось создать резервную копию перед обновлением расчёта «${stored.name || activeId}» (quota?). ` +
+                        `Расчёт НЕ изменён — освободите место и перезагрузите страницу.`);
+                    /* best-effort: сбросить activeId — на сбое следующий boot
+                       повторит (оригинал цел, backup не записан из-за quota). */
+                    persist.saveActiveCalcId(null);
+                    return;
+                }
                 if (!commitMigratedCalc(migrated)) {
                     const name = stored.name || activeId;
                     store.setPersistStatus('error',

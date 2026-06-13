@@ -31,6 +31,76 @@ export function saveCalc(calc) {
 export function removeCalc(id) {
     if (!id) return;
     removeKey(STORAGE_KEYS.CALC_PREFIX + id);
+    /* RISK-1: удаляемый расчёт не должен оставлять orphan pre-migration backup. */
+    removeKey(STORAGE_KEYS.CALC_BACKUP_PREFIX + id);
+}
+
+/* ---------- RISK-1: durable pre-migration backup ----------
+ *
+ * Перед тем как commitMigratedCalc перезапишет calc.<id> мигрированной версией
+ * (calcListController openCalc/initFromStorage), сохраняем durable снимок
+ * ОРИГИНАЛА под calc.premigrate.<id>. Если шаг миграции логически испортил
+ * данные (не бросив исключение), пользователь/maintainer может восстановить
+ * исходный JSON из этого ключа.
+ *
+ * GATE (НЕ best-effort): caller ОБЯЗАН прервать перезапись, если функция
+ * вернула false. Нельзя полагаться на «quota завалит и commit тоже»: backup
+ * пишет НОВЫЙ ключ (оригинал + overhead), а commitMigratedCalc ПЕРЕЗАПИСЫВАЕТ
+ * существующий calc.<id>; при migrated ≤ original (миграции удаляют поля)
+ * overwrite проходит даже под quota, тогда как backup нового ключа падает —
+ * оригинал был бы затёрт без копии (data-safety review 2026-06-13,
+ * DATA-SAFETY-1). Поэтому openCalc/initFromStorage делают:
+ * if (!backupCalcBeforeMigration(...)) → abort, оригинал не тронут.
+ */
+
+/**
+ * Сохранить снимок оригинала перед миграцией. Идемпотентно: если backup той же
+ * `fromVersion` уже есть — не перезаписываем (не трогаем backedUpAt на каждый boot).
+ *
+ * @param {string} id
+ * @param {object} originalCalc — raw до-миграционный calc
+ * @param {number} fromVersion — schemaVersion оригинала
+ * @returns {boolean} true если backup есть в storage (записан или уже был)
+ */
+export function backupCalcBeforeMigration(id, originalCalc, fromVersion) {
+    if (!id || typeof id !== 'string') return false;
+    if (!originalCalc || typeof originalCalc !== 'object' || Array.isArray(originalCalc)) return false;
+    /* Идемпотентность по СОДЕРЖИМОМУ (не по fromVersion): если backup ИМЕННО
+     * этого оригинала уже есть — не churn'им повторной записью (важно, чтобы boot
+     * с не-идемпотентным needsPersist не писал backup каждый раз). Сравнение по
+     * содержимому, а не по версии, гарантирует контракт gate'а: после true в
+     * storage лежит backup ТЕКУЩЕГО оригинала (DATA-SAFETY-2 — backup нужен и
+     * при не-схемных перезаписях repair/normalize, где fromVersion не меняется). */
+    const existing = readJson(STORAGE_KEYS.CALC_BACKUP_PREFIX + id, null);
+    if (existing && typeof existing === 'object' && existing.original) {
+        let sameContent = false;
+        try { sameContent = JSON.stringify(existing.original) === JSON.stringify(originalCalc); }
+        catch { sameContent = false; }
+        if (sameContent) return true;
+    }
+    return writeJson(STORAGE_KEYS.CALC_BACKUP_PREFIX + id, {
+        id,
+        fromVersion,
+        original: originalCalc,
+        backedUpAt: new Date().toISOString()
+    });
+}
+
+/**
+ * Загрузить pre-migration backup. Возвращает { id, fromVersion, original, backedUpAt }
+ * или null, если backup'а нет / он повреждён.
+ */
+export function loadCalcBackup(id) {
+    if (!id || typeof id !== 'string') return null;
+    const v = readJson(STORAGE_KEYS.CALC_BACKUP_PREFIX + id, null);
+    if (!v || typeof v !== 'object' || Array.isArray(v) || !v.original) return null;
+    return v;
+}
+
+/** Удалить pre-migration backup одного расчёта. Idempotent. */
+export function removeCalcBackup(id) {
+    if (!id || typeof id !== 'string') return;
+    removeKey(STORAGE_KEYS.CALC_BACKUP_PREFIX + id);
 }
 
 /* ---------- Активный расчёт ---------- */

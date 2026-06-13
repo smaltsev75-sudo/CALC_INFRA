@@ -21,7 +21,7 @@
  *   PATCH (1.1.X) — багфиксы, рефакторинг, мелкие UX-правки, hardening,
  *                   обновления прайсов без новых фич, compatibility-миграции
  *                   без нового формата данных. */
-export const APP_VERSION = '2.20.103';
+export const APP_VERSION = '2.20.104';
 export const APP_NAME = 'Калькулятор инфраструктуры';
 
 /* ============================================================
@@ -1020,6 +1020,11 @@ export const STORAGE_KEYS = Object.freeze({
     CALC_LIST: 'calc.list',
     /** Префикс ключа конкретного расчёта: calc.<id>. */
     CALC_PREFIX: 'calc.',
+    /** RISK-1: префикс durable pre-migration backup'а оригинала: calc.premigrate.<id>.
+        Один снимок на расчёт (последняя миграция), чтобы можно было восстановить
+        исходный JSON, если шаг миграции логически испортил данные. Делит общий
+        `calc.`-префикс → автоматически попадает в isAppKey/resetAll. */
+    CALC_BACKUP_PREFIX: 'calc.premigrate.',
     /** Глобальный справочник, применяемый к новым расчётам. */
     DEFAULT_DICTIONARY: 'calc.defaultDictionary',
     /** Активный расчёт (последний открытый id). */

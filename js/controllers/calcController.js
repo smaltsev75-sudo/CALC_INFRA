@@ -302,6 +302,24 @@ export function resetAnswers() {
     commit();
 }
 
+/**
+ * T-RISK-5 (data-safety review 2026-06-13): восстановить ответы из backup —
+ * undo сброса (resetAnswers). Тот же commit-путь (debounced + scenario-mirror),
+ * что и resetAnswers, поэтому persist-сигнал и зеркало scenarios согласованы.
+ * Раньше сброс был необратим (нет undo/backup, в отличие от deleteItem/Question).
+ *
+ * @param {{ answers: object, answersMeta: object }} backup
+ */
+export function restoreAnswers(backup) {
+    const calc = store.getState().activeCalc;
+    if (!calc || !backup || typeof backup !== 'object') return;
+    store.updateActiveCalc({
+        answers: { ...(backup.answers || {}) },
+        answersMeta: { ...(backup.answersMeta || {}) }
+    });
+    commit();
+}
+
 /* ---------- Настройки ---------- */
 
 export function setSetting(key, value) {

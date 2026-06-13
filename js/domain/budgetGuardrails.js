@@ -84,8 +84,13 @@ function combineStatus(capexStatus, opexStatus) {
 /**
  * Запускает calculate() и возвращает actualOpexMonthly / actualCapexMonthly /
  * actualCapexTotal / actualTotalMonthly. На любой ошибке расчёта — нули.
+ *
+ * @param {object|null} calc
+ * @param {number|null} [revision=null] store-level calcRevision для LRU-кэша
+ *        calculate(); null (чистый domain-вызов без store) → пересчёт без кэша
+ *        (RISK-2: revision живёт на store-root, не на объекте calc).
  */
-function getActualSpend(calc) {
+function getActualSpend(calc, revision = null) {
     if (!calc) {
         return {
             opexMonthly: 0,
@@ -96,8 +101,9 @@ function getActualSpend(calc) {
     }
     let result;
     try {
-        // calculate сам поддерживает кэш по revision; null → bypass
-        result = calculate(calc, calc.calcRevision ?? null);
+        // calculate кэширует по revision; контроллер передаёт store-level
+        // calcRevision (RISK-2). null (domain-вызов без store) → bypass.
+        result = calculate(calc, revision);
     } catch (_e) {
         return {
             opexMonthly: 0,
@@ -124,6 +130,9 @@ function getActualSpend(calc) {
  * Возвращает разрыв между фактом и целевым бюджетом по двум осям (CAPEX/OPEX).
  *
  * @param {object|null} calc - активный расчёт
+ * @param {number|null} [revision=null] store-level calcRevision (RISK-2):
+ *        контроллер передаёт его для попадания в LRU-кэш calculate();
+ *        чистый domain-вызов (recommendedActions) опускает → null → bypass.
  * @returns {{
  *   status: 'ok'|'warning'|'not_configured',
  *   capex: { target, actual, gap, gapPercent, status },
@@ -131,7 +140,7 @@ function getActualSpend(calc) {
  *   actual: { opexMonthly, capexMonthly, capexTotal, totalMonthly }
  * }}
  */
-export function getBudgetGap(calc) {
+export function getBudgetGap(calc, revision = null) {
     if (!calc) {
         return {
             status: BUDGET_STATUS.NOT_CONFIGURED,
@@ -142,7 +151,7 @@ export function getBudgetGap(calc) {
     }
     const targetCapex = toFiniteNumber(calc?.answers?.target_capex_rub);
     const targetOpex  = toFiniteNumber(calc?.answers?.target_opex_monthly_rub);
-    const actual = getActualSpend(calc);
+    const actual = getActualSpend(calc, revision);
 
     const capex = buildSection(targetCapex, actual.capexTotal);
     const opex  = buildSection(targetOpex,  actual.opexMonthly);
@@ -238,7 +247,11 @@ export function rankOptimizationHints(hints) {
  * }}
  */
 export function evaluateBudgetGuardrails(calc, sensitivityResults = [], options = {}) {
-    const budgetGap = getBudgetGap(calc);
+    /* RISK-2: revision (store-level calcRevision) прокидывается контроллером
+       через options.revision для попадания в LRU-кэш calculate(); чистый
+       domain-вызов опускает options → null → пересчёт без кэша. */
+    const revision = options.revision ?? null;
+    const budgetGap = getBudgetGap(calc, revision);
     if (!calc) {
         return {
             status: budgetGap.status,

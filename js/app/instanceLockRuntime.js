@@ -3,7 +3,16 @@ export function createAppInstanceLockRuntime({
     acquireAppInstanceLock,
     releaseAppInstanceLock,
     startAppInstanceHeartbeat,
-    renderInstanceBlockedScreen
+    renderInstanceBlockedScreen,
+    /* T-RISK-8 (data-safety review 2026-06-13): callback при сбое записи
+       heartbeat'а (quota mid-session). Раньше startAppInstanceHeartbeat
+       поддерживал onWriteFailed, но runtime его НЕ передавал → сбой проглатывался
+       молча, lock протухал через TTL, другая вкладка перехватывала. */
+    onWriteFailed = null,
+    /* T-RISK-8: перечитать state из storage после BFCache-restore. Раньше
+       handlePageshow re-acquire'ил lock, но НЕ звал initFromStorage → держал
+       stale in-memory activeCalc, первая правка перезаписывала внешние изменения. */
+    reinitFromStorage = null
 }) {
     let ownerId = null;
     let heartbeatHandle = null;
@@ -26,7 +35,10 @@ export function createAppInstanceLockRuntime({
         heartbeatHandle = startAppInstanceHeartbeat(ownerId, {
             onLost: existing => {
                 enterBlockedState({ ok: false, reason: 'occupied', existing });
-            }
+            },
+            /* T-RISK-8: подключаем onWriteFailed (раньше не передавался → мёртвый
+               callback в appInstanceLock). Сигнал поднимает app.js (snackbar). */
+            ...(typeof onWriteFailed === 'function' ? { onWriteFailed } : {})
         });
     }
 
@@ -53,6 +65,12 @@ export function createAppInstanceLockRuntime({
             return;
         }
         start(r.ownerId);
+        /* T-RISK-8: перечитать state из storage — за время BFCache-заморозки
+           другая вкладка могла отредактировать calc.<id>; без re-init первая
+           правка перезаписала бы внешние изменения stale-снапшотом. */
+        if (typeof reinitFromStorage === 'function') {
+            try { reinitFromStorage(); } catch { /* best-effort: re-init не должен ронять restore */ }
+        }
     }
 
     function release() {

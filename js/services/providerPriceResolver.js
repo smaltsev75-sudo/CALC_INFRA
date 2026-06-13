@@ -63,6 +63,22 @@ export function getEffectivePricesForProvider(providerId) {
     for (const id of Object.keys(override.prices)) {
         const entry = override.prices[id];
         if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+        /* T-RISK-7 (data-safety review 2026-06-13): числовая ре-валидация
+           pricePerUnit на apply-пути — тот же контракт, что у import-валидатора
+           (providerPriceFetch.js: pricePerUnit должен быть положительным
+           конечным числом). Невалидный (отрицательный / NaN / 0 / нечисловой)
+           override из подделанного или legacy storage НЕ попадает в расчёт —
+           fallback на frozen-default для этого ЭК (иначе toNum coerce'ил бы его
+           в тихо-неверный/отрицательный итог). */
+        if (typeof entry.pricePerUnit !== 'number'
+            || !Number.isFinite(entry.pricePerUnit)
+            || entry.pricePerUnit <= 0) {
+            console.warn(
+                `[providerPriceResolver] override "${providerId}".prices.${id}.pricePerUnit ` +
+                `невалиден (${entry.pricePerUnit}) — fallback на frozen-default.`
+            );
+            continue;
+        }
         merged[id] = entry;
     }
     return merged;

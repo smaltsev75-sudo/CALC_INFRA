@@ -10,8 +10,8 @@
  *   4. Секция N/A (поля, для которых анализ невозможен).
  *   5. Footer: кнопка «Закрыть».
  *
- * Кэш анализа keyed по calcRevision — фильтрация/сортировка не запускает
- * повторный перебор всех полей, только re-rank из кешированного results[].
+ * Кэш анализа keyed по идентичности объекта calc — фильтрация/сортировка не
+ * запускает повторный перебор всех полей, только re-rank из кешированного results[].
  *
  * Layer compliance: не импортирует из controllers/ или state/.
  */
@@ -30,18 +30,21 @@ import {
 import { formatPercentPoints, formatRubShort } from '../../services/format.js';
 
 /* ============================================================
- * Кэш анализа (module-scope, keyed by calcRevision)
- * ============================================================ */
+ * Кэш анализа (module-scope, keyed by calc reference — RISK-2)
+ * ============================================================
+ * Ключ — ИДЕНТИЧНОСТЬ объекта calc (store создаёт новый объект на каждую
+ * мутацию). Прежний calc.calcRevision был всегда undefined (revision живёт
+ * на store-root) → memo не срабатывал, перебор полей шёл на каждый ре-рендер.
+ * UI-слой не имеет доступа к store-revision, а ссылочное равенство — имеет. */
 
-let _cachedRevision = null;
+let _cachedCalc = null;
 let _cachedAnalysis = null; // { results, notAvailable }
 
 function getOrRunAnalysis(calc) {
-    const rev = calc?.calcRevision ?? null;
-    if (rev !== null && rev === _cachedRevision && _cachedAnalysis) {
+    if (calc && calc === _cachedCalc && _cachedAnalysis) {
         return _cachedAnalysis;
     }
-    _cachedRevision = rev;
+    _cachedCalc = calc;
     _cachedAnalysis = runSensitivityAnalysis(calc);
     return _cachedAnalysis;
 }

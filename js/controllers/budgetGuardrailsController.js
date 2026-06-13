@@ -12,23 +12,27 @@ import { evaluateBudgetGuardrails, getBudgetGap } from '../domain/budgetGuardrai
 import { runSensitivityAnalysis } from '../domain/sensitivityAnalysis.js';
 
 /* ============================================================
- * Кэш sensitivity-результатов (module-scope, keyed by calcRevision)
+ * Кэш sensitivity-результатов (module-scope, keyed by calc reference)
  * ============================================================
  * Sensitivity — самая дорогая часть пайплайна (полный пересчёт calculate
- * на каждое перебираемое поле). Кэшируем по revision: модалка может
- * пересоздаваться при ре-рендере, но пока calc не менялся — результаты те же.
+ * на каждое перебираемое поле). Кэшируем по ИДЕНТИЧНОСТИ объекта calc:
+ * store.updateActiveCalc/setActiveCalc создают НОВЫЙ объект на каждую
+ * мутацию (store.js), поэтому ссылочное равенство — корректный store-
+ * независимый ключ. Прежний ключ calc.calcRevision был всегда undefined
+ * (revision живёт на store-root, а не на объекте calc) → memo не срабатывал
+ * и sensitivity перебирался на КАЖДЫЙ ре-рендер модалки (RISK-2,
+ * состязательное ревью 2026-06-13).
  */
 
-let _cachedRevision = null;
+let _cachedCalc = null;
 let _cachedSensitivity = null; // { results, notAvailable }
 
 function getOrRunSensitivity(calc) {
     if (!calc) return { results: [], notAvailable: [] };
-    const rev = calc.calcRevision ?? null;
-    if (rev !== null && rev === _cachedRevision && _cachedSensitivity) {
+    if (calc === _cachedCalc && _cachedSensitivity) {
         return _cachedSensitivity;
     }
-    _cachedRevision = rev;
+    _cachedCalc = calc;
     _cachedSensitivity = runSensitivityAnalysis(calc);
     return _cachedSensitivity;
 }
@@ -54,7 +58,8 @@ export function evaluateBudgetGuardrailsForActiveCalc() {
         return evaluateBudgetGuardrails(null, []);
     }
     const { results } = getOrRunSensitivity(activeCalc);
-    return evaluateBudgetGuardrails(activeCalc, results);
+    // RISK-2: store-level revision → LRU-кэш calculate() внутри getBudgetGap.
+    return evaluateBudgetGuardrails(activeCalc, results, { revision: store.getState().calcRevision });
 }
 
 /**
@@ -66,5 +71,7 @@ export function getBudgetGuardrailsSummary() {
     if (!activeCalc) {
         return getBudgetGap(null);
     }
-    return getBudgetGap(activeCalc);
+    // RISK-2: store-level revision → calculate() попадает в LRU-кэш (тот же,
+    // что использует дашборд), устраняя двойной item×stand-проход на кадр.
+    return getBudgetGap(activeCalc, store.getState().calcRevision);
 }
