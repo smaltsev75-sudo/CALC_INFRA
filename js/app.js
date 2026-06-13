@@ -836,6 +836,7 @@ const ctx = {
     openReset()               { store.openModal('reset'); },
     openFormula(itemId)       { store.openModal('formula', { itemId }); },
     openRootCauseReportModal(){ store.openModal('rootCauseReport'); },
+    openProdPassportModal()   { store.openModal('prodPassport', { offset: 0, selectedItemId: null }); },
     input(opts)               { store.openModal('input', { draft: opts.defaultValue ?? '', ...opts }); },
     /**
      * Патч полезной нагрузки открытой модалки (errors, activeSubTab и т.п.).

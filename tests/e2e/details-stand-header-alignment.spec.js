@@ -24,6 +24,8 @@ test('Details stand headers are right-aligned with numeric stand columns', async
         .locator('.details-ai-cell-unit')).toHaveText('₽/мес');
     await expect(page.locator('.details-table-cost thead tr.details-thead-row-headers th.col-unit')).toHaveCSS('text-align', 'left');
     await expect(page.locator('.details-ai-summary-table thead th.details-ai-cell-unit')).toHaveCSS('text-align', 'left');
+    await expect(page.locator('.details-ai-summary-table thead th.details-ai-cell-stand').first()).toHaveCSS('text-align', 'right');
+    await expect(page.locator('.details-ai-summary-table tbody td.details-ai-cell-stand').first()).toHaveCSS('text-align', 'right');
 
     const detailsAlignment = await page.locator('.details-table-cost').evaluate((table) => {
         const headers = [...table.querySelectorAll('thead tr.details-thead-row-headers th.col-stand')];

@@ -473,8 +473,9 @@ select.qs-flash,
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
+    min-width: 18px;
     height: 18px;
+    padding: 0 5px;
     color: var(--text-dim);
     cursor: help;
     transition: color var(--t-fast);
@@ -1505,6 +1506,471 @@ body.has-modal { overflow: hidden; }
     border: none;
     border-top: 1px solid var(--border);
     margin: 28px 0;
+}
+
+/* === Паспорт ПРОМ === */
+.prod-passport-report {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.prod-passport-section-title,
+.prod-passport-subtitle {
+    color: var(--accent);
+    font-size: var(--font-sm);
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.prod-passport-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.prod-passport-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(120px, 1fr));
+    gap: 8px;
+}
+
+.prod-passport-summary-card {
+    min-height: 74px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+}
+
+.prod-passport-summary-label {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    line-height: 1.35;
+}
+
+.prod-passport-summary-value {
+    margin-top: 8px;
+    color: var(--text);
+    font-size: var(--font-lg);
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.prod-passport-factors {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.prod-passport-factor-note {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    line-height: 1.45;
+}
+
+.prod-passport-factor-table,
+.prod-passport-input-table {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.prod-passport-factor-head,
+.prod-passport-factor-row {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) 160px 90px;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 10px;
+}
+
+.prod-passport-factor-head,
+.prod-passport-list-head,
+.prod-passport-input-head {
+    background: var(--bg-panel);
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    font-weight: 700;
+}
+
+.prod-passport-factor-row {
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    font-size: var(--font-sm);
+}
+
+.prod-passport-factor-money,
+.prod-passport-factor-share {
+    text-align: right;
+    font-weight: 800;
+}
+
+.prod-passport-workspace {
+    display: grid;
+    grid-template-columns: minmax(620px, 0.92fr) minmax(520px, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.prod-passport-list,
+.prod-passport-detail {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    overflow: hidden;
+}
+
+.prod-passport-list > .prod-passport-section-title,
+.prod-passport-detail-title,
+.prod-passport-detail-section,
+.prod-passport-detail-result,
+.prod-passport-pager {
+    padding-left: 14px;
+    padding-right: 14px;
+}
+
+.prod-passport-list > .prod-passport-section-title {
+    padding-top: 12px;
+    padding-bottom: 10px;
+}
+
+.prod-passport-list-head,
+.prod-passport-row {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) 150px 150px 90px;
+    gap: 12px;
+    align-items: center;
+}
+
+.prod-passport-list-head {
+    padding: 9px 14px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.prod-passport-row {
+    width: 100%;
+    min-height: 48px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    text-align: left;
+    background: transparent;
+}
+
+.prod-passport-row:hover,
+.prod-passport-row-selected {
+    background: var(--bg-elevated);
+}
+
+.prod-passport-row-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.prod-passport-row-name strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.prod-passport-row-qty,
+.prod-passport-row-money,
+.prod-passport-row-share {
+    text-align: right;
+    font-weight: 800;
+}
+
+.prod-passport-markers {
+    display: inline-flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.prod-passport-marker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    color: var(--bg);
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.prod-passport-marker-default { background: var(--warning); }
+.prod-passport-marker-repair { background: var(--accent); }
+.prod-passport-marker-warning { background: var(--danger); }
+
+.prod-passport-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+}
+
+.prod-passport-pager-actions {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.prod-passport-detail-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: space-between;
+    padding-top: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.prod-passport-detail-title h3 {
+    margin: 0;
+    font-size: var(--font-lg);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.prod-passport-detail-result {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(110px, 1fr));
+    gap: 8px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.prod-passport-kv {
+    padding: 8px 10px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+}
+
+.prod-passport-kv span {
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+}
+
+.prod-passport-kv strong {
+    display: block;
+    margin-top: 4px;
+    color: var(--text);
+    font-size: var(--font-md);
+}
+
+.prod-passport-detail-section {
+    padding-top: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.prod-passport-detail-section:last-child {
+    border-bottom: none;
+}
+
+.prod-passport-detail-section h4 {
+    margin: 0 0 8px;
+    color: var(--text);
+    font-size: var(--font-md);
+}
+
+.prod-passport-formula-text,
+.prod-passport-formula-label {
+    margin: 0 0 10px;
+    color: var(--text-muted);
+    line-height: 1.55;
+}
+
+.prod-passport-substitution,
+.prod-passport-technical,
+.prod-passport-cost-expression {
+    display: block;
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.prod-passport-substitution span {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    font-weight: 700;
+}
+
+.prod-passport-substitution code,
+.prod-passport-technical code,
+.prod-passport-cost-expression {
+    color: var(--text);
+    font-family: var(--font-mono);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.prod-passport-technical summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.prod-passport-input-head,
+.prod-passport-input-row {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(110px, 0.8fr) minmax(130px, 0.8fr) minmax(110px, 0.7fr);
+    gap: 10px;
+    align-items: start;
+    padding: 8px 10px;
+}
+
+.prod-passport-input-row {
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    font-size: var(--font-sm);
+}
+
+.prod-passport-input-row code {
+    color: var(--accent);
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
+}
+
+.prod-passport-tech-ref summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    font-weight: 700;
+}
+
+.prod-passport-tech-ref code {
+    display: block;
+    margin-top: 6px;
+}
+
+.prod-passport-cost-components {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.prod-passport-cost-component {
+    padding: 8px 10px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+}
+
+.prod-passport-cost-component span {
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+}
+
+.prod-passport-cost-component strong {
+    display: block;
+    margin-top: 4px;
+    color: var(--text);
+}
+
+.prod-passport-error {
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--danger) 50%, transparent);
+    border-radius: var(--radius-sm);
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    font-weight: 700;
+}
+
+.prod-passport-empty {
+    padding: 14px;
+    color: var(--text-muted);
+}
+
+.prod-passport-stand-disabled {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text);
+}
+
+.prod-passport-stand-disabled svg {
+    color: var(--warning);
+    flex: 0 0 auto;
+}
+
+.prod-passport-stand-disabled p {
+    margin: 6px 0 0;
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+
+.prod-passport-summary-value,
+.prod-passport-factor-money,
+.prod-passport-factor-share,
+.prod-passport-row-qty,
+.prod-passport-row-money,
+.prod-passport-row-share,
+.prod-passport-kv strong,
+.prod-passport-cost-component strong {
+    font-variant-numeric: tabular-nums;
+}
+
+.prod-passport-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+@media (max-width: 1180px) {
+    .prod-passport-summary-grid {
+        grid-template-columns: repeat(3, minmax(120px, 1fr));
+    }
+
+    .prod-passport-workspace {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 760px) {
+    .prod-passport-summary-grid,
+    .prod-passport-detail-result,
+    .prod-passport-cost-components {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .prod-passport-list-head,
+    .prod-passport-row {
+        grid-template-columns: minmax(180px, 1fr) 110px 120px 78px;
+        gap: 8px;
+    }
+
+    .prod-passport-factor-head,
+    .prod-passport-factor-row,
+    .prod-passport-input-head,
+    .prod-passport-input-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* ============================================================

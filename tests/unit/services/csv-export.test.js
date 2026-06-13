@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDetailsCsv, buildCalcCsvFilename, buildComparisonCsv } from '../../../js/services/csvExport.js';
+import { buildDetailsCsv, buildCalcCsvFilename, buildComparisonCsv, downloadCsv } from '../../../js/services/csvExport.js';
 import { calculate } from '../../../js/domain/calculator.js';
 import { buildSeedDictionaries, defaultAnswersFrom, SEED_SETTINGS } from '../../../js/domain/seed.js';
 
@@ -168,6 +168,69 @@ describe('buildCalcCsvFilename', () => {
     it('handles missing name', () => {
         const fn = buildCalcCsvFilename({});
         assert.match(fn, /^calc-detail/);
+    });
+});
+
+describe('downloadCsv', () => {
+    it('освобождает objectURL и удаляет ссылку, если браузер прервал download-click', () => {
+        const previous = {
+            document: Object.getOwnPropertyDescriptor(globalThis, 'document'),
+            URL: Object.getOwnPropertyDescriptor(globalThis, 'URL'),
+            Blob: Object.getOwnPropertyDescriptor(globalThis, 'Blob'),
+            setTimeout: Object.getOwnPropertyDescriptor(globalThis, 'setTimeout')
+        };
+        const revoked = [];
+        let removed = false;
+        const body = {
+            appendChild(node) {
+                node.parentNode = body;
+            },
+            removeChild(node) {
+                removed = true;
+                node.parentNode = null;
+            }
+        };
+
+        Object.defineProperty(globalThis, 'document', {
+            configurable: true,
+            value: {
+                body,
+                createElement: () => ({
+                    click() {
+                        throw new Error('download click failed');
+                    }
+                })
+            }
+        });
+        Object.defineProperty(globalThis, 'URL', {
+            configurable: true,
+            value: {
+                createObjectURL: () => 'blob:csv-test',
+                revokeObjectURL: url => revoked.push(url)
+            }
+        });
+        Object.defineProperty(globalThis, 'Blob', {
+            configurable: true,
+            value: class Blob {}
+        });
+        Object.defineProperty(globalThis, 'setTimeout', {
+            configurable: true,
+            value: fn => {
+                fn();
+                return 0;
+            }
+        });
+
+        try {
+            assert.throws(() => downloadCsv('bad:name.csv', 'x'), /download click failed/);
+            assert.equal(removed, true);
+            assert.deepEqual(revoked, ['blob:csv-test']);
+        } finally {
+            for (const [name, descriptor] of Object.entries(previous)) {
+                if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+                else delete globalThis[name];
+            }
+        }
     });
 });
 

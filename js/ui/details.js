@@ -124,6 +124,12 @@ export function renderDetails(state, ctx) {
                 }, icon('git-branch', { size: 16 }), el('span', { text: 'Анализ факторов' })),
                 el('button', {
                     class: 'btn btn-ghost btn-icon-text',
+                    title: 'Открыть Паспорт ПРОМ: количество, бюджет и расшифровка формул по каждому ЭК стенда ПРОМ',
+                    attrs: { type: 'button', 'data-testid': 'details-prod-passport-open' },
+                    onClick: () => ctx.openProdPassportModal?.()
+                }, icon('file-text', { size: 16 }), el('span', { text: 'Паспорт ПРОМ' })),
+                el('button', {
+                    class: 'btn btn-ghost btn-icon-text',
                     title: 'Скачать детализацию в Excel-совместимом формате CSV — для отчёта или передачи коллегам',
                     onClick: (e) => ctx.exportCsv(e)
                 }, icon('bar-chart-3', { size: 16 }), el('span', { text: 'CSV' }))

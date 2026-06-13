@@ -1,6 +1,6 @@
 {
     "name": "infrastructure-calculator",
-    "version": "2.20.104",
+    "version": "2.20.105",
     "description": "Локальное web-приложение для расчёта инфраструктуры и стоимости программных продуктов по 5 стендам (DEV / ИФТ / ПСИ / ПРОМ / НТ). Работает offline, без runtime-зависимостей.",
     "type": "module",
     "private": true,
@@ -32,6 +32,7 @@
         "node": ">=18"
     },
     "devDependencies": {
-        "@playwright/test": "^1.60.0"
+        "@playwright/test": "^1.60.0",
+        "jsdom": "^24.1.3"
     }
 }

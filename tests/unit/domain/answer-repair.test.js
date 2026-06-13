@@ -23,11 +23,13 @@ describe('answerRepair: automatic JSON repairs', () => {
                 explicit_zero_allowed: 0,
                 dual_default: null
             },
+            answersMeta: {},
             dictionaries: { questions },
             scenarios: [{
                 id: 's1',
                 label: 'Scenario 1',
-                answers: { ram_per_vcpu_ratio: 0, backup_retention_days: '30' }
+                answers: { ram_per_vcpu_ratio: 0, backup_retention_days: '30' },
+                answersMeta: {}
             }]
         };
 
@@ -41,6 +43,26 @@ describe('answerRepair: automatic JSON repairs', () => {
         assert.equal(calc.answers.dual_default, 2);
         assert.equal(calc.scenarios[0].answers.ram_per_vcpu_ratio, 4);
         assert.equal(calc.scenarios[0].answers.backup_retention_days, 30);
+        assert.deepEqual(calc.answersMeta.ram_per_vcpu_ratio, {
+            source: 'repair',
+            fallbackSource: 'defaultIfUnknown',
+            reason: 'empty'
+        });
+        assert.deepEqual(calc.answersMeta.backup_retention_days, {
+            source: 'coerceNumber',
+            fallbackSource: 'coerceNumber',
+            reason: 'numeric-string'
+        });
+        assert.deepEqual(calc.answersMeta.backup_retention_select, {
+            source: 'coerceSelect',
+            fallbackSource: 'coerceSelect',
+            reason: 'select-numeric-string'
+        });
+        assert.deepEqual(calc.scenarios[0].answersMeta.ram_per_vcpu_ratio, {
+            source: 'repair',
+            fallbackSource: 'defaultIfUnknown',
+            reason: 'out-of-range'
+        });
         assert.deepEqual(
             result.repairs.map(r => [r.path, r.reason]),
             [
@@ -57,6 +79,7 @@ describe('answerRepair: automatic JSON repairs', () => {
     it('добавляет отсутствующие критичные ответы из fallback для ручной проверки после импорта', () => {
         const calc = {
             answers: {},
+            answersMeta: {},
             dictionaries: {
                 questions: [
                     { id: 'cache_size_gb', title: 'Кэш', type: 'number', min: 0, max: 1000, defaultIfUnknown: 20 },
@@ -69,6 +92,11 @@ describe('answerRepair: automatic JSON repairs', () => {
 
         assert.equal(result.changed, true);
         assert.equal(calc.answers.cache_size_gb, 20);
+        assert.deepEqual(calc.answersMeta.cache_size_gb, {
+            source: 'repair',
+            fallbackSource: 'defaultIfUnknown',
+            reason: 'missing'
+        });
         assert.equal(Object.prototype.hasOwnProperty.call(calc.answers, 'non_critical'), false);
         assert.deepEqual(
             result.repairs.map(r => [r.path, r.reason, r.fallbackSource]),

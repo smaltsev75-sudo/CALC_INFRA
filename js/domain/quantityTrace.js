@@ -43,7 +43,7 @@ function toQtyNumber(value) {
     return typeof value === 'boolean' ? (value ? 1 : 0) : Number(value);
 }
 
-function getEffectiveItems(calculation) {
+export function getEffectiveItems(calculation) {
     const rawItems = calculation?.dictionaries?.items || [];
     if (calculation?.providerVersion) return rawItems;
     const providerId = calculation?.settings?.provider || DEFAULT_PROVIDER;
@@ -222,8 +222,8 @@ export function resolvePathValue(root, path) {
     return { exists: true, value, missingAt: null };
 }
 
-export function buildQuantityTrace(calculation, itemId, stand, precomputedResult = null) {
-    const items = getEffectiveItems(calculation);
+export function buildQuantityTrace(calculation, itemId, stand, precomputedResult = null, options = {}) {
+    const items = Array.isArray(options.items) ? options.items : getEffectiveItems(calculation);
     const item = items.find(it => it.id === itemId);
     if (!item) {
         throw new Error(`ЭК ${itemId} не найден`);

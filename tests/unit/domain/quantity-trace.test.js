@@ -112,6 +112,42 @@ describe('quantityTrace: explain one ЭК quantity', () => {
         assert.equal(ratioInput.overriddenByContext, true);
         assert.equal(trace.qty, 13);
     });
+
+    it('может использовать заранее резолвнутый каталог ЭК для массового отчёта без повторного overlay', () => {
+        const dictionaries = buildSeedDictionaries();
+        const resolvedItem = {
+            id: 'resolved-only-item',
+            name: 'Resolved only item',
+            unit: 'шт.',
+            pricePerUnit: 7,
+            billingInterval: 'monthly',
+            category: 'HW',
+            resourceClass: 'SERVICE',
+            applicableStands: ['PROD'],
+            qtyFormulas: { PROD: '1' },
+            formulaHelp: 'Тестовый ЭК из уже подготовленного каталога'
+        };
+        const calc = buildCalc({
+            dictionaries: { ...dictionaries, items: [] }
+        });
+        const result = {
+            items: {
+                'resolved-only-item': {
+                    stands: {
+                        PROD: { qty: 1, costBase: 7, costFinal: 7, error: null }
+                    }
+                }
+            }
+        };
+
+        const trace = buildQuantityTrace(calc, 'resolved-only-item', 'PROD', result, {
+            items: [resolvedItem]
+        });
+
+        assert.equal(trace.itemId, 'resolved-only-item');
+        assert.equal(trace.qty, 1);
+        assert.equal(trace.billing.pricePerUnit, 7);
+    });
 });
 
 describe('quantityTrace: audit calculation logic', () => {

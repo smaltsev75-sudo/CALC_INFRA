@@ -233,14 +233,19 @@ function quote(value, delimiter) {
  */
 export function downloadCsv(filename, content) {
     const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = sanitizeFilename(filename);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), URL_REVOKE_DELAY_MS);
+    let url = null;
+    let a = null;
+    try {
+        url = URL.createObjectURL(blob);
+        a = document.createElement('a');
+        a.href = url;
+        a.download = sanitizeFilename(filename);
+        document.body.appendChild(a);
+        a.click();
+    } finally {
+        if (a?.parentNode) a.parentNode.removeChild(a);
+        if (url) setTimeout(() => URL.revokeObjectURL(url), URL_REVOKE_DELAY_MS);
+    }
 }
 
 function sanitizeFilename(name) {

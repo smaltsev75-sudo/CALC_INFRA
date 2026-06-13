@@ -48,7 +48,22 @@ function pushRepair(repairs, { scope, fieldId, q, fallbackSource, value, reason,
     });
 }
 
-function repairAnswersObject(answers, questionsById, scope, repairs, scenario = null) {
+function repairSource(fallbackSource) {
+    return fallbackSource === 'coerceNumber' || fallbackSource === 'coerceSelect'
+        ? fallbackSource
+        : 'repair';
+}
+
+function markRepairedAnswer(answersMeta, fieldId, fallbackSource, reason) {
+    if (!answersMeta || typeof answersMeta !== 'object' || Array.isArray(answersMeta)) return;
+    answersMeta[fieldId] = {
+        source: repairSource(fallbackSource),
+        fallbackSource,
+        reason
+    };
+}
+
+function repairAnswersObject(answers, answersMeta, questionsById, scope, repairs, scenario = null) {
     if (!answers || typeof answers !== 'object' || Array.isArray(answers)) return;
     for (const [fieldId, value] of Object.entries(answers)) {
         const q = questionsById.get(fieldId);
@@ -57,10 +72,13 @@ function repairAnswersObject(answers, questionsById, scope, repairs, scenario = 
         if (q.type === 'number' && typeof value === 'string' && value.trim() !== '') {
             const normalized = Number(value.replace(',', '.'));
             if (isNumberInRange(normalized, q)) {
+                const reason = 'numeric-string';
+                const fallbackSource = 'coerceNumber';
                 answers[fieldId] = normalized;
+                markRepairedAnswer(answersMeta, fieldId, fallbackSource, reason);
                 pushRepair(repairs, {
-                    scope, fieldId, q, fallbackSource: 'coerceNumber',
-                    value: normalized, reason: 'numeric-string', scenario
+                    scope, fieldId, q, fallbackSource,
+                    value: normalized, reason, scenario
                 });
                 continue;
             }
@@ -72,10 +90,13 @@ function repairAnswersObject(answers, questionsById, scope, repairs, scenario = 
             );
             const normalized = Number(value.replace(',', '.'));
             if (Number.isFinite(normalized) && allowed.includes(normalized)) {
+                const reason = 'select-numeric-string';
+                const fallbackSource = 'coerceSelect';
                 answers[fieldId] = normalized;
+                markRepairedAnswer(answersMeta, fieldId, fallbackSource, reason);
                 pushRepair(repairs, {
-                    scope, fieldId, q, fallbackSource: 'coerceSelect',
-                    value: normalized, reason: 'select-numeric-string', scenario
+                    scope, fieldId, q, fallbackSource,
+                    value: normalized, reason, scenario
                 });
                 continue;
             }
@@ -87,10 +108,12 @@ function repairAnswersObject(answers, questionsById, scope, repairs, scenario = 
                 CRITICAL_FIELD_IDS.has(fieldId)) {
             const fallbackNumber = Number(fallback.value);
             if (isNumberInRange(fallbackNumber, q)) {
+                const reason = 'out-of-range';
                 answers[fieldId] = fallbackNumber;
+                markRepairedAnswer(answersMeta, fieldId, fallback.source, reason);
                 pushRepair(repairs, {
                     scope, fieldId, q, fallbackSource: fallback.source,
-                    value: fallbackNumber, reason: 'out-of-range', scenario
+                    value: fallbackNumber, reason, scenario
                 });
                 continue;
             }
@@ -99,10 +122,12 @@ function repairAnswersObject(answers, questionsById, scope, repairs, scenario = 
         if (value !== null && value !== undefined) continue;
         if (!fallback.hasFallback) continue;
         const nextValue = cloneValue(fallback.value);
+        const reason = 'empty';
         answers[fieldId] = nextValue;
+        markRepairedAnswer(answersMeta, fieldId, fallback.source, reason);
         pushRepair(repairs, {
             scope, fieldId, q, fallbackSource: fallback.source,
-            value: nextValue, reason: 'empty', scenario
+            value: nextValue, reason, scenario
         });
     }
 
@@ -112,10 +137,12 @@ function repairAnswersObject(answers, questionsById, scope, repairs, scenario = 
         const fallback = getFallback(q);
         if (!fallback.hasFallback) continue;
         const nextValue = cloneValue(fallback.value);
+        const reason = 'missing';
         answers[fieldId] = nextValue;
+        markRepairedAnswer(answersMeta, fieldId, fallback.source, reason);
         pushRepair(repairs, {
             scope, fieldId, q, fallbackSource: fallback.source,
-            value: nextValue, reason: 'missing', scenario
+            value: nextValue, reason, scenario
         });
     }
 }
@@ -141,13 +168,20 @@ export function repairUnknownAnswersWithDefaults(calc) {
     );
     if (questionsById.size === 0) return { changed: false, repairs };
 
-    repairAnswersObject(calc.answers, questionsById, 'answers', repairs);
+    if (!calc.answersMeta || typeof calc.answersMeta !== 'object' || Array.isArray(calc.answersMeta)) {
+        calc.answersMeta = {};
+    }
+    repairAnswersObject(calc.answers, calc.answersMeta, questionsById, 'answers', repairs);
 
     if (Array.isArray(calc.scenarios)) {
         calc.scenarios.forEach((scenario, index) => {
             if (!scenario || typeof scenario !== 'object') return;
+            if (!scenario.answersMeta || typeof scenario.answersMeta !== 'object' || Array.isArray(scenario.answersMeta)) {
+                scenario.answersMeta = {};
+            }
             repairAnswersObject(
                 scenario.answers,
+                scenario.answersMeta,
                 questionsById,
                 `scenarios[${index}].answers`,
                 repairs,

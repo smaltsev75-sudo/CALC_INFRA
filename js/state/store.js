@@ -145,6 +145,9 @@ const initialState = deepFreeze({
         // PATCH 2.20.51: корневые причины бюджета открываются отдельным окном
         // из Детализации. Runtime-only, в PDF не выводится.
         rootCauseReport: { open: false },
+        // PATCH 2.21: Паспорт ПРОМ — отчёт-расшифровка влияния ответов пользователя
+        // на количество и бюджет каждого ЭК стенда ПРОМ. Runtime-only.
+        prodPassport: { open: false, offset: 0, selectedItemId: null },
         // Этап 14.U1: Quick Start Wizard — 7 макро-вопросов → автозаполнение опросника.
         quickStart:      { open: false },
         // Этап 14.U5: подтверждение re-apply профиля. Содержит manualCount —
