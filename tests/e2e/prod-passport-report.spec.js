@@ -120,10 +120,14 @@ test('Паспорт ПРОМ открывается из Детализации
     );
     await expect(detail).toHaveAttribute('data-item-id', otherId);
 
-    // поиск оставляет на карте только совпавшие плитки
+    // Ctrl+Alt+F внутри модалки фокусирует поиск Паспорта ПРОМ, а не скрытый поиск вкладки под overlay.
     const search = page.getByTestId('prod-passport-search');
     await expect(search).toBeVisible();
-    await search.click();
+    await detail.click();
+    await page.keyboard.press('Control+Alt+F');
+    await expect(search).toBeFocused();
+
+    // поиск оставляет на карте только совпавшие плитки и не теряет фокус при перерендере
     await page.keyboard.type('w', { delay: 25 });
     await page.waitForTimeout(180);
     await expect(page.getByTestId('prod-passport-search')).toBeFocused();

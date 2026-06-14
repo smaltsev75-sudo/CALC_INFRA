@@ -1,9 +1,10 @@
 name: Pages
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches: [main]
-  workflow_dispatch:
+    types: [completed]
 
 permissions:
   contents: read
@@ -17,6 +18,7 @@ concurrency:
 jobs:
   deploy:
     name: Deploy GitHub Pages
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -24,6 +26,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Configure Pages
         uses: actions/configure-pages@v6
@@ -32,6 +36,9 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build Pages artifact
         run: npm run pages:build
@@ -44,3 +51,12 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+      - name: Install Chromium for published smoke
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke published Pages
+        env:
+          PLAYWRIGHT_PUBLISHED_URL: ${{ steps.deployment.outputs.page_url }}
+          PLAYWRIGHT_PUBLISHED_RETRIES: 2
+        run: npm run smoke:published

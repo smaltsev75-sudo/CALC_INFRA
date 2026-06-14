@@ -13,6 +13,7 @@
 
 import { FormulaError } from './parser.js';
 import { FORMULA_MAX_DEPTH } from '../../utils/constants.js';
+import { parseLocalizedNumber } from '../numberParsing.js';
 
 const BUILTINS = Object.freeze({
     min:   (...a) => Math.min(...a.map(toNum)),
@@ -31,7 +32,7 @@ function toNum(v) {
     if (typeof v === 'number') return v;
     if (Array.isArray(v)) return v.length;            // multiselect → длина
     if (typeof v === 'string') {
-        const n = parseFloat(v.replace(',', '.'));
+        const n = parseLocalizedNumber(v);
         return Number.isFinite(n) ? n : 0;
     }
     if (v === null || v === undefined) return 0;

@@ -150,11 +150,11 @@ const BUSINESS_SCENARIOS = Object.freeze([
             agent_memory_used: true, agent_memory_size_gb: 250
         },
         expected: {
-            totalMonthly: 464_896_702,
-            totalAnnual: 5_578_760_429,
+            totalMonthly: 464_901_260,
+            totalAnnual: 5_578_815_120,
             topCategory: 'AI',
-            byStandMonthly: { DEV: 3_456_199, IFT: 34_173_731, PSI: 85_059_278, PROD: 171_770_674, LOAD: 170_436_821 },
-            byCategoryMonthly: { HW: 677_308, LICENSE: 501_858, TRAFFIC: 39_761, SERVICES: 2_511_299, RESERVES: 0, SECURITY: 913_296, AI: 460_253_181 },
+            byStandMonthly: { DEV: 3_457_573, IFT: 34_175_323, PSI: 85_059_278, PROD: 171_770_674, LOAD: 170_438_412 },
+            byCategoryMonthly: { HW: 677_308, LICENSE: 501_858, TRAFFIC: 39_761, SERVICES: 2_511_299, RESERVES: 0, SECURITY: 913_296, AI: 460_257_739 },
             topProdItemIds: ['llm-tokens-input-1m', 'llm-tokens-output-1m', 'ai-safety-moderation-tokens-1m', 'ai-agent-sandbox-vcpu', 'one-deployment']
         }
     }

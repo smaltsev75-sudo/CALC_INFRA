@@ -26,12 +26,31 @@ describe('GitHub Pages workflow', () => {
     });
 
     it('builds a .pages-dist artifact from tracked files', () => {
+        assert.match(workflow, /npm ci/);
         assert.match(workflow, /npm run pages:build/);
         assert.match(workflow, /path:\s*\.pages-dist/);
         assert.match(script, /core\.quotepath=false/);
         assert.match(script, /'ls-files',\s*'-z'/);
         assert.match(script, /\.nojekyll/);
         assert.match(script, /skipPrefixes/);
+    });
+
+    it('deploys only after successful CI on the tested commit', () => {
+        assert.doesNotMatch(workflow, /\n\s+push\s*:/,
+            'Pages must not deploy directly on push; CI gates must complete first.');
+        assert.match(workflow, /workflow_run:\s*[\s\S]*workflows:\s*\[\s*["']CI["']\s*\]/,
+            'Pages workflow must be triggered by completed CI workflow.');
+        assert.match(workflow, /if:\s*\$\{\{\s*github\.event\.workflow_run\.conclusion\s*==\s*['"]success['"]\s*\}\}/,
+            'Deploy job must require successful CI conclusion.');
+        assert.match(workflow, /ref:\s*\$\{\{\s*github\.event\.workflow_run\.head_sha\s*\}\}/,
+            'Pages must checkout the exact commit that passed CI, not a moving branch ref.');
+    });
+
+    it('runs published smoke after deploy against the actual Pages URL', () => {
+        assert.match(workflow, /npx playwright install --with-deps chromium/);
+        assert.match(workflow, /PLAYWRIGHT_PUBLISHED_URL:\s*\$\{\{\s*steps\.deployment\.outputs\.page_url\s*\}\}/);
+        assert.match(workflow, /PLAYWRIGHT_PUBLISHED_RETRIES:\s*2/);
+        assert.match(workflow, /npm run smoke:published/);
     });
 
     it('CI validates the Pages artifact before whitespace check', () => {

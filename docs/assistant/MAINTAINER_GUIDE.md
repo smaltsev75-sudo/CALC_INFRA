@@ -240,7 +240,7 @@ node --test --test-name-pattern="riskFactor" tests/unit/domain/calculator.test.j
 npm run smoke:desktop
 ```
 
-Автоматический Playwright smoke поднимает локальный static server (`scripts/static-server.mjs`) и параллельно проверяет реальные desktop-сцены 1365×768: Dashboard, Cost Optimization Planner, Decision Memo, Детализацию, Сравнение, Опросник, scenario tabs, активный и bundle JSON import/export/reset, provider VAT-policy import, Decision Memo `.md` download и PDF routing из шапки приложения. Для Детализации suite сверяет порядок групп ЭК по `ИТОГО / год`, видимые totals/share группы с production-моделью, формат пакетных qty-единиц уведомлений (`тыс. SMS`, `тыс. писем`, `млн PUSH` без `16 1000 SMS`) и PDF print-mode через header PDF / `Ctrl+Alt+P` / native `beforeprint`: transient landscape `@page`, `table-layout: fixed`, ширина таблиц ≈ ширине листа, заголовки без посимвольного переноса. Viewport guard дополнительно проходит 1365×768, 1440×900 и 1920×1080, чтобы основные desktop-экраны не давали document-level horizontal overflow и app chrome не накладывался; Dashboard grid/card min-width guards защищают от Linux Chromium font-metric overflow в risk-card. Отдельный visual-regression слой делает PNG-signal проверки ключевых экранов: скриншот не должен быть пустым/однотонным, экран должен иметь ожидаемый desktop-размер, а основные chrome-блоки не должны перекрываться. Скриншоты пишутся в `.playwright-mcp/`; runner не должен создавать артефакты в корне проекта.
+Автоматический Playwright smoke поднимает локальный static server (`scripts/static-server.mjs`) и параллельно проверяет реальные desktop-сцены 1365×768: Dashboard, Cost Optimization Planner, Decision Memo, Детализацию, Сравнение, Опросник, scenario tabs, активный и bundle JSON import/export/reset, provider VAT-policy import, Decision Memo `.md` download и PDF routing через кнопку PDF в группе «Данные» бокового меню. Для Детализации suite сверяет порядок групп ЭК по `ИТОГО / год`, видимые totals/share группы с production-моделью, формат пакетных qty-единиц уведомлений (`тыс. SMS`, `тыс. писем`, `млн PUSH` без `16 1000 SMS`) и PDF print-mode через sidebar PDF / `Ctrl+Alt+P` / native `beforeprint`: transient landscape `@page`, `table-layout: fixed`, ширина таблиц ≈ ширине листа, заголовки без посимвольного переноса. Viewport guard дополнительно проходит 1365×768, 1440×900 и 1920×1080, чтобы основные desktop-экраны не давали document-level horizontal overflow и app chrome не накладывался; Dashboard grid/card min-width guards защищают от Linux Chromium font-metric overflow в risk-card. Отдельный visual-regression слой делает PNG-signal проверки ключевых экранов: скриншот не должен быть пустым/однотонным, экран должен иметь ожидаемый desktop-размер, а основные chrome-блоки не должны перекрываться. Скриншоты пишутся в `.playwright-mcp/`; runner не должен создавать артефакты в корне проекта.
 
 Локально по умолчанию используется системный Chrome (`PLAYWRIGHT_CHANNEL=chrome`). В CI channel не фиксируется: workflow ставит bundled Chromium через `npx playwright install --with-deps chromium`. При необходимости можно переключить канал, например `PLAYWRIGHT_CHANNEL=msedge npm run smoke:desktop`.
 
@@ -251,17 +251,19 @@ GitHub Actions workflow [ci.yml](.github/workflows/ci.yml) запускает д
 артефакты забираются из `.playwright-mcp/test-results`.
 
 GitHub Pages публикуется через [pages.yml](.github/workflows/pages.yml), а не
-через legacy deploy-from-branch. Workflow собирает `.pages-dist` из tracked
-static-файлов командой `npm run pages:build`, добавляет `.nojekyll` и деплоит
-через `actions/deploy-pages@v5`. Репозиторий должен иметь Pages source
-`GitHub Actions` (`build_type=workflow`).
+через legacy deploy-from-branch. Deploy запускается только после успешного
+workflow `CI` на `main` и checkout'ит `workflow_run.head_sha`, то есть ровно
+commit, прошедший unit/sanity и desktop-smoke gates. Workflow собирает
+`.pages-dist` из tracked static-файлов командой `npm run pages:build`, добавляет
+`.nojekyll`, деплоит через `actions/deploy-pages@v5` и после deploy запускает
+`npm run smoke:published` по фактическому Pages URL. Репозиторий должен иметь
+Pages source `GitHub Actions` (`build_type=workflow`).
 
-После релиза полезно отдельно запускать `npm run smoke:published`: он проверяет
-уже опубликованный GitHub Pages URL на base path `/CALC_INFRA/`. Если нужен
-другой URL, задайте `PLAYWRIGHT_PUBLISHED_URL`. Скрипт делает один retry по
-умолчанию (`PLAYWRIGHT_PUBLISHED_RETRIES=1`) и собирает точные URL для HTTP
-4xx/5xx, чтобы transient Pages/CDN сбой не выглядел как безымянный console
-error.
+Локально `npm run smoke:published` полезен для повторной проверки уже
+опубликованного URL на base path `/CALC_INFRA/`. Если нужен другой URL, задайте
+`PLAYWRIGHT_PUBLISHED_URL`. Скрипт делает один retry по умолчанию
+(`PLAYWRIGHT_PUBLISHED_RETRIES=1`) и собирает точные URL для HTTP 4xx/5xx, чтобы
+transient Pages/CDN сбой не выглядел как безымянный console error.
 
 Расчётная сетка Quick Start покрыта двумя слоями: exact snapshots в
 `tests/unit/domain/golden-scenarios.test.js` и полный invariant-прогон 2880

@@ -2142,7 +2142,7 @@ button.pp-tile { width: 100%; }
 }
 .pp-dk-u { font-size: 9px; color: var(--text-muted); white-space: nowrap; line-height: 1.1; }
 .pp-dk-hl { background: color-mix(in srgb, var(--accent) 8%, transparent); border-color: color-mix(in srgb, var(--accent) 25%, transparent); }
-.pp-dk-hl .pp-dk-v { color: var(--accent); }
+.pp-dk-hl .pp-dk-v { color: var(--text); }
 
 .pp-section-label {
     font-size: 10px;
@@ -2282,7 +2282,7 @@ button.pp-tile { width: 100%; }
 .pp-src-info { flex-shrink: 0; opacity: .6; }
 .pp-src:hover .pp-src-info { opacity: .95; }
 .pp-src-manual { color: var(--accent-2); }
-.pp-src-quiz { color: var(--cat-hw); }
+.pp-src-quiz { color: var(--text); }
 .pp-src-default { color: var(--warning); }
 .pp-src-calc { color: var(--text-muted); }
 
@@ -2331,7 +2331,7 @@ button.pp-tile { width: 100%; }
 /* Подпись чипа стоимости: --text-muted давал ~4.04:1 на --bg-elevated (WCAG AA
  * fail для 9px). --text — AA в обеих темах; иерархию держим размером/весом. */
 .pp-mchip-l { font-size: 9px; color: var(--text); font-weight: 600; white-space: nowrap; line-height: 1.1; }
-.pp-mchip-base .pp-mchip-v { color: var(--cat-hw); }
+.pp-mchip-base .pp-mchip-v { color: var(--text); }
 .pp-mtimes { color: var(--text-dim); font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
 
 /* empty / disabled */

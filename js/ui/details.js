@@ -33,6 +33,10 @@ import { deriveAiMetricItemQty } from './dashboardAggregates.js';
 /** Sub-tab id-ы для Детализации. */
 const SUB_TABS = Object.freeze(['cost', 'qty']);
 const SUB_TAB_LABELS = Object.freeze({ cost: 'Бюджет (₽)', qty: 'Объём (qty)' });
+const SUB_TAB_TITLES = Object.freeze({
+    cost: 'Показать бюджет по элементам конфигурации',
+    qty: 'Показать объёмы по стендам'
+});
 const DEFAULT_SUB_TAB = 'cost';
 
 function getSubTab(state) {
@@ -207,7 +211,7 @@ function renderSubTabSwitcher(active, ctx) {
         ...SUB_TABS.map(t =>
             el('button', {
                 class: ['period-btn', t === active && 'period-btn-active'],
-                title: SUB_TAB_LABELS[t],
+                title: SUB_TAB_TITLES[t],
                 attrs: { type: 'button', 'aria-pressed': t === active ? 'true' : 'false' },
                 onClick: () => { if (t !== active) ctx.setUi?.({ detailsSubTab: t }); }
             }, SUB_TAB_LABELS[t])

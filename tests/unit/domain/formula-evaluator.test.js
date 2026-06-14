@@ -84,6 +84,14 @@ describe('evaluator: type coercion', () => {
     it('string with comma decimal → number', () => {
         assert.equal(evalStr('Q.x + 0', { Q: { x: '1,5' } }), 1.5);
     });
+    it('numeric string with Russian thousands separators → number', () => {
+        assert.equal(evalStr('Q.x + 0', { Q: { x: '1 000' } }), 1000);
+        assert.equal(evalStr('Q.x + 0', { Q: { x: '1\u00a0000,5' } }), 1000.5);
+        assert.equal(evalStr('Q.x + 0', { Q: { x: '1\u202f000,5' } }), 1000.5);
+    });
+    it('numeric string must be fully numeric, not parseFloat prefix', () => {
+        assert.equal(evalStr('Q.x + 0', { Q: { x: '1abc' } }), 0);
+    });
     it('non-numeric string → 0', () => {
         assert.equal(evalStr('Q.x + 0', { Q: { x: 'abc' } }), 0);
     });

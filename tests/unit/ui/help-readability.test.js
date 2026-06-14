@@ -19,6 +19,13 @@ function section(markdown, heading) {
     return next >= 0 ? markdown.slice(start, next) : markdown.slice(start);
 }
 
+function subSection(markdown, heading) {
+    const start = markdown.indexOf(`### ${heading}`);
+    assert.ok(start >= 0, `Подраздел "${heading}" должен быть в UserManual.md`);
+    const next = markdown.indexOf('\n### ', start + heading.length + 4);
+    return next >= 0 ? markdown.slice(start, next) : markdown.slice(start);
+}
+
 describe('Help modal readability', () => {
     it('UserManual.md starts with a scannable quick-start section', () => {
         assert.match(manual, /- \[С чего начать\]\(#с-чего-начать\)/);
@@ -61,6 +68,22 @@ describe('Help modal readability', () => {
         assert.doesNotMatch(manual, /Актуальность прайса: ДД\.ММ\.ГГГГ · версия/);
         assert.doesNotMatch(manual, /актуальность прайса и версия/);
         assert.match(manual, /Актуальность прайса: ДД\.ММ\.ГГГГ/);
+    });
+
+    it('license section follows package.json SEE LICENSE contract, not MIT', () => {
+        const license = section(manual, 'Лицензия');
+        assert.match(license, /"license": "SEE LICENSE IN LICENSE"/);
+        assert.doesNotMatch(license, /"license": "MIT"/);
+        assert.doesNotMatch(license, /MIT License/);
+    });
+
+    it('Прайс-бенчмарк описан как top-6 текущего расчёта с эталоном Cloud.ru', () => {
+        const benchmark = subSection(manual, 'Прайс-бенчмарк');
+        assert.match(benchmark, /до 6 ЭК текущего расчёта/);
+        assert.match(benchmark, /эталонную цену Cloud\.ru/);
+        assert.match(benchmark, /вклад, ₽\/мес/);
+        assert.doesNotMatch(benchmark, /таблица 4 категории/);
+        assert.doesNotMatch(benchmark, /представительная цена категории/);
     });
 
     it('quick validation checklist renders as one ordered list with sequential items', () => {

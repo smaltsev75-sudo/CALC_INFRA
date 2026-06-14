@@ -57,6 +57,21 @@ function eventMatches(e, parsed) {
     return e.key === parsed.key;
 }
 
+function findVisibleSearchInput() {
+    const scoped = [
+        '.pp-overlay [data-role="search-input"]',
+        '[role="dialog"] [data-role="search-input"]',
+        '.modal-overlay [data-role="search-input"]'
+    ];
+    const candidates = document.querySelectorAll([...scoped, '[data-role="search-input"]'].join(','));
+    for (let i = candidates.length - 1; i >= 0; i--) {
+        const input = candidates[i];
+        if (input.disabled) continue;
+        if (input.offsetParent || input.getClientRects().length > 0) return input;
+    }
+    return null;
+}
+
 /**
  * Реакции на действия. Можно расширять при росте сценариев.
  */
@@ -84,7 +99,7 @@ function dispatch(actionId) {
             break;
         }
         case 'focusSearch': {
-            const input = document.querySelector('[data-role="search-input"]');
+            const input = findVisibleSearchInput();
             if (input) input.focus();
             break;
         }

@@ -68,12 +68,15 @@ const SEED_DASHBOARD_RESOURCE_BY_ID = new Map(
     SEED_ITEMS.filter(it => it.dashboardResource).map(it => [it.id, it.dashboardResource])
 );
 
-/* SEED-fallback для AI-признака item-ов из старых расчётов (legacy без поля
-   dashboardAiMetric). Любой ЭК с category === 'AI' в seed → его id попадает
-   сюда. Используется в buildContext чтобы AI-фактор на стенд применялся даже
-   к расчётам, сохранённым до того как dashboardAiMetric появился в seed. */
-const SEED_AI_ITEM_IDS = new Set(
-    SEED_ITEMS.filter(it => it.category === 'AI' || it.dashboardAiMetric).map(it => it.id)
+/* SEED-fallback для AI-метрики item-ов из старых расчётов (legacy без поля
+   dashboardAiMetric). Category === 'AI' сам по себе не должен перетирать
+   аппаратный resourceRatio: self-hosted GPU имеет category='AI', но
+   dashboardResource='GPU' и масштабируется матрицей GPU из Опросника. */
+const SEED_DASHBOARD_AI_METRIC_BY_ID = new Map(
+    SEED_ITEMS.filter(it => it.dashboardAiMetric).map(it => [it.id, it.dashboardAiMetric])
+);
+const SEED_AI_CATEGORY_ITEM_IDS = new Set(
+    SEED_ITEMS.filter(it => it.category === 'AI').map(it => it.id)
 );
 const AI_MODEL_TIER_FACTOR = Object.freeze({
     light: 0.4,
@@ -249,13 +252,15 @@ export function buildContext(answers, settings, questionDefaults, stand, item = 
        Defaults (когда settings.aiStandFactor отсутствует — legacy до v9):
          DEV=0, IFT=0.2, PSI=0.5, PROD=1.0, LOAD=1.0.
 
-       Когда применяется: только если item имеет признак AI (category или
-       dashboardAiMetric). Hardware-ЭК (CPU/RAM/SSD/...) проходят мимо и
-       используют обычный standSizeRatio (с per-resource override выше). */
+       Когда применяется: если item имеет явную AI-метрику (dashboardAiMetric)
+       или это AI-сервис без аппаратного dashboardResource. Hardware-ЭК
+       (CPU/GPU/RAM/SSD/...) проходят мимо и используют обычный standSizeRatio
+       с per-resource override выше. */
+    const itemAiMetric = item && (item.dashboardAiMetric ?? SEED_DASHBOARD_AI_METRIC_BY_ID.get(item.id));
+    const seedAiCategory = item && SEED_AI_CATEGORY_ITEM_IDS.has(item.id);
     const isAiItem = item && (
-        item.category === 'AI' ||
-        item.dashboardAiMetric ||
-        SEED_AI_ITEM_IDS.has(item.id)
+        itemAiMetric ||
+        (!itemResource && (item.category === 'AI' || seedAiCategory))
     );
     if (item && isAiItem) {
         const aiF = settings.aiStandFactor && typeof settings.aiStandFactor === 'object'

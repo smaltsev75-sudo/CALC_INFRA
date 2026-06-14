@@ -76,6 +76,36 @@ describe('answerRepair: automatic JSON repairs', () => {
         );
     });
 
+    it('числовые строки с русскими разделителями тысяч чинятся до настоящего числа', () => {
+        const calc = {
+            answers: { peak_rps: '1 000' },
+            answersMeta: {},
+            dictionaries: {
+                questions: [
+                    ...questions,
+                    { id: 'peak_rps', title: 'Пиковый RPS', type: 'number', min: 0, max: 100000, defaultIfUnknown: 100 }
+                ]
+            },
+            scenarios: [{
+                id: 's1',
+                label: 'Scenario 1',
+                answers: { peak_rps: '1\u202f500,5' },
+                answersMeta: {}
+            }]
+        };
+
+        const result = repairUnknownAnswersWithDefaults(calc);
+
+        assert.equal(result.changed, true);
+        assert.equal(calc.answers.peak_rps, 1000);
+        assert.equal(calc.scenarios[0].answers.peak_rps, 1500.5);
+        assert.deepEqual(calc.answersMeta.peak_rps, {
+            source: 'coerceNumber',
+            fallbackSource: 'coerceNumber',
+            reason: 'numeric-string'
+        });
+    });
+
     it('добавляет отсутствующие критичные ответы из fallback для ручной проверки после импорта', () => {
         const calc = {
             answers: {},

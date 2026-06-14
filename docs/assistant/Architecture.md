@@ -577,7 +577,7 @@ Provider freshness report ([scripts/provider-freshness-report.mjs](scripts/provi
 | **Unit (UI smoke)** | Все ui/-модули импортируются параллельно под минимальным DOM-mock'ом | [ui-modules-smoke.test.js](tests/unit/ui/) |
 | **Architecture** | Layer-linter, версии, A11y, no-emoji, no-toiso-slice | [layer-imports.test.js](tests/unit/architecture/) |
 | **Integration** | Полный controller-path с installLocalStorage | [calc-persistence-atomicity.test.js](tests/integration/) |
-| **Desktop browser smoke/regression** | Реальный Chromium/Chrome-рендер критичных desktop-сцен, console/overflow checks, UI↔domain сверка Dashboard/Details, реальные user-flow клики Quick Start/Sidebar/Опросник/Dashboard CTA, disabled-стенды, risk/VAT, active/bundle JSON import-export-reset, scenario tabs, provider VAT policy import, Decision Memo download, PDF print routing, Details PDF full-width landscape mode для таблиц стоимости и объёмов через header PDF / `Ctrl+Alt+P` / native `beforeprint`, Details qty package-unit guard (`тыс. SMS`, `тыс. писем`, `млн PUSH` без `16 1000 SMS`), desktop viewport range 1365×768 / 1440×900 / 1920×1080 с Dashboard grid min-content guard, screenshots и PNG-signal visual regression | [desktop-smoke.spec.js](tests/e2e/desktop-smoke.spec.js), [desktop-regression.spec.js](tests/e2e/desktop-regression.spec.js), [desktop-viewports.spec.js](tests/e2e/desktop-viewports.spec.js), [desktop-user-flow.spec.js](tests/e2e/desktop-user-flow.spec.js), [desktop-data-management.spec.js](tests/e2e/desktop-data-management.spec.js), [desktop-export-print.spec.js](tests/e2e/desktop-export-print.spec.js), [desktop-visual-regression.spec.js](tests/e2e/desktop-visual-regression.spec.js) |
+| **Desktop browser smoke/regression** | Реальный Chromium/Chrome-рендер критичных desktop-сцен, console/overflow checks, UI↔domain сверка Dashboard/Details, реальные user-flow клики Quick Start/Sidebar/Опросник/Dashboard CTA, disabled-стенды, risk/VAT, active/bundle JSON import-export-reset, scenario tabs, provider VAT policy import, Decision Memo download, PDF print routing, Details PDF full-width landscape mode для таблиц стоимости и объёмов через кнопку PDF из группы «Данные» / `Ctrl+Alt+P` / native `beforeprint`, Details qty package-unit guard (`тыс. SMS`, `тыс. писем`, `млн PUSH` без `16 1000 SMS`), desktop viewport range 1365×768 / 1440×900 / 1920×1080 с Dashboard grid min-content guard, screenshots и PNG-signal visual regression | [desktop-smoke.spec.js](tests/e2e/desktop-smoke.spec.js), [desktop-regression.spec.js](tests/e2e/desktop-regression.spec.js), [desktop-viewports.spec.js](tests/e2e/desktop-viewports.spec.js), [desktop-user-flow.spec.js](tests/e2e/desktop-user-flow.spec.js), [desktop-data-management.spec.js](tests/e2e/desktop-data-management.spec.js), [desktop-export-print.spec.js](tests/e2e/desktop-export-print.spec.js), [desktop-visual-regression.spec.js](tests/e2e/desktop-visual-regression.spec.js) |
 | **Published smoke** | GitHub Pages build на base path `/CALC_INFRA/`: версия в sidebar, Quick Start, Dashboard, Детализация, Сравнение, console/overflow checks, HTTP 4xx/5xx diagnostics with URL | [published-smoke.spec.js](tests/e2e/published-smoke.spec.js), [smoke-published.mjs](scripts/smoke-published.mjs) |
 
 Для Playwright user-flow используются `data-testid` только на стабильных
@@ -605,20 +605,27 @@ Workflow использует Node 24-aware action majors: `actions/checkout@v6`
 Actions о deprecated Node.js 20 runtime внутри самих actions.
 
 GitHub Pages публикуется отдельным workflow
-[pages.yml](.github/workflows/pages.yml): `actions/configure-pages@v6`,
-`actions/upload-pages-artifact@v5`, `actions/deploy-pages@v5`. Artifact
-`.pages-dist` собирается из tracked static-файлов через `npm run pages:build`
-и содержит `.nojekyll`. Pages source должен быть `GitHub Actions`
-(`build_type=workflow`), а не legacy deploy-from-branch.
+[pages.yml](.github/workflows/pages.yml), но deploy запускается только через
+`workflow_run` после успешного `CI` на `main`. Workflow checkout'ит
+`github.event.workflow_run.head_sha`, то есть ровно commit, прошедший
+`unit-and-sanity` и `desktop-smoke`, а не moving branch ref. Pages использует
+`actions/configure-pages@v6`, `actions/upload-pages-artifact@v5`,
+`actions/deploy-pages@v5`; artifact `.pages-dist` собирается из tracked
+static-файлов через `npm run pages:build` и содержит `.nojekyll`. Pages source
+должен быть `GitHub Actions` (`build_type=workflow`), а не legacy
+deploy-from-branch.
 
 Локально Playwright по умолчанию использует системный Chrome
 (`PLAYWRIGHT_CHANNEL=chrome`), а в CI — bundled Chromium, установленный
 Playwright job'ом. При необходимости канал можно переопределить через
 `PLAYWRIGHT_CHANNEL`. Для проверки уже опубликованной сборки используется
 `PLAYWRIGHT_BASE_URL` без локального `webServer`; `npm run smoke:published`
-ставит его в `https://smaltsev75-sudo.github.io/CALC_INFRA/`. Published smoke
-по умолчанию запускается с `PLAYWRIGHT_PUBLISHED_RETRIES=1`; для строгого
-одноразового прогона можно задать `PLAYWRIGHT_PUBLISHED_RETRIES=0`.
+ставит его в `https://smaltsev75-sudo.github.io/CALC_INFRA/`, а Pages workflow
+после deploy передаёт фактический `steps.deployment.outputs.page_url`.
+Published smoke по умолчанию запускается с `PLAYWRIGHT_PUBLISHED_RETRIES=1`;
+в Pages workflow используется 2 retry, чтобы CDN/Pages задержка не маскировала
+ошибку приложения. Для строгого одноразового прогона можно задать
+`PLAYWRIGHT_PUBLISHED_RETRIES=0`.
 
 ### Source-grep helpers (TDD-якорь)
 

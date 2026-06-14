@@ -7,6 +7,7 @@
  */
 
 import { CRITICAL_FIELDS } from '../utils/constants.js';
+import { parseLocalizedNumber } from './numberParsing.js';
 
 const CRITICAL_FIELD_IDS = new Set(CRITICAL_FIELDS);
 
@@ -70,7 +71,7 @@ function repairAnswersObject(answers, answersMeta, questionsById, scope, repairs
         if (!q) continue;
 
         if (q.type === 'number' && typeof value === 'string' && value.trim() !== '') {
-            const normalized = Number(value.replace(',', '.'));
+            const normalized = parseLocalizedNumber(value);
             if (isNumberInRange(normalized, q)) {
                 const reason = 'numeric-string';
                 const fallbackSource = 'coerceNumber';
@@ -88,7 +89,7 @@ function repairAnswersObject(answers, answersMeta, questionsById, scope, repairs
             const allowed = q.options.map(option =>
                 (option && typeof option === 'object' && 'value' in option) ? option.value : option
             );
-            const normalized = Number(value.replace(',', '.'));
+            const normalized = parseLocalizedNumber(value);
             if (Number.isFinite(normalized) && allowed.includes(normalized)) {
                 const reason = 'select-numeric-string';
                 const fallbackSource = 'coerceSelect';

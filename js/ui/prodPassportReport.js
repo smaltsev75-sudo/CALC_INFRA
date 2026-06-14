@@ -664,6 +664,7 @@ function renderSummaryStrip(model, ctx) {
         attrs: {
             'data-testid': 'prod-passport-search',
             'data-focus-key': 'prod-passport-search',
+            'data-role': 'search-input',
             'aria-label': 'Поиск статьи по названию'
         },
         onInput: event => scheduleSearchPatch(ctx, event.target.value)

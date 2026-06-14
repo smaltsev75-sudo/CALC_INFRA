@@ -1923,7 +1923,7 @@
 .period-btn {
     padding: 6px 14px;
     border-radius: 7px;
-    color: var(--text-muted);
+    color: var(--text);
     font-size: 0.84rem;
     font-weight: 500;
     transition: background var(--t-fast), color var(--t-fast);
@@ -1956,7 +1956,7 @@
 
 .stand-toggles-label {
     font-size: 0.72rem;
-    color: var(--text-dim);
+    color: var(--text);
     text-transform: uppercase;
     letter-spacing: 0.4px;
     margin-right: 2px;
@@ -1966,14 +1966,14 @@
     padding: 4px 10px;
     border-radius: 6px;
     font-size: 0.78rem;
-    color: var(--text-muted);
+    color: var(--text);
     font-weight: 500;
     transition: background var(--t-fast), color var(--t-fast);
 }
 
 .stand-toggle[aria-pressed='true'] {
-    background: var(--accent-faint);
-    color: var(--accent);
+    background: var(--accent);
+    color: var(--text-inverse);
     box-shadow: inset 0 0 0 1px rgba(38, 212, 154, 0.30);
 }
 

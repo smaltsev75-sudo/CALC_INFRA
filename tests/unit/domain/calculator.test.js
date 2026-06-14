@@ -634,6 +634,23 @@ describe('calculate: per-resource standSizeRatio override (12.U12)', () => {
             PROD: '20 * S.standSizeRatio.PROD'
         }
     };
+    const gpuAiHardwareItem = { ...cpuItem, id: 'test-gpu-ai-hw', name: 'Test GPU AI hardware',
+        category: 'AI', resourceClass: 'CPU', dashboardResource: 'GPU',
+        applicableStands: ['PSI', 'PROD', 'LOAD'],
+        qtyFormulas: {
+            PSI: '20 * S.standSizeRatio.PSI',
+            PROD: '20',
+            LOAD: '20 * S.standSizeRatio.LOAD'
+        }
+    };
+    const agentCpuAiMetricItem = { ...cpuItem, id: 'test-agent-cpu', name: 'Test agent CPU',
+        category: 'AI', resourceClass: 'CPU', dashboardResource: 'CPU', dashboardAiMetric: 'AGENT_CPU',
+        qtyFormulas: {
+            DEV: '20 * S.standSizeRatio.DEV',
+            IFT: '20 * S.standSizeRatio.IFT',
+            PROD: '20'
+        }
+    };
     /* Item БЕЗ dashboardResource — должен пользоваться общим standSizeRatio. */
     const serviceItem = { ...cpuItem, id: 'test-svc', name: 'Test Service',
         category: 'SERVICES', resourceClass: 'SERVICE', dashboardResource: undefined };
@@ -650,7 +667,7 @@ describe('calculate: per-resource standSizeRatio override (12.U12)', () => {
             resourceRatio
         },
         answers: {},
-        dictionaries: { items: [cpuItem, ramItem, serviceItem], questions: [] }
+        dictionaries: { items: [cpuItem, ramItem, gpuAiHardwareItem, agentCpuAiMetricItem, serviceItem], questions: [] }
     });
 
     it('item с dashboardResource получает per-resource ratio в S.standSizeRatio', () => {
@@ -686,6 +703,41 @@ describe('calculate: per-resource standSizeRatio override (12.U12)', () => {
         // (НЕ 0.10 из resourceRatio).
         assert.equal(r.items['test-svc'].stands.DEV.qty, 5,
                      'service item использует общий standSizeRatio.DEV = 0.50');
+    });
+
+    it('AI-категория с dashboardResource=GPU использует GPU resourceRatio, а не aiStandFactor', () => {
+        const calc = baseCalc({
+            DEV:  { CPU: 0.10, GPU: 0.10, RAM: 0.10, SSD: 0.10, HDD: 0.10, S3: 0.10 },
+            IFT:  { CPU: 0.20, GPU: 0.20, RAM: 0.20, SSD: 0.20, HDD: 0.20, S3: 0.20 },
+            PSI:  { CPU: 0.50, GPU: 0.50, RAM: 0.50, SSD: 0.50, HDD: 0.50, S3: 0.50 },
+            LOAD: { CPU: 1.00, GPU: 1.20, RAM: 1.00, SSD: 1.00, HDD: 1.00, S3: 1.00 },
+            PROD: { CPU: 1.00, GPU: 1.00, RAM: 1.00, SSD: 1.00, HDD: 1.00, S3: 1.00 }
+        });
+        calc.settings.aiStandFactor = { DEV: 0.02, IFT: 0.2, PSI: 0.1, PROD: 1.0, LOAD: 1.0 };
+
+        const r = calculate(calc);
+
+        assert.equal(r.items['test-gpu-ai-hw'].stands.PROD.qty, 20);
+        assert.equal(r.items['test-gpu-ai-hw'].stands.PSI.qty, 10,
+            'PSI: 20 * resourceRatio.PSI.GPU=0.50; aiStandFactor.PSI=0.10 не должен занижать GPU');
+        assert.equal(r.items['test-gpu-ai-hw'].stands.LOAD.qty, 24,
+            'LOAD: 20 * resourceRatio.LOAD.GPU=1.20; aiStandFactor.LOAD=1.00 не должен затирать GPU');
+    });
+
+    it('dashboardAiMetric остаётся AI-метрикой даже при dashboardResource', () => {
+        const calc = baseCalc({
+            DEV:  { CPU: 0.80, GPU: 0.10, RAM: 0.10, SSD: 0.10, HDD: 0.10, S3: 0.10 },
+            IFT:  { CPU: 0.80, GPU: 0.10, RAM: 0.10, SSD: 0.10, HDD: 0.10, S3: 0.10 },
+            PSI:  { CPU: 0.80, GPU: 0.10, RAM: 0.10, SSD: 0.10, HDD: 0.10, S3: 0.10 },
+            LOAD: { CPU: 0.80, GPU: 0.10, RAM: 0.10, SSD: 0.10, HDD: 0.10, S3: 0.10 },
+            PROD: { CPU: 1.00, GPU: 1.00, RAM: 1.00, SSD: 1.00, HDD: 1.00, S3: 1.00 }
+        });
+        calc.settings.aiStandFactor = { DEV: 0.25, IFT: 0.5, PSI: 0.5, PROD: 1.0, LOAD: 1.0 };
+
+        const r = calculate(calc);
+
+        assert.equal(r.items['test-agent-cpu'].stands.DEV.qty, 5,
+            'AGENT_CPU: 20 * aiStandFactor.DEV=0.25; resourceRatio.DEV.CPU=0.80 не применяется');
     });
 
     it('обратная совместимость: settings.resourceRatio отсутствует → общий standSizeRatio', () => {

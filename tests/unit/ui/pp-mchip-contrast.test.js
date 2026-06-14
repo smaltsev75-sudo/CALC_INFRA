@@ -20,6 +20,8 @@ const read = rel => stripCssComments(fs.readFileSync(path.resolve(here, '../../.
 
 const baseCss = read('css/base.css');
 const modalsCss = read('css/modals.css');
+const dashboardCss = read('css/dashboard.css');
+const componentsCss = read('css/components.css');
 
 function parseColor(s) {
     const m = String(s).trim().match(/#([0-9a-fA-F]{6})/);
@@ -46,13 +48,21 @@ function tokenHex(body, name) {
     assert.ok(m, `токен ${name} не найден в теме`);
     return m[1];
 }
-/** Имя токена из `.pp-mchip-l { … color: var(--token); … }`. */
-function ruleColorVar(selector) {
+function ruleBody(css, selector) {
     const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const m = modalsCss.match(new RegExp(esc + '\\s*\\{([^}]*)\\}'));
+    const m = css.match(new RegExp(esc + '\\s*\\{([^}]*)\\}'));
     assert.ok(m, `не нашёл правило ${selector}`);
-    const c = m[1].match(/color\s*:\s*var\((--[a-z-]+)\)/);
+    return m[1];
+}
+/** Имя токена из правила `{ … color: var(--token); … }`. */
+function ruleColorVar(selector, css = modalsCss) {
+    const c = ruleBody(css, selector).match(/color\s*:\s*var\((--[a-z-]+)\)/);
     assert.ok(c, `${selector} должен использовать color: var(--token)`);
+    return c[1];
+}
+function ruleVar(selector, prop, css) {
+    const c = ruleBody(css, selector).match(new RegExp(prop + '\\s*:\\s*var\\((--[a-z-]+)\\)'));
+    assert.ok(c, `${selector} должен использовать ${prop}: var(--token)`);
     return c[1];
 }
 
@@ -77,4 +87,21 @@ describe('.pp-mchip-l — контраст подписи чипа стоимо�
             assert.ok(ratio >= 4.5, `контраст ${ratio.toFixed(2)}:1 — нужно ≥ 4.5:1 (WCAG AA)`);
         });
     }
+});
+
+describe('Паспорт ПРОМ / stand controls — source-guards против a11y-регрессий', () => {
+    it('цвета мелких значений Паспорта ПРОМ не используют слабые декоративные токены', () => {
+        assert.equal(ruleColorVar('.pp-dk-hl .pp-dk-v'), '--text');
+        assert.equal(ruleColorVar('.pp-src-quiz'), '--text');
+        assert.equal(ruleColorVar('.pp-mchip-base .pp-mchip-v'), '--text');
+    });
+
+    it('stand controls используют основной текст, а active-chip — text-inverse на accent', () => {
+        assert.equal(ruleColorVar('.period-btn', dashboardCss), '--text');
+        assert.equal(ruleColorVar('.stand-toggles-label', dashboardCss), '--text');
+        assert.equal(ruleColorVar('.stand-toggle', dashboardCss), '--text');
+        assert.equal(ruleColorVar('.stand-toggles-label', componentsCss), '--text');
+        assert.equal(ruleColorVar(".stand-toggle[aria-pressed='true']", dashboardCss), '--text-inverse');
+        assert.equal(ruleVar(".stand-toggle[aria-pressed='true']", 'background', dashboardCss), '--accent');
+    });
 });
