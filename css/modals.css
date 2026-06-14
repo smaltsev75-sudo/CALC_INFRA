@@ -1797,8 +1797,13 @@ body.has-modal { overflow: hidden; }
     min-height: 210px;
     /* при экстремальной пере-плотности (плитки-floor суммарно выше отведённой
      * высоты) карта скроллится ВНУТРИ себя, а не выдавливает легенду/факторы
-     * (.pp-left остаётся overflow:hidden). В норме скролла нет. */
+     * (.pp-left остаётся overflow:hidden). В норме скролла нет.
+     * ВАЖНО: overflow-y:auto по CSS-спеку делает overflow-x тоже auto → карта
+     * клипает по ОБЕИМ осям. padding даёт 3px-кольцу выделения (.pp-tile-sel),
+     * lift (translateY -2px) и focus-outline крайних плиток поместиться внутри
+     * клип-области — иначе грани плиток у рамки карты обрезаются. */
     overflow-y: auto;
+    padding: 8px;
     align-items: stretch;
 }
 
