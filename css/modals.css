@@ -1795,10 +1795,22 @@ body.has-modal { overflow: hidden; }
     gap: 6px;
     flex: 1 1 auto;
     min-height: 210px;
+    /* при экстремальной пере-плотности (плитки-floor суммарно выше отведённой
+     * высоты) карта скроллится ВНУТРИ себя, а не выдавливает легенду/факторы
+     * (.pp-left остаётся overflow:hidden). В норме скролла нет. */
+    overflow-y: auto;
+    align-items: stretch;
 }
 
-.pp-tm-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pp-tm-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 0; }
 
+/* Анти-клиппинг имени: justify-content:flex-start — контент печатается от
+ * верхнего паддинга вниз, поэтому верх первой строки имени физически прибит к
+ * верху и не может уехать выше (line-clamp режет только НИЗ с многоточием).
+ * Пол высоты плитки задаётся НЕ magic-px min-height, а inline flex-basis:auto +
+ * flex-shrink:0 (renderItemTile) — плитка не короче своего контента при любой
+ * длине имени; площадь∝бюджету сохраняется через flex-grow ∝ monthlyCost.
+ * Пере-плотность колонки гасится overflow-y:auto самого .pp-treemap. */
 .pp-tile {
     position: relative;
     border-radius: 12px;
@@ -1807,7 +1819,8 @@ body.has-modal { overflow: hidden; }
     padding: 11px 12px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 6px;
     border: 1px solid rgba(0, 0, 0, .18);
     font-family: inherit;
     transition: transform .14s ease, box-shadow .18s ease, filter .18s ease, opacity .18s ease;
@@ -1815,6 +1828,11 @@ body.has-modal { overflow: hidden; }
     min-width: 0;
     text-align: left;
 }
+
+/* meta (qty + бюджет) уезжает к низу плитки ТОЛЬКО при наличии свободного места
+ * (margin-top:auto в flex-column) — визуал «бюджет внизу» как у space-between, но
+ * без распирания первой строки имени за верхний край при нехватке места. */
+.pp-tile-meta { margin-top: auto; }
 
 button.pp-tile { width: 100%; }
 
@@ -1899,10 +1917,9 @@ button.pp-tile { width: 100%; }
 .pp-tile-sm .pp-tile-name { font-size: 11px; -webkit-line-clamp: 2; line-clamp: 2; }
 .pp-tile-sm .pp-tile-budget { font-size: 14px; }
 
-.pp-tile-xs { padding: 8px 9px; justify-content: center; }
+.pp-tile-xs { padding: 8px 9px; }
 .pp-tile-xs .pp-tile-name { font-size: 10.5px; -webkit-line-clamp: 2; line-clamp: 2; font-weight: 700; }
 .pp-tile-xs .pp-tile-budget { font-size: 12.5px; }
-.pp-tile-xs .pp-tile-bot { margin-top: 4px; }
 
 /* ---- Развёрнутая карта: uniform-сетка равных карточек (вместо взвешенного
  *      treemap, который крошил мелкие ЭК). Порядок — по убыванию бюджета. ---- */
@@ -2331,6 +2348,14 @@ button.pp-tile { width: 100%; }
     .pp-body { grid-template-columns: 1fr; }
     .pp-left { border-right: none; border-bottom: 1px solid var(--border); }
     .pp-overlay .pp-modal { max-height: calc(100vh - 16px); }
+    /* Узкий экран: горизонтальный 3-колоночный treemap нечитаем → вертикальный
+     * список плиток фикс-высоты (контентный пол ≥ touch-target). Порядок сверху
+     * вниз ∝ бюджету (плитки уже отсортированы). Список скроллится внутри карты.
+     * flex:0 0 auto ОБЯЗАТЕЛЕН: .pp-left здесь — grid-элемент без заданной высоты,
+     * и flex:1 1 auto схлопнул бы карту в 0 (плитки налезли бы на легенду). */
+    .pp-treemap { flex: 0 0 auto; flex-direction: column; min-height: auto; max-height: 60vh; }
+    .pp-tm-col { flex: none !important; }
+    .pp-treemap .pp-tile { flex: none !important; }
 }
 
 /* ============================================================

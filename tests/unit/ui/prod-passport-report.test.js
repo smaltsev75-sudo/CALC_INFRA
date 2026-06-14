@@ -229,6 +229,23 @@ describe('Паспорт ПРОМ: DOM-контракт отчёта (treemap-р
         assert.equal(collapseCalls[0][1].treemapExpanded, false);
     });
 
+    it('плитки treemap не сжимаются ниже контента — анти-обрезка имени (flex-shrink:0 + flex-basis:auto)', async () => {
+        const { renderProdPassportReport } = await import('../../../js/ui/prodPassportReport.js');
+        const calc = makeCalc();
+        const rendered = renderProdPassportReport(calc, calculate(calc), {}, { patchModal() {} });
+        // свёрнутая карта: и плитки ЭК, и «Прочее» должны иметь контентный пол высоты
+        const tiles = allByClass(rendered, 'pp-tile').filter(t => t.dataset.itemId || t.dataset.other);
+        assert.ok(tiles.length > 0, 'есть взвешенные плитки treemap');
+        for (const t of tiles) {
+            const id = t.dataset.itemId || 'other';
+            // flex-shrink:0 → плитка не сожмётся ниже своего контента → имя не обрежется сверху.
+            // Регрессия: возврат к style={flex:weight} даст flex-shrink:1 и этот assert упадёт.
+            assert.equal(t.style.flexShrink, '0', `плитка ${id}: flex-shrink должен быть 0`);
+            assert.equal(t.style.flexBasis, 'auto', `плитка ${id}: flex-basis должен быть auto (пол = высота контента)`);
+            assert.ok(Number(t.style.flexGrow) >= 1, `плитка ${id}: flex-grow ∝ бюджету (>=1)`);
+        }
+    });
+
     it('рендерит легенду категорий и факторы Вариантом 3 (полоса + легенда сумм)', async () => {
         const { renderProdPassportReport } = await import('../../../js/ui/prodPassportReport.js');
         const calc = makeCalc();

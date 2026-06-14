@@ -190,6 +190,15 @@ function packIntoColumns(tiles, columnCount) {
     return columns.filter(column => column.tiles.length > 0);
 }
 
+/* Inline-flex плитки взвешенного treemap: flex-basis:auto → стартовая высота =
+ * высота контента (пол), flex-shrink:0 → плитка НЕ сжимается ниже контента (имя
+ * никогда не обрезается), flex-grow ∝ бюджету → площадь растёт пропорционально.
+ * Именно inline (не CSS), т.к. inline-flex перебивает CSS-объявления flex-* —
+ * CSS flex-shrink:0 на .pp-tile был бы перекрыт инлайном. */
+function tileFlexStyle(weight) {
+    return { flexGrow: String(Math.max(1, Number(weight) || 0)), flexShrink: '0', flexBasis: 'auto' };
+}
+
 function tileSizeClass(weight, maxWeight) {
     if (maxWeight <= 0) return 'sm';
     const ratio = weight / maxWeight;
@@ -237,7 +246,7 @@ function renderItemTile(tile, selectedItemId, sizeClass, ctx, grid = false) {
             budgetShare: String(row.budgetSharePercent)
         },
         title,
-        style: grid ? undefined : { flex: String(Math.max(1, tile.weight)) },
+        style: grid ? undefined : tileFlexStyle(tile.weight),
         onClick: () => ctx.patchModal('prodPassport', { selectedItemId: row.itemId })
     },
         el('div', { class: 'pp-tile-top' },
@@ -267,7 +276,7 @@ function renderOtherTile(tile, sizeClass, ctx) {
         },
         dataset: { other: String(tile.count) },
         title: `Прочее · ${tile.count} ЭК · ~${moneyShort} тыс.руб./мес. · ${pct} · показать все`,
-        style: { flex: String(Math.max(1, tile.weight)) },
+        style: tileFlexStyle(tile.weight),
         onClick: () => ctx.patchModal('prodPassport', { treemapExpanded: true })
     },
         el('div', { class: 'pp-tile-top' },
