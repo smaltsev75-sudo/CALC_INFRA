@@ -141,6 +141,12 @@ function restoreSearchFocus(input) {
     });
 }
 
+/* Сохранение scrollTop карты бюджета между ПОЛНЫМИ ре-рендерами модалки делает
+ * generic-механизм в js/ui/index.js: контейнеры карты помечены
+ * `data-preserve-scroll="map"`, renderModals снимает их scrollTop ДО replace и
+ * восстанавливает СИНХРОННО после appendChild (без RAF-гонки с layout). Иначе
+ * клик по нижней плитке давал «прыжок наверх» к верхним ЭК. */
+
 /* ============================================================
  * Treemap (карта бюджета)
  * ============================================================
@@ -309,7 +315,7 @@ function renderTreemap(items, totalMonthly, selectedItemId, ctx) {
     const columns = packIntoColumns(tiles, TREEMAP_COLUMNS);
     return el('div', {
         class: 'pp-treemap',
-        attrs: { 'data-testid': 'prod-passport-treemap' }
+        attrs: { 'data-testid': 'prod-passport-treemap', 'data-preserve-scroll': 'map' }
     },
         columns.map(column => el('div', {
             class: 'pp-tm-col',
@@ -331,7 +337,7 @@ function renderTreemap(items, totalMonthly, selectedItemId, ctx) {
 function renderExpandedGrid(items, selectedItemId, ctx) {
     return el('div', {
         class: 'pp-grid',
-        attrs: { 'data-testid': 'prod-passport-treemap' }
+        attrs: { 'data-testid': 'prod-passport-treemap', 'data-preserve-scroll': 'map' }
     },
         items.map(row => renderItemTile(
             { kind: 'item', row, weight: Math.max(0, Number(row.monthlyCost) || 0) },

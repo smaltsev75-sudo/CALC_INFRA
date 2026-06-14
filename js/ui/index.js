@@ -248,12 +248,25 @@ function renderModals(state, ctx) {
        (toggle accordion, edit lever, change constraint). Имя модалки берём
        из data-modal-name, который ставит modalShell для каждой overlay. */
     const scrollSnapshot = new Map();
+    /* Вложенные scroll-контейнеры, помеченные data-preserve-scroll (например карта
+       бюджета Паспорта ПРОМ — .pp-treemap/.pp-grid с overflow-y:auto): name ->
+       Map(ключ -> scrollTop). Без этого клик по плитке сбрасывал бы scrollTop в 0
+       («прыжок наверх» к верхним ЭК при выборе нижних). */
+    const innerScrollSnapshot = new Map();
     if (_modalsRoot && _prevOpenModals.size > 0) {
         for (const overlay of _modalsRoot.children) {
             const name = overlay?.dataset?.modalName;
             if (!name || !nextOpen.has(name)) continue;
             const body = overlay.querySelector('.modal-body');
             if (body && body.scrollTop > 0) scrollSnapshot.set(name, body.scrollTop);
+            const marked = overlay.querySelectorAll('[data-preserve-scroll]');
+            if (marked.length) {
+                const inner = new Map();
+                for (const el of marked) {
+                    if (el.scrollTop > 0) inner.set(el.dataset.preserveScroll, el.scrollTop);
+                }
+                if (inner.size) innerScrollSnapshot.set(name, inner);
+            }
         }
     }
 
@@ -274,6 +287,15 @@ function renderModals(state, ctx) {
         if (savedTop != null) {
             const body = overlay.querySelector('.modal-body');
             if (body) body.scrollTop = savedTop;
+        }
+        /* Восстановление вложенных scroll-контейнеров СИНХРОННО после append'а
+           (layout уже доступен, scrollTop держится — без RAF-гонки). */
+        const innerSaved = innerScrollSnapshot.get(name);
+        if (innerSaved) {
+            for (const el of overlay.querySelectorAll('[data-preserve-scroll]')) {
+                const top = innerSaved.get(el.dataset.preserveScroll);
+                if (top != null) el.scrollTop = top;
+            }
         }
     }
 
