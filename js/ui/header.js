@@ -1,9 +1,10 @@
 /**
  * TopBar — горизонтальная полоса над main-контентом.
  *
- * Показывает: название текущего расчёта (или общую подпись) + индикатор
- * статуса сохранения + actions (Импорт JSON / Экспорт JSON / PDF / Сброс).
- * Логотип и навигация — в левом sidebar (см. sidebar.js).
+ * Показывает: название текущего расчёта + tab-switcher сценариев + индикатор
+ * статуса сохранения. Действия (Импорт/Экспорт JSON, PDF, Сброс, Тема) и
+ * навигация — в левом sidebar (см. sidebar.js, перенос 2026-06-14).
+ * В topbar остаётся только диагностическая кнопка (видна лишь при ?diag=1).
  */
 
 import { el } from './dom.js';
@@ -12,14 +13,14 @@ import { renderScenarioTabs } from './scenarioTabs.js';
 
 export function renderHeader(state, ctx) {
     const calc = state.activeCalc;
+    const diagnostic = renderDiagnosticButton(state, ctx);
 
     return el('header', { class: 'app-topbar' },
         /* 2026-05-18 (повтор): topbar-title ВЕСЬ блок выводится только при
          * активном расчёте. Раньше при !calc показывали «Калькулятор
          * инфраструктуры» — это полный дубль с logo в sidebar (там уже есть
          * «Калькулятор инфраструктуры v2.x.x»). Дубль раздражал пользователя
-         * («сколько раз тебе повторять»). Теперь шапка слева чистая, только
-         * actions справа. */
+         * («сколько раз тебе повторять»). */
         calc && el('div', { class: 'app-topbar-title' },
             el('span', { class: 'app-topbar-title-muted', text: 'Текущий расчёт · ' }),
             calc.name
@@ -31,46 +32,9 @@ export function renderHeader(state, ctx) {
 
         renderPersistIndicator(state),
 
-        el('div', { class: 'app-topbar-actions' },
-            /* 12.U33: переключатель темы. Иконка показывает «куда переключим»,
-               а не текущее состояние: в тёмной теме — Sun (предложение перейти
-               в светлую), в светлой — Moon. aria-label полный, для screen-reader. */
-            renderThemeToggle(state, ctx),
-            renderDiagnosticButton(state, ctx),
-            iconButton(ctx, {
-                iconName: 'folder-open',
-                label: 'Импорт JSON',
-                title: 'Импорт расчёта из JSON-файла. Файл добавится к списку ваших расчётов (Ctrl+Alt+O)',
-                ariaLabel: 'Импорт расчёта из JSON',
-                testId: 'header-import-json',
-                onClick: (e) => ctx.importCalc(e)
-            }),
-            iconButton(ctx, {
-                iconName: 'save',
-                label: 'Экспорт JSON',
-                title: 'Экспорт текущего расчёта в JSON-файл — сохранить копию или передать коллеге (Ctrl+Alt+S)',
-                ariaLabel: 'Экспорт текущего расчёта в JSON',
-                testId: 'header-export-json',
-                disabled: !calc,
-                onClick: (e) => ctx.exportCalc(e)
-            }),
-            iconButton(ctx, {
-                iconName: 'printer',
-                label: 'PDF',
-                title: 'Распечатать или сохранить активную вкладку в PDF. На вкладке «Опросник» — таблица «Вопрос → Ответ», сгруппированная по типу. Ctrl+Alt+P',
-                testId: 'header-print-pdf',
-                disabled: !calc,
-                onClick: (e) => ctx.printPdf(e)
-            }),
-            iconButton(ctx, {
-                iconName: 'rotate-ccw',
-                label: 'Сброс',
-                title: 'Удалить все расчёты и восстановить исходный набор шаблонов. Действие необратимо.',
-                testId: 'header-reset',
-                danger: true,
-                onClick: () => ctx.openReset()
-            })
-        )
+        // 2026-06-14: пользовательские действия перенесены в sidebar. В topbar
+        // остаётся только diag-кнопка (и только в режиме ?diag=1).
+        diagnostic && el('div', { class: 'app-topbar-actions' }, diagnostic)
     );
 }
 
@@ -94,25 +58,6 @@ function renderDiagnosticButton(state, ctx) {
         disabled: !state.activeCalc,
         onClick: () => ctx.copyDiagnosticBundle?.()
     });
-}
-
-function renderThemeToggle(state, ctx) {
-    const isLight = state.ui?.theme === 'light';
-    const nextLabel = isLight ? 'Тёмная тема' : 'Светлая тема';
-    return el('button', {
-        class: ['btn', 'btn-ghost', 'btn-icon-text', 'theme-toggle'],
-        title: `Переключить на ${nextLabel.toLowerCase()} (текущая: ${isLight ? 'светлая' : 'тёмная'})`,
-        attrs: {
-            type: 'button',
-            'data-testid': 'theme-toggle',
-            'aria-label': `Переключить на ${nextLabel.toLowerCase()}`,
-            'aria-pressed': isLight ? 'true' : 'false'
-        },
-        onClick: () => ctx.toggleTheme()
-    },
-        icon(isLight ? 'moon' : 'sun', { size: 16 }),
-        el('span', { text: nextLabel })
-    );
 }
 
 function iconButton(_ctx, { iconName, label, title, disabled, danger, onClick, ariaLabel, testId }) {

@@ -96,11 +96,20 @@ describe('Phase 3c — Sidebar footer toggle', () => {
         assert.match(src, /aria-label/);
     });
 
-    it('footer-кнопки не используют title-tooltip, который перекрывает соседние пункты', () => {
-        assert.doesNotMatch(src, /title:\s*advancedMode/);
-        assert.doesNotMatch(src, /title:\s*['"]Справка \(F1\)['"]/);
+    it('footer-кнопки icon-only имеют title-хинт + aria-label (2026-06-14: sidebar → icon-rail)', () => {
+        /* Реверс прежнего решения: панель стала icon-only по требованию
+         * пользователя, поэтому title-tooltip теперь ОБЯЗАТЕЛЕН как единственный
+         * видимый хинт; aria-label — для screen-reader. */
         assert.match(src, /data-testid['"]?:\s*['"]sidebar-help-button['"]/);
         assert.match(src, /aria-label['"]?:\s*['"]Открыть справку['"]/);
+        assert.match(src, /title:\s*advancedActionLabel/,
+            'advanced-toggle должен иметь title-хинт (icon-only)');
+        assert.match(src, /title:\s*['"]Открыть справку \(F1\)['"]/,
+            'справка должна иметь title-хинт (icon-only)');
+        assert.match(src, /data-testid['"]?:\s*['"]theme-toggle['"]/,
+            'переключатель темы перенесён в footer sidebar');
+        assert.match(src, /data-testid['"]?:\s*['"]header-reset['"]/,
+            'кнопка сброса перенесена в footer sidebar');
     });
 });
 

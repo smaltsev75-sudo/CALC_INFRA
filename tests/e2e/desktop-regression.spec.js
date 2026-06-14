@@ -286,8 +286,10 @@ test('Help modal renders scannable UserManual on desktop', async ({ page }) => {
 
     const advancedToggle = page.getByTestId('sidebar-advanced-toggle');
     const helpButton = page.getByTestId('sidebar-help-button');
-    await expect(advancedToggle).not.toHaveAttribute('title', /.+/);
-    await expect(helpButton).not.toHaveAttribute('title', /.+/);
+    /* 2026-06-14: sidebar стал icon-only rail по требованию пользователя →
+       title-tooltip теперь ОБЯЗАТЕЛЕН как единственный видимый хинт. */
+    await expect(advancedToggle).toHaveAttribute('title', /.+/);
+    await expect(helpButton).toHaveAttribute('title', /.+/);
 
     const advancedBox = await advancedToggle.boundingBox();
     const helpBox = await helpButton.boundingBox();
@@ -296,7 +298,7 @@ test('Help modal renders scannable UserManual on desktop', async ({ page }) => {
     expect(helpBox.y).toBeGreaterThanOrEqual(advancedBox.y + advancedBox.height - 1);
 
     await helpButton.hover();
-    await expect(helpButton).not.toHaveAttribute('title', /.+/);
+    await expect(helpButton).toHaveAttribute('title', /.+/);
     await helpButton.click();
     const modal = page.locator('.modal-overlay').filter({ hasText: 'Справка' });
     await expect(modal.locator('.modal')).toBeVisible();

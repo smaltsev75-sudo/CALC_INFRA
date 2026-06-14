@@ -1,18 +1,18 @@
 /**
- * Левая навигационная панель (sidebar).
+ * Левая навигационная панель (sidebar) — icon-rail.
  *
- * Заменяет горизонтальные табы. Структура:
- *   - бренд (логотип + название продукта)
- *   - секция «Расчёт»: список / опросник / дашборд / детализация / сравнение
- *   - секция «Администрирование» (Stage 17.2 Phase 3c): элементы / вопросы —
- *     показывается ТОЛЬКО при включённом режиме «Расширенные настройки».
- *   - footer: toggle «Расширенные настройки» + ссылка на справку
+ * 2026-06-14 (по требованию пользователя): ВСЕ кнопки — только иконки с хинтами
+ * (title-tooltip) + aria-label для screen-reader. Кнопки сгруппированы по типу
+ * операций; внутри группы — по убыванию частоты использования:
+ *   - «Расчёт» (экраны): Дэшборд / Детализация / Опросник / Расчёты / Сравнение
+ *   - «Администрирование» (advancedOnly): Элементы / Вопросы
+ *   - «Данные» (перенесены из topbar): Экспорт JSON / Импорт JSON / PDF
+ *   - footer (система): Расширенные настройки / Справка / Тема / Сброс
+ * Тема размещена ПОД Справкой. Сброс (необратимо) — в самом низу, danger-стилем.
  *
- * Активный пункт подсвечивается тонкой зелёной полосой слева + лёгким glow.
- * Пункты, требующие активного расчёта, выводятся с opacity .45 если расчёт не открыт.
- *
- * Sidebar collapsible: полная ширина 220px (>1100px) и узкая 64px (≤1100px).
- * В узком режиме видны только иконки, текст скрыт; tooltip через title.
+ * Группы разделены тонкими разделителями (.sidebar-divider) + border footer.
+ * Панель узкая (icon-only) на всех ширинах; полное имя и горячая клавиша — в
+ * tooltip (title) и aria-label.
  */
 
 import { el } from './dom.js';
@@ -23,15 +23,17 @@ import { APP_VERSION, APP_NAME } from '../utils/constants.js';
  * Структура секций. id — соответствует state.activeTab; iconName — из icons.js.
  * requiresActive=true → пункт серый/недоступный, если нет активного расчёта.
  * advancedOnly=true → секция показывается только при state.ui.advancedModeEnabled.
+ * Порядок экранов — по убыванию частоты использования (просмотр результатов →
+ * ввод → управление расчётами → сравнение).
  */
 const NAV_SECTIONS = Object.freeze([
     {
         title: 'Расчёт',
         items: [
-            { id: 'calculations',  label: 'Расчёты',     iconName: 'calculator',     requiresActive: false, hotkey: 'Ctrl+Alt+1', desc: 'Список расчётов' },
-            { id: 'questionnaire', label: 'Опросник',    iconName: 'clipboard-list', requiresActive: true,  hotkey: 'Ctrl+Alt+2', desc: 'Ответы и параметры' },
             { id: 'dashboard',     label: 'Дэшборд',     iconName: 'home',           requiresActive: true,  hotkey: 'Ctrl+Alt+3', desc: 'Карточки стендов и ИТОГО' },
             { id: 'details',       label: 'Детализация', iconName: 'table-2',        requiresActive: true,  hotkey: 'Ctrl+Alt+4', desc: 'Таблица ЭК × стенд' },
+            { id: 'questionnaire', label: 'Опросник',    iconName: 'clipboard-list', requiresActive: true,  hotkey: 'Ctrl+Alt+2', desc: 'Ответы и параметры' },
+            { id: 'calculations',  label: 'Расчёты',     iconName: 'calculator',     requiresActive: false, hotkey: 'Ctrl+Alt+1', desc: 'Список расчётов' },
             { id: 'comparison',    label: 'Сравнение',   iconName: 'git-compare',    requiresActive: false, hotkey: 'Ctrl+Alt+5', desc: 'Сравнение нескольких расчётов' }
         ]
     },
@@ -45,6 +47,15 @@ const NAV_SECTIONS = Object.freeze([
     }
 ]);
 
+/* Группа «Данные» (I/O) — перенесена из topbar. Порядок по убыванию частоты:
+ * экспорт (сохранить/передать) → импорт (загрузить) → PDF (отчёт).
+ * testId сохранены прежними (header-*), чтобы e2e/контроллеры не сломались. */
+const DATA_ACTIONS = Object.freeze([
+    { action: 'exportCalc', label: 'Экспорт JSON', iconName: 'save',        testId: 'header-export-json', requiresActive: true,  ariaLabel: 'Экспорт текущего расчёта в JSON', desc: 'Экспорт текущего расчёта в JSON-файл — сохранить копию или передать коллеге (Ctrl+Alt+S)' },
+    { action: 'importCalc', label: 'Импорт JSON', iconName: 'folder-open', testId: 'header-import-json', requiresActive: false, ariaLabel: 'Импорт расчёта из JSON',        desc: 'Импорт расчёта из JSON-файла. Файл добавится к списку ваших расчётов (Ctrl+Alt+O)' },
+    { action: 'printPdf',   label: 'PDF',         iconName: 'printer',     testId: 'header-print-pdf',  requiresActive: true,  ariaLabel: 'Печать или сохранение в PDF',     desc: 'Распечатать или сохранить активную вкладку в PDF (Ctrl+Alt+P)' }
+]);
+
 export function renderSidebar(state, ctx) {
     const hasActive = !!state.activeCalc;
     const advancedMode = !!state.ui?.advancedModeEnabled;
@@ -55,14 +66,23 @@ export function renderSidebar(state, ctx) {
     },
         renderBrand(),
         el('nav', { class: 'sidebar-nav', attrs: { role: 'navigation' } },
-            ...visibleSections.map(section => renderSection(section, state, ctx, hasActive))
+            ...visibleSections.map(section => renderSection(section, state, ctx, hasActive)),
+            renderDivider(),
+            renderDataGroup(state, ctx, hasActive)
         ),
-        renderFooter(ctx, advancedMode)
+        renderFooter(state, ctx, advancedMode)
     );
 }
 
+function renderDivider() {
+    return el('div', { class: 'sidebar-divider', attrs: { 'aria-hidden': 'true' } });
+}
+
 function renderBrand() {
-    return el('div', { class: 'sidebar-brand' },
+    return el('div', {
+        class: 'sidebar-brand',
+        title: `${APP_NAME} v${APP_VERSION}`
+    },
         el('span', { class: 'sidebar-brand-logo' }, icon('zap', { size: 18 })),
         el('div', { class: 'sidebar-brand-text' },
             el('div', { class: 'sidebar-brand-title', text: APP_NAME }),
@@ -95,6 +115,7 @@ function renderNavItem(item, state, ctx, hasActive) {
             type: 'button',
             role: 'tab',
             'data-testid': `nav-${item.id}`,
+            'aria-label': item.label,
             'aria-selected': isActive ? 'true' : 'false',
             'aria-current': isActive ? 'page' : undefined
         },
@@ -105,31 +126,64 @@ function renderNavItem(item, state, ctx, hasActive) {
     );
 }
 
-function renderFooter(ctx, advancedMode) {
+/* Группа «Данные»: действия импорта/экспорта/печати (icon-only, хинт + aria-label). */
+function renderDataGroup(state, ctx, hasActive) {
+    return el('div', { class: 'sidebar-section' },
+        el('div', { class: 'sidebar-section-title', text: 'Данные' }),
+        ...DATA_ACTIONS.map(a => {
+            const disabled = a.requiresActive && !hasActive;
+            const title = disabled ? `${a.label} — сначала откройте расчёт` : a.desc;
+            return el('button', {
+                class: ['sidebar-nav-item', 'sidebar-action-item',
+                        disabled && 'sidebar-nav-item-disabled'],
+                title,
+                disabled,
+                attrs: {
+                    type: 'button',
+                    'data-testid': a.testId,
+                    'aria-label': a.ariaLabel
+                },
+                onClick: (e) => ctx[a.action]?.(e)
+            },
+                el('span', { class: 'sidebar-nav-item-icon' }, icon(a.iconName, { size: 18 })),
+                el('span', { class: 'sidebar-nav-item-label', text: a.label })
+            );
+        })
+    );
+}
+
+/* Footer (группа «Система»): расширенные настройки → справка → тема → сброс.
+ * Тема под Справкой; Сброс (необратимо) — в самом низу danger-стилем. */
+function renderFooter(state, ctx, advancedMode) {
+    const isLight = state.ui?.theme === 'light';
+    const themeNext = isLight ? 'Тёмная тема' : 'Светлая тема';
+    const advancedActionLabel = advancedMode
+        ? 'Выключить расширенные настройки'
+        : 'Включить расширенные настройки';
+
     return el('div', { class: 'sidebar-footer' },
         // Stage 17.2 Phase 3c: toggle «Расширенные настройки». При advancedMode=true
         // в навигации появляется группа «Администрирование» (Элементы / Вопросы).
-        // Иконка sliders + текст-состояние помогают понять, что это admin-уровень.
         el('button', {
             class: ['sidebar-footer-btn', 'sidebar-advanced-toggle',
                     advancedMode && 'sidebar-advanced-toggle-on'],
+            title: advancedActionLabel,
             attrs: {
                 type: 'button',
                 'data-testid': 'sidebar-advanced-toggle',
                 'aria-pressed': advancedMode ? 'true' : 'false',
-                'aria-label': advancedMode
-                    ? 'Выключить расширенные настройки'
-                    : 'Включить расширенные настройки'
+                'aria-label': advancedActionLabel
             },
             onClick: () => ctx.toggleAdvancedMode?.()
         },
             el('span', { class: 'sidebar-nav-item-icon' },
-                icon('sliders-horizontal', { size: 16 })),
+                icon('sliders-horizontal', { size: 18 })),
             el('span', { class: 'sidebar-nav-item-label',
                 text: 'Расширенные настройки' })
         ),
         el('button', {
             class: 'sidebar-footer-btn',
+            title: 'Открыть справку (F1)',
             attrs: {
                 type: 'button',
                 'data-testid': 'sidebar-help-button',
@@ -137,8 +191,37 @@ function renderFooter(ctx, advancedMode) {
             },
             onClick: () => ctx.openHelp?.()
         },
-            el('span', { class: 'sidebar-nav-item-icon' }, icon('help-circle', { size: 16 })),
+            el('span', { class: 'sidebar-nav-item-icon' }, icon('help-circle', { size: 18 })),
             el('span', { class: 'sidebar-nav-item-label', text: 'Справка' })
+        ),
+        // Переключатель темы — ПОД Справкой. Иконка показывает «куда переключим».
+        el('button', {
+            class: ['sidebar-footer-btn', 'theme-toggle'],
+            title: `Переключить на ${themeNext.toLowerCase()} (текущая: ${isLight ? 'светлая' : 'тёмная'})`,
+            attrs: {
+                type: 'button',
+                'data-testid': 'theme-toggle',
+                'aria-label': `Переключить на ${themeNext.toLowerCase()}`,
+                'aria-pressed': isLight ? 'true' : 'false'
+            },
+            onClick: () => ctx.toggleTheme?.()
+        },
+            el('span', { class: 'sidebar-nav-item-icon' }, icon(isLight ? 'moon' : 'sun', { size: 18 })),
+            el('span', { class: 'sidebar-nav-item-label', text: themeNext })
+        ),
+        // Сброс — необратимое действие, отдельно внизу, danger-стилем.
+        el('button', {
+            class: ['sidebar-footer-btn', 'sidebar-footer-danger'],
+            title: 'Удалить все расчёты и восстановить исходный набор шаблонов. Действие необратимо.',
+            attrs: {
+                type: 'button',
+                'data-testid': 'header-reset',
+                'aria-label': 'Сбросить все расчёты'
+            },
+            onClick: () => ctx.openReset?.()
+        },
+            el('span', { class: 'sidebar-nav-item-icon' }, icon('rotate-ccw', { size: 18 })),
+            el('span', { class: 'sidebar-nav-item-label', text: 'Сброс' })
         )
     );
 }

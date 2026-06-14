@@ -67,24 +67,25 @@ describe('calcController: setTheme/toggleTheme (12.U33)', () => {
     });
 });
 
-describe('header.js: theme-toggle button (12.U33)', () => {
-    it('исходник содержит renderThemeToggle с aria-label и aria-pressed', async () => {
+describe('sidebar.js: theme-toggle button (12.U33; перенесён из header 2026-06-14)', () => {
+    it('sidebar.js содержит кнопку темы (data-testid theme-toggle) с aria-label и aria-pressed', async () => {
         const { readFileSync } = await import('node:fs');
         const { dirname, join } = await import('node:path');
         const { fileURLToPath } = await import('node:url');
         const __dirname = dirname(fileURLToPath(import.meta.url));
+        // 2026-06-14: переключатель темы перенесён в footer левого меню (icon-rail).
         const src = readFileSync(
-            join(__dirname, '..', '..', '..', 'js', 'ui', 'header.js'), 'utf8'
+            join(__dirname, '..', '..', '..', 'js', 'ui', 'sidebar.js'), 'utf8'
         );
         const stripped = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-        // Кнопка переключения темы должна быть
-        assert.match(stripped, /renderThemeToggle/, 'функция renderThemeToggle обязательна');
+        // Кнопка переключения темы должна быть (по data-testid, не по имени функции)
+        assert.match(stripped, /['"]theme-toggle['"]/, 'кнопка theme-toggle обязательна');
         // aria-label обязателен (screen-reader)
         assert.match(stripped, /['"]aria-label['"]/, 'aria-label на кнопке темы обязателен');
         // aria-pressed (toggle-button pattern)
         assert.match(stripped, /['"]aria-pressed['"]/, 'aria-pressed на toggle-button обязателен');
         // ctx.toggleTheme подключён
-        assert.match(stripped, /ctx\.toggleTheme\s*\(\s*\)/);
+        assert.match(stripped, /ctx\.toggleTheme\??\.?\s*\(\s*\)/);
     });
 
     it('icons.js регистрирует sun и moon (Lucide)', async () => {
