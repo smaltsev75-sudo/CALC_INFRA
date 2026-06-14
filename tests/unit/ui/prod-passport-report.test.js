@@ -186,6 +186,41 @@ describe('Паспорт ПРОМ: DOM-контракт отчёта (treemap-р
         assert.equal(patchCalls[0][1].selectedItemId, target.dataset.itemId);
     });
 
+    it('плитка «Прочее» кликабельна и раскрывает все ЭК (regression: клик не срабатывал)', async () => {
+        const { renderProdPassportReport } = await import('../../../js/ui/prodPassportReport.js');
+        const calc = makeCalc();
+        const patchCalls = [];
+        const collapsed = renderProdPassportReport(calc, calculate(calc), {}, {
+            patchModal: (...args) => patchCalls.push(args)
+        });
+
+        const other = byTestId(collapsed, 'prod-passport-tile-other');
+        assert.ok(other, 'плитка «Прочее» присутствует при свёрнутой карте');
+        assert.equal(other.tagName, 'BUTTON', 'плитка «Прочее» должна быть кликабельной кнопкой');
+        other.click();
+        assert.equal(patchCalls.length, 1);
+        assert.equal(patchCalls[0][0], 'prodPassport');
+        assert.equal(patchCalls[0][1].treemapExpanded, true);
+
+        // Развёрнутая карта: все ЭК отдельными плитками, «Прочее» нет, есть «Свернуть»
+        const result = calculate(calc);
+        const model = buildProdPassport(calc, { result, stand: 'PROD', limit: Number.MAX_SAFE_INTEGER, topFactorsLimit: 6 });
+        const expanded = renderProdPassportReport(calc, result, { treemapExpanded: true }, { patchModal() {} });
+        const tilesExpanded = allByClass(expanded, 'pp-tile').filter(t => t.dataset.itemId);
+        assert.equal(tilesExpanded.length, model.items.length, 'развёрнутая карта показывает все ЭК');
+        assert.equal(byTestId(expanded, 'prod-passport-tile-other'), null, 'в развёрнутой карте нет «Прочее»');
+
+        // Кнопка «Свернуть карту» патчит treemapExpanded:false
+        const collapseCalls = [];
+        const expanded2 = renderProdPassportReport(calc, result, { treemapExpanded: true }, {
+            patchModal: (...a) => collapseCalls.push(a)
+        });
+        const collapseBtn = byTestId(expanded2, 'prod-passport-treemap-collapse');
+        assert.ok(collapseBtn, 'есть кнопка «Свернуть карту»');
+        collapseBtn.click();
+        assert.equal(collapseCalls[0][1].treemapExpanded, false);
+    });
+
     it('рендерит легенду категорий и факторы Вариантом 3 (полоса + легенда сумм)', async () => {
         const { renderProdPassportReport } = await import('../../../js/ui/prodPassportReport.js');
         const calc = makeCalc();

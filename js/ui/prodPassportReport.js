@@ -151,7 +151,14 @@ function restoreSearchFocus(input) {
  * колонки = её стоимость. Это воспроизводит вложенную flex-структуру драфта
  * (tm-col → tile/tm-row) на реальных данных.
  */
-function buildTreemapTiles(items, totalMonthly) {
+function buildTreemapTiles(items, totalMonthly, expanded) {
+    if (expanded) {
+        return items.map(row => ({
+            kind: 'item',
+            row,
+            weight: Math.max(0, Number(row.monthlyCost) || 0)
+        }));
+    }
     const tiles = items.slice(0, TREEMAP_TOP_TILES).map(row => ({
         kind: 'item',
         row,
@@ -251,19 +258,21 @@ function renderItemTile(tile, selectedItemId, sizeClass, ctx) {
     );
 }
 
-function renderOtherTile(tile, sizeClass) {
+function renderOtherTile(tile, sizeClass, ctx) {
     const moneyShort = stripMonthlySuffix(formatMonthlyText(tile.monthlyCost));
     const pct = formatShareText(tile.budgetSharePercent);
     const name = `Прочее · ${tile.count} ЭК`;
-    return el('div', {
+    return el('button', {
         class: ['pp-tile', 'pp-c-other', sizeClass && `pp-tile-${sizeClass}`],
         attrs: {
+            type: 'button',
             'data-testid': 'prod-passport-tile-other',
-            'aria-label': `Прочее, ${tile.count} ЭК, ${moneyShort} тыс.руб./мес., ${pct}`
+            'aria-label': `Прочее, ${tile.count} ЭК, ${moneyShort} тыс.руб./мес., ${pct}. Показать все статьи.`
         },
         dataset: { other: String(tile.count) },
-        title: `Прочее · ${tile.count} ЭК · ~${moneyShort} тыс.руб./мес. · ${pct}`,
-        style: { flex: String(Math.max(1, tile.weight)) }
+        title: `Прочее · ${tile.count} ЭК · ~${moneyShort} тыс.руб./мес. · ${pct} · показать все`,
+        style: { flex: String(Math.max(1, tile.weight)) },
+        onClick: () => ctx.patchModal('prodPassport', { treemapExpanded: true })
     },
         el('div', { class: 'pp-tile-top' },
             el('div', { class: 'pp-tile-name', text: name })
@@ -289,8 +298,8 @@ function formatShareText(percent) {
     return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Number(percent) || 0)}%`;
 }
 
-function renderTreemap(items, totalMonthly, selectedItemId, ctx) {
-    const tiles = buildTreemapTiles(items, totalMonthly);
+function renderTreemap(items, totalMonthly, selectedItemId, ctx, expanded) {
+    const tiles = buildTreemapTiles(items, totalMonthly, expanded);
     const maxWeight = tiles.reduce((max, tile) => Math.max(max, tile.weight), 0);
     const columns = packIntoColumns(tiles, TREEMAP_COLUMNS);
     return el('div', {
@@ -304,7 +313,7 @@ function renderTreemap(items, totalMonthly, selectedItemId, ctx) {
             column.tiles.map(tile => {
                 const sizeClass = tileSizeClass(tile.weight, maxWeight);
                 return tile.kind === 'other'
-                    ? renderOtherTile(tile, sizeClass)
+                    ? renderOtherTile(tile, sizeClass, ctx)
                     : renderItemTile(tile, selectedItemId, sizeClass, ctx);
             })
         ))
@@ -741,6 +750,7 @@ export function renderProdPassportReport(calc, result, modalState, ctx) {
         && model.items.some(item => item.itemId === modalState.selectedItemId))
         ? modalState.selectedItemId
         : model.items[0]?.itemId || null;
+    const treemapExpanded = !!modalState?.treemapExpanded;
 
     return el('div', {
         class: 'pp-report',
@@ -754,11 +764,17 @@ export function renderProdPassportReport(calc, result, modalState, ctx) {
                         inlineSvg(SVG.grid),
                         el('span', { text: 'Карта бюджета ПРОМ' })
                     ),
-                    el('span', { class: 'pp-hint-txt', text: 'цвет — категория · клик — детализация' })
+                    treemapExpanded
+                        ? el('button', {
+                            class: 'pp-map-collapse',
+                            attrs: { type: 'button', 'data-testid': 'prod-passport-treemap-collapse' },
+                            onClick: () => ctx.patchModal('prodPassport', { treemapExpanded: false })
+                        }, el('span', { text: 'Свернуть карту' }))
+                        : el('span', { class: 'pp-hint-txt', text: 'цвет — категория · клик — детализация' })
                 ),
                 model.items.length === 0
                     ? el('div', { class: 'pp-empty', text: model.search ? 'По этому названию статьи не найдены.' : 'Для ПРОМ нет статей с количеством или бюджетом.' })
-                    : renderTreemap(model.items, model.summary.totalMonthly, selectedItemId, ctx),
+                    : renderTreemap(model.items, model.summary.totalMonthly, selectedItemId, ctx, treemapExpanded),
                 el('div', { class: 'pp-left-bottom' },
                     renderCategoryLegend(model.items),
                     renderFactors(model)
