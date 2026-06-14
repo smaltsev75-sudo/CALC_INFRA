@@ -56,15 +56,14 @@ describe('buildProdPassport', () => {
         const calc = makeCalc();
         const result = calculate(calc);
 
-        const passport = buildProdPassport(calc, { result, stand: 'PROD', limit: 10 });
+        const passport = buildProdPassport(calc, { result, stand: 'PROD', limit: Number.MAX_SAFE_INTEGER });
 
         assert.equal(passport.stand, 'PROD');
         assert.equal(passport.summary.totalMonthly, prodCostTotal(calc, result));
         assert.equal(passport.summary.totalAnnual, passport.summary.totalMonthly * 12);
-        assert.equal(passport.page.items.length, 10);
-        assert.equal(passport.page.offset, 0);
-        assert.equal(passport.page.limit, 10);
-        assert.ok(passport.page.total >= passport.page.items.length);
+        // карта показывает ВСЕ ЭК (пагинации в UI нет)
+        assert.ok(passport.items.length > 0);
+        assert.equal(passport.summary.itemsCount, passport.items.length);
 
         for (let i = 1; i < passport.items.length; i += 1) {
             assert.ok(
@@ -207,7 +206,6 @@ describe('buildProdPassport', () => {
         assert.equal(filtered.search, 'оперативная');
         assert.equal(filtered.summary.itemsCount, full.summary.itemsCount);
         assert.equal(filtered.summary.totalMonthly, full.summary.totalMonthly);
-        assert.equal(filtered.page.total, filtered.items.length);
     });
 
     it('не называет ошибку парсинга зацикливанием формулы', () => {
