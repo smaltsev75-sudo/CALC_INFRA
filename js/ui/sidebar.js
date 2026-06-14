@@ -6,9 +6,10 @@
  * операций; внутри группы — по убыванию частоты использования:
  *   - «Расчёт» (экраны): Дэшборд / Детализация / Опросник / Расчёты / Сравнение
  *   - «Администрирование» (advancedOnly): Элементы / Вопросы
- *   - «Данные» (перенесены из topbar): Экспорт JSON / Импорт JSON / PDF
- *   - footer (система): Расширенные настройки / Справка / Тема / Сброс
- * Тема размещена ПОД Справкой. Сброс (необратимо) — в самом низу, danger-стилем.
+ *   - «Данные» (перенесены из topbar): Экспорт JSON / Импорт JSON / PDF / Сброс
+ *   - footer (система): Расширенные настройки / Справка / Тема
+ * Тема размещена ПОД Справкой. Сброс (необратимо) — под «Распечатать» (PDF) в
+ * группе «Данные», danger-стилем.
  *
  * Группы разделены тонкими разделителями (.sidebar-divider) + border footer.
  * Панель узкая (icon-only) на всех ширинах; полное имя и горячая клавиша — в
@@ -48,12 +49,14 @@ const NAV_SECTIONS = Object.freeze([
 ]);
 
 /* Группа «Данные» (I/O) — перенесена из topbar. Порядок по убыванию частоты:
- * экспорт (сохранить/передать) → импорт (загрузить) → PDF (отчёт).
- * testId сохранены прежними (header-*), чтобы e2e/контроллеры не сломались. */
+ * экспорт (сохранить/передать) → импорт (загрузить) → PDF (отчёт) → сброс.
+ * Сброс размещён ПОД «Распечатать» (по требованию пользователя) — относится к
+ * управлению данными; необратимо → danger-стиль. testId сохранены (header-*). */
 const DATA_ACTIONS = Object.freeze([
     { action: 'exportCalc', label: 'Экспорт JSON', iconName: 'save',        testId: 'header-export-json', requiresActive: true,  ariaLabel: 'Экспорт текущего расчёта в JSON', desc: 'Экспорт текущего расчёта в JSON-файл — сохранить копию или передать коллеге (Ctrl+Alt+S)' },
     { action: 'importCalc', label: 'Импорт JSON', iconName: 'folder-open', testId: 'header-import-json', requiresActive: false, ariaLabel: 'Импорт расчёта из JSON',        desc: 'Импорт расчёта из JSON-файла. Файл добавится к списку ваших расчётов (Ctrl+Alt+O)' },
-    { action: 'printPdf',   label: 'PDF',         iconName: 'printer',     testId: 'header-print-pdf',  requiresActive: true,  ariaLabel: 'Печать или сохранение в PDF',     desc: 'Распечатать или сохранить активную вкладку в PDF (Ctrl+Alt+P)' }
+    { action: 'printPdf',   label: 'PDF',         iconName: 'printer',     testId: 'header-print-pdf',  requiresActive: true,  ariaLabel: 'Печать или сохранение в PDF',     desc: 'Распечатать или сохранить активную вкладку в PDF (Ctrl+Alt+P)' },
+    { action: 'openReset',  label: 'Сброс',       iconName: 'rotate-ccw',  testId: 'header-reset',      requiresActive: false, danger: true, ariaLabel: 'Сбросить все расчёты', desc: 'Удалить все расчёты и восстановить исходный набор шаблонов. Действие необратимо.' }
 ]);
 
 export function renderSidebar(state, ctx) {
@@ -66,7 +69,11 @@ export function renderSidebar(state, ctx) {
     },
         renderBrand(),
         el('nav', { class: 'sidebar-nav', attrs: { role: 'navigation' } },
-            ...visibleSections.map(section => renderSection(section, state, ctx, hasActive)),
+            // Разделитель между КАЖДОЙ группой (в icon-only заголовки скрыты —
+            // дивайдер единственный визуальный маркер границы групп).
+            ...visibleSections.flatMap((section, i) => i === 0
+                ? [renderSection(section, state, ctx, hasActive)]
+                : [renderDivider(), renderSection(section, state, ctx, hasActive)]),
             renderDivider(),
             renderDataGroup(state, ctx, hasActive)
         ),
@@ -81,7 +88,11 @@ function renderDivider() {
 function renderBrand() {
     return el('div', {
         class: 'sidebar-brand',
-        title: `${APP_NAME} v${APP_VERSION}`
+        title: `${APP_NAME} v${APP_VERSION}`,
+        // icon-only: имя/версия скрыты визуально → role=img+aria-label дают
+        // доступное имя продукта screen-reader'у (на title неинтерактивного div
+        // полагаться нельзя).
+        attrs: { role: 'img', 'aria-label': `${APP_NAME} v${APP_VERSION}` }
     },
         el('span', { class: 'sidebar-brand-logo' }, icon('zap', { size: 18 })),
         el('div', { class: 'sidebar-brand-text' },
@@ -112,11 +123,12 @@ function renderNavItem(item, state, ctx, hasActive) {
         title,
         disabled: isDisabled,
         attrs: {
+            // Навигация по экранам (не вкладки внутри области) → НЕ role=tab:
+            // tablist без tabpanel/aria-controls/roving-tabindex = невалидная ARIA.
+            // Активный экран помечается aria-current='page' внутри <nav role=navigation>.
             type: 'button',
-            role: 'tab',
             'data-testid': `nav-${item.id}`,
             'aria-label': item.label,
-            'aria-selected': isActive ? 'true' : 'false',
             'aria-current': isActive ? 'page' : undefined
         },
         onClick: () => !isDisabled && ctx.setActiveTab(item.id)
@@ -135,6 +147,7 @@ function renderDataGroup(state, ctx, hasActive) {
             const title = disabled ? `${a.label} — сначала откройте расчёт` : a.desc;
             return el('button', {
                 class: ['sidebar-nav-item', 'sidebar-action-item',
+                        a.danger && 'sidebar-footer-danger',
                         disabled && 'sidebar-nav-item-disabled'],
                 title,
                 disabled,
@@ -152,8 +165,8 @@ function renderDataGroup(state, ctx, hasActive) {
     );
 }
 
-/* Footer (группа «Система»): расширенные настройки → справка → тема → сброс.
- * Тема под Справкой; Сброс (необратимо) — в самом низу danger-стилем. */
+/* Footer (группа «Система»): расширенные настройки → справка → тема.
+ * Тема под Справкой. Сброс перенесён в группу «Данные» (под PDF). */
 function renderFooter(state, ctx, advancedMode) {
     const isLight = state.ui?.theme === 'light';
     const themeNext = isLight ? 'Тёмная тема' : 'Светлая тема';
@@ -208,20 +221,7 @@ function renderFooter(state, ctx, advancedMode) {
         },
             el('span', { class: 'sidebar-nav-item-icon' }, icon(isLight ? 'moon' : 'sun', { size: 18 })),
             el('span', { class: 'sidebar-nav-item-label', text: themeNext })
-        ),
-        // Сброс — необратимое действие, отдельно внизу, danger-стилем.
-        el('button', {
-            class: ['sidebar-footer-btn', 'sidebar-footer-danger'],
-            title: 'Удалить все расчёты и восстановить исходный набор шаблонов. Действие необратимо.',
-            attrs: {
-                type: 'button',
-                'data-testid': 'header-reset',
-                'aria-label': 'Сбросить все расчёты'
-            },
-            onClick: () => ctx.openReset?.()
-        },
-            el('span', { class: 'sidebar-nav-item-icon' }, icon('rotate-ccw', { size: 18 })),
-            el('span', { class: 'sidebar-nav-item-label', text: 'Сброс' })
         )
+        // Сброс перенесён в группу «Данные» (под «Распечатать»/PDF) — см. DATA_ACTIONS.
     );
 }

@@ -112,7 +112,9 @@ export async function clickSidebarTab(page, tabId) {
     const item = page.getByTestId(`nav-${tabId}`);
     await expect(item).toBeVisible();
     await item.click();
-    await expect(item).toHaveAttribute('aria-selected', 'true');
+    // 2026-06-14: нав-кнопки помечают активный экран aria-current='page'
+    // (role=tab/aria-selected убраны как невалидная ARIA без tablist).
+    await expect(item).toHaveAttribute('aria-current', 'page');
 }
 
 export async function expectNoHorizontalOverflow(page, selectors, { tolerance = 1 } = {}) {

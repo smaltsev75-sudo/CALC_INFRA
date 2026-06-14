@@ -108,8 +108,10 @@ describe('Phase 3c — Sidebar footer toggle', () => {
             'справка должна иметь title-хинт (icon-only)');
         assert.match(src, /data-testid['"]?:\s*['"]theme-toggle['"]/,
             'переключатель темы перенесён в footer sidebar');
-        assert.match(src, /data-testid['"]?:\s*['"]header-reset['"]/,
-            'кнопка сброса перенесена в footer sidebar');
+        // 2026-06-14: «Сброс» перенесён в группу «Данные» (DATA_ACTIONS, testId: 'header-reset'),
+        // под «Распечатать». testId подставляется в data-testid в renderDataGroup.
+        assert.match(src, /testId:\s*['"]header-reset['"]/,
+            'кнопка сброса присутствует в sidebar (группа «Данные»)');
     });
 });
 
