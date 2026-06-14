@@ -1936,8 +1936,11 @@ button.pp-tile { width: 100%; }
     min-height: 210px;
     max-height: 420px;
     align-content: start;
+    /* overflow-y:auto клипает по обеим осям (CSS-спек) → padding нужен, чтобы
+     * 3px-кольцо выделения (.pp-tile-sel) и lift крайних плиток не обрезались
+     * у рамки сетки. Тот же фикс, что у .pp-treemap. */
     overflow-y: auto;
-    padding-right: 2px;
+    padding: 8px;
 }
 .pp-tile-grid {
     min-height: 82px;
@@ -2078,7 +2081,21 @@ button.pp-tile { width: 100%; }
     padding: 10px 15px 14px;
     display: flex;
     flex-direction: column;
+    /* Скролл должен жить ЗДЕСЬ, а не на .pp-right: этот блок flex:1 (= высоте
+     * .pp-right), а его контент (KPI + конвейер + ВХОДНЫЕ ПАРАМЕТРЫ + стоимость)
+     * для ЭК с большим числом параметров выше панели. overflow на .pp-right не
+     * добавлял overflow flex-ребёнка в scroll-область → нижние параметры были
+     * недостижимы (обрезались). overflow-y:auto тут делает весь контент
+     * прокручиваемым; spacer (flex:1) держит «стоимость внизу», когда влезает. */
+    overflow-y: auto;
 }
+
+/* Контент-блоки детализации НЕ сжимаются ниже своей высоты: иначе flex-column
+ * ужимал .pp-params (overflow:hidden) под высоту панели и обрезал нижние строки
+ * параметров — overflow-y:auto тогда не срабатывал (нечему было переполняться).
+ * Спейсер исключён: он остаётся сжимаемым и прижимает «стоимость» вниз, когда
+ * контент влезает. */
+.pp-right-scroll > *:not(.pp-detail-spacer) { flex-shrink: 0; }
 
 .pp-detail-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
 
