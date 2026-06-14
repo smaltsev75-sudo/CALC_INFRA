@@ -149,6 +149,45 @@ test('Паспорт ПРОМ открывается из Детализации
     expect(consoleErrors).toEqual([]);
 });
 
+test('Паспорт ПРОМ в светлой теме не просвечивает тёмный backdrop', async ({ page }) => {
+    const consoleErrors = await bootCleanApp(page);
+
+    await createCalculationFromQuickStart(page, {
+        name: 'Паспорт ПРОМ light theme',
+        presetId: 'high_ai'
+    });
+
+    await page.evaluate(async () => {
+        const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
+        store.setUi({ theme: 'light' });
+        document.documentElement.setAttribute('data-theme', 'light');
+    });
+
+    await clickSidebarTab(page, 'details');
+    await page.getByTestId('details-prod-passport-open').click();
+    await expect(page.getByTestId('prod-passport-report')).toBeVisible();
+
+    const surfaces = await page.evaluate(() => {
+        const selectors = ['.pp-modal', '.pp-left', '.pp-right'];
+        return selectors.map(selector => {
+            const node = document.querySelector(selector);
+            const style = getComputedStyle(node);
+            return {
+                selector,
+                backgroundColor: style.backgroundColor,
+                backgroundImage: style.backgroundImage
+            };
+        });
+    });
+
+    for (const surface of surfaces) {
+        expect(surface.backgroundColor, `${surface.selector} backgroundColor`).not.toBe('rgba(0, 0, 0, 0)');
+        expect(surface.backgroundColor, `${surface.selector} backgroundColor`).not.toBe('transparent');
+    }
+
+    expect(consoleErrors).toEqual([]);
+});
+
 test('Паспорт ПРОМ не называет ошибку парсинга зацикливанием расчёта', async ({ page }) => {
     const consoleErrors = await bootCleanApp(page);
 
