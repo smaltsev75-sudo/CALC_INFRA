@@ -1904,6 +1904,31 @@ button.pp-tile { width: 100%; }
 .pp-tile-xs .pp-tile-budget { font-size: 12.5px; }
 .pp-tile-xs .pp-tile-bot { margin-top: 4px; }
 
+/* ---- Развёрнутая карта: uniform-сетка равных карточек (вместо взвешенного
+ *      treemap, который крошил мелкие ЭК). Порядок — по убыванию бюджета. ---- */
+.pp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 6px;
+    flex: 1 1 auto;
+    min-height: 210px;
+    max-height: 420px;
+    align-content: start;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+.pp-tile-grid {
+    min-height: 82px;
+    justify-content: space-between;
+}
+.pp-tile-grid .pp-tile-name {
+    font-size: 11.5px;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+}
+.pp-tile-grid .pp-tile-budget { font-size: 15px; }
+.pp-tile-grid .pp-tile-qty { font-size: 10px; margin-top: 2px; }
+
 /* фоны категорий: светлые заливки -> тёмный текст для контраста AA */
 .pp-c-hw { background: linear-gradient(150deg, #3edcef, #06b6d4); }
 .pp-c-license { background: linear-gradient(150deg, #c4b1ff, #9b7df5); }
@@ -2171,6 +2196,9 @@ button.pp-tile { width: 100%; }
 }
 
 .pp-p-name { color: var(--text); }
+/* Единица измерения параметра — приглушённый суффикс в столбце «Параметр». */
+.pp-p-unit { color: var(--text-muted); font-weight: 500; white-space: nowrap; }
+.pp-p-unit::before { content: ", "; }
 .pp-p-val {
     font-family: var(--font-mono);
     font-weight: 600;
@@ -2261,7 +2289,9 @@ button.pp-tile { width: 100%; }
     font-variant-numeric: tabular-nums;
     line-height: 1.2;
 }
-.pp-mchip-l { font-size: 9px; color: var(--text-muted); white-space: nowrap; line-height: 1.1; }
+/* Подпись чипа стоимости: --text-muted давал ~4.04:1 на --bg-elevated (WCAG AA
+ * fail для 9px). --text — AA в обеих темах; иерархию держим размером/весом. */
+.pp-mchip-l { font-size: 9px; color: var(--text); font-weight: 600; white-space: nowrap; line-height: 1.1; }
 .pp-mchip-base .pp-mchip-v { color: var(--cat-hw); }
 .pp-mtimes { color: var(--text-dim); font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
 

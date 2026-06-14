@@ -1,10 +1,15 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import url from 'node:url';
 
 import { calculate } from '../../../js/domain/calculator.js';
 import { repairUnknownAnswersWithDefaults } from '../../../js/domain/answerRepair.js';
 import { buildSeedDictionaries, defaultAnswersFrom, SEED_SETTINGS } from '../../../js/domain/seed.js';
-import { buildProdPassport } from '../../../js/domain/prodPassport.js';
+import { buildProdPassport, settingLabel, questionUnit } from '../../../js/domain/prodPassport.js';
+
+const here = path.dirname(url.fileURLToPath(import.meta.url));
 
 function makeCalc(overrides = {}) {
     const dictionaries = overrides.dictionaries || buildSeedDictionaries();
@@ -281,7 +286,6 @@ describe('buildProdPassport', () => {
 
         assert.equal(passport.standDisabled, true);
         assert.equal(passport.items.length, 0);
-        assert.equal(passport.page.items.length, 0);
         assert.equal(passport.summary.totalMonthly, 0);
         assert.match(passport.emptyStateMessage, /Стенд ПРОМ скрыт/);
     });
@@ -299,5 +303,53 @@ describe('buildProdPassport', () => {
         assert.equal(repair.changed, true);
         assert.equal(passport.summary.repairedItemsCount, 1);
         assert.deepEqual(repairedRows.map(row => row.itemId), ['ram-gb']);
+    });
+});
+
+describe('Паспорт ПРОМ — единицы измерения и человекочитаемые метки', () => {
+    it('questionUnit отдаёт единицу там, где короткая метка её потеряла, и пусто где она уже в метке', () => {
+        // override-метки (Кэш, RAM на 1 vCPU, Доля…) срезали единицу из title
+        assert.equal(questionUnit({ id: 'cache_size_gb' }), 'ГБ');
+        assert.equal(questionUnit({ id: 'ram_per_vcpu_ratio' }), 'ГБ');
+        assert.equal(questionUnit({ id: 'dau_share_of_registered_percent' }), '%');
+        assert.equal(questionUnit({ id: 'ai_users_share' }), '%');
+        // счётные параметры получают «шт.»
+        assert.equal(questionUnit({ id: 'microservices_count' }), 'шт.');
+        assert.equal(questionUnit({ id: 'async_workers_count' }), 'шт.');
+        // где единица уже в словах метки — не дублируем
+        assert.equal(questionUnit({ id: 'peak_rps' }), '');         // «Пиковый RPS»
+        assert.equal(questionUnit({ id: 'ai_avg_input_tokens' }), ''); // «Входящие токены…»
+    });
+
+    it('unit прокидывается в inputs.questions модели Паспорта', () => {
+        const calc = makeCalc();
+        const passport = buildProdPassport(calc, { result: calculate(calc), stand: 'PROD' });
+        const cache = passport.items
+            .flatMap(row => row.inputs.questions)
+            .find(input => input.id === 'cache_size_gb');
+        assert.ok(cache, 'cache_size_gb присутствует во входных параметрах какого-то ЭК');
+        assert.equal(cache.unit, 'ГБ');
+    });
+
+    it('производные AI-множители имеют человекочитаемые метки (не технический путь)', () => {
+        assert.equal(settingLabel({ path: 'agentStepFactor' }), 'Множитель шагов AI-агента');
+        assert.equal(settingLabel({ path: 'agentToolFactor' }), 'Множитель вызовов инструментов AI-агента');
+        assert.equal(settingLabel({ path: 'aiModelTierFactor' }), 'Множитель класса AI-модели');
+    });
+
+    it('forcing-function: ни одна настройка из формул seed не отдаёт fallback «Параметр расчёта …»', () => {
+        // §6.ter.7 — класс «утечка внутренних имён» закрывается грепом ВСЕХ S.-ссылок,
+        // а не двумя именами из ревью. Любая будущая настройка без метки → fail здесь.
+        const seedSrc = fs.readFileSync(path.resolve(here, '../../../js/domain/seed.js'), 'utf8');
+        const JS_ARTIFACTS = new Set(['includes', 'map', 'ru', 'filter', 'some', 'every', 'find', 'forEach']);
+        const paths = new Set();
+        for (const m of seedSrc.matchAll(/\bS\.([a-zA-Z][a-zA-Z0-9]*)/g)) {
+            const base = m[1];
+            if (JS_ARTIFACTS.has(base)) continue;
+            // standSizeRatio.<STAND> / aiStandFactor.<STAND> — проверяем конкретный путь
+            paths.add(base === 'standSizeRatio' ? 'standSizeRatio.PROD' : base);
+        }
+        const leaks = [...paths].filter(p => settingLabel({ path: p }).startsWith('Параметр расчёта '));
+        assert.deepEqual(leaks, [], `Настройки без человекочитаемой метки: ${leaks.join(', ')}`);
     });
 });

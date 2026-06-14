@@ -2,7 +2,7 @@ import { calculate } from '../../domain/calculator.js';
 import { el, trustedHtml } from '../dom.js';
 import {
     renderProdPassportReport,
-    buildProdPassportModel,
+    buildProdPassportCsvModel,
     exportProdPassportCsv
 } from '../prodPassportReport.js';
 
@@ -49,7 +49,9 @@ export function renderProdPassportModal(state, ctx) {
         class: ['pp-head-btn', 'pp-head-btn-csv'],
         attrs: { type: 'button', 'data-testid': 'prod-passport-export-csv', 'aria-label': 'Скачать CSV' },
         onClick: () => {
-            const model = buildProdPassportModel(calc, result, modal);
+            /* CSV — документ всего Паспорта ПРОМ: фильтр поиска игнорируется
+             * (иначе активный фильтр молча терял строки в выгрузке). */
+            const model = buildProdPassportCsvModel(calc, result);
             exportProdPassportCsv(model, calc.name);
         }
     },

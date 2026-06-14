@@ -210,6 +210,14 @@ describe('Паспорт ПРОМ: DOM-контракт отчёта (treemap-р
         assert.equal(tilesExpanded.length, model.items.length, 'развёрнутая карта показывает все ЭК');
         assert.equal(byTestId(expanded, 'prod-passport-tile-other'), null, 'в развёрнутой карте нет «Прочее»');
 
+        // развёрнутая карта — uniform-сетка (не взвешенный treemap → не «винегрет»)
+        const grid = byTestId(expanded, 'prod-passport-treemap');
+        assert.ok(grid.classList.contains('pp-grid'), 'развёрнутая карта рендерится сеткой .pp-grid');
+        assert.equal(allByClass(expanded, 'pp-tm-col').length, 0, 'в сетке нет взвешенных колонок treemap');
+        // карточки строго по убыванию бюджета
+        const costs = tilesExpanded.map(t => Number(t.dataset.monthlyCost));
+        assert.deepEqual(costs, [...costs].sort((a, b) => b - a), 'карточки отсортированы по убыванию бюджета');
+
         // Кнопка «Свернуть карту» патчит treemapExpanded:false
         const collapseCalls = [];
         const expanded2 = renderProdPassportReport(calc, result, { treemapExpanded: true }, {
@@ -328,5 +336,33 @@ describe('Паспорт ПРОМ: DOM-контракт отчёта (treemap-р
         });
         assert.equal(byTestId(rendered, 'prod-passport-treemap'), null);
         assert.match(collectText(rendered), /не найдены/);
+    });
+
+    it('в столбце «Параметр» выводится единица измерения там, где короткая метка её потеряла', async () => {
+        const { renderProdPassportReport } = await import('../../../js/ui/prodPassportReport.js');
+        const calc = makeCalc();
+        const result = calculate(calc);
+        const model = buildProdPassport(calc, { result, stand: 'PROD', topFactorsLimit: 6 });
+        const target = model.items.find(row => row.inputs.questions.some(q => q.id === 'cache_size_gb'));
+        assert.ok(target, 'есть ЭК с параметром cache_size_gb (метка «Кэш» без единицы)');
+
+        const rendered = renderProdPassportReport(calc, result, { selectedItemId: target.itemId }, { patchModal() {} });
+        const params = byTestId(rendered, 'prod-passport-detail-params');
+        assert.ok(params, 'таблица входных параметров отрендерена');
+        const units = allByClass(params, 'pp-p-unit').map(collectText);
+        assert.ok(units.includes('ГБ'), `ожидали единицу «ГБ» среди ${JSON.stringify(units)}`);
+    });
+
+    it('CSV выгружает полный Паспорт ПРОМ независимо от фильтра поиска (regression: терялись строки)', async () => {
+        const { buildProdPassportCsvModel, buildProdPassportCsv } = await import('../../../js/ui/prodPassportReport.js');
+        const calc = makeCalc();
+        const result = calculate(calc);
+        const full = buildProdPassportCsvModel(calc, result);
+        const filtered = buildProdPassport(calc, { result, stand: 'PROD', search: 'оперативная' });
+        assert.ok(filtered.items.length > 0 && filtered.items.length < full.items.length,
+            'фильтр поиска действительно сужает набор ЭК');
+        const dataLines = buildProdPassportCsv(full).split('\r\n').slice(1).filter(Boolean);
+        assert.equal(dataLines.length, full.items.length,
+            'CSV содержит все ЭК Паспорта, а не отфильтрованные');
     });
 });

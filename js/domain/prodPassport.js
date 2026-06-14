@@ -5,7 +5,6 @@ import { getAst, isAstError } from './formula/cache.js';
 import { evaluate } from './formula/evaluator.js';
 import { SEED_ITEMS } from './seed.js';
 
-const DEFAULT_LIMIT = 10;
 const RUB_PER_THOUSAND = 1000;
 const EPS = 1e-6;
 
@@ -46,6 +45,29 @@ const QUESTION_LABEL_OVERRIDES = Object.freeze({
     ai_avg_output_tokens: 'Исходящие токены на запрос'
 });
 
+/* Единицы измерения для столбца «Параметр» детализации. Заполняем ТОЛЬКО там,
+ * где отображаемая метка (override выше или title вопроса) НЕ содержит единицу:
+ * короткие override'ы (Кэш, RAM на 1 vCPU, Доля…) срезают единицу из исходного
+ * title, а «Количество …» не подразумевает «шт.» явно. Где единица уже есть в
+ * словах метки (RPS, токены, «…, ГБ», «в год», «пользователей») — не дублируем. */
+const QUESTION_UNITS = Object.freeze({
+    ram_per_vcpu_ratio: 'ГБ',
+    cache_size_gb: 'ГБ',
+    dau_share_of_registered_percent: '%',
+    ai_users_share: '%',
+    microservices_count: 'шт.',
+    async_workers_count: 'шт.',
+    db_count: 'шт.',
+    db_replicas_count: 'шт.'
+});
+
+/* Единицы для настроек в столбце «Параметр». НДС-ставка показывается числом
+ * (20) — без «%» неоднозначно. Прочие настройки несут смысл в самой метке
+ * («Множитель…», «Размер стенда…»), единицу не добавляем. */
+const SETTING_UNITS = Object.freeze({
+    vatRate: '%'
+});
+
 const SETTING_LABEL_OVERRIDES = Object.freeze({
     'standSizeRatio.PROD': 'Размер стенда ПРОМ',
     'standSizeRatio.LOAD': 'Размер стенда Нагрузка',
@@ -66,7 +88,13 @@ const SETTING_LABEL_OVERRIDES = Object.freeze({
     vatRate: 'НДС',
     vatEnabled: 'Учитывать НДС',
     daysPerMonth: 'Дней в месяце',
-    phaseDurationMonths: 'Длительность фазы'
+    phaseDurationMonths: 'Длительность фазы',
+    /* Производные AI-множители (этап 13 calculator.js): собираются из ответов
+     * Опросника и кладутся в S, чтобы DSL-формулы их читали. Без человекочитаемых
+     * меток в UI протекал технический путь «Параметр расчёта agentStepFactor». */
+    agentStepFactor: 'Множитель шагов AI-агента',
+    agentToolFactor: 'Множитель вызовов инструментов AI-агента',
+    aiModelTierFactor: 'Множитель класса AI-модели'
 });
 
 function finite(value, fallback = 0) {
@@ -140,12 +168,22 @@ function sourceLabel(source) {
     return `неизвестный источник: ${source}`;
 }
 
-function questionLabel(input) {
+export function questionLabel(input) {
     return QUESTION_LABEL_OVERRIDES[input.id] || input.title || input.id;
 }
 
-function settingLabel(input) {
+export function settingLabel(input) {
     return SETTING_LABEL_OVERRIDES[input.path] || `Параметр расчёта ${input.path}`;
+}
+
+/* Единица измерения для отображения в столбце «Параметр»; '' если не нужна
+ * (метка уже несёт единицу или параметр безразмерный — boolean/select). */
+export function questionUnit(input) {
+    return QUESTION_UNITS[input.id] || '';
+}
+
+export function settingUnit(input) {
+    return SETTING_UNITS[input.path] || '';
 }
 
 function itemFormula(item, stand) {
@@ -375,6 +413,7 @@ function buildInputLists(trace, activeRefs = null) {
         .map(input => ({
         id: input.id,
         label: questionLabel(input),
+        unit: questionUnit(input),
         value: input.value,
         valueText: formatValue(input.value),
         source: input.source,
@@ -387,6 +426,7 @@ function buildInputLists(trace, activeRefs = null) {
         .map(input => ({
         id: input.path,
         label: settingLabel(input),
+        unit: settingUnit(input),
         value: input.value,
         valueText: formatValue(input.value),
         source: input.overriddenByContext ? 'context' : 'settings',
@@ -556,8 +596,6 @@ function buildQualityCounts(rows) {
  */
 export function buildProdPassport(calculation, options = {}) {
     const stand = STAND_IDS.includes(options.stand) ? options.stand : 'PROD';
-    const limit = Math.max(1, Number(options.limit) || DEFAULT_LIMIT);
-    const offset = Math.max(0, Number(options.offset) || 0);
     const search = normalizeSearch(options.search);
     const includeZero = options.includeZero === true;
     const topFactorsLimit = Math.max(1, Number(options.topFactorsLimit) || 5);
@@ -576,14 +614,6 @@ export function buildProdPassport(calculation, options = {}) {
             search,
             emptyStateMessage: `Стенд ${standLabel} скрыт в Детализации. Включите стенд в панели «Стенды», чтобы увидеть паспорт.`,
             items: [],
-            page: {
-                items: [],
-                offset,
-                limit,
-                total: 0,
-                hasNext: false,
-                hasPrev: false
-            },
             summary: {
                 itemsCount: 0,
                 totalMonthly: 0,
@@ -649,9 +679,6 @@ export function buildProdPassport(calculation, options = {}) {
     const visibleRows = search
         ? rows.filter(row => row.name.toLocaleLowerCase('ru-RU').includes(search))
         : rows;
-    const maxOffset = Math.max(0, Math.floor(Math.max(0, visibleRows.length - 1) / limit) * limit);
-    const effectiveOffset = Math.min(offset, maxOffset);
-    const pageItems = visibleRows.slice(effectiveOffset, effectiveOffset + limit);
     const qualityCounts = buildQualityCounts(rows);
 
     return {
@@ -660,14 +687,6 @@ export function buildProdPassport(calculation, options = {}) {
         standDisabled: false,
         search,
         items: visibleRows,
-        page: {
-            items: pageItems,
-            offset: effectiveOffset,
-            limit,
-            total: visibleRows.length,
-            hasNext: effectiveOffset + limit < visibleRows.length,
-            hasPrev: effectiveOffset > 0
-        },
         summary: {
             itemsCount: rows.length,
             totalMonthly,

@@ -151,14 +151,7 @@ function restoreSearchFocus(input) {
  * колонки = её стоимость. Это воспроизводит вложенную flex-структуру драфта
  * (tm-col → tile/tm-row) на реальных данных.
  */
-function buildTreemapTiles(items, totalMonthly, expanded) {
-    if (expanded) {
-        return items.map(row => ({
-            kind: 'item',
-            row,
-            weight: Math.max(0, Number(row.monthlyCost) || 0)
-        }));
-    }
+function buildTreemapTiles(items, totalMonthly) {
     const tiles = items.slice(0, TREEMAP_TOP_TILES).map(row => ({
         kind: 'item',
         row,
@@ -217,7 +210,10 @@ function tileMarkerFlag(row) {
     });
 }
 
-function renderItemTile(tile, selectedItemId, sizeClass, ctx) {
+/* grid=true — карточка в uniform-сетке (развёрнутая карта): без flex-веса и
+ * size-класса, равный размер, читаемое имя. grid=false — взвешенная плитка
+ * treemap (площадь ∝ бюджету). */
+function renderItemTile(tile, selectedItemId, sizeClass, ctx, grid = false) {
     const row = tile.row;
     const suffix = categorySuffix(row.category);
     const selected = row.itemId === selectedItemId;
@@ -226,7 +222,7 @@ function renderItemTile(tile, selectedItemId, sizeClass, ctx) {
     return el('button', {
         class: [
             'pp-tile', `pp-c-${suffix}`,
-            sizeClass && `pp-tile-${sizeClass}`,
+            grid ? 'pp-tile-grid' : (sizeClass && `pp-tile-${sizeClass}`),
             selected && 'pp-tile-sel'
         ],
         attrs: {
@@ -241,7 +237,7 @@ function renderItemTile(tile, selectedItemId, sizeClass, ctx) {
             budgetShare: String(row.budgetSharePercent)
         },
         title,
-        style: { flex: String(Math.max(1, tile.weight)) },
+        style: grid ? undefined : { flex: String(Math.max(1, tile.weight)) },
         onClick: () => ctx.patchModal('prodPassport', { selectedItemId: row.itemId })
     },
         el('div', { class: 'pp-tile-top' },
@@ -298,8 +294,8 @@ function formatShareText(percent) {
     return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Number(percent) || 0)}%`;
 }
 
-function renderTreemap(items, totalMonthly, selectedItemId, ctx, expanded) {
-    const tiles = buildTreemapTiles(items, totalMonthly, expanded);
+function renderTreemap(items, totalMonthly, selectedItemId, ctx) {
+    const tiles = buildTreemapTiles(items, totalMonthly);
     const maxWeight = tiles.reduce((max, tile) => Math.max(max, tile.weight), 0);
     const columns = packIntoColumns(tiles, TREEMAP_COLUMNS);
     return el('div', {
@@ -316,6 +312,24 @@ function renderTreemap(items, totalMonthly, selectedItemId, ctx, expanded) {
                     ? renderOtherTile(tile, sizeClass, ctx)
                     : renderItemTile(tile, selectedItemId, sizeClass, ctx);
             })
+        ))
+    );
+}
+
+/* Развёрнутая карта («Прочее» → показать все): uniform-сетка равных карточек,
+ * порядок строго по убыванию бюджета (model.items уже отсортирован). НЕ взвешенный
+ * treemap — иначе мелкие ЭК крошатся в нечитаемый «винегрет». */
+function renderExpandedGrid(items, selectedItemId, ctx) {
+    return el('div', {
+        class: 'pp-grid',
+        attrs: { 'data-testid': 'prod-passport-treemap' }
+    },
+        items.map(row => renderItemTile(
+            { kind: 'item', row, weight: Math.max(0, Number(row.monthlyCost) || 0) },
+            selectedItemId,
+            '',
+            ctx,
+            true
         ))
     );
 }
@@ -439,10 +453,24 @@ const SRC_HINT = Object.freeze({
     calc: 'Общий параметр расчёта (буферы, НДС, размеры стендов), заданный в настройках.'
 });
 
+/* Единицу измерения показываем в столбце «Параметр» рядом с названием, но только
+ * если её ещё нет в словах метки (избегаем «Пиковый RPS, RPS»). */
+function paramUnitSuffix(input) {
+    const unit = input.unit || '';
+    if (!unit) return null;
+    if (String(input.label || '').toLocaleLowerCase('ru-RU').includes(unit.toLocaleLowerCase('ru-RU'))) {
+        return null;
+    }
+    return el('span', { class: 'pp-p-unit', text: unit });
+}
+
 function renderParamRow(input) {
     const kind = srcKind(input);
     return el('div', { class: 'pp-params-row' },
-        el('span', { class: 'pp-p-name', text: input.label }),
+        el('span', { class: 'pp-p-name' },
+            el('span', { class: 'pp-p-name-txt', text: input.label }),
+            paramUnitSuffix(input)
+        ),
         el('span', { class: 'pp-p-val', text: input.valueText }),
         el('span', {
             class: ['pp-src', `pp-src-${kind}`],
@@ -774,7 +802,9 @@ export function renderProdPassportReport(calc, result, modalState, ctx) {
                 ),
                 model.items.length === 0
                     ? el('div', { class: 'pp-empty', text: model.search ? 'По этому названию статьи не найдены.' : 'Для ПРОМ нет статей с количеством или бюджетом.' })
-                    : renderTreemap(model.items, model.summary.totalMonthly, selectedItemId, ctx, treemapExpanded),
+                    : (treemapExpanded
+                        ? renderExpandedGrid(model.items, selectedItemId, ctx)
+                        : renderTreemap(model.items, model.summary.totalMonthly, selectedItemId, ctx)),
                 el('div', { class: 'pp-left-bottom' },
                     renderCategoryLegend(model.items),
                     renderFactors(model)
@@ -796,9 +826,21 @@ export function buildProdPassportModel(calc, result, modalState) {
     return buildProdPassport(calc, {
         result,
         stand: 'PROD',
-        limit: Number.MAX_SAFE_INTEGER,
-        offset: 0,
         topFactorsLimit: 6,
         search: modalState?.search || ''
+    });
+}
+
+/**
+ * Модель для выгрузки CSV — это документ ВСЕГО Паспорта ПРОМ: фильтр поиска
+ * игнорируется (поиск — навигация по карте, на сводку и CSV не влияет). Иначе
+ * активный фильтр молча терял строки в выгрузке.
+ */
+export function buildProdPassportCsvModel(calc, result) {
+    return buildProdPassport(calc, {
+        result,
+        stand: 'PROD',
+        topFactorsLimit: 6,
+        search: ''
     });
 }

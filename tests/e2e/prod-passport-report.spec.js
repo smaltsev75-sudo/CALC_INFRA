@@ -107,7 +107,8 @@ test('Паспорт ПРОМ открывается из Детализации
     await expect(detail).toContainText('Подстановка реальных значений');
     await expect(detail).toContainText('Входные параметры расчёта');
     await expect(detail).toContainText('Как получена стоимость');
-    await expect(detail).not.toContainText('Подстановка ');
+    // в детализацию не должны протекать технические имена настроек
+    await expect(detail).not.toContainText('Параметр расчёта ');
 
     const firstSelected = await detail.evaluate(node => node.dataset.itemId);
     const otherTile = page.locator(`.pp-tile[data-item-id]:not([data-item-id="${firstSelected}"])`).first();
@@ -119,7 +120,7 @@ test('Паспорт ПРОМ открывается из Детализации
     );
     await expect(detail).toHaveAttribute('data-item-id', otherId);
 
-    // поиск приглушает плитки / показывает только совпадения
+    // поиск оставляет на карте только совпавшие плитки
     const search = page.getByTestId('prod-passport-search');
     await expect(search).toBeVisible();
     await search.click();
