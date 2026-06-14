@@ -98,6 +98,9 @@ describe('buildProdPassport', () => {
         assert.equal(ram.quantityFormula.technical, calc.dictionaries.items.find(item => item.id === 'ram-gb').qtyFormulas.PROD);
         assert.match(ram.quantityFormula.text, /RAM|ГБ|vCPU|кэш/i);
         assert.match(ram.quantityFormula.substitution, /=/);
+        assert.doesNotMatch(ram.quantityFormula.substitution, /Q\./);
+        assert.match(ram.quantityFormula.substitution, /4/);
+        assert.match(ram.quantityFormula.substitution, /8/);
 
         const ramRatio = ram.inputs.questions.find(input => input.id === 'ram_per_vcpu_ratio');
         assert.equal(ramRatio.label, 'RAM на 1 vCPU');
@@ -111,9 +114,41 @@ describe('buildProdPassport', () => {
         assert.equal(ram.costFormula.label, 'Стоимость = количество × цена × тариф × риски × НДС');
         assert.deepEqual(
             ram.costFormula.components.map(component => component.label),
-            ['Количество', 'Цена', 'Тариф', 'Риски', 'НДС', 'Итог']
+            ['Количество', 'Цена', 'Тариф', 'Риски', 'НДС']
         );
+        assert.ok(!ram.costFormula.components.some(component => component.label === 'Итог'));
         assert.match(ram.costFormula.resultText, /тыс\.руб\.\/мес\./);
+    });
+
+    it('показывает расчёт количества теми же параметрами, которые выведены в подставленных значениях', () => {
+        const calc = makeCalc({
+            answers: {
+                traffic_egress_tb_month: 15,
+                peak_rps: 80,
+                avg_rps: 80,
+                peak_duration_hours: 2,
+                avg_response_size_kb: 20
+            },
+            answersMeta: {
+                traffic_egress_tb_month: { source: 'wizard' },
+                peak_rps: { source: 'manual' },
+                avg_rps: { source: 'manual' }
+            }
+        });
+        const passport = buildProdPassport(calc, { result: calculate(calc), stand: 'PROD' });
+        const traffic = passport.items.find(item => item.itemId === 'traffic-egress-tb');
+
+        assert.ok(traffic);
+        assert.equal(traffic.quantity, 15);
+        assert.deepEqual(
+            traffic.inputs.questions.map(input => input.label),
+            ['Фактический исходящий трафик, ТБ/мес']
+        );
+        assert.match(traffic.quantityFormula.text, /Фактический исходящий трафик, ТБ\/мес/);
+        assert.doesNotMatch(traffic.quantityFormula.text, /traffic_egress_tb_month|peak_rps|avg_rps/);
+        assert.match(traffic.quantityFormula.substitution, /Фактический исходящий трафик, ТБ\/мес \(15\)/);
+        assert.match(traffic.quantityFormula.substitution, /= 15 ТБ/);
+        assert.doesNotMatch(traffic.quantityFormula.substitution, /86400|1048576|Пиковое число запросов|Среднее число запросов|Средний размер одного ответа/);
     });
 
     it('не маскирует неизвестный источник ответа как значение из опросника', () => {
@@ -153,6 +188,26 @@ describe('buildProdPassport', () => {
             passport.summary.topFactors.some(factor => factor.itemIds.length > 0),
             'фактор должен ссылаться на связанные ЭК, а не быть декоративной строкой'
         );
+    });
+
+    it('фильтрует список ЭК по названию без изменения сводки ПРОМ', () => {
+        const calc = makeCalc();
+        const result = calculate(calc);
+        const full = buildProdPassport(calc, { result, stand: 'PROD', limit: 10 });
+        const filtered = buildProdPassport(calc, {
+            result,
+            stand: 'PROD',
+            limit: 10,
+            search: 'оперативная'
+        });
+
+        assert.ok(full.items.length > filtered.items.length);
+        assert.ok(filtered.items.length > 0);
+        assert.ok(filtered.items.every(item => item.name.toLocaleLowerCase('ru-RU').includes('оперативная')));
+        assert.equal(filtered.search, 'оперативная');
+        assert.equal(filtered.summary.itemsCount, full.summary.itemsCount);
+        assert.equal(filtered.summary.totalMonthly, full.summary.totalMonthly);
+        assert.equal(filtered.page.total, filtered.items.length);
     });
 
     it('не называет ошибку парсинга зацикливанием формулы', () => {

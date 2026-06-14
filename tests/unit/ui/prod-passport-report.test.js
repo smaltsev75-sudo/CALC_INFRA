@@ -95,9 +95,17 @@ describe('Паспорт ПРОМ: DOM-контракт отчёта', () => {
     it('рендерит согласованные колонки, страницу из 10 ЭК и числовые data-атрибуты', async () => {
         const { renderProdPassportReport } = await import('../../../js/ui/prodPassportReport.js');
         const calc = makeCalc();
+        const patchCalls = [];
         const rendered = renderProdPassportReport(calc, calculate(calc), { offset: 0 }, {
-            patchModal() {}
+            patchModal: (...args) => patchCalls.push(args)
         });
+
+        assert.ok(byTestId(rendered, 'prod-passport-summary-items'));
+        assert.ok(byTestId(rendered, 'prod-passport-summary-month'));
+        assert.ok(byTestId(rendered, 'prod-passport-summary-year'));
+        assert.equal(byTestId(rendered, 'prod-passport-summary-defaults'), null);
+        assert.equal(byTestId(rendered, 'prod-passport-summary-repaired'), null);
+        assert.equal(byTestId(rendered, 'prod-passport-summary-warnings'), null);
 
         const head = byTestId(rendered, 'prod-passport-list-head');
         assert.ok(head, 'должна быть шапка списка ЭК');
@@ -115,25 +123,53 @@ describe('Паспорт ПРОМ: DOM-контракт отчёта', () => {
         for (let i = 1; i < rows.length; i += 1) {
             assert.ok(Number(rows[i - 1].dataset.monthlyCost) >= Number(rows[i].dataset.monthlyCost));
         }
+
+        const pageButtons = [...rendered.querySelectorAll('[data-testid="prod-passport-page-button"]')];
+        assert.ok(pageButtons.length >= 2, 'pager должен показывать номера страниц');
+        assert.equal(collectText(pageButtons[0]), '1');
+        assert.equal(collectText(pageButtons[1]), '2');
+        pageButtons[1].click();
+        assert.equal(patchCalls.length, 1);
+        assert.equal(patchCalls[0][0], 'prodPassport');
+        assert.equal(patchCalls[0][1].offset, 10);
+        assert.ok(patchCalls[0][1].selectedItemId);
+
+        assert.equal(byTestId(rendered, 'prod-passport-page-input'), null);
+        assert.equal(byTestId(rendered, 'prod-passport-page-go'), null);
     });
 
-    it('рендерит факторы как пересекающийся охват, а не аддитивную долю бюджета', async () => {
+    it('рендерит факторы одним блоком с общим цветовым баром, процентами и легендой цветов', async () => {
         const { renderProdPassportReport } = await import('../../../js/ui/prodPassportReport.js');
         const calc = makeCalc();
         const rendered = renderProdPassportReport(calc, calculate(calc), { offset: 0 }, {
             patchModal() {}
         });
 
-        const factorHead = allByClass(rendered, 'prod-passport-factor-head')[0];
-        assert.ok(factorHead);
-        assert.deepEqual(
-            Array.from(factorHead.children).map(collectText),
-            ['Фактор', 'Связанные ЭК, тыс.руб./мес.', 'Охват бюджета']
-        );
-        assert.doesNotMatch(collectText(factorHead), /% бюджета/);
+        const factorsBlock = byTestId(rendered, 'prod-passport-top-factors');
+        assert.equal(factorsBlock.tagName, 'SECTION');
+        assert.match(collectText(factorsBlock), /Факторы влияния/);
+        assert.equal(allByClass(rendered, 'prod-passport-factor-head').length, 0);
+        assert.equal(allByClass(rendered, 'prod-passport-factor-card').length, 0);
+
+        const panels = allByClass(rendered, 'prod-passport-factor-panel');
+        assert.equal(panels.length, 1, 'факторы должны быть сведены в один общий блок');
+        assert.equal(allByClass(rendered, 'prod-passport-factor-gradient').length, 1);
+        const segments = allByClass(rendered, 'prod-passport-factor-segment');
+        const items = allByClass(rendered, 'prod-passport-factor-item');
+        assert.ok(items.length > 0);
+        assert.ok(items.length <= 6);
+        assert.equal(segments.length, items.length);
+        assert.match(collectText(factorsBlock), /Проценты показывают долю от общего бюджета ПРОМ/);
+        assert.match(collectText(factorsBlock), /не суммируются к 100%/);
+        assert.match(collectText(items[0]), /тыс\.руб\.\/мес\./);
+        assert.match(collectText(items[0]), /\d+\s*%/);
+        assert.equal(allByClass(items[0], 'prod-passport-factor-swatch').length, 1);
+        assert.equal(allByClass(items[0], 'prod-passport-factor-percent').length, 1);
+        const firstCoverage = Number(items[0].dataset.coverage);
+        assert.equal(segments[0].style.flexBasis, `${firstCoverage}%`);
     });
 
-    it('показывает расшифровку выбранного ЭК и скрывает техническую ссылку под раскрытием', async () => {
+    it('показывает расшифровку выбранного ЭК без дублей, с раскрытой формулой количества и без пустого блока влияния', async () => {
         const { renderProdPassportReport } = await import('../../../js/ui/prodPassportReport.js');
         const calc = makeCalc();
         const rendered = renderProdPassportReport(calc, calculate(calc), { offset: 0 }, {
@@ -143,11 +179,89 @@ describe('Паспорт ПРОМ: DOM-контракт отчёта', () => {
         const detail = byTestId(rendered, 'prod-passport-detail');
         const text = collectText(detail);
         assert.match(text, /Как получено количество/);
-        assert.match(text, /Подстановка/);
-        assert.match(text, /Техническая формула/);
-        assert.match(text, /Что повлияло/);
+        assert.match(text, /Расчёт количества/);
+        assert.doesNotMatch(text, /Подстановка/);
+        assert.doesNotMatch(text, /Техническая формула/);
+        assert.doesNotMatch(text, /Что повлияло/);
+        assert.doesNotMatch(text, /В формуле нет ссылок/);
         assert.match(text, /Формула стоимости/);
         assert.match(text, /≈/);
+        assert.equal(allByClass(detail, 'prod-passport-detail-result').length, 0);
+        const quantityDetails = byTestId(detail, 'prod-passport-quantity-details');
+        assert.equal(quantityDetails.tagName, 'SECTION');
+        assert.ok(byTestId(detail, 'prod-passport-quantity-calculation'));
+        assert.equal(allByClass(detail, 'prod-passport-cost-component-total').length, 0);
+        assert.ok(!allByClass(detail, 'prod-passport-cost-component').some(node => collectText(node).startsWith('Итог ')));
+    });
+
+    it('не дублирует входные параметры отдельным блоком влияния', async () => {
+        const { renderProdPassportReport } = await import('../../../js/ui/prodPassportReport.js');
+        const calc = makeCalc();
+        const rendered = renderProdPassportReport(calc, calculate(calc), { offset: 0, selectedItemId: 'ram-gb' }, {
+            patchModal() {}
+        });
+
+        const detail = byTestId(rendered, 'prod-passport-detail');
+        assert.doesNotMatch(collectText(detail), /Что повлияло/);
+        assert.equal(allByClass(detail, 'prod-passport-input-table').length, 0);
+        assert.equal(allByClass(detail, 'prod-passport-input-card').length, 0);
+        const formulaValues = allByClass(detail, 'prod-passport-quantity-value');
+        assert.ok(formulaValues.length > 0, 'в формуле количества должны быть подставленные значения');
+        assert.match(collectText(detail), /Подставленные значения/);
+        assert.match(collectText(formulaValues[0]), /Пиковый RPS|Средний RPS|RAM на 1 vCPU|Кэш/);
+    });
+
+    it('в расчёте количества использует те же названия и значения, что в блоке подставленных значений', async () => {
+        const { renderProdPassportReport } = await import('../../../js/ui/prodPassportReport.js');
+        const calc = makeCalc();
+        calc.answers.traffic_egress_tb_month = 15;
+        calc.answers.peak_rps = 80;
+        calc.answers.avg_rps = 80;
+        calc.answers.peak_duration_hours = 2;
+        calc.answers.avg_response_size_kb = 20;
+
+        const rendered = renderProdPassportReport(calc, calculate(calc), {
+            offset: 0,
+            selectedItemId: 'traffic-egress-tb'
+        }, {
+            patchModal() {}
+        });
+
+        const detail = byTestId(rendered, 'prod-passport-detail');
+        const calculation = byTestId(detail, 'prod-passport-quantity-calculation');
+        const valueCards = allByClass(detail, 'prod-passport-quantity-value');
+
+        assert.equal(valueCards.length, 1);
+        assert.match(collectText(valueCards[0]), /Фактический исходящий трафик, ТБ\/мес/);
+        assert.match(collectText(valueCards[0]), /15/);
+        assert.match(collectText(detail), /Количество рассчитано по параметрам.*Фактический исходящий трафик, ТБ\/мес/);
+        assert.match(collectText(calculation), /Фактический исходящий трафик, ТБ\/мес \(15\)/);
+        assert.doesNotMatch(collectText(calculation), /86400|1048576|Пиковое число запросов|Среднее число запросов/);
+        assert.doesNotMatch(collectText(detail), /traffic_egress_tb_month|peak_rps|avg_rps/);
+    });
+
+    it('показывает поиск по названию ЭК и сбрасывает страницу после ввода', async () => {
+        const { renderProdPassportReport } = await import('../../../js/ui/prodPassportReport.js');
+        const calc = makeCalc();
+        const patchCalls = [];
+        const rendered = renderProdPassportReport(calc, calculate(calc), { offset: 10, search: 'ram' }, {
+            patchModal: (...args) => patchCalls.push(args)
+        });
+
+        const search = byTestId(rendered, 'prod-passport-search');
+        assert.ok(search);
+        assert.equal(search.value, 'ram');
+        search.value = 'ssd';
+        search.dispatchEvent(new activeDom.window.Event('input', { bubbles: true }));
+        await new Promise(resolve => setTimeout(resolve, 170));
+
+        assert.equal(patchCalls.length, 1);
+        assert.equal(patchCalls[0][0], 'prodPassport');
+        assert.deepEqual(patchCalls[0][1], {
+            search: 'ssd',
+            offset: 0,
+            selectedItemId: null
+        });
     });
 
 });

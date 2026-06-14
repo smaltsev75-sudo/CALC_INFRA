@@ -7,8 +7,8 @@ import {
 
 test.describe.configure({ mode: 'parallel' });
 
-async function buildExpectedPassport(page, offset = 0) {
-    return page.evaluate(async (pageOffset) => {
+async function buildExpectedPassport(page, offset = 0, search = '') {
+    return page.evaluate(async ({ pageOffset, searchText }) => {
         const { store } = await import(new URL('js/state/store.js', document.baseURI).href);
         const { calculate } = await import(new URL('js/domain/calculator.js', document.baseURI).href);
         const { buildProdPassport } = await import(new URL('js/domain/prodPassport.js', document.baseURI).href);
@@ -20,7 +20,8 @@ async function buildExpectedPassport(page, offset = 0) {
             stand: 'PROD',
             offset: pageOffset,
             limit: 10,
-            topFactorsLimit: 6
+            topFactorsLimit: 6,
+            search: searchText
         });
         return {
             summary: {
@@ -35,13 +36,14 @@ async function buildExpectedPassport(page, offset = 0) {
                 hasNext: model.page.hasNext,
                 items: model.page.items.map(row => ({
                     itemId: row.itemId,
+                    name: row.name,
                     quantity: row.quantity,
                     monthlyCost: row.monthlyCost,
                     budgetSharePercent: row.budgetSharePercent
                 }))
             }
         };
-    }, offset);
+    }, { pageOffset: offset, searchText: search });
 }
 
 async function readPassportRows(page) {
@@ -53,6 +55,13 @@ async function readPassportRows(page) {
     })));
 }
 
+async function waitForPassportFirstRow(page, expectedItemId) {
+    await page.waitForFunction(
+        itemId => document.querySelector('.prod-passport-row')?.dataset.itemId === itemId,
+        expectedItemId
+    );
+}
+
 function expectRowsMatchModel(uiRows, modelRows) {
     expect(uiRows).toHaveLength(modelRows.length);
     for (let i = 0; i < modelRows.length; i += 1) {
@@ -61,6 +70,38 @@ function expectRowsMatchModel(uiRows, modelRows) {
         expect(uiRows[i].monthlyCost).toBeCloseTo(modelRows[i].monthlyCost, 2);
         expect(uiRows[i].budgetSharePercent).toBeCloseTo(modelRows[i].budgetSharePercent, 2);
     }
+}
+
+async function expectPassportListColumnsAligned(page) {
+    const alignments = await page.evaluate(() => {
+        const head = [...document.querySelector('[data-testid="prod-passport-list-head"]').children];
+        const rows = [...document.querySelectorAll('.prod-passport-row')].map(row => [...row.children]);
+        return rows.map(row => head.map((cell, index) => {
+            const headBox = cell.getBoundingClientRect();
+            const rowBox = row[index].getBoundingClientRect();
+            return {
+                leftDelta: Math.abs(headBox.left - rowBox.left),
+                rightDelta: Math.abs(headBox.right - rowBox.right),
+                textAlign: getComputedStyle(cell).textAlign
+            };
+        }));
+    });
+    expect(alignments.length).toBeGreaterThan(0);
+    for (const rowAlignment of alignments) {
+        for (const column of rowAlignment) {
+            expect(column.leftDelta).toBeLessThan(1);
+            expect(column.rightDelta).toBeLessThan(1);
+        }
+        expect(rowAlignment.slice(1).every(column => column.textAlign === 'right')).toBe(true);
+    }
+}
+
+async function expectNoHorizontalOverflow(page, selector) {
+    const overflow = await page.locator(selector).evaluate(node => ({
+        clientWidth: node.clientWidth,
+        scrollWidth: node.scrollWidth
+    }));
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
 }
 
 test('Паспорт ПРОМ открывается из Детализации и сходится с calculate()', async ({ page }) => {
@@ -74,6 +115,12 @@ test('Паспорт ПРОМ открывается из Детализации
     await clickSidebarTab(page, 'details');
     await page.getByTestId('details-prod-passport-open').click();
     await expect(page.getByTestId('prod-passport-report')).toBeVisible();
+    await expect(page.getByTestId('prod-passport-summary-items')).toBeVisible();
+    await expect(page.getByTestId('prod-passport-summary-month')).toBeVisible();
+    await expect(page.getByTestId('prod-passport-summary-year')).toBeVisible();
+    await expect(page.getByTestId('prod-passport-summary-defaults')).toHaveCount(0);
+    await expect(page.getByTestId('prod-passport-summary-repaired')).toHaveCount(0);
+    await expect(page.getByTestId('prod-passport-summary-warnings')).toHaveCount(0);
 
     const headers = await page.getByTestId('prod-passport-list-head').locator('span').allTextContents();
     expect(headers).toEqual(['ЭК', 'Количество', 'Бюджет/мес.', '% бюджета']);
@@ -87,27 +134,111 @@ test('Паспорт ПРОМ открывается из Детализации
     for (let i = 1; i < firstPageRows.length; i += 1) {
         expect(firstPageRows[i - 1].monthlyCost).toBeGreaterThanOrEqual(firstPageRows[i].monthlyCost);
     }
+    await expectPassportListColumnsAligned(page);
+    const rowEmphasis = await page.locator('.prod-passport-row').first().evaluate(row => {
+        const name = row.querySelector('.prod-passport-row-name strong');
+        const money = row.querySelector('.prod-passport-row-money');
+        const share = row.querySelector('.prod-passport-row-share');
+        return {
+            nameWeight: Number.parseInt(getComputedStyle(name).fontWeight, 10),
+            moneyWeight: Number.parseInt(getComputedStyle(money).fontWeight, 10),
+            shareWeight: Number.parseInt(getComputedStyle(share).fontWeight, 10)
+        };
+    });
+    expect(rowEmphasis.nameWeight).toBeGreaterThan(rowEmphasis.moneyWeight);
+    expect(rowEmphasis.nameWeight).toBeGreaterThan(rowEmphasis.shareWeight);
 
     const detail = page.getByTestId('prod-passport-detail');
     await expect(detail).toBeVisible();
     await expect(detail).toContainText('Как получено количество');
-    await expect(detail).toContainText('Подстановка');
-    await expect(detail).toContainText('Техническая формула');
-    await expect(detail).toContainText('Что повлияло');
+    await expect(page.locator('.prod-passport-detail-result')).toHaveCount(0);
+    await expect(page.locator('.prod-passport-cost-component-total')).toHaveCount(0);
+    await expect(page.locator('.prod-passport-cost-component').filter({ hasText: /^Итог/ })).toHaveCount(0);
+    const quantityDetails = page.getByTestId('prod-passport-quantity-details');
+    await expect(quantityDetails).toHaveJSProperty('tagName', 'SECTION');
+    await expect(page.getByTestId('prod-passport-quantity-calculation')).toBeVisible();
+    await expect(page.locator('.prod-passport-quantity-values')).toBeVisible();
+    await expect(page.locator('.prod-passport-quantity-value').first()).toBeVisible();
+    await expect(quantityDetails).toContainText('Подставленные значения');
+    await expect(detail).not.toContainText('Подстановка');
+    await expect(detail).not.toContainText('Техническая формула');
+    await expect(detail).not.toContainText('В формуле нет ссылок');
     await expect(detail).toContainText('Формула стоимости');
     await expect(detail).toContainText('Стоимость = количество × цена × тариф × риски × НДС');
     await expect(page.getByText('зацикливания нет')).toHaveCount(0);
 
     await expect(page.getByTestId('prod-passport-export-csv')).toBeVisible();
-    const factorHeaders = await page.locator('.prod-passport-factor-head span').allTextContents();
-    expect(factorHeaders).toEqual(['Фактор', 'Связанные ЭК, тыс.руб./мес.', 'Охват бюджета']);
+    const factorsBlock = page.getByTestId('prod-passport-top-factors');
+    await expect(factorsBlock).toBeVisible();
+    await expect(factorsBlock).toContainText('Проценты показывают долю от общего бюджета ПРОМ');
+    await expect(factorsBlock).toContainText('не суммируются к 100%');
+    await expect(page.locator('.prod-passport-factor-table')).toHaveCount(0);
+    await expect(page.locator('.prod-passport-factor-head')).toHaveCount(0);
+    await expect(page.locator('.prod-passport-factor-row')).toHaveCount(0);
+    await expect(page.locator('.prod-passport-factor-card')).toHaveCount(0);
+    await expect(factorsBlock).not.toContainText('Связанные ЭК');
+    await expect(factorsBlock).not.toContainText('Охват бюджета');
+    await expect(factorsBlock).toContainText(/\d+\s*%/);
+    await expect(page.locator('.prod-passport-factor-panel')).toBeVisible();
+    await expect(page.locator('.prod-passport-factor-gradient')).toHaveCount(1);
+    const factorItems = page.locator('.prod-passport-factor-item');
+    await expect(factorItems.first()).toBeVisible();
+    await expect(factorItems.first()).toContainText('тыс.руб./мес.');
+    await expect(factorItems.first().locator('.prod-passport-factor-swatch')).toBeVisible();
+    await expect(factorItems.first().locator('.prod-passport-factor-percent')).toContainText('%');
+    await expect(page.locator('.prod-passport-factor-segment')).toHaveCount(await factorItems.count());
+    expect(await factorItems.count()).toBeLessThanOrEqual(6);
+    await expectNoHorizontalOverflow(page, '.prod-passport-factor-panel');
+    await expectNoHorizontalOverflow(page, '.prod-passport-pager');
+
+    const searchInput = page.getByTestId('prod-passport-search');
+    await expect(searchInput).toBeVisible();
+    const searchText = 'waf';
+    await searchInput.click();
+    await page.keyboard.type('w', { delay: 25 });
+    await page.waitForTimeout(180);
+    await expect(page.getByTestId('prod-passport-search')).toBeFocused();
+    await page.keyboard.type('af', { delay: 25 });
+    await expect(page.getByTestId('prod-passport-search')).toHaveValue(searchText);
+    const expectedSearchPage = await buildExpectedPassport(page, 0, searchText);
+    await waitForPassportFirstRow(page, expectedSearchPage.page.items[0].itemId);
+    const filteredRows = await readPassportRows(page);
+    expect(filteredRows.length).toBeLessThan(firstPageRows.length);
+    expectRowsMatchModel(filteredRows, expectedSearchPage.page.items);
+    await searchInput.clear();
+    await waitForPassportFirstRow(page, expectedFirstPage.page.items[0].itemId);
 
     if (expectedFirstPage.page.hasNext) {
-        await page.getByTestId('prod-passport-next-page').click();
+        await page.getByTestId('prod-passport-page-button').nth(1).click();
         const expectedSecondPage = await buildExpectedPassport(page, 10);
+        await waitForPassportFirstRow(page, expectedSecondPage.page.items[0].itemId);
         const secondPageRows = await readPassportRows(page);
         expectRowsMatchModel(secondPageRows, expectedSecondPage.page.items);
+        await expectPassportListColumnsAligned(page);
+
+        if (expectedFirstPage.page.total > 20) {
+            await page.getByTestId('prod-passport-page-button').filter({ hasText: '3' }).click();
+            const expectedThirdPage = await buildExpectedPassport(page, 20);
+            await waitForPassportFirstRow(page, expectedThirdPage.page.items[0].itemId);
+            const thirdPageRows = await readPassportRows(page);
+            expectRowsMatchModel(thirdPageRows, expectedThirdPage.page.items);
+            await expectPassportListColumnsAligned(page);
+            await expect(detail).not.toContainText('Что повлияло');
+            await expect(page.locator('.prod-passport-input-card')).toHaveCount(0);
+            await expect(page.locator('.prod-passport-input-table')).toHaveCount(0);
+        }
+
+        await page.getByTestId('prod-passport-page-button').filter({ hasText: '1' }).click();
+        await waitForPassportFirstRow(page, expectedFirstPage.page.items[0].itemId);
+        const returnedRows = await readPassportRows(page);
+        expectRowsMatchModel(returnedRows, expectedFirstPage.page.items);
+        await expectPassportListColumnsAligned(page);
     }
+
+    await expect(page.getByTestId('prod-passport-page-input')).toHaveCount(0);
+    await expect(page.getByTestId('prod-passport-page-go')).toHaveCount(0);
+    await expect(page.locator('.prod-passport-input-table')).toHaveCount(0);
+    await expect(page.locator('.prod-passport-input-card')).toHaveCount(0);
 
     expect(consoleErrors).toEqual([]);
 });

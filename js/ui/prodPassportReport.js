@@ -5,6 +5,10 @@ import { icon } from './icons.js';
 import { error as showError } from './snackbar.js';
 
 const PAGE_SIZE = 10;
+const SEARCH_PATCH_DELAY_MS = 120;
+
+let searchPatchTimer = null;
+let restoreSearchFocusOnce = false;
 
 function moneyThousands(value) {
     const n = Number(value) || 0;
@@ -12,6 +16,40 @@ function moneyThousands(value) {
 }
 
 const csvCell = value => csvSafeQuote(value, ';');
+
+function factorToneClass(index) {
+    return `prod-passport-factor-tone-${index % 6}`;
+}
+
+function scheduleSearchPatch(ctx, search) {
+    if (searchPatchTimer) clearTimeout(searchPatchTimer);
+    searchPatchTimer = setTimeout(() => {
+        restoreSearchFocusOnce = true;
+        ctx.patchModal('prodPassport', {
+            search,
+            offset: 0,
+            selectedItemId: null
+        });
+    }, SEARCH_PATCH_DELAY_MS);
+}
+
+function restoreSearchFocus(input) {
+    if (!restoreSearchFocusOnce || !input) return;
+    restoreSearchFocusOnce = false;
+    const schedule = typeof requestAnimationFrame === 'function'
+        ? requestAnimationFrame
+        : callback => setTimeout(callback, 0);
+    schedule(() => {
+        if (!input.isConnected) return;
+        input.focus();
+        const end = String(input.value || '').length;
+        try {
+            input.setSelectionRange(end, end);
+        } catch {
+            /* search input may reject selection in older engines */
+        }
+    });
+}
 
 function renderSummaryCard(label, value, hint, testId) {
     return el('div', {
@@ -25,6 +63,12 @@ function renderSummaryCard(label, value, hint, testId) {
 }
 
 function renderSummary(model) {
+    const dataStatus = [
+        ['По умолчанию', model.summary.defaultItemsCount],
+        ['Автоисправлено', model.summary.repairedItemsCount],
+        ['Предупреждения', model.summary.warningItemsCount]
+    ].filter(([, value]) => Number(value) > 0);
+
     return el('section', {
         class: 'prod-passport-summary',
         attrs: { 'data-testid': 'prod-passport-summary' }
@@ -48,61 +92,79 @@ function renderSummary(model) {
                 model.summary.totalAnnualText,
                 'Месячный бюджет ПРОМ, умноженный на 12 месяцев.',
                 'prod-passport-summary-year'
-            ),
-            renderSummaryCard(
-                'По умолчанию',
-                String(model.summary.defaultItemsCount),
-                'Сколько ЭК в расчёте использовали хотя бы одно значение по умолчанию.',
-                'prod-passport-summary-defaults'
-            ),
-            renderSummaryCard(
-                'Автоисправлено',
-                String(model.summary.repairedItemsCount),
-                'Сколько ЭК используют значения, исправленные при загрузке JSON.',
-                'prod-passport-summary-repaired'
-            ),
-            renderSummaryCard(
-                'Предупреждения',
-                String(model.summary.warningItemsCount),
-                'Сколько ЭК имеют замечания к формуле или исходным значениям.',
-                'prod-passport-summary-warnings'
             )
         ),
+        dataStatus.length
+            ? el('div', { class: 'prod-passport-data-status' },
+                el('span', { text: 'Проверка данных:' }),
+                dataStatus.map(([label, value]) => el('span', {
+                    class: 'prod-passport-data-status-chip',
+                    text: `${label}: ${value}`
+                }))
+            )
+            : null,
         renderTopFactors(model)
     );
 }
 
 function renderTopFactors(model) {
     const factors = model.summary.topFactors || [];
-    return el('div', {
+    const coverageTotal = factors.reduce((sum, factor) => sum + (Number(factor.coveragePercent) || 0), 0);
+    const remainder = Math.max(0, 100 - coverageTotal);
+    return el('section', {
         class: 'prod-passport-factors',
         attrs: { 'data-testid': 'prod-passport-top-factors' }
     },
-        el('div', { class: 'prod-passport-subtitle', text: 'Что сильнее всего повлияло на бюджет ПРОМ' }),
-        el('div', {
-            class: 'prod-passport-factor-note',
-            text: 'Показатели пересекаются между факторами: один ЭК может зависеть от нескольких ответов, поэтому проценты не суммируются к 100%.'
-        }),
+        el('div', { class: 'prod-passport-factors-title' },
+            el('div', { class: 'prod-passport-subtitle', text: 'Факторы влияния' }),
+            el('span', {
+                class: 'prod-passport-factors-summary-meta',
+                text: factors.length ? `${factors.length} показателей` : 'нет заметных факторов'
+            })
+        ),
         factors.length === 0
             ? el('div', { class: 'prod-passport-empty', text: 'Нет факторов с заметным охватом.' })
-            : el('div', { class: 'prod-passport-factor-table' },
-                el('div', { class: 'prod-passport-factor-head' },
-                    el('span', { text: 'Фактор' }),
-                    el('span', { text: 'Связанные ЭК, тыс.руб./мес.' }),
-                    el('span', { text: 'Охват бюджета' })
-                ),
-                factors.map(factor => el('div', {
-                    class: 'prod-passport-factor-row',
-                    dataset: {
-                        fieldId: factor.fieldId,
-                        monthlyImpact: String(factor.monthlyImpact),
-                        coverage: String(factor.coveragePercent)
-                    }
+            : el('article', { class: 'prod-passport-factor-panel' },
+                el('div', {
+                    class: 'prod-passport-factor-gradient',
+                    attrs: { 'aria-hidden': 'true' }
                 },
-                    el('span', { class: 'prod-passport-factor-name', text: factor.label }),
-                    el('span', { class: 'prod-passport-factor-money', text: String(moneyThousands(factor.monthlyImpact)) }),
-                    el('span', { class: 'prod-passport-factor-share', text: factor.coverageText })
-                ))
+                    factors.map((factor, index) => el('span', {
+                        class: ['prod-passport-factor-segment', factorToneClass(index)],
+                        title: `${factor.label}: ${factor.coverageText}`,
+                        style: {
+                            flexBasis: `${Math.max(0, Number(factor.coveragePercent) || 0)}%`
+                        }
+                    })),
+                    remainder > 0
+                        ? el('span', {
+                            class: 'prod-passport-factor-remainder',
+                            style: { flexBasis: `${remainder}%` }
+                        })
+                        : null
+                ),
+                el('p', {
+                    class: 'prod-passport-factor-note',
+                    text: 'Проценты показывают долю от общего бюджета ПРОМ. Один ЭК может зависеть от нескольких факторов, поэтому проценты не суммируются к 100%.'
+                }),
+                el('div', { class: 'prod-passport-factor-list' },
+                    factors.map((factor, index) => el('div', {
+                        class: 'prod-passport-factor-item',
+                        dataset: {
+                            fieldId: factor.fieldId,
+                            monthlyImpact: String(factor.monthlyImpact),
+                            coverage: String(factor.coveragePercent)
+                        }
+                    },
+                        el('span', {
+                            class: ['prod-passport-factor-swatch', factorToneClass(index)],
+                            attrs: { 'aria-hidden': 'true' }
+                        }),
+                        el('span', { class: 'prod-passport-factor-name', text: factor.label }),
+                        el('strong', { class: 'prod-passport-factor-money', text: factor.monthlyText }),
+                        el('span', { class: 'prod-passport-factor-percent', text: factor.coverageText })
+                    ))
+                )
             )
     );
 }
@@ -158,11 +220,27 @@ function renderItemRow(row, selected, ctx) {
 }
 
 function renderItemList(model, selectedItemId, ctx) {
+    const search = model.search || '';
+    const searchInput = el('input', {
+        class: 'prod-passport-search',
+        type: 'search',
+        value: search,
+        placeholder: 'Поиск по названию ЭК',
+        attrs: {
+            'data-testid': 'prod-passport-search',
+            'aria-label': 'Поиск по названию ЭК'
+        },
+        onInput: event => scheduleSearchPatch(ctx, event.target.value)
+    });
+    restoreSearchFocus(searchInput);
     return el('section', {
         class: 'prod-passport-list',
         attrs: { 'data-testid': 'prod-passport-item-list' }
     },
         el('div', { class: 'prod-passport-section-title' }, 'ЭК ПРОМ'),
+        el('div', { class: 'prod-passport-list-toolbar' },
+            searchInput
+        ),
         el('div', {
             class: 'prod-passport-list-head',
             attrs: { 'data-testid': 'prod-passport-list-head' }
@@ -173,21 +251,48 @@ function renderItemList(model, selectedItemId, ctx) {
             el('span', { text: '% бюджета' })
         ),
         model.page.items.length === 0
-            ? el('div', { class: 'prod-passport-empty', text: 'Для ПРОМ нет ЭК с количеством или бюджетом.' })
+            ? el('div', {
+                class: 'prod-passport-empty',
+                text: search ? 'По этому названию ЭК не найдены.' : 'Для ПРОМ нет ЭК с количеством или бюджетом.'
+            })
             : model.page.items.map(row => renderItemRow(row, row.itemId === selectedItemId, ctx)),
         renderPager(model, ctx)
     );
 }
 
+function visiblePageNumbers(currentPage, pageCount) {
+    if (pageCount <= 5) return Array.from({ length: pageCount }, (_, index) => index + 1);
+    const pages = new Set([1, pageCount, currentPage]);
+    if (currentPage <= 3) {
+        pages.add(2);
+        pages.add(3);
+    } else {
+        pages.add(currentPage - 1);
+    }
+    if (currentPage >= pageCount - 2) {
+        pages.add(pageCount - 1);
+        pages.add(pageCount - 2);
+    } else {
+        pages.add(currentPage + 1);
+    }
+    return [...pages].filter(page => page >= 1 && page <= pageCount).sort((a, b) => a - b);
+}
+
 function renderPager(model, ctx) {
     const from = model.page.total === 0 ? 0 : model.page.offset + 1;
     const to = Math.min(model.page.offset + model.page.items.length, model.page.total);
-    const setOffset = nextOffset => {
+    const pageCount = Math.max(1, Math.ceil(model.page.total / model.page.limit));
+    const currentPage = Math.min(pageCount, Math.floor(model.page.offset / model.page.limit) + 1);
+    const pageNumbers = visiblePageNumbers(currentPage, pageCount);
+    const setOffset = nextOffsetRaw => {
+        const maxOffset = Math.max(0, (pageCount - 1) * model.page.limit);
+        const nextOffset = Math.min(maxOffset, Math.max(0, nextOffsetRaw));
         const selectedItemId = model.items[nextOffset]?.itemId || model.page.items[0]?.itemId || null;
         ctx.patchModal('prodPassport', { offset: nextOffset, selectedItemId });
     };
+    const setPage = pageNumber => setOffset((pageNumber - 1) * model.page.limit);
     return el('div', { class: 'prod-passport-pager' },
-        el('span', { text: `${from}-${to} из ${model.page.total}` }),
+        el('span', { class: 'prod-passport-page-range', text: `${from}-${to} из ${model.page.total}` }),
         el('div', { class: 'prod-passport-pager-actions' },
             el('button', {
                 class: 'btn btn-ghost btn-icon-text',
@@ -195,39 +300,56 @@ function renderPager(model, ctx) {
                 disabled: !model.page.hasPrev,
                 onClick: () => setOffset(Math.max(0, model.page.offset - model.page.limit))
             }, icon('chevron-left', { size: 14 }), el('span', { text: 'Назад' })),
+            el('div', { class: 'prod-passport-page-buttons', attrs: { 'aria-label': 'Страницы отчёта' } },
+                pageNumbers.flatMap((pageNumber, index) => [
+                    index > 0 && pageNumber - pageNumbers[index - 1] > 1
+                        ? el('span', { class: 'prod-passport-page-ellipsis', text: '...' })
+                        : null,
+                    el('button', {
+                        class: ['prod-passport-page-button', pageNumber === currentPage && 'prod-passport-page-button-active'],
+                        attrs: {
+                            type: 'button',
+                            'data-testid': 'prod-passport-page-button',
+                            'aria-current': pageNumber === currentPage ? 'page' : null,
+                            'aria-label': `Страница ${pageNumber}`
+                        },
+                        onClick: () => setPage(pageNumber)
+                    }, String(pageNumber))
+                ])
+            ),
             el('button', {
                 class: 'btn btn-ghost btn-icon-text',
                 attrs: { type: 'button', 'data-testid': 'prod-passport-next-page' },
                 disabled: !model.page.hasNext,
                 onClick: () => setOffset(model.page.offset + model.page.limit)
-            }, el('span', { text: 'Следующие 10' }), icon('chevron-right', { size: 14 }))
+            }, el('span', { text: 'Далее' }), icon('chevron-right', { size: 14 }))
         )
     );
 }
 
-function renderResultBlock(row) {
-    return el('div', { class: 'prod-passport-detail-result' },
-        el('div', { class: 'prod-passport-kv' },
-            el('span', { text: 'Количество' }),
-            el('strong', { text: row.quantityText })
-        ),
-        el('div', { class: 'prod-passport-kv' },
-            el('span', { text: 'Бюджет' }),
-            el('strong', { text: row.monthlyText })
-        ),
-        el('div', { class: 'prod-passport-kv' },
-            el('span', { text: 'Год' }),
-            el('strong', { text: row.annualText })
-        ),
-        el('div', { class: 'prod-passport-kv' },
-            el('span', { text: 'Доля бюджета' }),
-            el('strong', { text: row.budgetShareText })
+function renderQuantityValues(row) {
+    const inputs = [
+        ...(row.inputs.questions || []),
+        ...(row.inputs.settings || [])
+    ];
+    if (!inputs.length) return null;
+    return el('div', { class: 'prod-passport-quantity-values' },
+        el('span', { class: 'prod-passport-quantity-values-title', text: 'Подставленные значения' }),
+        el('div', { class: 'prod-passport-quantity-values-grid' },
+            inputs.map(input => el('div', { class: 'prod-passport-quantity-value' },
+                el('span', { class: 'prod-passport-quantity-value-label', text: input.label }),
+                el('strong', { class: 'prod-passport-quantity-value-number', text: input.valueText }),
+                el('span', { class: 'prod-passport-quantity-value-source', text: input.sourceLabel })
+            ))
         )
     );
 }
 
 function renderQuantityFormula(row) {
-    return el('section', { class: 'prod-passport-detail-section' },
+    return el('section', {
+        class: ['prod-passport-detail-section', 'prod-passport-quantity-section'],
+        attrs: { 'data-testid': 'prod-passport-quantity-details' }
+    },
         el('h4', { text: 'Как получено количество' }),
         row.errors.length
             ? el('div', {
@@ -237,43 +359,11 @@ function renderQuantityFormula(row) {
             })
             : null,
         el('p', { class: 'prod-passport-formula-text', text: row.quantityFormula.text }),
-        el('div', { class: 'prod-passport-substitution' },
-            el('span', { text: 'Подстановка' }),
+        el('div', { class: 'prod-passport-substitution', attrs: { 'data-testid': 'prod-passport-quantity-calculation' } },
+            el('span', { text: 'Расчёт количества' }),
             el('code', { text: row.quantityFormula.substitution })
         ),
-        el('details', { class: 'prod-passport-technical' },
-            el('summary', { text: 'Техническая формула' }),
-            el('code', { text: row.quantityFormula.technical || 'не задано' })
-        )
-    );
-}
-
-function renderInputsTable(row) {
-    const inputs = [
-        ...(row.inputs.questions || []),
-        ...(row.inputs.settings || [])
-    ];
-    return el('section', { class: 'prod-passport-detail-section' },
-        el('h4', { text: 'Что повлияло' }),
-        inputs.length === 0
-            ? el('div', { class: 'prod-passport-empty', text: 'В формуле нет ссылок на ответы или параметры расчёта.' })
-            : el('div', { class: 'prod-passport-input-table' },
-                el('div', { class: 'prod-passport-input-head' },
-                    el('span', { text: 'Параметр' }),
-                    el('span', { text: 'Значение' }),
-                    el('span', { text: 'Источник значения' }),
-                    el('span', { text: 'Техническая ссылка' })
-                ),
-                inputs.map(input => el('div', { class: 'prod-passport-input-row' },
-                    el('span', { text: input.label }),
-                    el('span', { text: input.valueText }),
-                    el('span', { text: input.sourceLabel }),
-                    el('details', { class: 'prod-passport-tech-ref' },
-                        el('summary', { text: 'Показать' }),
-                        el('code', { text: input.technicalRef })
-                    )
-                ))
-            )
+        renderQuantityValues(row)
     );
 }
 
@@ -282,7 +372,8 @@ function renderCostFormula(row) {
         el('h4', { text: 'Формула стоимости' }),
         el('p', { class: 'prod-passport-formula-label', text: row.costFormula.label }),
         el('code', { class: 'prod-passport-cost-expression', text: row.costFormula.expression }),
-        el('div', { class: 'prod-passport-cost-components' },
+        row.costFormula.components.length
+            ? el('div', { class: 'prod-passport-cost-components' },
             row.costFormula.components.map(component => el('div', {
                 class: 'prod-passport-cost-component',
                 title: component.hint
@@ -291,6 +382,7 @@ function renderCostFormula(row) {
                 el('strong', { text: component.text })
             ))
         )
+            : null
     );
 }
 
@@ -315,9 +407,7 @@ function renderDetail(model, selectedItemId) {
             el('h3', { text: row.name }),
             renderMarkers(row)
         ),
-        renderResultBlock(row),
         renderQuantityFormula(row),
-        renderInputsTable(row),
         renderCostFormula(row)
     );
 }
@@ -369,7 +459,8 @@ export function renderProdPassportReport(calc, result, modalState, ctx) {
         stand: 'PROD',
         offset,
         limit: PAGE_SIZE,
-        topFactorsLimit: 6
+        topFactorsLimit: 6,
+        search: modalState?.search || ''
     });
     const selectedItemId = modalState?.selectedItemId
         || model.page.items[0]?.itemId

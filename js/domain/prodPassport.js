@@ -1,6 +1,8 @@
 import { STAND_IDS, STAND_LABELS, MONTHS_PER_YEAR } from '../utils/constants.js';
 import { calculate } from './calculator.js';
 import { buildQuantityTrace, getEffectiveItems } from './quantityTrace.js';
+import { getAst, isAstError } from './formula/cache.js';
+import { evaluate } from './formula/evaluator.js';
 import { SEED_ITEMS } from './seed.js';
 
 const DEFAULT_LIMIT = 10;
@@ -114,6 +116,10 @@ function formatPercent(value) {
     return `${formatRu(value, 0)}%`;
 }
 
+function normalizeSearch(value) {
+    return String(value || '').trim().toLocaleLowerCase('ru-RU');
+}
+
 function formatValue(value) {
     if (value === null || value === undefined || value === '') return 'не задано';
     if (typeof value === 'boolean') return value ? 'Да' : 'Нет';
@@ -154,8 +160,219 @@ function itemDashboardResource(item) {
     return item?.dashboardResource || SEED_ITEM_BY_ID.get(item?.id)?.dashboardResource || null;
 }
 
-function buildInputLists(trace) {
-    const questions = trace.questionInputs.map(input => ({
+function escapeRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function formulaValue(value) {
+    if (value === null || value === undefined || value === '') return '0';
+    if (typeof value === 'boolean') return value ? '1' : '0';
+    if (typeof value === 'number') return Number.isFinite(value) ? formatRu(value, Number.isInteger(value) ? 0 : 2) : '0';
+    if (Array.isArray(value)) return JSON.stringify(value);
+    return `"${String(value)}"`;
+}
+
+function formulaBool(value) {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'string') return value !== '' && value !== 'false' && value !== '0';
+    return Boolean(value);
+}
+
+function setNestedValue(root, path, value) {
+    const parts = String(path || '').split('.').filter(Boolean);
+    if (!parts.length) return;
+    let cursor = root;
+    for (let i = 0; i < parts.length - 1; i += 1) {
+        const part = parts[i];
+        if (!cursor[part] || typeof cursor[part] !== 'object') cursor[part] = {};
+        cursor = cursor[part];
+    }
+    cursor[parts[parts.length - 1]] = value;
+}
+
+function buildFormulaContext(trace) {
+    const Q = {};
+    const S = {};
+    for (const input of trace.questionInputs || []) Q[input.id] = input.value;
+    for (const input of trace.settingInputs || []) setNestedValue(S, input.path, input.value);
+    return { Q, S, STAND: trace.stand };
+}
+
+function refFromVarNode(node) {
+    const path = node.path || (node.name !== undefined ? [node.name] : []);
+    if (node.scope === 'Q') return `Q.${path[0]}`;
+    if (node.scope === 'S') return `S.${path.join('.')}`;
+    return null;
+}
+
+function resolveFormulaVar(node, context) {
+    const path = node.path || (node.name !== undefined ? [node.name] : []);
+    if (node.scope === 'Q') return context.Q?.[path[0]];
+    if (node.scope === 'S') {
+        let value = context.S;
+        for (const part of path) {
+            if (value === null || value === undefined || typeof value !== 'object') return 0;
+            value = value[part];
+        }
+        return value;
+    }
+    return 0;
+}
+
+function collectActiveRefs(node, context, refs = new Set()) {
+    if (!node || typeof node !== 'object') return refs;
+    if (node.type === 'Var') {
+        const ref = refFromVarNode(node);
+        if (ref) refs.add(ref);
+        return refs;
+    }
+    if (node.type === 'UnaryOp') {
+        collectActiveRefs(node.arg, context, refs);
+        return refs;
+    }
+    if (node.type === 'BinOp') {
+        collectActiveRefs(node.left, context, refs);
+        collectActiveRefs(node.right, context, refs);
+        return refs;
+    }
+    if (node.type === 'Call') {
+        if (node.name === 'if' && node.args.length === 3) {
+            collectActiveRefs(node.args[0], context, refs);
+            const selected = formulaBool(evaluate(node.args[0], context)) ? node.args[1] : node.args[2];
+            collectActiveRefs(selected, context, refs);
+            return refs;
+        }
+        for (const arg of node.args || []) collectActiveRefs(arg, context, refs);
+    }
+    return refs;
+}
+
+function buildRefLabels(trace) {
+    const labels = new Map();
+    for (const input of trace.questionInputs || []) {
+        labels.set(input.ref, questionLabel(input));
+    }
+    for (const input of trace.settingInputs || []) {
+        labels.set(input.ref, settingLabel(input));
+    }
+    return labels;
+}
+
+const FORMULA_FUNCTION_LABELS = Object.freeze({
+    ceil: 'округлить вверх',
+    floor: 'округлить вниз',
+    round: 'округлить',
+    abs: 'модуль',
+    min: 'мин',
+    max: 'макс',
+    clamp: 'ограничить'
+});
+
+const FORMULA_OPERATOR_LABELS = Object.freeze({
+    '*': '×',
+    '/': '/',
+    '+': '+',
+    '-': '-',
+    '%': '%',
+    '>': '>',
+    '>=': '>=',
+    '<': '<',
+    '<=': '<=',
+    '==': '=',
+    '!=': '!='
+});
+
+function renderFormulaNode(node, context, labels) {
+    if (!node || typeof node !== 'object') return '0';
+    switch (node.type) {
+        case 'Number': return formulaValue(node.value);
+        case 'String': return `"${node.value}"`;
+        case 'Bool': return node.value ? 'Да' : 'Нет';
+        case 'Stand': return String(context.STAND || '');
+        case 'Var': {
+            const ref = refFromVarNode(node);
+            const label = labels.get(ref) || ref || 'параметр';
+            return `${label} (${formulaValue(resolveFormulaVar(node, context))})`;
+        }
+        case 'UnaryOp':
+            return `${node.op}${renderFormulaNode(node.arg, context, labels)}`;
+        case 'BinOp': {
+            const op = FORMULA_OPERATOR_LABELS[node.op] || node.op;
+            return `(${renderFormulaNode(node.left, context, labels)} ${op} ${renderFormulaNode(node.right, context, labels)})`;
+        }
+        case 'Call': {
+            if (node.name === 'if' && node.args.length === 3) {
+                const selected = formulaBool(evaluate(node.args[0], context)) ? node.args[1] : node.args[2];
+                return renderFormulaNode(selected, context, labels);
+            }
+            const label = FORMULA_FUNCTION_LABELS[node.name] || node.name;
+            const args = (node.args || []).map(arg => renderFormulaNode(arg, context, labels)).join(', ');
+            return `${label}(${args})`;
+        }
+        default:
+            return 'формула';
+    }
+}
+
+function buildFormulaSubstitution(technical, trace, context, labels) {
+    const ast = technical ? getAst(technical) : null;
+    if (ast && !isAstError(ast)) {
+        try {
+            return `${renderFormulaNode(ast, context, labels)} = ${formatQty(trace.qty, trace.unit)}`;
+        } catch {
+            // fallback below keeps the report usable if readable rendering fails
+        }
+    }
+    let expression = technical || 'формула';
+    const refs = [
+        ...(trace.questionInputs || []).map(input => [input.ref, input.value]),
+        ...(trace.settingInputs || []).map(input => [input.ref, input.value])
+    ].sort((a, b) => b[0].length - a[0].length);
+
+    for (const [ref, value] of refs) {
+        expression = expression.replace(new RegExp(`\\b${escapeRegExp(ref)}\\b`, 'g'), formulaValue(value));
+    }
+    return `${expression} = ${formatQty(trace.qty, trace.unit)}`;
+}
+
+function buildActiveRefs(technical, trace, context) {
+    const ast = technical ? getAst(technical) : null;
+    if (!ast || isAstError(ast)) return null;
+    try {
+        return collectActiveRefs(ast, context);
+    } catch {
+        return null;
+    }
+}
+
+function activeInputLabels(trace, activeRefs) {
+    const labels = [];
+    for (const input of trace.questionInputs || []) {
+        if (activeRefs && !activeRefs.has(input.ref)) continue;
+        labels.push(questionLabel(input));
+    }
+    for (const input of trace.settingInputs || []) {
+        if (activeRefs && !activeRefs.has(input.ref)) continue;
+        labels.push(settingLabel(input));
+    }
+    return labels;
+}
+
+function buildFormulaText(trace, item, activeRefs) {
+    const labels = activeInputLabels(trace, activeRefs);
+    if (labels.length) {
+        return `Количество рассчитано по параметрам из блока «Подставленные значения»: ${labels.join('; ')}.`;
+    }
+    return itemText(item, 'description')
+        || `Количество ЭК рассчитывается по формуле для стенда ${STAND_LABELS[trace.stand] || trace.stand}.`;
+}
+
+function buildInputLists(trace, activeRefs = null) {
+    const questions = trace.questionInputs
+        .filter(input => !activeRefs || activeRefs.has(input.ref))
+        .map(input => ({
         id: input.id,
         label: questionLabel(input),
         value: input.value,
@@ -165,7 +382,9 @@ function buildInputLists(trace) {
         technicalRef: input.ref
     }));
 
-    const settings = trace.settingInputs.map(input => ({
+    const settings = trace.settingInputs
+        .filter(input => !activeRefs || activeRefs.has(input.ref))
+        .map(input => ({
         id: input.path,
         label: settingLabel(input),
         value: input.value,
@@ -195,13 +414,15 @@ function markerFromInputs(inputs, errors) {
 
 function buildQuantityFormula(trace, item) {
     const technical = trace.formula || itemFormula(item, trace.stand);
-    const text = trace.formulaHelp
-        || itemText(item, 'description')
-        || `Количество ЭК рассчитывается по формуле для стенда ${STAND_LABELS[trace.stand] || trace.stand}.`;
+    const context = buildFormulaContext(trace);
+    const labels = buildRefLabels(trace);
+    const activeRefs = buildActiveRefs(technical, trace, context);
+    const text = buildFormulaText(trace, item, activeRefs);
     return {
         text,
         technical,
-        substitution: `${technical || 'формула'} = ${formatQty(trace.qty, trace.unit)}`
+        substitution: buildFormulaSubstitution(technical, trace, context, labels),
+        activeRefs: activeRefs ? [...activeRefs] : null
     };
 }
 
@@ -216,9 +437,7 @@ function buildCostFormula(trace) {
         return {
             label: 'Стоимость',
             expression: `Разложение стоимости недоступно; итог ≈ ${formatMoneyMonth(monthly)}`,
-            components: [
-                { label: 'Итог', value: monthly, text: formatMoneyMonth(monthly), hint: 'Бюджет ЭК за месяц из результата расчёта' }
-            ],
+            components: [],
             resultText: formatMoneyMonth(monthly)
         };
     }
@@ -230,8 +449,7 @@ function buildCostFormula(trace) {
             { label: 'Цена', value: price, text: formatMoneyRub(price), hint: 'Цена за одну единицу ЭК из применённого прайса' },
             { label: 'Тариф', value: interval, text: formatRatio(interval), hint: 'Множитель интервала тарификации в месяц' },
             { label: 'Риски', value: riskMul, text: formatRatio(riskMul), hint: 'Множитель риск-коэффициентов; 1 означает без наценки' },
-            { label: 'НДС', value: vatMul, text: formatRatio(vatMul), hint: 'Множитель НДС, если налог включён в расчёт' },
-            { label: 'Итог', value: monthly, text: formatMoneyMonth(monthly), hint: 'Бюджет ЭК за месяц' }
+            { label: 'НДС', value: vatMul, text: formatRatio(vatMul), hint: 'Множитель НДС, если налог включён в расчёт' }
         ],
         resultText: formatMoneyMonth(monthly)
     };
@@ -244,7 +462,9 @@ function buildRow({ item, cell, trace, totalMonthly }) {
     const monthlyCost = Number.isFinite(rawMonthlyCost) ? rawMonthlyCost : 0;
     const annualCost = monthlyCost * MONTHS_PER_YEAR;
     const budgetSharePercent = totalMonthly > EPS ? monthlyCost / totalMonthly * 100 : 0;
-    const inputs = buildInputLists(trace);
+    const quantityFormula = buildQuantityFormula(trace, item);
+    const activeRefs = quantityFormula.activeRefs ? new Set(quantityFormula.activeRefs) : null;
+    const inputs = buildInputLists(trace, activeRefs);
     const errors = [
         ...(cell?.error ? [{ type: 'formula-error', message: cell.error }] : []),
         ...(!Number.isFinite(rawQuantity)
@@ -274,7 +494,7 @@ function buildRow({ item, cell, trace, totalMonthly }) {
         markers,
         errors,
         errorText: errors.map(error => error.message).join('; '),
-        quantityFormula: buildQuantityFormula(trace, item),
+        quantityFormula,
         costFormula: buildCostFormula(trace),
         inputs
     };
@@ -338,6 +558,7 @@ export function buildProdPassport(calculation, options = {}) {
     const stand = STAND_IDS.includes(options.stand) ? options.stand : 'PROD';
     const limit = Math.max(1, Number(options.limit) || DEFAULT_LIMIT);
     const offset = Math.max(0, Number(options.offset) || 0);
+    const search = normalizeSearch(options.search);
     const includeZero = options.includeZero === true;
     const topFactorsLimit = Math.max(1, Number(options.topFactorsLimit) || 5);
     const result = options.result || calculate(calculation);
@@ -352,6 +573,7 @@ export function buildProdPassport(calculation, options = {}) {
             stand,
             standLabel,
             standDisabled: true,
+            search,
             emptyStateMessage: `Стенд ${standLabel} скрыт в Детализации. Включите стенд в панели «Стенды», чтобы увидеть паспорт.`,
             items: [],
             page: {
@@ -424,21 +646,27 @@ export function buildProdPassport(calculation, options = {}) {
         .filter(row => includeZero || row.quantity > EPS || row.monthlyCost > EPS || row.errors.length > 0)
         .sort((a, b) => b.monthlyCost - a.monthlyCost || a.name.localeCompare(b.name, 'ru'));
 
-    const pageItems = rows.slice(offset, offset + limit);
+    const visibleRows = search
+        ? rows.filter(row => row.name.toLocaleLowerCase('ru-RU').includes(search))
+        : rows;
+    const maxOffset = Math.max(0, Math.floor(Math.max(0, visibleRows.length - 1) / limit) * limit);
+    const effectiveOffset = Math.min(offset, maxOffset);
+    const pageItems = visibleRows.slice(effectiveOffset, effectiveOffset + limit);
     const qualityCounts = buildQualityCounts(rows);
 
     return {
         stand,
         standLabel,
         standDisabled: false,
-        items: rows,
+        search,
+        items: visibleRows,
         page: {
             items: pageItems,
-            offset,
+            offset: effectiveOffset,
             limit,
-            total: rows.length,
-            hasNext: offset + limit < rows.length,
-            hasPrev: offset > 0
+            total: visibleRows.length,
+            hasNext: effectiveOffset + limit < visibleRows.length,
+            hasPrev: effectiveOffset > 0
         },
         summary: {
             itemsCount: rows.length,
