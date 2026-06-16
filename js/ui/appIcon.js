@@ -1,43 +1,77 @@
 /**
  * Иконка приложения (вариант K — AI-чип со знаком ₽) — единый источник для UI.
  *
- * Канонический исходник: assets/app-icon.svg. Здесь — встраиваемая inline-копия
- * для бренда в sidebar и шапки модалки «Справка». Favicon на вкладке браузера
- * хранится отдельно как статический data-URI в index.html (грузится до JS, без
- * мерцания); это та же иконка, отрисованная из того же исходника.
+ * Канонический исходник: assets/app-icon.svg (тёмный вариант). Здесь —
+ * встраиваемая inline-копия для бренда в sidebar и шапки модалки «Справка»,
+ * с двумя палитрами:
+ *   - 'dark'  — тёмная плитка (для тёмной темы приложения);
+ *   - 'light' — светлая плитка + тёмный чёткий чип (для светлой темы), иначе
+ *     тёмный блок плохо читается на тёплом cream-фоне светлой темы.
+ * Favicon на вкладке браузера хранится отдельно как статический data-URI в
+ * index.html (тёмный вариант — вкладка вне темы приложения).
  *
  * id градиентов/фильтра параметризованы счётчиком: иконка может оказаться в DOM
- * сразу в нескольких экземплярах (бренд + открытая Справка), а одинаковые id
- * ломали бы ссылки `url(#...)` (браузер берёт первый по порядку). Уникальный
- * префикс на каждый вызов исключает коллизию.
+ * сразу в нескольких экземплярах (бренд + открытая Справка) и в обеих палитрах,
+ * а одинаковые id ломали бы ссылки `url(#...)` (браузер берёт первый по порядку).
+ * Уникальный префикс на каждый вызов исключает коллизию.
  */
 
 import { el, trustedHtml } from './dom.js';
 
 let _uidSeq = 0;
 
+/* Палитры. Структура общая — меняются только значения цветов. */
+const PALETTES = Object.freeze({
+    dark: {
+        bg0: '#16233f', bg1: '#0a101f',
+        innerStroke: '#ffffff', innerStrokeOpacity: '0.07',
+        chip0: '#27395d', chip1: '#1a2742', chipStroke: '#46608f',
+        contacts: '#3a4d72', trace: '#37507a',
+        core0: '#1e3556', core1: '#101d33', coreStroke: '#4d6aa0',
+        spark0: '#a3e635', spark1: '#84cc16', spark2: '#26d49a', sparkSecondary: '#a3e635',
+        badge0: '#2ee6a6', badge1: '#15a877', badgeStroke: '#0a101f',
+        ruble: '#0a101f',
+    },
+    light: {
+        // Светлая плитка отделяется от тёплого cream-фона прохладным slate-тоном
+        // + тёмной внутренней рамкой; чип тёмный → читается на светлой плитке.
+        bg0: '#f4f7fc', bg1: '#e3eaf4',
+        innerStroke: '#0f172a', innerStrokeOpacity: '0.16',
+        chip0: '#51607a', chip1: '#37445e', chipStroke: '#6b7a96',
+        contacts: '#9aa7bd', trace: '#c6d0e0',
+        core0: '#20304b', core1: '#0f1a2e', coreStroke: '#48597b',
+        spark0: '#a3e635', spark1: '#84cc16', spark2: '#26d49a', sparkSecondary: '#84cc16',
+        // Бейдж — emerald (light-тема использует emerald как accent для контраста);
+        // знак ₽ белым для читаемости на более тёмном зелёном.
+        badge0: '#10b981', badge1: '#059669', badgeStroke: '#0f172a',
+        ruble: '#ffffff',
+    },
+});
+
 /**
  * SVG-разметка иконки приложения с уникальными id.
  * @param {number} size — сторона в px (квадрат). По умолчанию 512.
+ * @param {'dark'|'light'} variant — палитра. По умолчанию 'dark'.
  * @returns {string}
  */
-export function appIconSvg(size = 512) {
+export function appIconSvg(size = 512, variant = 'dark') {
     const u = `appicon-${++_uidSeq}`;
+    const p = PALETTES[variant] || PALETTES.dark;
     return (
         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="${size}" height="${size}" aria-hidden="true" focusable="false">` +
         `<defs>` +
-            `<linearGradient id="${u}-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16233f"/><stop offset="1" stop-color="#0a101f"/></linearGradient>` +
+            `<linearGradient id="${u}-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.bg0}"/><stop offset="1" stop-color="${p.bg1}"/></linearGradient>` +
             `<linearGradient id="${u}-gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/></linearGradient>` +
-            `<linearGradient id="${u}-chip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#27395d"/><stop offset="1" stop-color="#1a2742"/></linearGradient>` +
-            `<linearGradient id="${u}-spark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a3e635"/><stop offset="0.55" stop-color="#84cc16"/><stop offset="1" stop-color="#26d49a"/></linearGradient>` +
-            `<radialGradient id="${u}-core" cx="0.5" cy="0.42" r="0.65"><stop offset="0" stop-color="#1e3556"/><stop offset="1" stop-color="#101d33"/></radialGradient>` +
-            `<linearGradient id="${u}-badge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2ee6a6"/><stop offset="1" stop-color="#15a877"/></linearGradient>` +
+            `<linearGradient id="${u}-chip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.chip0}"/><stop offset="1" stop-color="${p.chip1}"/></linearGradient>` +
+            `<linearGradient id="${u}-spark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${p.spark0}"/><stop offset="0.55" stop-color="${p.spark1}"/><stop offset="1" stop-color="${p.spark2}"/></linearGradient>` +
+            `<radialGradient id="${u}-core" cx="0.5" cy="0.42" r="0.65"><stop offset="0" stop-color="${p.core0}"/><stop offset="1" stop-color="${p.core1}"/></radialGradient>` +
+            `<linearGradient id="${u}-badge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.badge0}"/><stop offset="1" stop-color="${p.badge1}"/></linearGradient>` +
             `<filter id="${u}-glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>` +
         `</defs>` +
         `<rect width="512" height="512" rx="112" fill="url(#${u}-bg)"/>` +
         `<rect width="512" height="512" rx="112" fill="url(#${u}-gloss)"/>` +
-        `<rect x="2" y="2" width="508" height="508" rx="110" fill="none" stroke="#ffffff" stroke-opacity="0.07" stroke-width="3"/>` +
-        `<g fill="#3a4d72">` +
+        `<rect x="2" y="2" width="508" height="508" rx="110" fill="none" stroke="${p.innerStroke}" stroke-opacity="${p.innerStrokeOpacity}" stroke-width="3"/>` +
+        `<g fill="${p.contacts}">` +
             `<rect x="178" y="118" width="20" height="36" rx="7"/><rect x="226" y="118" width="20" height="36" rx="7"/>` +
             `<rect x="274" y="118" width="20" height="36" rx="7"/><rect x="322" y="118" width="20" height="36" rx="7"/>` +
             `<rect x="178" y="358" width="20" height="36" rx="7"/><rect x="226" y="358" width="20" height="36" rx="7"/>` +
@@ -47,19 +81,19 @@ export function appIconSvg(size = 512) {
             `<rect x="358" y="178" width="36" height="20" rx="7"/><rect x="358" y="226" width="36" height="20" rx="7"/>` +
             `<rect x="358" y="274" width="36" height="20" rx="7"/><rect x="358" y="322" width="36" height="20" rx="7"/>` +
         `</g>` +
-        `<rect x="146" y="146" width="220" height="220" rx="40" fill="url(#${u}-chip)" stroke="#46608f" stroke-width="3"/>` +
-        `<g fill="none" stroke="#37507a" stroke-width="4" stroke-linecap="round" opacity="0.8">` +
+        `<rect x="146" y="146" width="220" height="220" rx="40" fill="url(#${u}-chip)" stroke="${p.chipStroke}" stroke-width="3"/>` +
+        `<g fill="none" stroke="${p.trace}" stroke-width="4" stroke-linecap="round" opacity="0.8">` +
             `<path d="M166 196 H196 V176"/><path d="M346 196 H316 V176"/>` +
             `<path d="M166 316 H196 V336"/><path d="M346 316 H316 V336"/>` +
         `</g>` +
-        `<rect x="184" y="184" width="144" height="144" rx="28" fill="url(#${u}-core)" stroke="#4d6aa0" stroke-width="2.5"/>` +
+        `<rect x="184" y="184" width="144" height="144" rx="28" fill="url(#${u}-core)" stroke="${p.coreStroke}" stroke-width="2.5"/>` +
         `<g filter="url(#${u}-glow)">` +
             `<path d="M256 196 C262 232 280 250 316 256 C280 262 262 280 256 316 C250 280 232 262 196 256 C232 250 250 232 256 196 Z" fill="url(#${u}-spark)"/>` +
-            `<path d="M306 300 C309 314 316 321 330 324 C316 327 309 334 306 348 C303 334 296 327 282 324 C296 321 303 314 306 300 Z" fill="#a3e635"/>` +
+            `<path d="M306 300 C309 314 316 321 330 324 C316 327 309 334 306 348 C303 334 296 327 282 324 C296 321 303 314 306 300 Z" fill="${p.sparkSecondary}"/>` +
         `</g>` +
         `<g>` +
-            `<circle cx="372" cy="372" r="62" fill="url(#${u}-badge)" stroke="#0a101f" stroke-width="6"/>` +
-            `<g fill="none" stroke="#0a101f" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">` +
+            `<circle cx="372" cy="372" r="62" fill="url(#${u}-badge)" stroke="${p.badgeStroke}" stroke-width="6"/>` +
+            `<g fill="none" stroke="${p.ruble}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">` +
                 `<path d="M361 334 V406"/>` +
                 `<path d="M361 334 H383 A19 19 0 0 1 383 372 H361"/>` +
                 `<path d="M341 390 H389"/>` +
@@ -73,11 +107,12 @@ export function appIconSvg(size = 512) {
  * span с inline-SVG иконки приложения, готовый к вставке в DOM.
  * Декоративный (aria-hidden на SVG) — доступное имя дают родительские
  * контейнеры (бренд: role=img+aria-label; Справка: видимый заголовок).
- * @param {{size?: number, class?: string|string[]}} [opts]
+ * @param {{size?: number, variant?: 'dark'|'light', class?: string|string[]}} [opts]
  */
 export function appIconEl(opts = {}) {
     const size = opts.size || 32;
+    const variant = opts.variant === 'light' ? 'light' : 'dark';
     const cls = ['app-icon'];
     if (opts.class) cls.push(...(Array.isArray(opts.class) ? opts.class : [opts.class]));
-    return el('span', { class: cls, trustedHtml: trustedHtml(appIconSvg(size)) });
+    return el('span', { class: cls, trustedHtml: trustedHtml(appIconSvg(size, variant)) });
 }

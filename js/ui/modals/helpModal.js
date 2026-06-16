@@ -32,7 +32,7 @@ export function renderHelpModal(state, ctx) {
         size: 'xl',
         onClose,
         children: el('div', null,
-            renderHelpHeader(),
+            renderHelpHeader(state),
             manualContent,
             renderHotkeysSection()
         ),
@@ -49,9 +49,10 @@ export function renderHelpModal(state, ctx) {
  * номер версии. Иконка — единый источник js/ui/appIcon.js (та же, что favicon и
  * бренд в sidebar). Декоративна (aria-hidden) — доступное имя даёт видимый текст.
  */
-function renderHelpHeader() {
+function renderHelpHeader(state) {
+    const iconVariant = state?.ui?.theme === 'light' ? 'light' : 'dark';
     return el('div', { class: 'help-title-card' },
-        el('span', { class: 'help-title-logo' }, appIconEl({ size: 64 })),
+        el('span', { class: 'help-title-logo' }, appIconEl({ size: 64, variant: iconVariant })),
         el('div', { class: 'help-title-meta' },
             el('div', { class: 'help-title-name', text: APP_NAME }),
             el('div', { class: 'help-title-version', text: `Версия ${APP_VERSION}` })

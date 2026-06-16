@@ -68,7 +68,7 @@ export function renderSidebar(state, ctx) {
         class: 'app-sidebar',
         attrs: { 'aria-label': 'Главное меню', 'data-testid': 'app-sidebar' }
     },
-        renderBrand(),
+        renderBrand(state),
         el('nav', { class: 'sidebar-nav', attrs: { role: 'navigation' } },
             // Разделитель между КАЖДОЙ группой (в icon-only заголовки скрыты —
             // дивайдер единственный визуальный маркер границы групп).
@@ -86,7 +86,8 @@ function renderDivider() {
     return el('div', { class: 'sidebar-divider', attrs: { 'aria-hidden': 'true' } });
 }
 
-function renderBrand() {
+function renderBrand(state) {
+    const iconVariant = state?.ui?.theme === 'light' ? 'light' : 'dark';
     return el('div', {
         class: 'sidebar-brand',
         title: `${APP_NAME} v${APP_VERSION}`,
@@ -96,7 +97,8 @@ function renderBrand() {
         attrs: { role: 'img', 'aria-label': `${APP_NAME} v${APP_VERSION}` }
     },
         // Иконка приложения (вариант K) — единый источник js/ui/appIcon.js.
-        el('span', { class: 'sidebar-brand-logo' }, appIconEl({ size: 34 })),
+        // Палитра подбирается под тему (на светлой — светлая плитка).
+        el('span', { class: 'sidebar-brand-logo' }, appIconEl({ size: 34, variant: iconVariant })),
         // Номер версии — видимая подпись ПОД иконкой (по требованию пользователя).
         // Текст ровно `v<версия>` — на него завязан published-smoke.spec.js.
         el('div', { class: 'sidebar-brand-version', text: `v${APP_VERSION}` })
