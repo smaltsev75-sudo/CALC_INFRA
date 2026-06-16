@@ -1427,6 +1427,38 @@ body.has-modal { overflow: hidden; }
 
 /* === Help modal content (Markdown) === */
 
+/* Брендовая шапка на первой странице Справки: иконка + название + версия. */
+.help-title-card {
+    max-width: 940px;
+    margin: 0 auto 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+}
+.help-title-logo {
+    flex-shrink: 0;
+    line-height: 0;
+    filter: drop-shadow(0 0 14px var(--accent-glow));
+}
+.help-title-logo .app-icon,
+.help-title-logo .app-icon svg {
+    display: block;
+}
+.help-title-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.25;
+}
+.help-title-version {
+    margin-top: 3px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
 .help-content {
     max-width: 940px;
     margin: 0 auto;

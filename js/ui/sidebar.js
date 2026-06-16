@@ -18,6 +18,7 @@
 
 import { el } from './dom.js';
 import { icon } from './icons.js';
+import { appIconEl } from './appIcon.js';
 import { APP_VERSION, APP_NAME } from '../utils/constants.js';
 
 /**
@@ -89,16 +90,16 @@ function renderBrand() {
     return el('div', {
         class: 'sidebar-brand',
         title: `${APP_NAME} v${APP_VERSION}`,
-        // icon-only: имя/версия скрыты визуально → role=img+aria-label дают
-        // доступное имя продукта screen-reader'у (на title неинтерактивного div
-        // полагаться нельзя).
+        // role=img+aria-label дают доступное имя продукта screen-reader'у
+        // (на title неинтерактивного div полагаться нельзя). Полное имя длинное
+        // для узкого rail → остаётся только в title/aria-label.
         attrs: { role: 'img', 'aria-label': `${APP_NAME} v${APP_VERSION}` }
     },
-        el('span', { class: 'sidebar-brand-logo' }, icon('zap', { size: 18 })),
-        el('div', { class: 'sidebar-brand-text' },
-            el('div', { class: 'sidebar-brand-title', text: APP_NAME }),
-            el('div', { class: 'sidebar-brand-version', text: `v${APP_VERSION}` })
-        )
+        // Иконка приложения (вариант K) — единый источник js/ui/appIcon.js.
+        el('span', { class: 'sidebar-brand-logo' }, appIconEl({ size: 34 })),
+        // Номер версии — видимая подпись ПОД иконкой (по требованию пользователя).
+        // Текст ровно `v<версия>` — на него завязан published-smoke.spec.js.
+        el('div', { class: 'sidebar-brand-version', text: `v${APP_VERSION}` })
     );
 }
 

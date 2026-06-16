@@ -8,7 +8,8 @@
 
 import { el, trustedHtml, setTrustedHtml } from '../dom.js';
 import { modalShell } from './baseModal.js';
-import { HOTKEYS } from '../../utils/constants.js';
+import { appIconEl } from '../appIcon.js';
+import { HOTKEYS, APP_NAME, APP_VERSION } from '../../utils/constants.js';
 
 export function renderHelpModal(state, ctx) {
     const m = state.modals.help;
@@ -31,6 +32,7 @@ export function renderHelpModal(state, ctx) {
         size: 'xl',
         onClose,
         children: el('div', null,
+            renderHelpHeader(),
             manualContent,
             renderHotkeysSection()
         ),
@@ -40,6 +42,21 @@ export function renderHelpModal(state, ctx) {
             onClick: onClose
         }, 'Закрыть')
     });
+}
+
+/**
+ * Брендовая шапка на первой странице Справки: иконка приложения + название +
+ * номер версии. Иконка — единый источник js/ui/appIcon.js (та же, что favicon и
+ * бренд в sidebar). Декоративна (aria-hidden) — доступное имя даёт видимый текст.
+ */
+function renderHelpHeader() {
+    return el('div', { class: 'help-title-card' },
+        el('span', { class: 'help-title-logo' }, appIconEl({ size: 64 })),
+        el('div', { class: 'help-title-meta' },
+            el('div', { class: 'help-title-name', text: APP_NAME }),
+            el('div', { class: 'help-title-version', text: `Версия ${APP_VERSION}` })
+        )
+    );
 }
 
 /**

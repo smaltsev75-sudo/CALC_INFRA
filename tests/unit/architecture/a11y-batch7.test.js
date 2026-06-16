@@ -42,7 +42,9 @@ describe('Comparison: inline-style вынесен в CSS (Этап 12.3.2)', () 
 
 describe('Help-модалка: секция «Горячие клавиши» (Этап 12.2.6)', () => {
     it('helpModal.js импортирует HOTKEYS из constants', () => {
-        assert.match(helpModalJs, /import\s*\{\s*HOTKEYS\s*\}\s*from\s*['"][^'"]*constants\.js['"]/);
+        // HOTKEYS среди именованных импортов из constants.js (допускаются со-импорты,
+        // например APP_NAME/APP_VERSION для брендовой шапки Справки).
+        assert.match(helpModalJs, /import\s*\{[^}]*\bHOTKEYS\b[^}]*\}\s*from\s*['"][^'"]*constants\.js['"]/);
     });
 
     it('helpModal.js рендерит секцию «Горячие клавиши»', () => {

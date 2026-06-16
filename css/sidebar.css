@@ -32,50 +32,39 @@
 /* ===== Бренд ===== */
 
 .sidebar-brand {
+    /* Вертикально: иконка приложения, под ней — номер версии. */
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    padding: 4px 0 14px;
+    gap: 5px;
+    padding: 2px 0 12px;
     margin-bottom: 8px;
     border-bottom: 1px solid var(--border);
 }
 
 .sidebar-brand-logo {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
-    box-shadow: 0 0 18px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-inverse);
+    /* Контейнер иконки приложения (вариант K). Сама иконка несёт собственный
+       фон-плитку и скругление → градиент/перекраска контейнера не нужны,
+       только мягкое свечение для глубины. */
     flex-shrink: 0;
+    line-height: 0;
+    filter: drop-shadow(0 0 9px var(--accent-glow));
 }
-.sidebar-brand-logo .icon { color: var(--text-inverse); }
+.sidebar-brand-logo .app-icon,
+.sidebar-brand-logo .app-icon svg {
+    display: block;
+}
 
-.sidebar-brand-text {
-    /* icon-only rail: имя/версия продукта доступны через title бренда + a11y-дерево,
-       визуально скрыты (в 64px не помещаются). */
-    display: none;
-}
-.sidebar-brand-title {
-    font-size: 0.86rem;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1.18;
-    letter-spacing: 0.1px;
-    /* На полной ширине sidebar (220px) название переносится на 2 строки;
-       в свёрнутом режиме (≤1100px) текст скрывается целиком — см. medіа ниже. */
-    word-break: normal;
-    overflow-wrap: break-word;
-}
 .sidebar-brand-version {
-    font-size: 0.7rem;
+    /* Видимая подпись под иконкой. Узкий rail (64px) → компактный mono с nowrap.
+       Текст ровно `v<версия>` (published-smoke.spec.js). */
+    font-size: 0.55rem;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
     color: var(--text-dim);
     font-family: var(--font-mono);
-    margin-top: 1px;
+    text-align: center;
 }
 
 /* ===== Навигация ===== */
