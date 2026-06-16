@@ -67,7 +67,10 @@ export function importCalcAction({
 
     const handleImportResult = (res) => {
         if (res?.ok) {
-            store.setActiveTab('questionnaire');
+            // После загрузки JSON-расчёта показываем результат — Дашборд
+            // (по требованию пользователя). Активный расчёт уже установлен
+            // импортом, поэтому Дашборд сразу с данными.
+            store.setActiveTab('dashboard');
             snackbar.success(res.replaced ? 'Расчёт обновлён' : 'Расчёт загружен');
 
             const calc = store.getState().activeCalc;

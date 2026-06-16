@@ -65,7 +65,7 @@ describe('app importExportActions', () => {
 
         await harness.run();
 
-        assert.deepEqual(harness.tabs, ['questionnaire']);
+        assert.deepEqual(harness.tabs, ['dashboard']);
         assert.deepEqual(harness.snackbarCalls, [['success', 'Расчёт загружен']]);
         assert.equal(harness.modals.length, 1);
         assert.equal(harness.modals[0].type, 'confirm');
@@ -115,7 +115,7 @@ describe('app importExportActions', () => {
 
         await harness.run();
 
-        assert.deepEqual(harness.tabs, ['questionnaire']);
+        assert.deepEqual(harness.tabs, ['dashboard']);
         assert.deepEqual(harness.snackbarCalls, [
             ['success', 'Расчёт загружен'],
             ['warning', 'Расчёт загружен, но Health Check нашёл ошибки']
