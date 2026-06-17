@@ -52,11 +52,12 @@ const BUSINESS_SCENARIOS = Object.freeze([
             pentest_per_year: 2, load_test_per_year: 2
         },
         expected: {
-            totalMonthly: 3_457_141,
-            totalAnnual: 41_485_691,
+            // Stage 3 (qty-модель ПРОМ): SSD выше (индексы ×1.3, WAL +10%).
+            totalMonthly: 3_488_573,
+            totalAnnual: 41_862_880,
             topCategory: 'SERVICES',
-            byStandMonthly: { DEV: 38_229, IFT: 207_054, PSI: 288_030, PROD: 2_191_596, LOAD: 732_232 },
-            byCategoryMonthly: { HW: 297_031, LICENSE: 376_393, TRAFFIC: 26_507, SERVICES: 1_907_054, RESERVES: 0, SECURITY: 850_155, AI: 0 },
+            byStandMonthly: { DEV: 39_205, IFT: 209_005, PSI: 293_704, PROD: 2_202_943, LOAD: 743_717 },
+            byCategoryMonthly: { HW: 328_463, LICENSE: 376_393, TRAFFIC: 26_507, SERVICES: 1_907_054, RESERVES: 0, SECURITY: 850_155, AI: 0 },
             topProdItemIds: ['one-deployment', 'one-pentest-regular', 'one-pentest-external', 'one-pentest-internal', 'license-os-per-node']
         }
     },
@@ -75,12 +76,13 @@ const BUSINESS_SCENARIOS = Object.freeze([
             load_test_before_prod: true, pentest_per_year: 4, load_test_per_year: 4
         },
         expected: {
-            totalMonthly: 19_894_570,
-            totalAnnual: 238_734_842,
+            // Stage 3 (qty-модель ПРОМ): SSD выше (индексы ×1.3, WAL +10%); storage-ssd-tb поднялся в топе.
+            totalMonthly: 20_424_177,
+            totalAnnual: 245_090_128,
             topCategory: 'LICENSE',
-            byStandMonthly: { DEV: 597_145, IFT: 1_691_436, PSI: 2_452_423, PROD: 8_962_521, LOAD: 6_191_045 },
-            byCategoryMonthly: { HW: 4_361_453, LICENSE: 6_888_305, TRAFFIC: 145_790, SERVICES: 4_841_905, RESERVES: 1_562_398, SECURITY: 2_094_719, AI: 0 },
-            topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'res-dr-active', 'storage-ssd-tb', 'service-sms-per-1k']
+            byStandMonthly: { DEV: 598_295, IFT: 1_693_736, PSI: 2_549_860, PROD: 9_157_394, LOAD: 6_424_892 },
+            byCategoryMonthly: { HW: 4_891_060, LICENSE: 6_888_305, TRAFFIC: 145_790, SERVICES: 4_841_905, RESERVES: 1_562_398, SECURITY: 2_094_719, AI: 0 },
+            topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'storage-ssd-tb', 'res-dr-active', 'service-sms-per-1k']
         }
     },
     {
@@ -120,12 +122,13 @@ const BUSINESS_SCENARIOS = Object.freeze([
             pentest_per_year: 4, load_test_per_year: 4, security_audit_per_year: 2
         },
         expected: {
-            totalMonthly: 19_236_991,
-            totalAnnual: 230_843_890,
+            // Stage 3 (qty-модель ПРОМ): SSD выше (индексы ×1.3, WAL +10%); storage-ssd-tb поднялся в топе.
+            totalMonthly: 19_651_631,
+            totalAnnual: 235_819_575,
             topCategory: 'LICENSE',
-            byStandMonthly: { DEV: 643_220, IFT: 1_609_837, PSI: 2_320_831, PROD: 8_826_449, LOAD: 5_836_654 },
-            byCategoryMonthly: { HW: 3_577_731, LICENSE: 7_993_349, TRAFFIC: 86_149, SERVICES: 3_765_431, RESERVES: 1_562_398, SECURITY: 2_251_933, AI: 0 },
-            topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'res-dr-active', 'storage-ssd-tb', 'res-georedundancy']
+            byStandMonthly: { DEV: 638_641, IFT: 1_600_678, PSI: 2_400_161, PROD: 8_985_108, LOAD: 6_027_044 },
+            byCategoryMonthly: { HW: 3_992_372, LICENSE: 7_993_349, TRAFFIC: 86_149, SERVICES: 3_765_431, RESERVES: 1_562_398, SECURITY: 2_251_933, AI: 0 },
+            topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'storage-ssd-tb', 'res-dr-active', 'res-georedundancy']
         }
     },
     {
@@ -150,12 +153,12 @@ const BUSINESS_SCENARIOS = Object.freeze([
             agent_memory_used: true, agent_memory_size_gb: 250
         },
         expected: {
-            // Stage 1 (qty-модель ПРОМ): AI вырос на эмбеддинги ЗАПРОСОВ RAG (retrieval_calls × ~200 токенов).
-            totalMonthly: 465_635_008,
-            totalAnnual: 5_587_620_097,
+            // Stage 1: AI вырос на эмбеддинги ЗАПРОСОВ RAG. Stage 3: SSD выше (индексы ×1.3, WAL +10%).
+            totalMonthly: 465_705_019,
+            totalAnnual: 5_588_460_224,
             topCategory: 'AI',
-            byStandMonthly: { DEV: 3_462_767, IFT: 34_228_971, PSI: 85_194_259, PROD: 172_040_637, LOAD: 170_708_375 },
-            byCategoryMonthly: { HW: 677_308, LICENSE: 501_858, TRAFFIC: 39_761, SERVICES: 2_511_299, RESERVES: 0, SECURITY: 913_296, AI: 460_991_487 },
+            byStandMonthly: { DEV: 3_464_436, IFT: 34_232_308, PSI: 85_206_297, PROD: 172_064_712, LOAD: 170_737_266 },
+            byCategoryMonthly: { HW: 747_318, LICENSE: 501_858, TRAFFIC: 39_761, SERVICES: 2_511_299, RESERVES: 0, SECURITY: 913_296, AI: 460_991_487 },
             topProdItemIds: ['llm-tokens-input-1m', 'llm-tokens-output-1m', 'ai-safety-moderation-tokens-1m', 'ai-agent-sandbox-vcpu', 'one-deployment']
         }
     }

@@ -515,6 +515,53 @@ function checkRagContextInSimpleMode(calc) {
     });
 }
 
+/* Stage 3 (qty-модель ПРОМ): задан срок хранения бэкапов и размер БД, но db_count=0 —
+   бэкап БД не сформируется (нет инстансов для копирования). */
+function checkBackupRetentionWithoutDb(calc) {
+    const retention = ans(calc, 'backup_retention_days');
+    if (!(isFiniteNum(retention) && retention > 0)) return null;
+    const dbSize = ans(calc, 'db_size_initial_gb');
+    const dbGrowth = ans(calc, 'db_growth_gb_month');
+    const hasDbData = (isFiniteNum(dbSize) && dbSize > 0) || (isFiniteNum(dbGrowth) && dbGrowth > 0);
+    if (!hasDbData) return null;
+    const dbCount = ans(calc, 'db_count');
+    if (!(isFiniteNum(dbCount) && dbCount <= 0)) return null;
+    return makeFinding({
+        id: 'storage-backup-retention-without-db',
+        severity: 'warning',
+        category: 'completeness',
+        title: 'Указан срок хранения бэкапов и размер БД, но число БД = 0',
+        message: 'Задан срок хранения резервных копий и размер БД, но число баз данных = 0 — ' +
+            'бэкап БД не сформируется (нет инстансов БД для копирования).',
+        fieldIds: ['backup_retention_days', 'db_count', 'db_size_initial_gb'],
+        suggestedAction: 'Укажите число баз данных (≥ 1) или обнулите размер БД, если базы нет.'
+    });
+}
+
+/* Stage 3 (условие 2): старый расчёт без новых storage-параметров — к нему применены
+   обновлённые допущения по умолчанию. Показываем явно, чтобы это не выглядело как тихая магия. */
+function checkStorageModelAssumptionsUpdated(calc) {
+    if (ans(calc, 'db_index_ratio') !== undefined) return null; // новые параметры заданы — не старый расчёт
+    const dbCount = ans(calc, 'db_count');
+    const dbSize = ans(calc, 'db_size_initial_gb');
+    const files = ans(calc, 'file_storage_volume_tb');
+    const hasStorage = (isFiniteNum(dbCount) && dbCount > 0)
+        || (isFiniteNum(dbSize) && dbSize > 0)
+        || (isFiniteNum(files) && files > 0);
+    if (!hasStorage) return null;
+    return makeFinding({
+        id: 'storage-model-assumptions-updated',
+        severity: 'info',
+        category: 'completeness',
+        title: 'Применены обновлённые допущения по расчёту хранилища',
+        message: 'Модель расчёта хранилища обновлена: применены допущения по умолчанию — коэффициент ' +
+            'индексов БД (×1.3), WAL (+10%), сжатие бэкапов (÷2), доли горячих/холодных файлов. ' +
+            'Суммы по SSD/HDD/S3 могли измениться относительно прежнего расчёта.',
+        fieldIds: ['db_index_ratio', 'db_wal_overhead_percent', 'backup_compression_ratio'],
+        suggestedAction: 'Откройте расширенные параметры хранилища и при необходимости уточните коэффициенты под свою архитектуру.'
+    });
+}
+
 function checkAgentIncompleteTools(calc) {
     if (ans(calc, 'ai_agent_mode') !== true) return null;
     const t = ans(calc, 'agent_tool_avg_seconds');
@@ -925,6 +972,8 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkRagFullReindexLargeCorpus,
     checkLlmEnabledNoDemand,
     checkRagContextInSimpleMode,
+    checkBackupRetentionWithoutDb,
+    checkStorageModelAssumptionsUpdated,
     checkAgentIncompleteTools,
     checkPdnWithoutEncryption,
     checkPdnWithoutCategory,

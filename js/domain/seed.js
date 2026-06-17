@@ -970,6 +970,182 @@ export const SEED_QUESTIONS = [
         defaultIfUnknown: 30,
         assumptionRisk: 'medium'
     },
+    {
+        id: 'db_index_ratio',
+        section: 'data_storage',
+        subgroup: 'База данных',
+        order: 115,
+        title: 'Коэффициент индексов БД (× к объёму данных)',
+        type: 'number',
+        min: 1, max: 10, step: 0.1,
+        defaultValue: 1.3,
+        dependsOn: [],
+        description:
+            'Во сколько раз место на диске под БД больше «сырых» данных за счёт индексов. Индексы ускоряют поиск, но занимают место.\n\n' +
+            'Значение по умолчанию 1.3 (индексы добавляют ~30%) — инженерная ОЦЕНКА. Если ответ не указан — расчёт пойдёт от 1.3.',
+        recommendation:
+            '• Мало индексов (логи, append-only) — 1.1-1.2.\n' +
+            '• Типовая OLTP-база (приложение с поиском) — 1.3-1.6.\n' +
+            '• Поисковая/аналитическая база с множеством индексов — 1.8-3.0.',
+        impact: 'Множитель объёма SSD под БД (по умолчанию 1.3 — оценка).',
+        allowUnknown: true,
+        defaultIfUnknown: 1.3,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'db_wal_overhead_percent',
+        section: 'data_storage',
+        subgroup: 'База данных',
+        order: 116,
+        title: 'Накладные расходы WAL/журнала, %',
+        type: 'number',
+        min: 0, max: 100, step: 1,
+        defaultValue: 10,
+        dependsOn: [],
+        description:
+            'Сколько процентов сверх данных занимают журнал упреждающей записи (WAL/redo) и временные файлы транзакций.\n\n' +
+            'Значение по умолчанию 10% — инженерная ОЦЕНКА. Если ответ не указан — расчёт пойдёт от 10%.',
+        recommendation:
+            '• Низкая нагрузка на запись — 5-10%.\n' +
+            '• Активная OLTP-нагрузка — 10-20%.\n' +
+            '• Очень высокая частота транзакций — 20-40%.',
+        impact: 'Надбавка к объёму SSD под БД (по умолчанию 10% — оценка).',
+        allowUnknown: true,
+        defaultIfUnknown: 10,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'db_size_per_user_kb',
+        section: 'data_storage',
+        subgroup: 'База данных',
+        order: 117,
+        title: 'Объём БД на одного пользователя, КБ (оценка-fallback)',
+        type: 'number',
+        min: 0, max: 1_000_000, step: 1,
+        defaultValue: 50,
+        dependsOn: [],
+        description:
+            'Сколько в среднем места в БД занимает один пользователь. Используется ТОЛЬКО как оценка, если прямой размер БД не задан ' +
+            '(поле «Начальный размер БД» = 0). Если размер БД указан — это значение НЕ применяется и не прибавляется.\n\n' +
+            'Значение по умолчанию 50 КБ/пользователь — инженерная ОЦЕНКА. Если ответ не указан — расчёт пойдёт от 50 КБ.',
+        recommendation:
+            '• Лёгкий профиль (только учётные данные) — 10-50 КБ.\n' +
+            '• Типовое приложение (профиль + история) — 50-200 КБ.\n' +
+            '• Контент-тяжёлый продукт (документы, медиа-метаданные) — 200-1000 КБ.',
+        impact: 'Оценка размера БД при незаданном прямом размере (fallback, не аддитивно).',
+        allowUnknown: true,
+        defaultIfUnknown: 50,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'hot_file_ssd_share_percent',
+        section: 'data_storage',
+        subgroup: 'Файлы и кэш',
+        order: 235,
+        title: 'Доля горячих файлов, размещаемых на SSD, %',
+        type: 'number',
+        min: 0, max: 100, step: 1,
+        defaultValue: 10,
+        dependsOn: [],
+        description:
+            'Какая доля ГОРЯЧИХ файлов (см. «Доля горячих данных») дополнительно держится на быстром SSD как кэш/слой быстрого доступа ' +
+            'ПОВЕРХ объектного хранилища. Это дополнительная копия для скорости, а не повторный учёт самих файлов.\n\n' +
+            'Значение по умолчанию 10% — инженерная ОЦЕНКА. Если ответ не указан — расчёт пойдёт от 10%.',
+        recommendation:
+            '• Файлы отдаются прямо из объектного хранилища/CDN — 0-10%.\n' +
+            '• Активный кэш горячих файлов на SSD — 10-30%.\n' +
+            '• Низколатентная отдача (медиа-стриминг) — 30-60%.',
+        impact: 'Доля горячих файлов, добавляемых на SSD как быстрый слой (по умолчанию 10% — оценка).',
+        allowUnknown: true,
+        defaultIfUnknown: 10,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'cold_file_hdd_share_percent',
+        section: 'data_storage',
+        subgroup: 'Файлы и кэш',
+        order: 236,
+        title: 'Доля холодных файлов, размещаемых на HDD, %',
+        type: 'number',
+        min: 0, max: 100, step: 1,
+        defaultValue: 50,
+        dependsOn: [],
+        description:
+            'Какая доля ХОЛОДНЫХ файлов (1 − доля горячих) держится на дешёвом HDD как тёплая архивная копия ПОВЕРХ объектного хранилища. ' +
+            'Это дополнительный слой/копия, а не повторный учёт самих файлов. Остальное может жить в холодном объектном хранилище или удаляться по политике.\n\n' +
+            'Значение по умолчанию 50% — инженерная ОЦЕНКА. Если ответ не указан — расчёт пойдёт от 50%.',
+        recommendation:
+            '• Всё холодное в объектном хранилище / Glacier — 0-20%.\n' +
+            '• Тёплый архив на HDD для быстрого доступа — 30-60%.\n' +
+            '• Локальное долговременное хранение на HDD — 70-100%.',
+        impact: 'Доля холодных файлов, добавляемых на HDD как архивный слой (по умолчанию 50% — оценка).',
+        allowUnknown: true,
+        defaultIfUnknown: 50,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 's3_versioning_enabled',
+        section: 'data_storage',
+        subgroup: 'Файлы и кэш',
+        order: 240,
+        title: 'Версионирование объектного хранилища',
+        type: 'boolean',
+        defaultValue: false,
+        dependsOn: [],
+        description:
+            'Хранятся ли прошлые версии объектов в объектном хранилище (защита от перезаписи/удаления). Версии занимают дополнительное место.\n\n' +
+            'Если ответ не указан — версионирование считается выключенным (объём не растёт).',
+        recommendation:
+            'Включайте для критичных пользовательских данных и при требованиях аудита/восстановления. Для статических ассетов обычно не нужно.',
+        impact: 'При включении увеличивает объём объектного хранилища на overhead версий.',
+        allowUnknown: true,
+        defaultIfUnknown: false,
+        assumptionRisk: 'low'
+    },
+    {
+        id: 's3_versioning_overhead_percent',
+        section: 'data_storage',
+        subgroup: 'Файлы и кэш',
+        order: 241,
+        title: 'Накладные расходы версий объектов, %',
+        type: 'number',
+        min: 0, max: 1000, step: 1,
+        defaultValue: 30,
+        dependsOn: ['s3_versioning_enabled'],
+        description:
+            'На сколько процентов версии увеличивают объём объектного хранилища. Учитывается только при включённом версионировании.\n\n' +
+            'Значение по умолчанию 30% — инженерная ОЦЕНКА. Зависит от частоты изменений и политики жизненного цикла версий.',
+        recommendation:
+            '• Редкие изменения + lifecycle-очистка старых версий — 10-30%.\n' +
+            '• Активные изменения, версии хранятся долго — 50-150%.\n' +
+            '• Без очистки версий на часто меняющихся данных — 200%+.',
+        impact: 'Надбавка к объёму объектного хранилища при включённом версионировании (по умолчанию 30% — оценка).',
+        allowUnknown: true,
+        defaultIfUnknown: 30,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'backup_compression_ratio',
+        section: 'data_storage',
+        subgroup: 'Резервное копирование',
+        order: 315,
+        title: 'Коэффициент сжатия/дедупликации бэкапов (÷)',
+        type: 'number',
+        min: 1, max: 50, step: 0.1,
+        defaultValue: 2,
+        dependsOn: [],
+        description:
+            'Во сколько раз сжатие и дедупликация уменьшают объём резервных копий. Объём HDD под бэкапы делится на это число.\n\n' +
+            'Значение по умолчанию 2 (сжатие вдвое) — инженерная ОЦЕНКА. Должно быть ≥ 1 (1 = без сжатия). Если ответ не указан — расчёт пойдёт от 2.',
+        recommendation:
+            '• Уже сжатые данные (медиа, архивы) — 1.0-1.3.\n' +
+            '• Типовая БД + текст — 2-4.\n' +
+            '• Высокая дедупликация (много повторов между бэкапами) — 5-20.',
+        impact: 'Делитель объёма HDD под бэкапы (по умолчанию ÷2 — оценка). Значение < 1 трактуется как 1.',
+        allowUnknown: true,
+        defaultIfUnknown: 2,
+        assumptionRisk: 'medium'
+    },
 
     /* ============================================================
      * SECTION: sla
@@ -3134,22 +3310,19 @@ export const SEED_ITEMS = [
             'Источник: cloud.ru/documents/tariffs/advanced/services/elastic-volume — тариф EVS Ultra-high I/O SSD, на 2026-01-01.\n' +
             'Расчёт: 12.09 ₽/ГБ/мес × 1024 ≈ 12 378 ₽/ТБ/мес.\n' +
             'В контракте уточняйте по фактическому тарифу.',
+        // Stage 3 (qty-модель ПРОМ): эффективный объём БД = заданный размер (db_size + рост за год),
+        // ИНАЧЕ оценка из users × db_size_per_user_kb (условие 3: per-user — только fallback, не
+        // прибавляется поверх заданного размера). Объём ×индексы ×(1+WAL) ×кластеры ×(1+реплики).
+        // Горячий файловый слой на SSD = доля горячих файлов × доля горячих файлов на SSD.
+        // 13.U13: cache учтён в ram-gb (не в SSD) — без двойного учёта.
         qtyFormulas: {
-            DEV:  'max(0.1, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count / 1024) * S.standSizeRatio.DEV + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * 0.10 * S.standSizeRatio.DEV)',
-            IFT:  'max(0.1, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count / 1024) * S.standSizeRatio.IFT + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * 0.10 * S.standSizeRatio.IFT)',
-            PSI:  'max(0.2, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * (1 + Q.db_replicas_count) / 1024) * S.standSizeRatio.PSI + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * 0.10 * S.standSizeRatio.PSI)',
-            // 13.U13 (Phase 0): убрано аномальное слагаемое
-            //   `+ Q.cache_size_gb / 1024 * (Q.hot_data_share_percent / 100 * 10)`
-            // которое присутствовало ТОЛЬКО на PROD, без аналогов на других стендах,
-            // и без обоснования множителя ×10. Семантически некорректно: Redis-кэш живёт
-            // в RAM (учтён в ram-gb через `+ Q.cache_size_gb`); добавлять тот же объём
-            // ещё и в SSD-БД — двойной учёт. Если нужен hot/cold split БД на SSD vs HDD —
-            // это отдельная задача с явным разделением `db_size_initial_gb` по
-            // `hot_data_share_percent`, а не через cache_size.
-            PROD: 'max(0.5, max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * (1 + Q.db_replicas_count) / 1024 + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * 0.10)',
-            LOAD: 'max(0.2, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * (1 + Q.db_replicas_count) / 1024) * S.standSizeRatio.LOAD + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * 0.10 * S.standSizeRatio.LOAD)'
+            DEV:  'max(0.1, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_index_ratio * (1 + Q.db_wal_overhead_percent / 100) * Q.db_count / 1024) * S.standSizeRatio.DEV + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * Q.hot_file_ssd_share_percent / 100 * S.standSizeRatio.DEV)',
+            IFT:  'max(0.1, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_index_ratio * (1 + Q.db_wal_overhead_percent / 100) * Q.db_count / 1024) * S.standSizeRatio.IFT + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * Q.hot_file_ssd_share_percent / 100 * S.standSizeRatio.IFT)',
+            PSI:  'max(0.2, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_index_ratio * (1 + Q.db_wal_overhead_percent / 100) * Q.db_count * (1 + Q.db_replicas_count) / 1024) * S.standSizeRatio.PSI + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * Q.hot_file_ssd_share_percent / 100 * S.standSizeRatio.PSI)',
+            PROD: 'max(0.5, if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_index_ratio * (1 + Q.db_wal_overhead_percent / 100) * Q.db_count * (1 + Q.db_replicas_count) / 1024 + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * Q.hot_file_ssd_share_percent / 100)',
+            LOAD: 'max(0.2, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_index_ratio * (1 + Q.db_wal_overhead_percent / 100) * Q.db_count * (1 + Q.db_replicas_count) / 1024) * S.standSizeRatio.LOAD + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * Q.hot_file_ssd_share_percent / 100 * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'TB SSD = max(БД + рост за год, users_total × 50 КБ) × кластеров × (1 + реплики) / 1024 + 10% горячего файлового слоя.'
+        formulaHelp: 'TB SSD = (заданный размер БД + рост за год, иначе оценка users × КБ/польз) × коэф.индексов × (1 + WAL%) × кластеров × (1 + реплики) / 1024 + горячий файловый слой (доля горячих файлов × доля на SSD). Коэф. индексов (1.3), WAL (10%), доля на SSD (10%) — оценки по умолчанию.'
     },
     {
         id: 'storage-hdd-tb',
@@ -3172,14 +3345,17 @@ export const SEED_ITEMS = [
             'Источник: cloud.ru/documents/tariffs/advanced/services/elastic-volume — тариф EVS High I/O SAS HDD, на 2026-01-01.\n' +
             'Расчёт: ~4.015 ₽/ГБ/мес × 1024 ≈ 4 111 ₽/ТБ/мес.\n' +
             'В контракте уточняйте по фактическому тарифу.',
+        // Stage 3 (qty-модель ПРОМ): бэкап = эффективный объём БД × кластеры × глубина хранения /
+        // коэф. компрессии-дедупа (валидируется ≥1 через max(1,...) — условие 6) / 1024.
+        // Холодный файловый слой на HDD = доля холодных файлов × доля холодных файлов на HDD.
         qtyFormulas: {
-            DEV:  'max(0.1, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024) * S.standSizeRatio.DEV)',
-            IFT:  'max(0.2, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024) * S.standSizeRatio.IFT)',
-            PSI:  'max(0.5, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024) * S.standSizeRatio.PSI)',
-            PROD: 'max(1, max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024 + Q.file_storage_volume_tb * max(0, 100 - Q.hot_data_share_percent) / 100 * 0.5)',
-            LOAD: 'max(0.5, (max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count * Q.backup_retention_days / 30 / 1024 + Q.file_storage_volume_tb * max(0, 100 - Q.hot_data_share_percent) / 100 * 0.5) * S.standSizeRatio.LOAD)'
+            DEV:  'max(0.1, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count * Q.backup_retention_days / 30 / max(1, Q.backup_compression_ratio) / 1024) * S.standSizeRatio.DEV)',
+            IFT:  'max(0.2, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count * Q.backup_retention_days / 30 / max(1, Q.backup_compression_ratio) / 1024) * S.standSizeRatio.IFT)',
+            PSI:  'max(0.5, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count * Q.backup_retention_days / 30 / max(1, Q.backup_compression_ratio) / 1024) * S.standSizeRatio.PSI)',
+            PROD: 'max(1, if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count * Q.backup_retention_days / 30 / max(1, Q.backup_compression_ratio) / 1024 + Q.file_storage_volume_tb * max(0, 100 - Q.hot_data_share_percent) / 100 * Q.cold_file_hdd_share_percent / 100)',
+            LOAD: 'max(0.5, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count * Q.backup_retention_days / 30 / max(1, Q.backup_compression_ratio) / 1024 + Q.file_storage_volume_tb * max(0, 100 - Q.hot_data_share_percent) / 100 * Q.cold_file_hdd_share_percent / 100) * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'TB HDD = max(БД + рост за год, users_total × 50 КБ) × кластеров × глубина бэкапов / 1024; ПРОМ включает 50% холодной доли файлов, Нагрузка масштабирует эту же базу коэффициентом стенда.'
+        formulaHelp: 'TB HDD = (заданный размер БД + рост, иначе оценка users × КБ/польз) × кластеров × глубина бэкапов / коэф.компрессии (≥1) / 1024 + холодный файловый слой (доля холодных файлов × доля на HDD). ПРОМ/Нагрузка включают холодный слой. Компрессия (÷2) и доля на HDD (50%) — оценки по умолчанию.'
     },
     {
         id: 'storage-object-tb',
@@ -3202,14 +3378,16 @@ export const SEED_ITEMS = [
             'Источник: cloud.ru/docs/s3e/ug/topics/pricing, на 2026-05-02.\n' +
             'Расчёт: 1.839 ₽/ГБ/мес × 1024 ≈ 1 883 ₽/ТБ/мес.\n' +
             'В контракте уточняйте по фактическому тарифу.',
+        // Stage 3 (qty-модель ПРОМ): при включённом версионировании объём растёт на overhead%
+        // (хранение прошлых версий объектов). По умолчанию версионирование выключено.
         qtyFormulas: {
-            DEV:  'max(0.1, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * S.standSizeRatio.DEV)',
-            IFT:  'max(0.1, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * S.standSizeRatio.IFT)',
-            PSI:  'max(0.5, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * S.standSizeRatio.PSI)',
-            PROD: 'max(0.5, Q.file_storage_volume_tb + Q.file_storage_growth_tb_year)',
-            LOAD: 'max(0.2, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * S.standSizeRatio.LOAD)'
+            DEV:  'max(0.1, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * (1 + if(Q.s3_versioning_enabled, Q.s3_versioning_overhead_percent, 0) / 100) * S.standSizeRatio.DEV)',
+            IFT:  'max(0.1, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * (1 + if(Q.s3_versioning_enabled, Q.s3_versioning_overhead_percent, 0) / 100) * S.standSizeRatio.IFT)',
+            PSI:  'max(0.5, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * (1 + if(Q.s3_versioning_enabled, Q.s3_versioning_overhead_percent, 0) / 100) * S.standSizeRatio.PSI)',
+            PROD: 'max(0.5, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * (1 + if(Q.s3_versioning_enabled, Q.s3_versioning_overhead_percent, 0) / 100))',
+            LOAD: 'max(0.2, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * (1 + if(Q.s3_versioning_enabled, Q.s3_versioning_overhead_percent, 0) / 100) * S.standSizeRatio.LOAD)'
         },
-        formulaHelp: 'TB Object = (объём файлов + годовой прирост) × коэф. стенда.'
+        formulaHelp: 'TB Object = (объём файлов + годовой прирост) × (1 + overhead версий, если версионирование включено) × коэф. стенда. Версионирование по умолчанию выключено.'
     },
     {
         id: 'storage-secure-gb',
@@ -3232,9 +3410,9 @@ export const SEED_ITEMS = [
             'Расчёт: SSD 12.09 ₽/ГБ + 17.5% надбавка за compliance ≈ 14.2 ₽/ГБ/мес.\n' +
             'В контракте уточняйте у провайдера.',
         qtyFormulas: {
-            PSI:  'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb, Q.users_total * 0.00005) * Q.db_count, 0) * S.standSizeRatio.PSI)',
-            PROD: 'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * 0.00005) * Q.db_count, 0))',
-            LOAD: 'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb, Q.users_total * 0.00005) * Q.db_count, 0) * S.standSizeRatio.LOAD)'
+            PSI:  'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count, 0) * S.standSizeRatio.PSI)',
+            PROD: 'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count, 0))',
+            LOAD: 'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count, 0) * S.standSizeRatio.LOAD)'
         },
         formulaHelp: 'GB защ. = max(БД, users_total × 50 КБ) × кластеров (+ годовой прирост на ПРОМ) × коэф. стенда. Иначе 0.'
     },
