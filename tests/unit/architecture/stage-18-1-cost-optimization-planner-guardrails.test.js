@@ -283,9 +283,9 @@ describe('Stage 18.1 Phase 4 — legacy CSS absence', () => {
 });
 
 describe('Stage 18.1 / 18.1.1 / 18.2 / VAT-1 / VAT-2 / Stage 19 / Stage 19.x — версия 2.13.x..2.20.x', () => {
-    it('package.json содержит 2.13.x..2.21.x (Stage 18.1 → VAT-2 → MINOR 2.18.0 → Stage 19 → MINOR 2.21.0 qty-модель ПРОМ)', () => {
+    it('package.json содержит 2.13.x..2.22.x (Stage 18.1 → VAT-2 → MINOR 2.18.0 → Stage 19 → MINOR 2.21.0 qty ПРОМ → MINOR 2.22.0 DR/ekClass)', () => {
         const pkg = JSON.parse(read('package.json'));
-        assert.match(pkg.version, /^2\.(13|14|15|16|17|18|19|20|21)\.\d+$/);
+        assert.match(pkg.version, /^2\.(13|14|15|16|17|18|19|20|21|22)\.\d+$/);
     });
 
     it('APP_VERSION в constants.js синхронизирован с package.json', () => {

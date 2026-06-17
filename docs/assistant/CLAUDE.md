@@ -2,6 +2,36 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Current Project Lessons (2026-06-17, v2.22.0)
+
+- MINOR 2.22.0 — Stage 5A: DR post-pass + ekClass (первый под-пакет Этапа 5; 5B —
+  Security/DR-mode/seasonal — отдельным пакетом). Ключевые инварианты/ловушки:
+  (1) **DR-ЭК масштабируются от объёма ПРОМ через post-pass, НЕ в основном цикле.**
+  `S.prodComputeVcpu/RamGb/StorageTb` = Σ СЫРЫХ PROD `cell.qty` по `dashboardResource`
+  (`computeProdAggregates` в [calculator.js](js/domain/calculator.js)), считаются ПОСЛЕ
+  основного прохода и инжектируются в `ctx.S` для prod-derived ЭК во **втором проходе**
+  (между основным циклом и дневными итогами). Пере-расчёт через **дельту** (new−old) ко
+  ВСЕМ агрегатам, что трогал основной цикл (standBucket/result.by*/items/total*) — иначе
+  рассинхрон итогов. `buildContext` НЕ может содержать `S.prod*` (он до qty).
+  (2) **Цикл невозможен по построению**: `computeProdAggregates` суммирует только ЭК с
+  `dashboardResource`; prod-derived DR-ЭК его не имеют ⇒ исключены. Arch-инвариант I3.
+  (3) **`buildQuantityTrace` ОБЯЗАН инжектить `S.prod*` из result** — иначе Паспорт DR
+  покажет 0 (трасса строит свой ctx через buildContext, где prod* нет).
+  (4) **Смена единицы qty ломает семантику pricePerUnit.** DR перешли с «1 площадка» на
+  «vCPU резерва» (qty = 30%/100% от vCPU ПРОМ) → старые `300000`/`400000` ₽/площадку стали
+  бы ₽/vCPU (×350 завышение). Цены заменены на blended `1750`/`2300` ₽/vCPU (derived из
+  seed CPU+RAM). **Правило**: меняешь unit ЭК → пересмотри pricePerUnit, это money-баг.
+  (5) **ekClass** — «драйвер количества» (load/data/ai/prod-derived/flag/count/constant),
+  total-function `getEkClass` ([ekClass.js](js/domain/ekClass.js)) с fallback по
+  resourceClass, который НИКОГДА не возвращает prod-derived (legacy DR сохраняют поведение).
+  Arch-инварианты I1-I5 ([ekclass-invariants-stage5a.test.js](tests/unit/architecture/ekclass-invariants-stage5a.test.js)).
+  (6) **Latent-фикс**: новые производные `S.*`, используемые в seed-формулах, ОБЯЗАНЫ быть в
+  `KNOWN_SETTINGS` ([validationFormulaLint.js](js/domain/validationFormulaLint.js)) — иначе
+  false-positive линтера в UI/импорте. Forcing function: arch-тест гоняет `lintFormulas` по
+  РЕАЛЬНОМУ seed (а не синтетике) → 0 unknownSetting. Stage 1-2 пропустил это для
+  `aiInputTokensEffective`/`aiRequestsPerMonth`.
+  Метрики: unit 5774/5774, e2e 15/15, все gates зелёные.
+
 ## Current Project Lessons (2026-06-17, v2.21.0)
 
 - MINOR 2.21.0 — доработка qty-модели ПРОМ (RAG/LLM/Storage/CPU-RAM; Stage 5
