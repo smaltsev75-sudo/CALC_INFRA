@@ -144,3 +144,36 @@ describe('Stage 2 LLM — Health Checks', () => {
         assert.ok(!f.some(x => x.id === 'ai-llm-enabled-no-demand'));
     });
 });
+
+describe('Stage 2 LLM — degenerate operational fallback зеркалит формулу (review-фикс)', () => {
+    // Вырожденная user-base (registered=0 + подтверждённый baseline) → формула даёт 0,
+    // срабатывает calculate-fallback (deriveExternalLlmTokenQtyFallback). Он ОБЯЗАН
+    // использовать те же параметры, что и seed-формула: ai_safety_overhead_percent
+    // (не хардкод 0.10) и эффективный объём входных токенов (детальный режим).
+    function degenerate(extra) {
+        const c = calcWith({ ...AI, registered_users_total: 0, ai_safety_layer: true, ...extra });
+        c.healthAcknowledgements = { ack: { values: { registered_users_total: 100000 } } };
+        return c;
+    }
+    function safetyQty(c) { return calculate(c).items?.['ai-safety-moderation-tokens-1m']?.stands?.PROD?.qty ?? 0; }
+    function inputQty(c) { return calculate(c).items?.['llm-tokens-input-1m']?.stands?.PROD?.qty ?? 0; }
+
+    it('safety overhead в fallback берётся из параметра, а не хардкод 0.10', () => {
+        const q10 = safetyQty(degenerate({ ai_safety_overhead_percent: 10 }));
+        const q20 = safetyQty(degenerate({ ai_safety_overhead_percent: 20 }));
+        assert.ok(q10 > 0, 'fallback должен сработать на вырожденной базе');
+        assert.ok(Math.abs(q20 - 2 * q10) <= 1, `overhead=20 ≈ 2× overhead=10 (got ${q10} / ${q20})`);
+    });
+
+    it('детальный режим входных токенов учитывается в fallback', () => {
+        // изоляция: ai_avg_input_tokens одинаков (1000) в обоих; меняем ТОЛЬКО детальный режим.
+        const simple = inputQty(degenerate({ ai_token_breakdown_manual: false, ai_avg_input_tokens: 1000 }));
+        const detailed = inputQty(degenerate({
+            ai_token_breakdown_manual: true, ai_avg_input_tokens: 1000,
+            ai_input_system_prompt_tokens: 4000, ai_input_user_query_tokens: 0,
+            ai_input_history_tokens: 0, rag_needed: false, ai_agent_mode: false
+        }));
+        // detailed sum = 4000 >> simple 1000 → input-токены в fallback должны вырасти
+        assert.ok(detailed > simple, `детальный режим должен влиять на fallback (simple=${simple}, detailed=${detailed})`);
+    });
+});

@@ -527,7 +527,10 @@ function deriveExternalLlmTokenQtyFallback(item, stand, context) {
     const dauShare = demand.dauShare / 100;
     const aiShare = demand.aiShare / 100;
     const requestsPerUserDay = demand.requestsPerUserDay;
-    const inputTokens = demand.inputTokens;
+    // Stage 2/4 review-фикс: эффективный объём входных токенов (простой ИЛИ детальный
+    // режим) — тот же S.aiInputTokensEffective, что и в seed-формуле, иначе degenerate-
+    // fallback игнорировал бы детальный режим.
+    const inputTokens = numWithDefault(context?.S?.aiInputTokensEffective, demand.inputTokens);
     const outputTokens = demand.outputTokens;
     const cacheShare = demand.cacheShare / 100;
     const agentStepFactor = numWithDefault(context?.S?.agentStepFactor, 1);
@@ -540,7 +543,10 @@ function deriveExternalLlmTokenQtyFallback(item, stand, context) {
 
     if (item.id === 'llm-tokens-input-1m') return Math.ceil(Math.max(0, inputMillions));
     if (item.id === 'llm-tokens-output-1m') return Math.ceil(Math.max(0, outputMillions));
-    return Math.ceil(Math.max(0, (inputMillions + outputMillions) * 0.10));
+    // Stage 2 review-фикс: доля модерации — параметр ai_safety_overhead_percent (0-50%,
+    // default 10), как в seed-формуле и dashboard, а не хардкод 0.10.
+    const safetyOverhead = Math.min(50, Math.max(0, answerNumber(context, 'ai_safety_overhead_percent', 10))) / 100;
+    return Math.ceil(Math.max(0, (inputMillions + outputMillions) * safetyOverhead));
 }
 
 /* ---------- LRU-кэш итогов ---------- */

@@ -525,7 +525,8 @@ function checkBackupRetentionWithoutDb(calc) {
     const hasDbData = (isFiniteNum(dbSize) && dbSize > 0) || (isFiniteNum(dbGrowth) && dbGrowth > 0);
     if (!hasDbData) return null;
     const dbCount = ans(calc, 'db_count');
-    if (!(isFiniteNum(dbCount) && dbCount <= 0)) return null;
+    // Срабатывает только если db_count явно задан и ≤ 0 (нет инстансов БД).
+    if (!isFiniteNum(dbCount) || dbCount > 0) return null;
     return makeFinding({
         id: 'storage-backup-retention-without-db',
         severity: 'warning',

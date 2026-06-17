@@ -11525,7 +11525,26 @@ default 100%.
 
 - Этап 1 (RAG) — коммит `b47c1f9`.
 - Этап 2 (LLM-токены) — коммит `cbbfe92`.
-- Этап 3 (Storage/backup) — вариант (1), осознанный сдвиг storage-сумм.
+- Этап 3 (Storage/backup) — вариант (1), осознанный сдвиг storage-сумм. Коммит `351fc64`.
+- Этап 4 (CPU/RAM) — коммит `b025180` (единая база vCPU, advanced модели, realtime×PCU).
+
+### Review-проход Stage 1-4 (перед релизом)
+
+Жёсткий ревью (7 субагентов + верификация каждой находки по file:line). Итог:
+- **P1 исправлен:** `deriveExternalLlmTokenQtyFallback` (calculator.js) при degenerate-
+  recovery использовал хардкод `* 0.10` для safety и `demand.inputTokens` (простой объём)
+  вместо `ai_safety_overhead_percent` и `S.aiInputTokensEffective`. Теперь зеркалит
+  seed-формулу. + regression-тесты.
+- **Уточнено:** `checkBackupRetentionWithoutDb` — убрана двойная инверсия (читаемость).
+- **Добавлен arch-тест** `cpu-base-single-source` (anti-drift единой базы vCPU — условие 7 ещё для Stage 4).
+- **False-positive отклонены:** «отсутствует checkBackupRetentionWithoutHdd» — проверка
+  есть на нужном (qty-aware) слое `quantityTrace.auditSemanticInvariants.backupsWithoutHdd`.
+- **Backlog для Stage 5 (Security)** — НЕ регрессии текущего релиза, вынесены сознательно:
+  - `storage-secure-gb` (категория SECURITY): PSI без годового прироста БД (pre-existing
+    асимметрия с PROD) + нет index×WAL (в отличие от storage-ssd). Привести к единой
+    DB-storage-модели в Stage 5 вместе с остальными security-ЭК; пометить сдвиг.
+  - `ai_agent_type.recommendation` (pre-existing, не из Stage 1-4): mixed-script
+    «orchestration-фреймворки / deep-research / AI-team» — почистить (англицизмы).
 
 ⚠ **Для будущих release notes (условие 1 владельца):** «Изменена модель расчёта
 storage — суммы по SSD/HDD/объектному хранилищу могут измениться» (индексы БД
