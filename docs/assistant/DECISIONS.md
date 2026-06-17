@@ -12006,3 +12006,54 @@ TDD: [enrich-dr-price-unit-refresh-p6.test.js](../../tests/unit/domain/enrich-dr
 `2.22.7 → 2.22.8` (**PATCH**): фикс enrichment legacy-DR. Новые расчёты (новый seed, unit уже
 vCPU) не меняются — golden без регрессий. Метрики: unit **5803/5803 PASS** (+4 P6),
 e2e **60 passed**, syntax/sanity/quantity/prices/diff — все EXIT 0.
+
+## Release 2.22.9 — Seasonal health checks + regression guard (Stage 5B-S) (2026-06-18)
+
+PATCH. Первый и единственный срез Этапа 5B по сезонности (Stage 5B-S). Глубина по
+согласованию с пользователем — «баг-фиксы + ограниченные модельные улучшения», без полной
+Security/DR-модели. **Формулы и числа НЕ менялись** — golden без дрейфа, это уточнение
+Health Check + регресс-замок.
+
+**Ключевой вывод — «peak_months bug» НЕ воспроизвёлся.** Исходно (по памяти прошлой сессии)
+ожидался баг в `one-seasonal-load-readiness` (seed.js:3750): формула
+`if(Q.seasonal_activity, max(1, Q.peak_months), 0)` якобы трактует multiselect-массив
+`peak_months` как число. Фактический прогон (direct eval + end-to-end calculate) показал, что
+**формула корректна**: evaluator приводит массив к длине (`toNum(array) = array.length`,
+[evaluator.js:33](../../js/domain/formula/evaluator.js#L33)), `max` маппит `toNum` по аргументам
+→ `max(1, ['nov','dec'])` = `max(1, 2)` = 2. Результаты: `[nov,dec]`→2, `[]`→1 (минимум),
+6 мес.→6, сезонность выкл.→0. Поведение ровно как в `formulaHelp`. **Урок (правило §1 /
+[[feedback-reproduce-numeric-complaint-before-explaining]]):** numeric-«баг» из памяти — это
+предположение, пока не воспроизведён расчётом. Вместо несуществующего фикса добавлен
+регресс-замок [seasonal-peak-months-qty.test.js](../../tests/unit/domain/seasonal-peak-months-qty.test.js)
+(5 проверок), чтобы будущий «фикс» (например замена на мнимый `count()`) не сломал рабочую
+логику.
+
+**Что реально сделано — 2 health-проверки** ([calculationHealthChecks.js](../../js/domain/calculationHealthChecks.js),
+без правок формул/цен):
+
+- `checkSeasonalTooManyPeakMonths` (`warning`, category `risk`): при `seasonal_activity=true`
+  и выборе >4 пиковых месяцев. **Мягкая** валидация — расчёт НЕ обрезается (длинный сезон
+  возможен), но предупреждаем «это уже почти постоянная нагрузка, заложите в базовый профиль
+  PCU/RPS». Soft-cap `SEASONAL_PEAK_MONTHS_SOFT_CAP = 4`.
+- `checkSeasonalSurchargeManual` (`info`, category `risk`): зеркало
+  `checkSeasonalActivityNotApplied` — сезонность в Опроснике НЕ включена, но `kSeasonal>0`
+  задан вручную (`DEFAULT_K_SEASONAL=0` ⇒ info не шумит на типовых расчётах) при включённых
+  риск-коэффициентах → надбавка применяется. Информируем «сезонная надбавка задана вручную».
+  `seasonalMul` оставлен ручным knob'ом (по решению пользователя — не привязывать жёстко к
+  `seasonal_activity`, чтобы не ломать осознанный ручной ввод).
+
+TDD: [seasonal-health-checks-5b.test.js](../../tests/unit/domain/seasonal-health-checks-5b.test.js)
+(9 проверок: warning >4 / граница ≤4 / off / не-массив; info false+kSeasonal>0 / unset+kSeasonal>0 /
+true→нет / kSeasonal=0→нет / applyRiskFactors=false→нет).
+
+`2.22.8 → 2.22.9` (**PATCH**): формулы/schema/bundle не меняются; только Health Check +
+регресс-тест. Метрики: unit **5817/5817 PASS** (+14: 5 регресс + 9 health),
+syntax/sanity/quantity/prices/diff — все EXIT 0; e2e **60 passed** (повтор; 2 layout-теста
+флакнули в первом полном прогоне — доказано пред-существующим флаком параллельного прогона:
+базлайн-полный 60 passed, мой повтор 60 passed, оба спека в изоляции passed; правка —
+domain-only, рендер/CSS не тронуты).
+
+**Stage 5B следующие срезы** (по выбору пользователя, отдельными релизами): УЗ-hardening
+(категория ПДн эскалирует всю SECURITY, не только счётчик СЗИ) → audit-log (новый вопрос
+«событий аудита в день» + storage) → SIEM/WAF масштабирование. DR-mode (cold/warm/hot из
+RTO/RPO) отложен — DR стабилизирован в 5A+P6, не трогаем.

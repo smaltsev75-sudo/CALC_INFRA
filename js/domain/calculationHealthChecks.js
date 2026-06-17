@@ -768,6 +768,71 @@ function checkSeasonalActivityNotApplied(calc) {
     });
 }
 
+/*
+ * Мягкая валидация: при включённой сезонности выбрано больше 4 пиковых месяцев.
+ * Расчёт НЕ обрезается (длинный сезон возможен), но это уже почти постоянная нагрузка —
+ * её корректнее закладывать в базовый профиль (PCU/RPS), а не в сезонную надбавку.
+ */
+const SEASONAL_PEAK_MONTHS_SOFT_CAP = 4;
+
+function checkSeasonalTooManyPeakMonths(calc) {
+    if (ans(calc, 'seasonal_activity') !== true) return null;
+    const peak = ans(calc, 'peak_months');
+    const count = Array.isArray(peak) ? peak.length : 0;
+    if (count <= SEASONAL_PEAK_MONTHS_SOFT_CAP) return null;
+
+    const fieldIds = ['seasonal_activity', 'peak_months'];
+    if (isHealthAcknowledged(calc, 'risk-seasonal-too-many-peak-months', fieldIds)) return null;
+
+    return makeFinding({
+        id: 'risk-seasonal-too-many-peak-months',
+        severity: 'warning',
+        category: 'risk',
+        title: 'Указано более 4 пиковых месяцев',
+        message:
+            `Выбрано ${count} пиковых месяцев. Если повышенная нагрузка держится дольше ` +
+            '4 месяцев в году — это уже не сезонный пик, а почти постоянная нагрузка. ' +
+            'Расчёт оставлен как есть (месяцы не обрезаются), но проверьте, не стоит ли ' +
+            'отразить эту нагрузку в базовом профиле (PCU / RPS) вместо сезонной надбавки.',
+        fieldIds,
+        suggestedAction:
+            'Оставьте в «Месяцы пиковой активности» только реальные пики (обычно 1-4 месяца), ' +
+            'а постоянно высокую нагрузку заложите в базовые параметры нагрузки.'
+    });
+}
+
+/*
+ * Зеркало checkSeasonalActivityNotApplied: в Опроснике сезонность НЕ включена,
+ * но сезонный коэффициент задан вручную (kSeasonal>0 при дефолте 0) и риск-коэффициенты
+ * включены → надбавка к ресурсам всё равно применяется. Информируем (не ошибка).
+ */
+function checkSeasonalSurchargeManual(calc) {
+    if (ans(calc, 'seasonal_activity') === true) return null;     // обратный случай — в checkSeasonalActivityNotApplied
+    if (setting(calc, 'applyRiskFactors') === false) return null; // надбавка вообще не применяется
+
+    const kSeasonal = setting(calc, 'kSeasonal');
+    if (!(isFiniteNum(kSeasonal) && kSeasonal > 0)) return null;
+
+    const fieldIds = ['seasonal_activity', 'kSeasonal', 'applyRiskFactors'];
+    if (isHealthAcknowledged(calc, 'risk-seasonal-surcharge-manual', fieldIds)) return null;
+
+    const pct = Math.round(kSeasonal * 1000) / 10;
+    return makeFinding({
+        id: 'risk-seasonal-surcharge-manual',
+        severity: 'info',
+        category: 'risk',
+        title: 'Сезонная надбавка задана вручную',
+        message:
+            `В Опроснике сезонная активность не отмечена, но сезонный коэффициент задан вручную (${pct} %). ` +
+            'Надбавка применяется к ресурсным классам (сеть, трафик, услуги, токены LLM). ' +
+            'Это допустимо, если пик уже учтён осознанно; иначе расчёт и Опросник расходятся.',
+        fieldIds,
+        suggestedAction:
+            'Если сезонной нагрузки нет — обнулите сезонный коэффициент (kSeasonal). ' +
+            'Если она есть — отметьте сезонную активность в Опроснике, чтобы расчёт был консистентным.'
+    });
+}
+
 /* --- Группа: Прайсы --- */
 
 function checkStaleBundle(calc, options) {
@@ -1009,6 +1074,8 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkSlaStrictRtoRpoWithoutGeoredundancy,
     checkZeroRpoWithoutReplicas,
     checkSeasonalActivityNotApplied,
+    checkSeasonalTooManyPeakMonths,
+    checkSeasonalSurchargeManual,
     checkStaleBundle,
     checkStubBundle,
     checkBundleNotApplied,
