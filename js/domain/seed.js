@@ -5237,8 +5237,19 @@ const _AGENT_FORMULA_REFRESH_IDS = [
     'service-external-api-calls-1m',
     'traffic-egress-tb',
     'traffic-ingress-tb',
-    'res-dr-active'
+    'res-dr-active',
+    'res-georedundancy',
+    'storage-object-tb'
 ];
+
+/* P6 (2.22.8): ЭК, у которых в Stage 5A сменилась ЕДИНИЦА qty (DR: «площадка» →
+   «vCPU резерва»). Для них старый pricePerUnit (₽/площадка) НЕСОВМЕСТИМ с новой
+   vCPU-формулой → при рефреше формулы цену/единицу надо обновлять АТОМАРНО, иначе
+   N×vCPU × старая_цена_за_площадку = взрыв (воспроизведено ×11). Рефреш unit+price
+   делаем ТОЛЬКО при НЕсовпадении unit (legacy площадка) — при совпадении сохраняем
+   пользовательский ценовой override. storage-object-tb сюда НЕ входит: его единица
+   («ТБ») не менялась, рефрешится только формула (S3 versioning overhead). */
+const _AGENT_UNIT_PRICE_REFRESH_IDS = ['res-dr-active', 'res-georedundancy'];
 
 export function enrichLegacyDictionaryWithAgentSeed(calc) {
     if (!calc || typeof calc !== 'object') return calc;
@@ -5277,6 +5288,18 @@ export function enrichLegacyDictionaryWithAgentSeed(calc) {
             item.applicableStands = [...fresh.applicableStands];
         }
         if (fresh.formulaHelp) item.formulaHelp = fresh.formulaHelp;
+        /* P6: атомарный рефреш единицы и цены для ЭК со сменившейся единицей qty
+           (DR площадка→vCPU). Только при НЕсовпадении unit: старая ₽/площадка
+           несовместима с новой vCPU-формулой (без этого N×vCPU × старая_цена =
+           взрыв). При совпадении unit цену НЕ трогаем — сохраняем пользовательский
+           override. ekClass тоже обновляем (prod-derived нужен для DR post-pass /
+           buildQuantityTrace). */
+        if (_AGENT_UNIT_PRICE_REFRESH_IDS.includes(item.id)
+            && typeof fresh.unit === 'string' && item.unit !== fresh.unit) {
+            item.unit = fresh.unit;
+            if (Number.isFinite(fresh.pricePerUnit)) item.pricePerUnit = fresh.pricePerUnit;
+            if (fresh.ekClass) item.ekClass = fresh.ekClass;
+        }
     }
 
     /* 4. Добавить недостающие ВОПРОСЫ, на которые ссылаются формулы словаря.

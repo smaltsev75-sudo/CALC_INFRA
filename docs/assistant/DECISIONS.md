@@ -11976,3 +11976,33 @@ A4 landscape ширине (на десктоп-viewport колонки шире,
 `2.22.6 → 2.22.7` (**PATCH**): только print-CSS Деталей. Модель/schema/bundle не меняются.
 Метрики: unit **5799/5799 PASS**, e2e **60 passed** (export-print замер col-total overflow 16px→0),
 syntax/sanity/quantity/prices/diff — все EXIT 0.
+
+## Release 2.22.8 — P6: атомарный рефреш unit+price для DR-ЭК (фикс латентного ×N взрыва) (2026-06-18)
+
+PATCH (safety/bugfix legacy-данных; новые расчёты не меняются). Закрывает отложенный
+P6 как маленький safety-patch (Stage 5B — отдельно, после).
+
+**Латентный баг (с 2.22.0, воспроизведён)**: Stage 5A сменил единицу DR-ЭК `res-dr-active`
+с «площадка» (₽300/400k за ЦОД) на «vCPU резерва» (₽1750/2300 за vCPU) и добавил его в
+`_AGENT_FORMULA_REFRESH_IDS`. `enrichLegacyDictionaryWithAgentSeed` рефрешил у legacy-ЭК
+ТОЛЬКО `qtyFormulas`/`applicableStands`/`formulaHelp`, но НЕ `pricePerUnit`/`unit`. Итог для
+legacy-расчёта (созданного до 2.22.0): формула → vCPU-база (qty 1 → N vCPU), а цена осталась
+400 000 ₽/площадка → N × 400 000 = взрыв. Репродукция: res-dr-active 842 642 → **9 269 060
+₽/мес (×11)**.
+
+**Фикс** ([seed.js](../../js/domain/seed.js)): новый список `_AGENT_UNIT_PRICE_REFRESH_IDS =
+['res-dr-active','res-georedundancy']` — для ЭК со сменившейся единицей qty при рефреше формулы
+АТОМАРНО обновляются `unit`+`pricePerUnit`+`ekClass`, но ТОЛЬКО при НЕсовпадении unit (старая
+₽/площадка несовместима с новой vCPU-qty). При СОВПАДЕНИИ unit цена НЕ трогается — сохраняется
+пользовательский override. Также `res-georedundancy` и `storage-object-tb` добавлены в
+`_AGENT_FORMULA_REFRESH_IDS` (georedundancy получает vCPU-модель безопасно; storage-object-tb —
+только формула, единица «ТБ» не менялась, цена сохраняется). Enrichment мутирует словарь на
+openCalc → openCalc персистит изменение (enrichChanged по snapshot) → отдельная миграция не нужна.
+
+TDD: [enrich-dr-price-unit-refresh-p6.test.js](../../tests/unit/domain/enrich-dr-price-unit-refresh-p6.test.js)
+(4 проверки: unit/price рефреш + отсутствие взрыва, georedundancy в модели, сохранность
+пользовательской цены при совпадении unit, storage-object-tb формула без клоббера цены).
+
+`2.22.7 → 2.22.8` (**PATCH**): фикс enrichment legacy-DR. Новые расчёты (новый seed, unit уже
+vCPU) не меняются — golden без регрессий. Метрики: unit **5803/5803 PASS** (+4 P6),
+e2e **60 passed**, syntax/sanity/quantity/prices/diff — все EXIT 0.
