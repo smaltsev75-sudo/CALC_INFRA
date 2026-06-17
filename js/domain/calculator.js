@@ -301,6 +301,28 @@ export function buildContext(answers, settings, questionDefaults, stand, item = 
     const agentToolFactor = agentStepFactor * toolShare;
     const aiModelTierFactor = AI_MODEL_TIER_FACTOR[a.ai_model_tier] ?? AI_MODEL_TIER_FACTOR.mid;
 
+    /* Stage 1 (qty-модель ПРОМ): эффективное число AI-запросов в месяц с учётом
+       degenerate-recovery (та же логика, что у LLM-токенов). Используется в
+       RAG-формуле для «эмбеддингов запросов» (стоимость поиска), чтобы вырожденная
+       user-base (registered=0 при подтверждённом baseline) не занижала RAG-расход
+       относительно подтверждённого baseline. Без agent-факторов: число
+       пользовательских запросов от агентского режима не зависит (multi-query/agentic
+       RAG учитывается через rag_retrieval_calls_per_query). */
+    const aiDemand = getEffectiveLlmTokenDemand(
+        {
+            Q: a, questionDefaults,
+            healthAcknowledgements: demandHints?.healthAcknowledgements || null,
+            activeScenarioAnswers: demandHints?.activeScenarioAnswers || null,
+            wizardAnswers: demandHints?.wizardAnswers || null
+        },
+        { repairDegenerate: answerBool(answerContext, 'ai_llm_used', false) }
+    );
+    const aiRequestsPerMonth = (Number(aiDemand.registered) || 0)
+        * ((Number(aiDemand.dauShare) || 0) / 100)
+        * ((Number(aiDemand.aiShare) || 0) / 100)
+        * (Number(aiDemand.requestsPerUserDay) || 0)
+        * DEFAULT_DAYS_PER_MONTH;
+
     return {
         Q: answers || {},
         S: {
@@ -319,7 +341,8 @@ export function buildContext(answers, settings, questionDefaults, stand, item = 
             standSizeRatio:       ratio,
             agentStepFactor,
             agentToolFactor,
-            aiModelTierFactor
+            aiModelTierFactor,
+            aiRequestsPerMonth
         },
         STAND: stand,
         questionDefaults,

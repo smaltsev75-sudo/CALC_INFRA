@@ -94,7 +94,11 @@ const SETTING_LABEL_OVERRIDES = Object.freeze({
      * меток в UI протекал технический путь «Параметр расчёта agentStepFactor». */
     agentStepFactor: 'Множитель шагов AI-агента',
     agentToolFactor: 'Множитель вызовов инструментов AI-агента',
-    aiModelTierFactor: 'Множитель класса AI-модели'
+    aiModelTierFactor: 'Множитель класса AI-модели',
+    /* Stage 1 (qty-модель ПРОМ): эффективное число AI-запросов в месяц
+     * (DAU × доля AI × запросов/день × 30, с degenerate-recovery) — драйвер
+     * «эмбеддингов запросов» в ЭК «Эмбеддинги для RAG». */
+    aiRequestsPerMonth: 'AI-запросов в месяц (расчётное)'
 });
 
 function finite(value, fallback = 0) {

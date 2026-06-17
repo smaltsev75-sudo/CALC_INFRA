@@ -277,6 +277,30 @@ Performance guard `tests/unit/performance/calculate-large-data-budget.test.js`
 При правке формул, прайсов, wizard-профилей или риск/VAT-множителей запускать
 эти слои обязательно; `npm test` делает это автоматически.
 
+**Регенерация golden-снапшотов** после НАМЕРЕННОГО изменения модели (значения
+`expected` пиннятся inline в тестах). Печатают строки `__REGEN__` с готовыми
+для копирования блоками:
+
+```bash
+BUSINESS_GOLDEN_REGEN=1 node tests/run.js tests/unit/domain/business-golden-scenarios.test.js
+GOLDEN_REGEN=1          node tests/run.js tests/unit/domain/golden-scenarios.test.js
+```
+
+Сверяйте дельты с ожиданием от правки (не копируйте вслепую) и фиксируйте
+причину в release notes / DECISIONS.md.
+
+**Изменение qty-формул** (источник истины — DSL в `seed.js`): помните про
+параллельные реализации/fallback'и, которые ОБЯЗАНЫ зеркалить формулу, иначе
+Дашборд разойдётся с Деталями/Паспортом:
+[dashboardAggregates.js](js/ui/dashboardAggregates.js) (`deriveLlmTokenItemQty`,
+`deriveRagEmbeddingItemQty`, `ragRefreshMultiplier`) и
+[calculator.js](js/domain/calculator.js) (`deriveExternalLlmTokenQtyFallback`).
+Производные `S.*` (`agentStepFactor`, `aiModelTierFactor`, `aiRequestsPerMonth`)
+считаются в `buildContext` и должны получать человекочитаемую метку в
+[prodPassport.js](js/domain/prodPassport.js) и
+[quantityExplanation.js](js/ui/quantityExplanation.js) (иначе forcing-function
+тест «Параметр расчёта …» падает).
+
 ### 4.4 Sanity report (вручную)
 
 ```bash

@@ -324,11 +324,31 @@ describe('dashboardAggregates', () => {
 
         const metrics = aggregateAiMetrics(result, calc.dictionaries.items, [], false, calc);
 
-        assert.equal(metrics.perStand.PROD.EMBEDDINGS.qty, 400);
-        assert.equal(metrics.perStand.LOAD.EMBEDDINGS.qty, 400);
-        assert.equal(metrics.perStand.PSI.EMBEDDINGS.qty, 200);
-        assert.equal(metrics.perStand.IFT.EMBEDDINGS.qty, 80);
-        assert.equal(metrics.perStand.DEV.EMBEDDINGS.qty, 8);
-        assert.equal(metrics.total.EMBEDDINGS.qty, 1088);
+        // Stage 1 (qty-модель ПРОМ): нагрузка = индексация (corpus 2 ГБ × 200M × monthly=1 = 400 млн)
+        // + эмбеддинги запросов (DAU 1000 × 10 зап/день × 30 × 4 поиска × 200 ток = 240 млн) = 640 на PROD.
+        // На on-prem эмбеддинги не тарифицируются (cost=0), но объём токенов виден для планирования мощности.
+        assert.equal(metrics.perStand.PROD.EMBEDDINGS.qty, 640);
+        assert.equal(metrics.perStand.LOAD.EMBEDDINGS.qty, 640);
+        assert.equal(metrics.perStand.PSI.EMBEDDINGS.qty, 320);
+        assert.equal(metrics.perStand.IFT.EMBEDDINGS.qty, 128);
+        assert.equal(metrics.perStand.DEV.EMBEDDINGS.qty, 13);
+        assert.equal(metrics.total.EMBEDDINGS.qty, 1741);
+    });
+
+    it('on-prem + вырожденная user-base: Dashboard RAG query-нагрузка восстанавливается из подтверждённого baseline', () => {
+        // corpus=0 изолирует «эмбеддинги запросов»; on-prem → seed-формула=0 → срабатывает fallback.
+        // Контракт: вырожденная база (registered=0 + healthAcknowledgement) должна восстанавливаться
+        // к подтверждённому baseline — так же, как у LLM-токенов в calculate(). Без фикса fallback
+        // считал бы query-нагрузку от сырого registered=0 и дал бы 0 (Dashboard ≠ подтверждённая модель).
+        const baseline = makeOnPremAiCalc({ rag_corpus_size_gb: 0 }); // registered 10000
+        const degenerate = makeOnPremAiCalc({ rag_corpus_size_gb: 0, registered_users_total: 0 });
+        degenerate.healthAcknowledgements = {
+            'ai-degenerate-userbase': { values: { registered_users_total: 10000 } }
+        };
+        const mBase = aggregateAiMetrics(calculate(baseline), baseline.dictionaries.items, [], false, baseline);
+        const mDeg = aggregateAiMetrics(calculate(degenerate), degenerate.dictionaries.items, [], false, degenerate);
+        assert.ok(mBase.perStand.PROD.EMBEDDINGS.qty > 0, 'baseline должен иметь query-эмбеддинги');
+        assert.equal(mDeg.perStand.PROD.EMBEDDINGS.qty, mBase.perStand.PROD.EMBEDDINGS.qty,
+            'вырожденная user-base должна восстанавливаться к baseline (как у LLM-токенов)');
     });
 });

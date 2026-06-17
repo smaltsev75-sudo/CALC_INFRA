@@ -51,20 +51,20 @@ const GOLDEN_SCENARIOS = Object.freeze([
         id: 'edtech_b2c_m_ai',
         wizard: { product_type: 'b2c', industry: 'edtech', scale: 'm', geography: 'ru', pdn: true, activity: 'high', ai_used: true },
         expected: {
-            totalMonthly: 31_179_854,
-            totalAnnual: 374_158_252,
+            totalMonthly: 31_195_184,
+            totalAnnual: 374_342_204,
             topCategory: 'AI',
-            byCategoryMonthly: { HW: 1_038_313, LICENSE: 222_414, TRAFFIC: 205_431, SERVICES: 3_228_949, RESERVES: 0, SECURITY: 785_419, AI: 25_699_328 }
+            byCategoryMonthly: { HW: 1_038_313, LICENSE: 222_414, TRAFFIC: 205_431, SERVICES: 3_228_949, RESERVES: 0, SECURITY: 785_419, AI: 25_714_657 }
         }
     },
     {
         id: 'consumer_b2c_l_ai_global',
         wizard: { product_type: 'b2c', industry: 'consumer', scale: 'l', geography: 'global', pdn: true, activity: 'high', ai_used: true },
         expected: {
-            totalMonthly: 148_904_054,
-            totalAnnual: 1_786_848_649,
+            totalMonthly: 149_040_433,
+            totalAnnual: 1_788_485_199,
             topCategory: 'AI',
-            byCategoryMonthly: { HW: 29_128_412, LICENSE: 564_590, TRAFFIC: 9_244_399, SERVICES: 27_381_696, RESERVES: 0, SECURITY: 1_446_108, AI: 81_138_850 }
+            byCategoryMonthly: { HW: 29_128_412, LICENSE: 564_590, TRAFFIC: 9_244_399, SERVICES: 27_381_696, RESERVES: 0, SECURITY: 1_446_108, AI: 81_275_229 }
         }
     },
     {
@@ -91,20 +91,20 @@ const GOLDEN_SCENARIOS = Object.freeze([
         id: 'enterprise_b2c_xl_ai_global',
         wizard: { product_type: 'b2c', industry: 'consumer', scale: 'xl', geography: 'global', pdn: true, activity: 'high', ai_used: true },
         expected: {
-            totalMonthly: 720_014_056,
-            totalAnnual: 8_640_168_667,
+            totalMonthly: 720_588_419,
+            totalAnnual: 8_647_061_027,
             topCategory: 'HW',
-            byCategoryMonthly: { HW: 284_346_900, LICENSE: 1_209_021, TRAFFIC: 46_221_993, SERVICES: 127_782_466, RESERVES: 0, SECURITY: 5_648_622, AI: 254_805_053 }
+            byCategoryMonthly: { HW: 284_346_900, LICENSE: 1_209_021, TRAFFIC: 46_221_993, SERVICES: 127_782_466, RESERVES: 0, SECURITY: 5_648_622, AI: 255_379_416 }
         }
     },
     {
         id: 'regulated_b2g_fintech_xl_ai_global',
         wizard: { product_type: 'b2g', industry: 'fintech', scale: 'xl', geography: 'global', pdn: true, activity: 'high', ai_used: true },
         expected: {
-            totalMonthly: 586_517_692,
-            totalAnnual: 7_038_212_305,
+            totalMonthly: 586_577_532,
+            totalAnnual: 7_038_930_388,
             topCategory: 'AI',
-            byCategoryMonthly: { HW: 52_467_648, LICENSE: 16_984_903, TRAFFIC: 6_474_392, SERVICES: 160_298_082, RESERVES: 2_176_825, SECURITY: 7_463_136, AI: 340_652_705 }
+            byCategoryMonthly: { HW: 52_467_648, LICENSE: 16_984_903, TRAFFIC: 6_474_392, SERVICES: 160_298_082, RESERVES: 2_176_825, SECURITY: 7_463_136, AI: 340_712_546 }
         }
     }
 ]);
@@ -151,3 +151,19 @@ describe('golden scenarios: Quick Start расчёты', () => {
         });
     }
 });
+
+/* Регенерация снапшотов после намеренного изменения модели:
+ *   GOLDEN_REGEN=1 node tests/run.js tests/unit/domain/golden-scenarios.test.js  (строки __REGEN__) */
+if (process.env.GOLDEN_REGEN) {
+    for (const scenario of GOLDEN_SCENARIOS) {
+        clearCalculationCache();
+        const result = calculate(buildCalcFromWizard(scenario.wizard));
+        const exp = {
+            totalMonthly: Math.round(result.totalMonthly),
+            totalAnnual: Math.round(result.totalAnnual),
+            topCategory: topCategory(result),
+            byCategoryMonthly: roundedByCategory(result)
+        };
+        console.log(`__REGEN__ ${scenario.id} ${JSON.stringify(exp)}`);
+    }
+}

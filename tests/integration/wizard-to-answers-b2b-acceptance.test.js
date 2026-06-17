@@ -21,9 +21,11 @@ import { wizardToAnswers } from '../../js/domain/wizardProfiles.js';
 import { SEED_QUESTIONS } from '../../js/domain/seed.js';
 
 describe('wizardToAnswers: acceptance B2B-standard', () => {
-    it('SEED_QUESTIONS.length = 90 — общее количество вопросов в детальном опроснике', () => {
-        // ⚠ При изменении этого числа — синхронно обновите WIZARD_PROFILES.md «X полей из 90».
-        assert.equal(SEED_QUESTIONS.length, 90,
+    it('SEED_QUESTIONS.length = 93 — общее количество вопросов в детальном опроснике', () => {
+        // ⚠ При изменении этого числа — синхронно обновите WIZARD_PROFILES.md «X полей из N».
+        // Stage 1 (qty-модель ПРОМ): +3 RAG-параметра (rag_embeddings_manual,
+        // rag_avg_chunk_tokens, rag_refresh_delta_percent).
+        assert.equal(SEED_QUESTIONS.length, 93,
             'Если количество SEED_QUESTIONS изменилось — обновите WIZARD_PROFILES.md §7.2');
     });
 

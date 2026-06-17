@@ -114,18 +114,19 @@ describe('questionnaire fields are wired to budget items', () => {
         assert.equal(qty('ai-low-latency-inference-reserve', { ...aiBase, ai_inference_latency_ms: 3000 }), 0);
         assert.equal(qty('ai-sensitive-data-gateway', { ...aiBase, ai_data_sensitivity: 'pdn' }), 1);
         assert.equal(qty('ai-sensitive-data-gateway', { ...aiBase, ai_data_sensitivity: 'public' }), 0);
-        assert.ok(qty('rag-vector-db-gb', {
-            ...aiBase,
-            rag_needed: true,
-            rag_managed_used: false,
-            rag_embeddings_million: 10,
-            rag_retrieval_calls_per_query: 20
-        }) > qty('rag-vector-db-gb', {
-            ...aiBase,
-            rag_needed: true,
-            rag_managed_used: false,
-            rag_embeddings_million: 10,
-            rag_retrieval_calls_per_query: 4
-        }));
+        // Stage 1 (qty-модель ПРОМ): retrieval_calls переехал из размера vector-DB
+        // (там он был ошибочным множителем) в эмбеддинги ЗАПРОСОВ ЭК «Эмбеддинги для RAG».
+        // Размер vector-DB от retrieval НЕ зависит; стоимость поиска — зависит.
+        const ragBase = { ...aiBase, rag_needed: true, rag_managed_used: false, rag_corpus_size_gb: 10 };
+        assert.equal(
+            qty('rag-vector-db-gb', { ...ragBase, rag_retrieval_calls_per_query: 20 }),
+            qty('rag-vector-db-gb', { ...ragBase, rag_retrieval_calls_per_query: 4 }),
+            'размер vector-DB не должен зависеть от числа поисков'
+        );
+        assert.ok(
+            qty('rag-embeddings-1m', { ...ragBase, rag_retrieval_calls_per_query: 20 }) >
+            qty('rag-embeddings-1m', { ...ragBase, rag_retrieval_calls_per_query: 4 }),
+            'эмбеддинги запросов должны расти с числом поисков'
+        );
     });
 });

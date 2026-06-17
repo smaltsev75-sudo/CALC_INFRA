@@ -150,11 +150,12 @@ const BUSINESS_SCENARIOS = Object.freeze([
             agent_memory_used: true, agent_memory_size_gb: 250
         },
         expected: {
-            totalMonthly: 464_901_260,
-            totalAnnual: 5_578_815_120,
+            // Stage 1 (qty-модель ПРОМ): AI вырос на эмбеддинги ЗАПРОСОВ RAG (retrieval_calls × ~200 токенов).
+            totalMonthly: 465_635_008,
+            totalAnnual: 5_587_620_097,
             topCategory: 'AI',
-            byStandMonthly: { DEV: 3_457_573, IFT: 34_175_323, PSI: 85_059_278, PROD: 171_770_674, LOAD: 170_438_412 },
-            byCategoryMonthly: { HW: 677_308, LICENSE: 501_858, TRAFFIC: 39_761, SERVICES: 2_511_299, RESERVES: 0, SECURITY: 913_296, AI: 460_257_739 },
+            byStandMonthly: { DEV: 3_462_767, IFT: 34_228_971, PSI: 85_194_259, PROD: 172_040_637, LOAD: 170_708_375 },
+            byCategoryMonthly: { HW: 677_308, LICENSE: 501_858, TRAFFIC: 39_761, SERVICES: 2_511_299, RESERVES: 0, SECURITY: 913_296, AI: 460_991_487 },
             topProdItemIds: ['llm-tokens-input-1m', 'llm-tokens-output-1m', 'ai-safety-moderation-tokens-1m', 'ai-agent-sandbox-vcpu', 'one-deployment']
         }
     }
@@ -239,3 +240,22 @@ describe('business golden scenarios: manual questionnaire profiles', () => {
         assert.ok(ids.has('ai_agent_support'), 'AI/RAG/agent support profile must be pinned');
     });
 });
+
+/* Регенерация golden-снапшотов после намеренного изменения модели:
+ *   BUSINESS_GOLDEN_REGEN=1 node tests/run.js tests/unit/domain/business-golden-scenarios.test.js
+ * Печатает actual expected-блоки (строки __REGEN__) для копирования в BUSINESS_SCENARIOS. */
+if (process.env.BUSINESS_GOLDEN_REGEN) {
+    for (const scenario of BUSINESS_SCENARIOS) {
+        clearCalculationCache();
+        const result = calculate(buildBusinessCalc(scenario));
+        const exp = {
+            totalMonthly: Math.round(result.totalMonthly),
+            totalAnnual: Math.round(result.totalAnnual),
+            topCategory: topCategory(result),
+            byStandMonthly: roundedByStand(result),
+            byCategoryMonthly: roundedByCategory(result),
+            topProdItemIds: topProdItemIds(result)
+        };
+        console.log(`__REGEN__ ${scenario.id} ${JSON.stringify(exp)}`);
+    }
+}

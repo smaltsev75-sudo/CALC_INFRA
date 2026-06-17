@@ -11438,3 +11438,85 @@ source-level, но L7 Application Load Balancer считался по одной
 `2.20.30 → 2.20.31` (PATCH). Schema остаётся v20; provider JSON schema и bundle
 format не меняются. Изменение пользовательски видимо только через обновлённые
 Yandex цены/confidence и более высокий L7 ALB baseline.
+
+## ПЛАН: Доработка qty-модели ПРОМ — scope-решения (2026-06-17)
+
+### Контекст
+
+Аудит qty-формул ПРОМ (Workflow, 10 субагентов, верификация каждой находки по
+file:line против детерминированного дампа) выявил: 1 P1-баг (RAG vector-DB
+storage умножается на частоту поисков), десинхрон corpus↔embeddings,
+эвристические коэффициенты без расширенной модели (CPU/RAM/storage/security),
+DR не масштабируется с ПРОМ, отсутствие маркера «проектная работа». Детали —
+[QTY_MODEL_AUDIT_PROM_2026-06.md](QTY_MODEL_AUDIT_PROM_2026-06.md).
+
+Отбраковано как false-positive (намеренный дизайн, подтверждено кодом):
+5 «двойных счётов» SIEM/DLP/SSO/antifraud/EDO — это CAPEX(oneTime)/OPEX
+(monthly|annual) силосы; `storage-secure-gb` PROD без `standSizeRatio` (ratio
+PROD=1, no-op во всех PROD-формулах); двойной учёт `cache_size_gb` (уже
+исправлен в 13.U13). Мёртвых полей опросника — 0 (все 90 используются).
+
+### Решения по scope (одобрено бизнес-владельцем)
+
+**Процесс/архитектура.** (1) Работы поэтапно, зона-за-зоной, не одним PR:
+RAG → LLM → Storage/backup → CPU/RAM → Security/DR/project works. (2) Инженерные
+дефолты допустимы ТОЛЬКО с явной пометкой `оценка`, `defaultIfUnknown`,
+`formulaHelp` и видимым пользователю допущением. (3) DR-производные
+`S.prodComputeVcpu` / `S.prodRamGb` / `S.prodStorageTb` считаются из core-ресурсов
+ПРОМ (НЕ из самих DR/резервов) — без циклов. (4) Все новые параметры
+опциональные, в раскрываемых расширенных блоках; простой режим и Quick Start не
+ломать. (5) Термин «TCO/ТСО» в новых user-facing текстах не использовать.
+
+**RAG.** realtime = дельта-обновления (не полный пересчёт; ×30 оставить для
+daily). Новый параметр `delta %` (доля корпуса за цикл), `defaultIfUnknown=100%`
+для совместимости, подсказка 5–15%. Тип контента — оставить 200 млн токенов/ГБ
+как worst-case оценку (без нового select на 1 этапе). `rag_embeddings_million`
+считать авто из corpus + ручной override; при большом расхождении — Health
+warning. Убрать `max(1, retrieval/4)` из формулы размера vector-DB (retrieval =
+нагрузка, не размер). on_prem_gpu: embeddings on-prem, external API не
+тарифицируется — пометить допущением.
+
+**LLM.** `ai_caching_share` = доля input-токенов, не требующих тарификации
+(снижение количества) — уточнить описание. Простой режим остаётся; добавить
+опциональный расширенный (system/история/RAG-контекст/tool-use/output/caching) +
+опциональный множитель RAG-контекста. `ai_safety_overhead_percent` 0–50%,
+`defaultIfUnknown=10%`, пометка «оценка». Дефолты input=1500/output=500 —
+оставить.
+
+**CPU/RAM.** Параметр CPU-времени запроса; fallback `RPS/50` если не задан.
+Целевая загрузка CPU `defaultIfUnknown=65%`. Минимум экземпляров HA —
+опционально, по умолчанию выключено. realtime: `ceil(PCU/1000)` вместо фикс +1.
+RAM опционально: app baseline на сервис, RAM на realtime-соединение, cache RAM;
+RAM/vCPU остаётся fallback.
+
+**Storage/backup.** Дефолты-оценки: индексы БД ×1.3, WAL/journal +10%, backup
+compression/dedup ÷2. S3 versioning/lifecycle — опционально, по умолчанию выкл.
+Текущие 0.10 / 0.5 / 50 КБ/польз — оставить fallback, параметризовать, явно
+пометить «оценка».
+
+**Security.** audit-log: точная модель `events/day × bytes/event × retention ×
+compression`; нет данных → fallback от объёма БД с пометкой «оценка».
+SIEM (GB логов/день или источники) / WAF (домены + RPS) / DLP
+(пользователи/каналы/интеграции) — опциональный масштаб; нет данных → 1 контур +
+пометка «оценочная статья».
+
+**DR.** Таксономия `none / backup-only / active-passive / active-active`. Compute
+от ПРОМ: backup-only 0%, active-passive default 30%, active-active default 100%.
+Storage: backup-only только backup; active-passive 100% критичных данных;
+active-active 100% + replication overhead; параметр `% storage replication`
+default 100%.
+
+**Проектные работы.** `one-deployment`: на 1 этапе qty=1 + явный маркер
+«проектная работа, не ресурс» (формула сложности — потом).
+`one-seasonal-load-readiness`: cap `max 4 цикла`/год. Ввести классификатор ЭК:
+`инфраструктура / лицензия / сервис / безопасность / резерв / проектная работа`
+(для UI, Паспорта ПРОМ, честной интерпретации бюджета).
+
+**Главное ограничение (сквозной инвариант всех этапов).** Сохранять
+объяснимость: для каждого ЭК пользователь видит — какие ответы повлияли, какие
+значения подставлены, где default, где оценка, где ручной override.
+
+### Статус
+
+План одобрен. Версии/коммиты/релизы — отдельным approval на каждом этапе
+(не выпускать без явного «да»).

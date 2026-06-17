@@ -2538,17 +2538,23 @@ export const SEED_QUESTIONS = [
         // 12.U14 → 13.U13 (Phase 0): множители частоты пересчитаны (ежедневный
         // пересчёт реально стоит 30× от monthly, не 12×). Множитель в подписи —
         // относительно monthly (базовый OPEX = 1×).
-        //   realtime / daily      → 30× (ежедневный полный пересчёт)
+        // Stage 1 (qty-модель ПРОМ): realtime отделён от daily. realtime — это
+        // НЕПРЕРЫВНАЯ дельта (потоковая переиндексация изменений), а не полный
+        // ночной пересчёт корпуса; оценочный множитель ×2, не ×30.
+        //   realtime              → 2× (непрерывная дельта, не полный пересчёт)
+        //   daily                 → 30× (ежедневный полный пересчёт)
         //   weekly                → 4.3×
         //   monthly               → 1× (базовый OPEX)
         //   quarterly             → 0.33×
         //   on_demand             → 0.5×
         //   never                 → 0 (только начальная загрузка)
+        // Доля реально переэмбеддиваемого корпуса за цикл — rag_refresh_delta_percent
+        // (default 100% = полный пересчёт).
         // Краткое пояснение в скобках label'а — то, что увидит пользователь сразу;
         // полные последствия — в `description` ниже.
         options: [
-            { value: 'realtime',  label: 'В реальном времени (фоновый сервис, ~30× к OPEX эмбеддингов)' },
-            { value: 'daily',     label: 'Ежедневно (ночная переиндексация, ~30× к OPEX эмбеддингов)' },
+            { value: 'realtime',  label: 'В реальном времени (непрерывная дельта, ~2× к OPEX эмбеддингов)' },
+            { value: 'daily',     label: 'Ежедневно (ночной полный пересчёт, ~30× к OPEX эмбеддингов)' },
             { value: 'weekly',    label: 'Еженедельно (~4.3× к OPEX, отставание на дни)' },
             { value: 'monthly',   label: 'Ежемесячно (1× базовый OPEX, отставание на недели)' },
             { value: 'quarterly', label: 'Ежеквартально (~0.33× от базы, отставание до 3 месяцев)' },
@@ -2560,7 +2566,8 @@ export const SEED_QUESTIONS = [
         description:
             'Как часто база знаний RAG будет обновляться (переиндексация = пересчёт векторов-эмбеддингов для нового или изменённого контента). Имеет смысл только при включённом RAG.\n\n' +
             'Влияет на (а) расход на эмбеддинги-API и (б) актуальность ответов модели:\n' +
-            '• realtime / daily — каждые сутки полный пересчёт; ответы свежие, но это самый дорогой режим (~30× к базовому ежемесячному OPEX эмбеддингов).\n' +
+            '• realtime — непрерывная потоковая переиндексация изменений (дельта); свежие ответы при умеренном расходе (~2× к базовому ежемесячному OPEX эмбеддингов).\n' +
+            '• daily — ежедневный ПОЛНЫЙ пересчёт корпуса; самый дорогой режим (~30× к базовому ежемесячному OPEX эмбеддингов). Для delta-конвейера снизьте «долю корпуса за цикл».\n' +
             '• weekly — раз в неделю; ~4.3× от базы; ответы отстают на дни.\n' +
             '• monthly — раз в месяц; 1× базовый OPEX; отставание на недели.\n' +
             '• quarterly — раз в 3 месяца; ~0.33× от базы; подходит для редко меняющегося контента (стандарты, регламенты, FAQ).\n' +
@@ -2569,7 +2576,7 @@ export const SEED_QUESTIONS = [
             'ВАЖНО: множители предполагают ПОЛНЫЙ пересчёт корпуса каждый цикл. На практике re-embedding обрабатывает только дельту (5-15% корпуса), что снижает реальный расход в 7-20× от расчётного.\n\n' +
             'Если ответ не указан — расчёт пойдёт от ежедневной переиндексации.',
         recommendation: 'Realtime: тикеты, новости, чаты, биржевые данные. Daily/Weekly: типично для корпоративной документации. Monthly/Quarterly: статичный контент (политики, стандарты). On-demand: контент с редкими, но крупными апдейтами. Never: справочники-«снимки», обновляемые миграцией.',
-        impact: 'Множитель OPEX эмбеддингов относительно ежемесячного (monthly): realtime/daily = 30×; weekly = 4.3×; monthly = 1×; quarterly = 0.33×; on_demand = 0.5×; never = 0×.',
+        impact: 'Множитель OPEX эмбеддингов относительно ежемесячного (monthly): realtime = 2× (непрерывная дельта); daily = 30× (полный пересчёт); weekly = 4.3×; monthly = 1×; quarterly = 0.33×; on_demand = 0.5×; never = 0×. Дополнительно масштабируется «долей корпуса за цикл».',
         allowUnknown: true,
         defaultIfUnknown: 'daily',
         assumptionRisk: 'medium'
@@ -2579,14 +2586,21 @@ export const SEED_QUESTIONS = [
         section: 'ai_llm',
         subgroup: 'RAG (поиск по базе знаний)',
         order: 340,
-        title: 'Поисковых обращений к векторной БД на один запрос',
+        title: 'Отдельных embedding-поисков на один запрос пользователя',
         type: 'number',
         min: 0, max: 100, step: 1,
         defaultValue: 4,
         dependsOn: ['ai_llm_used', 'rag_needed'],
         description:
-            'Сколько раз система обращается к векторной БД для поиска релевантных кусков на один запрос пользователя. Имеет смысл только при включённом RAG.\n\n' +
-            'Если ответ не указан — расчёт пойдёт от 4 обращений. Для агентного RAG — 20-50 поисков на запрос.',
+            'Сколько ОТДЕЛЬНЫХ embedding-поисков выполняется на один запрос пользователя — то есть ' +
+            'сколько раз нужно построить новый вектор-запрос и обратиться к векторной БД.\n\n' +
+            'КАК ВЫБРАТЬ ЗНАЧЕНИЕ (важно — влияет на стоимость поиска, а НЕ на размер хранилища):\n' +
+            '• если каждый поиск формирует отдельный embedding-запрос (multi-query, agentic-RAG) — ставьте фактическое число поисков;\n' +
+            '• если один построенный embedding переиспользуется для нескольких lookup-ов — ставьте 1;\n' +
+            '• базовый RAG (один вопрос → один поиск top-K) — обычно 1.\n\n' +
+            'Это число НЕ увеличивает объём векторной БД (он зависит только от размера корпуса), ' +
+            'но увеличивает recurring-расход на эмбеддинги запросов (ЭК «Эмбеддинги для RAG»).\n\n' +
+            'Если ответ не указан — расчёт пойдёт от 4 поисков. Для агентного RAG — 20-50 поисков на запрос.',
         recommendation:
             'По архитектуре RAG-пайплайна:\n' +
             '• Базовый RAG (один Q → один поиск top-K) — 1.\n' +
@@ -2598,10 +2612,87 @@ export const SEED_QUESTIONS = [
             '• Ассистент технической документации (один продукт) — 3-5 (multi-query даёт явный выигрыш точности).\n' +
             '• Юридический / медицинский ассистент (точность критична) — 5-10.\n' +
             '• Deep-research агент (анализирует корпус документов) — 20-50.',
-        impact: 'Прямой множитель к нагрузке на векторную БД и embedding API.',
+        impact: 'Множитель recurring-расхода на эмбеддинги запросов (ЭК «Эмбеддинги для RAG»). На размер векторной БД не влияет.',
         allowUnknown: true,
         defaultIfUnknown: 4,
         assumptionRisk: 'high'
+    },
+    {
+        id: 'rag_embeddings_manual',
+        section: 'ai_llm',
+        subgroup: 'RAG (поиск по базе знаний)',
+        order: 321,
+        title: 'Указать число эмбеддингов вручную',
+        type: 'boolean',
+        defaultValue: false,
+        dependsOn: ['ai_llm_used', 'rag_needed'],
+        description:
+            'По умолчанию (выключено) число эмбеддингов рассчитывается АВТОМАТИЧЕСКИ из размера корпуса ' +
+            'и среднего размера чанка: эмбеддинги ≈ корпус_ГБ × 200 млн токенов/ГБ ÷ размер_чанка. ' +
+            'Это убирает рассогласование «корпус 10 ГБ, но эмбеддингов 1 млн».\n\n' +
+            'Включите, только если знаете точное число эмбеддингов (например, из текущей векторной БД) — ' +
+            'тогда будет использовано значение поля «Эмбеддингов в корпусе, млн.». ' +
+            'Если ручное значение сильно (более чем в 3 раза) расходится с авторасчётом — появится предупреждение в проверке расчёта.\n\n' +
+            'Если ответ не указан — используется авторасчёт из корпуса.',
+        recommendation:
+            'Оставьте выключенным в большинстве случаев — авторасчёт от корпуса даёт согласованную оценку. ' +
+            'Включайте, если у вас уже развёрнут RAG и точное число векторов известно из мониторинга векторной БД.',
+        impact: 'Переключает источник числа эмбеддингов: авто из корпуса (выкл) ↔ ручное поле rag_embeddings_million (вкл).',
+        allowUnknown: true,
+        defaultIfUnknown: false,
+        assumptionRisk: 'low'
+    },
+    {
+        id: 'rag_avg_chunk_tokens',
+        section: 'ai_llm',
+        subgroup: 'RAG (поиск по базе знаний)',
+        order: 322,
+        title: 'Средний размер чанка, токенов',
+        type: 'number',
+        min: 64, max: 4096, step: 1,
+        defaultValue: 512,
+        dependsOn: ['ai_llm_used', 'rag_needed'],
+        description:
+            'На куски (chunks) какого размера режется корпус перед векторизацией. Используется при ' +
+            'автоматическом расчёте числа эмбеддингов: эмбеддинги ≈ токены_корпуса ÷ размер_чанка.\n\n' +
+            'Значение по умолчанию 512 токенов — типовая оценка для RAG. Меньший чанк (256) → больше ' +
+            'эмбеддингов и больше векторная БД; больший чанк (1024) → меньше эмбеддингов, но грубее поиск.\n\n' +
+            'Если ответ не указан — расчёт пойдёт от 512 токенов (инженерная оценка).',
+        recommendation:
+            '• FAQ / короткие ответы — 256-384 токена.\n' +
+            '• Документация / статьи базы знаний — 512 (типовое).\n' +
+            '• Длинные регламенты / договоры — 768-1024.\n' +
+            'Чем меньше чанк, тем точнее поиск, но дороже хранение и индексация.',
+        impact: 'Делитель в авторасчёте числа эмбеддингов (при выключенном ручном режиме). Влияет на размер векторной БД и токены индексации.',
+        allowUnknown: true,
+        defaultIfUnknown: 512,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'rag_refresh_delta_percent',
+        section: 'ai_llm',
+        subgroup: 'RAG (поиск по базе знаний)',
+        order: 335,
+        title: 'Доля корпуса, переэмбеддящаяся за один цикл, %',
+        type: 'number',
+        min: 0, max: 100, step: 1,
+        defaultValue: 100,
+        dependsOn: ['ai_llm_used', 'rag_needed'],
+        description:
+            'Какая доля корпуса реально переэмбеддивается за один цикл обновления.\n\n' +
+            '• 100% — ПОЛНЫЙ пересчёт всего корпуса каждый цикл (консервативная оценка, прежнее поведение).\n' +
+            '• 5-15% — delta-конвейер: переэмбеддивается только изменившаяся часть (типично для production RAG).\n\n' +
+            'Прямо масштабирует токены переиндексации: при 10% расход на эмбеддинги в 10 раз ниже, чем при 100%.\n\n' +
+            'Если ответ не указан — расчёт пойдёт от 100% (полный пересчёт), чтобы прежние расчёты не менялись ' +
+            'без явного выбора. Если у вас delta-only конвейер — поставьте реальную долю (обычно 5-15%).',
+        recommendation:
+            '• Полный пересчёт корпуса каждый цикл (нет дельта-конвейера) — 100%.\n' +
+            '• Инкрементальная переиндексация только новых/изменённых документов — 5-15%.\n' +
+            '• Корпус почти не меняется между циклами — 1-5%.',
+        impact: 'Множитель токенов переиндексации (ЭК «Эмбеддинги для RAG»). 100% = полный пересчёт; 10% = дельта.',
+        allowUnknown: true,
+        defaultIfUnknown: 100,
+        assumptionRisk: 'medium'
     },
     {
         id: 'ai_finetune_needed',
@@ -3871,42 +3962,42 @@ export const SEED_ITEMS = [
         // Этап 13.U10: добавлен DEV — разработческий traffic (см. llm-tokens-input-1m).
         applicableStands: ['DEV','IFT','PSI','PROD','LOAD'],
         description:
-            'Векторизация корпуса (≈ 200 млн токенов на 1 ГБ UTF-8 текста; стандартная оценка ' +
-            '~4 байта/токен по BPE-токенизаторам современных моделей).\n' +
-            'Множитель частоты — сколько раз в месяц переэмбеддится корпус целиком:\n' +
-            '  • never — 0 (только разовая начальная загрузка, отдельно не считаем)\n' +
-            '  • realtime / daily — 30 (ежедневный полный пересчёт)\n' +
-            '  • weekly — 4.3 (еженедельный полный пересчёт)\n' +
-            '  • monthly — 1 (базовый OPEX, ежемесячный пересчёт)\n' +
-            '  • quarterly — 0.33 (раз в 3 месяца)\n' +
-            '  • on_demand — 0.5 (эпизодический пересчёт по триггеру источника).\n' +
-            'При Q.rag_needed и внешнем API.\n' +
+            'Эмбеддинги для RAG складываются из ДВУХ частей:\n' +
+            '1) ПЕРЕИНДЕКСАЦИЯ корпуса: corpus_ГБ × ~200 млн токенов/ГБ × множитель частоты × доля корпуса за цикл.\n' +
+            '   (≈ 200 млн токенов на 1 ГБ UTF-8 текста; ~4 байта/токен по BPE-токенизаторам — оценка.)\n' +
+            '   Множитель частоты: never=0; realtime=2 (непрерывная дельта); daily=30 (полный ночной пересчёт);\n' +
+            '   weekly=4.3; monthly=1; quarterly=0.33; on_demand=0.5.\n' +
+            '   Доля корпуса за цикл (поле «Доля корпуса, переэмбеддящаяся за цикл»): 100% = полный пересчёт; 5-15% = delta-конвейер.\n' +
+            '2) ЭМБЕДДИНГИ ЗАПРОСОВ: каждый отдельный поисковый запрос нужно векторизовать.\n' +
+            '   = DAU × доля_AI × запросов/день × 30 × отдельных_поисков_на_запрос × ~200 токенов/запрос (короткий поисковый запрос — оценка).\n' +
+            'Активно при Q.rag_needed и внешнем embedding-API.\n' +
+            'ДОПУЩЕНИЕ: при on-prem GPU (ai_hosting_mode = on_prem_gpu) эмбеддинги считаются локальными (встроенная модель), ' +
+            'внешний embedding-API не тарифицируется → ЭК = 0. Если embedding-модель остаётся внешней — уточните отдельно.\n' +
             'Единица измерения: 1 млн токенов эмбеддинга в месяц.\n' +
-            'Пример: 10 ГБ × 200 000 000 × 30 / 1M = 60 000 млн токенов/мес при daily refresh.\n' +
-            '\n' +
-            'ВАЖНО: формула предполагает ПОЛНЫЙ пересчёт корпуса каждый цикл. На практике re-embedding ' +
-            'обрабатывает только дельту (обычно 5-15% корпуса), что снижает реальный объём в 7-20×. ' +
-            'Если у вас delta-only pipeline — поделите оценку на ~10×.\n' +
+            'Пример (daily, полный пересчёт): 10 ГБ × 200 000 000 × 30 / 1M = 60 000 млн токенов/мес переиндексации.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
             'Источник: ТЗ ИИ-агент Smart v13.0 §14.3 (GigaChat Embeddings), на 2026-05.\n' +
             'Расчёт: 0.01 ₽/1К токенов = 10 ₽/млн токенов.\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            // 13.U13 (Phase 0): два бага исправлены сразу.
-            //   (1) tokens-per-GB: 100 000 → 200 000 000 (ранее заниженно ×2000).
-            //       Стандартная оценка для UTF-8 текста: ~4 байта/токен → 1 ГБ ≈ 200-270 млн токенов.
-            //   (2) refresh-frequency множители:
-            //       старая логика: never=0, realtime/daily=1, остальные=1/12 — некорректна.
-            //       новая: never=0, realtime/daily=30, weekly=4.3, monthly=1, quarterly=1/3, on_demand=0.5.
-            //   Совмещённый эффект: для daily refresh цена выросла ~×75 000 относительно бага.
-            DEV:  'if(Q.rag_needed && Q.ai_hosting_mode != "on_prem_gpu", ceil(Q.rag_corpus_size_gb * 200000000 * if(Q.rag_refresh_frequency == "never", 0, if(Q.rag_refresh_frequency == "realtime", 30, if(Q.rag_refresh_frequency == "daily", 30, if(Q.rag_refresh_frequency == "weekly", 4.3, if(Q.rag_refresh_frequency == "monthly", 1, if(Q.rag_refresh_frequency == "quarterly", 1/3, if(Q.rag_refresh_frequency == "on_demand", 0.5, 0))))))) / 1000000 * S.standSizeRatio.DEV), 0)',
-            IFT:  'if(Q.rag_needed && Q.ai_hosting_mode != "on_prem_gpu", ceil(Q.rag_corpus_size_gb * 200000000 * if(Q.rag_refresh_frequency == "never", 0, if(Q.rag_refresh_frequency == "realtime", 30, if(Q.rag_refresh_frequency == "daily", 30, if(Q.rag_refresh_frequency == "weekly", 4.3, if(Q.rag_refresh_frequency == "monthly", 1, if(Q.rag_refresh_frequency == "quarterly", 1/3, if(Q.rag_refresh_frequency == "on_demand", 0.5, 0))))))) / 1000000 * S.standSizeRatio.IFT), 0)',
-            PSI:  'if(Q.rag_needed && Q.ai_hosting_mode != "on_prem_gpu", ceil(Q.rag_corpus_size_gb * 200000000 * if(Q.rag_refresh_frequency == "never", 0, if(Q.rag_refresh_frequency == "realtime", 30, if(Q.rag_refresh_frequency == "daily", 30, if(Q.rag_refresh_frequency == "weekly", 4.3, if(Q.rag_refresh_frequency == "monthly", 1, if(Q.rag_refresh_frequency == "quarterly", 1/3, if(Q.rag_refresh_frequency == "on_demand", 0.5, 0))))))) / 1000000 * S.standSizeRatio.PSI), 0)',
-            PROD: 'if(Q.rag_needed && Q.ai_hosting_mode != "on_prem_gpu", ceil(Q.rag_corpus_size_gb * 200000000 * if(Q.rag_refresh_frequency == "never", 0, if(Q.rag_refresh_frequency == "realtime", 30, if(Q.rag_refresh_frequency == "daily", 30, if(Q.rag_refresh_frequency == "weekly", 4.3, if(Q.rag_refresh_frequency == "monthly", 1, if(Q.rag_refresh_frequency == "quarterly", 1/3, if(Q.rag_refresh_frequency == "on_demand", 0.5, 0))))))) / 1000000), 0)',
-            LOAD: 'if(Q.rag_needed && Q.ai_hosting_mode != "on_prem_gpu", ceil(Q.rag_corpus_size_gb * 200000000 * if(Q.rag_refresh_frequency == "never", 0, if(Q.rag_refresh_frequency == "realtime", 30, if(Q.rag_refresh_frequency == "daily", 30, if(Q.rag_refresh_frequency == "weekly", 4.3, if(Q.rag_refresh_frequency == "monthly", 1, if(Q.rag_refresh_frequency == "quarterly", 1/3, if(Q.rag_refresh_frequency == "on_demand", 0.5, 0))))))) / 1000000 * S.standSizeRatio.LOAD), 0)'
+            // Stage 1 (qty-модель ПРОМ). Два слагаемых:
+            //   (A) переиндексация корпуса: corpus_gb × 200M × refresh_mult × delta%/100.
+            //       refresh_mult: never=0, realtime=2 (непрерывная дельта, было 30 == daily — ошибочно),
+            //       daily=30 (полный пересчёт), weekly=4.3, monthly=1, quarterly=1/3, on_demand=0.5.
+            //       delta% (rag_refresh_delta_percent) default 100 → прежнее поведение daily/weekly/monthly.
+            //   (B) эмбеддинги запросов: S.aiRequestsPerMonth × retrieval_calls × 200 токенов.
+            //       S.aiRequestsPerMonth = DAU × доля_AI × запросов/день × 30 (с degenerate-recovery,
+            //       как у LLM-токенов; считается в calculator.buildContext). Сюда переехал
+            //       retrieval_calls (раньше ошибочно умножал РАЗМЕР vector-DB).
+            //   200 токенов/запрос — оценка (короткий поисковый запрос).
+            DEV:  'if(Q.rag_needed && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.rag_corpus_size_gb * 200000000 * if(Q.rag_refresh_frequency == "never", 0, if(Q.rag_refresh_frequency == "realtime", 2, if(Q.rag_refresh_frequency == "daily", 30, if(Q.rag_refresh_frequency == "weekly", 4.3, if(Q.rag_refresh_frequency == "monthly", 1, if(Q.rag_refresh_frequency == "quarterly", 1/3, if(Q.rag_refresh_frequency == "on_demand", 0.5, 0))))))) * Q.rag_refresh_delta_percent / 100 + S.aiRequestsPerMonth * Q.rag_retrieval_calls_per_query * 200) / 1000000 * S.standSizeRatio.DEV), 0)',
+            IFT:  'if(Q.rag_needed && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.rag_corpus_size_gb * 200000000 * if(Q.rag_refresh_frequency == "never", 0, if(Q.rag_refresh_frequency == "realtime", 2, if(Q.rag_refresh_frequency == "daily", 30, if(Q.rag_refresh_frequency == "weekly", 4.3, if(Q.rag_refresh_frequency == "monthly", 1, if(Q.rag_refresh_frequency == "quarterly", 1/3, if(Q.rag_refresh_frequency == "on_demand", 0.5, 0))))))) * Q.rag_refresh_delta_percent / 100 + S.aiRequestsPerMonth * Q.rag_retrieval_calls_per_query * 200) / 1000000 * S.standSizeRatio.IFT), 0)',
+            PSI:  'if(Q.rag_needed && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.rag_corpus_size_gb * 200000000 * if(Q.rag_refresh_frequency == "never", 0, if(Q.rag_refresh_frequency == "realtime", 2, if(Q.rag_refresh_frequency == "daily", 30, if(Q.rag_refresh_frequency == "weekly", 4.3, if(Q.rag_refresh_frequency == "monthly", 1, if(Q.rag_refresh_frequency == "quarterly", 1/3, if(Q.rag_refresh_frequency == "on_demand", 0.5, 0))))))) * Q.rag_refresh_delta_percent / 100 + S.aiRequestsPerMonth * Q.rag_retrieval_calls_per_query * 200) / 1000000 * S.standSizeRatio.PSI), 0)',
+            PROD: 'if(Q.rag_needed && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.rag_corpus_size_gb * 200000000 * if(Q.rag_refresh_frequency == "never", 0, if(Q.rag_refresh_frequency == "realtime", 2, if(Q.rag_refresh_frequency == "daily", 30, if(Q.rag_refresh_frequency == "weekly", 4.3, if(Q.rag_refresh_frequency == "monthly", 1, if(Q.rag_refresh_frequency == "quarterly", 1/3, if(Q.rag_refresh_frequency == "on_demand", 0.5, 0))))))) * Q.rag_refresh_delta_percent / 100 + S.aiRequestsPerMonth * Q.rag_retrieval_calls_per_query * 200) / 1000000), 0)',
+            LOAD: 'if(Q.rag_needed && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.rag_corpus_size_gb * 200000000 * if(Q.rag_refresh_frequency == "never", 0, if(Q.rag_refresh_frequency == "realtime", 2, if(Q.rag_refresh_frequency == "daily", 30, if(Q.rag_refresh_frequency == "weekly", 4.3, if(Q.rag_refresh_frequency == "monthly", 1, if(Q.rag_refresh_frequency == "quarterly", 1/3, if(Q.rag_refresh_frequency == "on_demand", 0.5, 0))))))) * Q.rag_refresh_delta_percent / 100 + S.aiRequestsPerMonth * Q.rag_retrieval_calls_per_query * 200) / 1000000 * S.standSizeRatio.LOAD), 0)'
         },
-        formulaHelp: 'Млн токенов эмбеддинга = corpus_gb × 200M токенов/ГБ × множитель_частоты / 1M × коэф. стенда. Множители: never=0, realtime/daily=30, weekly=4.3, monthly=1, quarterly=0.33, on_demand=0.5. ВАЖНО: предполагает ПОЛНЫЙ пересчёт корпуса; для delta-only pipeline делите на ~10×.'
+        formulaHelp: 'Млн токенов эмбеддинга = переиндексация (corpus_gb × 200M токенов/ГБ × множитель_частоты × доля_корпуса%/100) + эмбеддинги запросов (DAU × доля_AI × запросов/день × 30 × отдельных_поисков_на_запрос × 200 токенов) — всё / 1M × коэф. стенда. Множители частоты: never=0, realtime=2 (дельта), daily=30 (полный пересчёт), weekly=4.3, monthly=1, quarterly=0.33, on_demand=0.5. Эмбеддинги запросов и 200 токенов/запрос — оценка (короткий поисковый запрос). При on-prem GPU = 0 (локальные эмбеддинги).'
     },
     {
         id: 'rag-vector-db-gb',
@@ -3924,6 +4015,11 @@ export const SEED_ITEMS = [
             'Self-hosted vector DB: pgvector поверх Managed PostgreSQL или RediSearch поверх Managed Redis. ' +
             'Тариф — только за raw SSD storage; embeddings/index/search-API строит сама команда.\n' +
             'При Q.rag_needed И НЕ Q.rag_managed_used (если выбран Managed RAG провайдера — используется rag-managed-knowledge-base-gb).\n' +
+            'Размер = число эмбеддингов × ~4 КБ/эмбеддинг. Число эмбеддингов по умолчанию считается АВТОМАТИЧЕСКИ из ' +
+            'размера корпуса: corpus_ГБ × 200 млн токенов/ГБ ÷ размер_чанка. При включённом «Указать эмбеддинги вручную» ' +
+            'берётся поле «Эмбеддингов в корпусе, млн.».\n' +
+            'ВАЖНО: размер НЕ зависит от числа поисков (rag_retrieval_calls_per_query) — это нагрузка/стоимость поиска, ' +
+            'она учтена в ЭК «Эмбеддинги для RAG», а не в объёме хранилища.\n' +
             'Единица измерения: 1 ГБ хранения в месяц (≈ 4 КБ на эмбеддинг).\n' +
             'Пример: 1 млн эмбеддингов × 4 КБ ≈ 4 ГБ.\n' +
             '\n' +
@@ -3931,13 +4027,13 @@ export const SEED_ITEMS = [
             'Источник: ПРИЛОЖЕНИЕ №7.EVO.16 п.3 (Managed Redis) / №7.EVO.4 п.5 (Managed PostgreSQL) версия 260316 (2026-03-26): «Хранилище на сетевых SSD дисках» = 0,0138 ₽/ГБ·ч без НДС / 0,016836 ₽/ГБ·ч с НДС 22% × 730 = 10,07 ₽/ГБ/мес без НДС.\n' +
             'Когда выбирать: команда может админить vector DB сама, важна гибкость / экономия. Альтернатива — готовый Managed RAG-сервис провайдера (rag-managed-knowledge-base-gb), но дороже примерно в 81 раз (готовые embeddings + index + search-API в одном тарифе).',
         qtyFormulas: {
-            DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.DEV))), 0)',
-            IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.IFT))), 0)',
-            PSI:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.PSI)), 0)',
-            PROD: 'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4))), 0)',
-            LOAD: 'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.LOAD)), 0)'
+            DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.DEV))), 0)',
+            IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.IFT))), 0)',
+            PSI:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.PSI)), 0)',
+            PROD: 'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4)), 0)',
+            LOAD: 'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.LOAD)), 0)'
         },
-        formulaHelp: 'GB self-hosted vector DB = embeddings_million × 4 КБ/эмбеддинг × max(1, retrieval_calls_per_query / 4) × коэф. стенда. Активно при RAG включён И НЕ выбран Managed RAG-сервис провайдера.'
+        formulaHelp: 'GB self-hosted vector DB = эмбеддинги × 4 КБ/эмбеддинг × коэф. стенда. Эмбеддинги: авто (corpus_gb × 200M ÷ размер_чанка) либо ручное поле при «Указать эмбеддинги вручную». НЕ зависит от числа поисков (это стоимость поиска в ЭК «Эмбеддинги для RAG»). Активно при RAG включён И НЕ выбран Managed RAG-сервис.'
     },
     {
         id: 'rag-managed-knowledge-base-gb',
@@ -3953,6 +4049,8 @@ export const SEED_ITEMS = [
         description:
             'Готовая «база знаний» провайдера (Cloud.ru Evolution Managed RAG и аналоги): хранение преобразованных текстовых данных + встроенные embeddings + index + search-API в одном тарифе.\n' +
             'При Q.rag_needed И Q.rag_managed_used. Если RAG включён, но Managed-сервис не выбран — используется self-hosted (rag-vector-db-gb), который ~в 80 раз дешевле, но требует своего DevOps.\n' +
+            'Размер считается так же, как у self-hosted vector DB: число эмбеддингов × ~4 КБ. Число эмбеддингов — авто из ' +
+            'корпуса (corpus_ГБ × 200 млн ÷ размер_чанка) либо ручное поле при «Указать эмбеддинги вручную». Не зависит от числа поисков.\n' +
             'Единица измерения: 1 ГБ хранения в месяц (≈ 4 КБ на эмбеддинг).\n' +
             'Пример: 1 млн эмбеддингов × 4 КБ ≈ 4 ГБ.\n' +
             '\n' +
@@ -3960,13 +4058,13 @@ export const SEED_ITEMS = [
             'Источник: ПРИЛОЖЕНИЕ №7.EVO.20 п.2 версия 260316 (2026-03-26): «Хранение преобразованных текстовых данных в базе знаний» = 1,12 ₽/ГБ·ч без НДС / 1,3664 ₽/ГБ·ч с НДС 22% × 730 = 817,60 ₽/ГБ/мес без НДС.\n' +
             'Когда выбирать: ограниченные DevOps-ресурсы, нужен быстрый старт, готовы платить за full-managed. Если важна экономия — оставьте rag-vector-db-gb (self-hosted).',
         qtyFormulas: {
-            DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, max(1, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.DEV)), 0), 0)',
-            IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, max(1, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.IFT)), 0), 0)',
-            PSI:  'if(Q.rag_needed, if(Q.rag_managed_used, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.PSI), 0), 0)',
-            PROD: 'if(Q.rag_needed, if(Q.rag_managed_used, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4)), 0), 0)',
-            LOAD: 'if(Q.rag_needed, if(Q.rag_managed_used, ceil(Q.rag_embeddings_million * 4 * max(1, Q.rag_retrieval_calls_per_query / 4) * S.standSizeRatio.LOAD), 0), 0)'
+            DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, max(1, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.DEV)), 0), 0)',
+            IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, max(1, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.IFT)), 0), 0)',
+            PSI:  'if(Q.rag_needed, if(Q.rag_managed_used, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.PSI), 0), 0)',
+            PROD: 'if(Q.rag_needed, if(Q.rag_managed_used, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4), 0), 0)',
+            LOAD: 'if(Q.rag_needed, if(Q.rag_managed_used, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.LOAD), 0), 0)'
         },
-        formulaHelp: 'GB Managed RAG = embeddings_million × 4 КБ/эмбеддинг × max(1, retrieval_calls_per_query / 4) × коэф. стенда. Активно при RAG включён И выбран Managed RAG-сервис провайдера.'
+        formulaHelp: 'GB Managed RAG = эмбеддинги × 4 КБ/эмбеддинг × коэф. стенда. Эмбеддинги: авто (corpus_gb × 200M ÷ размер_чанка) либо ручное поле. НЕ зависит от числа поисков. Активно при RAG включён И выбран Managed RAG-сервис провайдера.'
     },
 
     /* ===== AI agent infrastructure (Этап 13) ===== */

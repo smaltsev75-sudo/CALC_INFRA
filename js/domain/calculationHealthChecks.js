@@ -429,6 +429,54 @@ function checkRagIncompleteCorpus(calc) {
     return null;
 }
 
+/* Stage 1 (qty-модель ПРОМ): ручное число эмбеддингов сильно (×3) расходится
+   с авторасчётом от размера корпуса. Срабатывает только в ручном режиме. */
+function checkRagEmbeddingsMismatch(calc) {
+    if (ans(calc, 'rag_needed') !== true) return null;
+    if (ans(calc, 'rag_embeddings_manual') !== true) return null;
+    const corpus = ans(calc, 'rag_corpus_size_gb');
+    const manual = ans(calc, 'rag_embeddings_million');
+    if (!isFiniteNum(corpus) || corpus <= 0) return null;
+    if (!isFiniteNum(manual) || manual <= 0) return null;
+    const chunkRaw = ans(calc, 'rag_avg_chunk_tokens');
+    const chunk = isFiniteNum(chunkRaw) && chunkRaw >= 1 ? chunkRaw : 512;
+    const derived = corpus * 200000000 / chunk / 1_000_000; // млн эмбеддингов
+    if (derived <= 0) return null;
+    const ratio = manual / derived;
+    if (ratio <= 3 && ratio >= 1 / 3) return null; // в пределах ×3 — допустимо для грубой sizing-модели
+    return makeFinding({
+        id: 'ai-rag-embeddings-mismatch',
+        severity: 'warning',
+        category: 'consistency',
+        title: 'Ручное число эмбеддингов RAG расходится с расчётом от корпуса',
+        message: `Указано ${manual} млн эмбеддингов вручную, но из размера корпуса (${corpus} ГБ при чанке ${chunk} токенов) ` +
+            `ожидается ≈ ${derived.toFixed(1)} млн (расхождение более чем в 3 раза). Размер векторной БД и стоимость могут быть оценены неверно.`,
+        fieldIds: ['rag_embeddings_million', 'rag_corpus_size_gb', 'rag_avg_chunk_tokens', 'rag_embeddings_manual'],
+        suggestedAction: 'Проверьте число эмбеддингов или выключите ручной режим — тогда оно считается из корпуса автоматически.'
+    });
+}
+
+/* Stage 1: ежедневный ПОЛНЫЙ пересчёт большого корпуса (delta≈100%) — дорого. */
+function checkRagFullReindexLargeCorpus(calc) {
+    if (ans(calc, 'rag_needed') !== true) return null;
+    if (ans(calc, 'rag_refresh_frequency') !== 'daily') return null;
+    const corpus = ans(calc, 'rag_corpus_size_gb');
+    if (!isFiniteNum(corpus) || corpus < 100) return null;
+    const deltaRaw = ans(calc, 'rag_refresh_delta_percent');
+    const delta = isFiniteNum(deltaRaw) ? deltaRaw : 100; // default = полный пересчёт
+    if (delta < 50) return null; // delta-конвейер — не предупреждаем
+    return makeFinding({
+        id: 'ai-rag-full-reindex-large-corpus',
+        severity: 'recommendation',
+        category: 'pricing',
+        title: 'Ежедневный полный пересчёт большого RAG-корпуса — дорого',
+        message: `Корпус ${corpus} ГБ переэмбеддивается ежедневно целиком (доля корпуса за цикл ${delta}%). ` +
+            'Это завышает расход на эмбеддинги в разы — на практике переиндексируется только изменившаяся часть (дельта 5-15%).',
+        fieldIds: ['rag_refresh_frequency', 'rag_refresh_delta_percent', 'rag_corpus_size_gb'],
+        suggestedAction: 'Если у вас delta-конвейер — укажите реальную «долю корпуса за цикл» (обычно 5-15%) или выберите режим «В реальном времени» (непрерывная дельта).'
+    });
+}
+
 function checkAgentIncompleteTools(calc) {
     if (ans(calc, 'ai_agent_mode') !== true) return null;
     const t = ans(calc, 'agent_tool_avg_seconds');
@@ -835,6 +883,8 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkTokenVolumeWithoutLlm,
     checkTokenVolumeProducesTokenResources,
     checkRagIncompleteCorpus,
+    checkRagEmbeddingsMismatch,
+    checkRagFullReindexLargeCorpus,
     checkAgentIncompleteTools,
     checkPdnWithoutEncryption,
     checkPdnWithoutCategory,

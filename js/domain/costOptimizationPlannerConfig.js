@@ -346,7 +346,11 @@ export const LEVER_SPECS = Object.freeze([
         consequence: 'Меньше векторов индекса — хуже покрытие запросов внутренними источниками.',
         focusFieldId: 'answer:rag_embeddings_million',
         skipInTiers: [PLAN_IDS.CONSERVATIVE],
-        appliesIf: (calc) => calc?.answers?.rag_needed === true,
+        // Stage 1 (qty-модель ПРОМ): rag_embeddings_million влияет на размер только в
+        // ручном режиме (rag_embeddings_manual=true). В авто-режиме объём считается из
+        // корпуса — там работает рычаг «Сократить корпус RAG», а этот был бы no-op.
+        appliesIf: (calc) => calc?.answers?.rag_needed === true
+            && calc?.answers?.rag_embeddings_manual === true,
         multipliers: { ambitious: 0.7, extreme: 0.5 },
         floor: 0.1
     }

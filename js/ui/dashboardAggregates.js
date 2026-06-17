@@ -7,7 +7,7 @@ import {
 } from '../utils/constants.js';
 import { formatNumber } from '../services/format.js';
 import { SEED_ITEMS } from '../domain/seed.js';
-import { buildQuestionDefaults } from '../domain/calculator.js';
+import { buildQuestionDefaults, buildContext } from '../domain/calculator.js';
 
 // 12.U5: индекс dashboardResource из актуального SEED_ITEMS — fallback для
 // расчётов, dictionary которых был сохранён до добавления поля. UI-only.
@@ -382,7 +382,11 @@ function capacityMultiplier(cell, applyRisks) {
 
 function ragRefreshMultiplier(value) {
     switch (value) {
+        // Stage 1 (qty-модель ПРОМ): realtime = непрерывная дельта (×2), не полный
+        // ночной пересчёт. daily остаётся полным пересчётом (×30). Зеркалит seed
+        // rag-embeddings-1m, иначе Dashboard разойдётся с Деталями/Паспортом.
         case 'realtime':
+            return 2;
         case 'daily':
             return 30;
         case 'weekly':
@@ -399,17 +403,39 @@ function ragRefreshMultiplier(value) {
     }
 }
 
+/* Stage 1 (qty-модель ПРОМ): эффективное число AI-запросов в месяц с degenerate-
+ * recovery — через ТОТ ЖЕ buildContext, что и calculate() (S.aiRequestsPerMonth),
+ * чтобы Dashboard-fallback не расходился с основным расчётом при вырожденной
+ * user-base (registered=0 + подтверждённый baseline). Без agent-факторов. */
+function recoveredAiRequestsPerMonth(calc) {
+    if (!calc || typeof calc !== 'object') return 0;
+    const questionDefaults = buildQuestionDefaults(calc?.dictionaries?.questions || []);
+    const activeScenario = Array.isArray(calc?.scenarios)
+        ? calc.scenarios.find(s => s?.id === calc.activeScenarioId)
+        : null;
+    const demandHints = {
+        healthAcknowledgements: calc?.healthAcknowledgements || null,
+        activeScenarioAnswers: activeScenario?.answers || null
+    };
+    try {
+        const ctx = buildContext(
+            calc?.answers || {}, calc?.settings || {}, questionDefaults,
+            'PROD', null, calc?.answersMeta || {}, demandHints
+        );
+        return Number(ctx?.S?.aiRequestsPerMonth) || 0;
+    } catch {
+        return 0;
+    }
+}
+
 export function deriveLlmTokenItemQty(calc, itemId, stand) {
     const get = buildAnswerResolver(calc);
     if (!shouldUseLlmTokenDemand(calc, get)) return 0;
 
-    const registered = finiteNumber(get('registered_users_total', 0));
-    const dauShare = finiteNumber(get('dau_share_of_registered_percent', 0)) / 100;
-    const aiShare = finiteNumber(get('ai_users_share', 0)) / 100;
-    const requestsPerDay = finiteNumber(get('ai_requests_per_user_day', 0));
     const cacheShare = Math.min(100, Math.max(0, finiteNumber(get('ai_caching_share', 0)))) / 100;
     const modelFactor = AI_MODEL_TIER_FACTOR[get('ai_model_tier', 'mid')] ?? AI_MODEL_TIER_FACTOR.mid;
-    const requestsPerMonth = registered * dauShare * aiShare * requestsPerDay * 30 * agentStepFactor(get);
+    // requestsPerMonth = recovered (DAU × доля_AI × запросов/день × 30) × agentStepFactor.
+    const requestsPerMonth = recoveredAiRequestsPerMonth(calc) * agentStepFactor(get);
     const ratio = aiStandRatio(calc, stand);
 
     if (itemId === 'llm-tokens-input-1m') {
@@ -438,11 +464,25 @@ export function deriveLlmTokenItemQty(calc, itemId, stand) {
 function deriveRagEmbeddingItemQty(calc, stand) {
     const get = buildAnswerResolver(calc);
     if (!boolAnswer(get('rag_needed', false))) return 0;
+    // NB: НЕ гейтим по on_prem_gpu. Это операционный fallback ВИДИМОСТИ нагрузки:
+    // для on-prem эмбеддинги не тарифицируются внешним API (seed-формула даёт cost=0),
+    // но объём токенов эмбеддинга должен оставаться виден для планирования мощности
+    // (см. CLAUDE.md: «on-prem operational derivation»).
 
+    // (A) переиндексация корпуса × доля корпуса за цикл (delta%).
     const corpusGb = finiteNumber(get('rag_corpus_size_gb', 0));
     const refresh = ragRefreshMultiplier(get('rag_refresh_frequency', 'never'));
+    const deltaPercent = Math.min(100, Math.max(0, finiteNumber(get('rag_refresh_delta_percent', 100))));
+    const indexingTokens = corpusGb * 200000000 * refresh * deltaPercent / 100;
+
+    // (B) эмбеддинги запросов: каждый отдельный поиск векторизует запрос (~200 токенов — оценка).
+    // recoveredAiRequestsPerMonth — тот же recovered контракт, что в calculate (S.aiRequestsPerMonth):
+    // вырожденная user-base восстанавливается из подтверждённого baseline.
+    const retrievalCalls = finiteNumber(get('rag_retrieval_calls_per_query', 0));
+    const queryTokens = recoveredAiRequestsPerMonth(calc) * retrievalCalls * 200;
+
     const ratio = aiStandRatio(calc, stand);
-    return Math.ceil(Math.max(0, corpusGb * 200 * refresh * ratio));
+    return Math.ceil(Math.max(0, (indexingTokens + queryTokens) / 1_000_000 * ratio));
 }
 
 export function deriveAiMetricItemQty(calc, itemId, stand) {

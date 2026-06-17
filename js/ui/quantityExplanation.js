@@ -34,6 +34,8 @@ const SETTING_LABELS = Object.freeze({
     planningHorizonYears: 'горизонт планирования, лет',
     agentStepFactor: 'множитель AI-агента',
     agentToolFactor: 'множитель tool-use AI-агента',
+    aiModelTierFactor: 'множитель класса AI-модели',
+    aiRequestsPerMonth: 'AI-запросов в месяц (расчётное)',
     bufferTask: 'буфер задач',
     bufferProject: 'буфер проекта',
     kInflation: 'инфляция',
