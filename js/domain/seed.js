@@ -670,6 +670,96 @@ export const SEED_QUESTIONS = [
         defaultIfUnknown: false,
         assumptionRisk: 'medium'
     },
+    {
+        id: 'cpu_advanced_model',
+        section: 'load_profile',
+        subgroup: 'Архитектурные параметры',
+        order: 321,
+        title: 'Расширенная модель расчёта CPU',
+        type: 'boolean',
+        defaultValue: false,
+        dependsOn: [],
+        description:
+            'По умолчанию (выключено) число vCPU считается по эвристике: пиковый RPS / 50. ' +
+            'Включите, чтобы считать честнее — от CPU-времени одного запроса и целевой загрузки: ' +
+            'vCPU ≈ пик_RPS × CPU-время_запроса / целевая_загрузка.\n\n' +
+            'Если ответ не указан — используется простая модель (RPS / 50).',
+        recommendation:
+            'Оставьте выключенным для быстрой оценки. Включайте, когда известно реальное CPU-время запроса ' +
+            '(из профилирования) — расчёт станет точнее для CPU-интенсивных или, наоборот, лёгких сервисов.',
+        impact: 'Переключает модель расчёта vCPU: эвристика RPS/50 (выкл) ↔ от CPU-времени и целевой загрузки (вкл).',
+        allowUnknown: true,
+        defaultIfUnknown: false,
+        assumptionRisk: 'low'
+    },
+    {
+        id: 'cpu_ms_per_request',
+        section: 'load_profile',
+        subgroup: 'Архитектурные параметры',
+        order: 322,
+        title: 'Среднее CPU-время одного запроса, мс',
+        type: 'number',
+        min: 1, max: 100_000, step: 1,
+        defaultValue: 50,
+        dependsOn: ['cpu_advanced_model'],
+        description:
+            'Сколько процессорного времени (в миллисекундах) в среднем тратит обработка одного запроса. ' +
+            'Используется только в расширенной модели CPU. Должно быть больше 0.\n\n' +
+            'Значение по умолчанию 50 мс — инженерная ОЦЕНКА. Если ответ не указан — расчёт пойдёт от 50 мс.',
+        recommendation:
+            '• Лёгкий ввод-вывод / простой CRUD — 5-30 мс.\n' +
+            '• Типовая бизнес-логика — 30-100 мс.\n' +
+            '• Тяжёлые вычисления (обработка изображений, отчёты) — 100-1000 мс.',
+        impact: 'CPU-время запроса в расширенной модели vCPU (по умолчанию 50 мс — оценка).',
+        allowUnknown: true,
+        defaultIfUnknown: 50,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'cpu_target_utilization_percent',
+        section: 'load_profile',
+        subgroup: 'Архитектурные параметры',
+        order: 323,
+        title: 'Целевая загрузка CPU, %',
+        type: 'number',
+        min: 10, max: 90, step: 1,
+        defaultValue: 65,
+        dependsOn: ['cpu_advanced_model'],
+        description:
+            'До какой средней загрузки CPU планируется нагружать ядра (остальное — запас на пики). ' +
+            'Используется только в расширенной модели CPU. Допустимый диапазон 10–90%.\n\n' +
+            'Значение по умолчанию 65% — инженерная ОЦЕНКА. Если ответ не указан — расчёт пойдёт от 65%.',
+        recommendation:
+            '• Консервативно (большой запас на пики) — 50-60%.\n' +
+            '• Сбалансированно — 65-75%.\n' +
+            '• Агрессивно (ровная нагрузка, мало пиков) — 80-90%.',
+        impact: 'Делитель в расширенной модели vCPU (по умолчанию 65% — оценка).',
+        allowUnknown: true,
+        defaultIfUnknown: 65,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'min_instances_per_stand',
+        section: 'load_profile',
+        subgroup: 'Архитектурные параметры',
+        order: 324,
+        title: 'Минимум vCPU на стенд (для отказоустойчивости)',
+        type: 'number',
+        min: 0, max: 10_000, step: 1,
+        defaultValue: 0,
+        dependsOn: [],
+        description:
+            'Нижний порог числа vCPU для базовой отказоустойчивости (HA) — даже при низкой нагрузке держится ' +
+            'не меньше этого числа ядер. По умолчанию 0 (порог выключен, модель не меняется).\n\n' +
+            'Применяется как нижняя граница к базе vCPU ПРОМ; стенды масштабируются от неё.',
+        recommendation:
+            'Включайте для критичных production-сервисов: типично 2-4 vCPU как минимум для резервирования. ' +
+            'Для dev/test обычно не нужно (оставьте 0).',
+        impact: 'Нижний порог базы vCPU (по умолчанию 0 — выключен).',
+        allowUnknown: true,
+        defaultIfUnknown: 0,
+        assumptionRisk: 'low'
+    },
 
     /* ============================================================
      * SECTION: data_storage
@@ -827,6 +917,75 @@ export const SEED_QUESTIONS = [
         allowUnknown: true,
         defaultIfUnknown: 4,
         assumptionRisk: 'low'
+    },
+    {
+        id: 'ram_advanced_model',
+        section: 'data_storage',
+        subgroup: 'База данных',
+        order: 151,
+        title: 'Расширенная модель расчёта RAM',
+        type: 'boolean',
+        defaultValue: false,
+        dependsOn: [],
+        description:
+            'По умолчанию (выключено) RAM = vCPU × RAM на vCPU + кэш. Включите, чтобы добавить отдельные ' +
+            'компоненты: базовую память на каждый сервис (рантайм) и память под realtime-соединения.\n\n' +
+            'Память агентских sandbox/трасс сюда НЕ входит — это отдельный ЭК хранения. ' +
+            'Если ответ не указан — используется простая модель.',
+        recommendation:
+            'Оставьте выключенным для быстрой оценки. Включайте, когда важно учесть рантайм-память сервисов ' +
+            '(JVM/Node/Python) и большое число realtime-соединений отдельно от формулы vCPU × RAM.',
+        impact: 'Переключает модель RAM: vCPU × RAM/vCPU + кэш (выкл) ↔ + app baseline и realtime-память (вкл).',
+        allowUnknown: true,
+        defaultIfUnknown: false,
+        assumptionRisk: 'low'
+    },
+    {
+        id: 'ram_app_baseline_gb_per_service',
+        section: 'data_storage',
+        subgroup: 'База данных',
+        order: 152,
+        title: 'Базовая RAM на один сервис, ГБ',
+        type: 'number',
+        min: 0, max: 1000, step: 0.1,
+        defaultValue: 0.5,
+        dependsOn: ['ram_advanced_model'],
+        description:
+            'Сколько ГБ оперативной памяти занимает рантайм одного микросервиса в простое (до нагрузки): ' +
+            'JVM/Node/Python-процесс, пулы соединений, базовые буферы. Учитывается только в расширенной модели RAM.\n\n' +
+            'Значение по умолчанию 0.5 ГБ на сервис — инженерная ОЦЕНКА. Если ответ не указан — расчёт пойдёт от 0.5 ГБ.',
+        recommendation:
+            '• Лёгкий рантайм (Go, Node без тяжёлых либ) — 0.1-0.3 ГБ.\n' +
+            '• Типовой сервис (Node/Python с зависимостями) — 0.3-0.8 ГБ.\n' +
+            '• JVM с большим heap / тяжёлые либы — 1-4 ГБ.',
+        impact: 'Базовая RAM × число микросервисов в расширенной модели (по умолчанию 0.5 ГБ — оценка).',
+        allowUnknown: true,
+        defaultIfUnknown: 0.5,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'ram_per_realtime_connection_kb',
+        section: 'data_storage',
+        subgroup: 'База данных',
+        order: 153,
+        title: 'RAM на одно realtime-соединение, КБ',
+        type: 'number',
+        min: 0, max: 1_000_000, step: 1,
+        defaultValue: 8,
+        dependsOn: ['ram_advanced_model'],
+        description:
+            'Сколько КБ оперативной памяти держит одно открытое realtime-соединение (WebSocket/SSE): ' +
+            'буферы, состояние сессии, подписки. Учитывается только в расширенной модели RAM И при включённом ' +
+            'realtime; число соединений берётся из пиковой онлайн-аудитории (PCU).\n\n' +
+            'Значение по умолчанию 8 КБ/соединение — инженерная ОЦЕНКА. Если ответ не указан — расчёт пойдёт от 8 КБ.',
+        recommendation:
+            '• Лёгкое соединение (только heartbeat) — 2-8 КБ.\n' +
+            '• Соединение с состоянием/подписками — 8-32 КБ.\n' +
+            '• Тяжёлое (буферизация сообщений, история) — 32-128 КБ.',
+        impact: 'RAM на realtime-соединения × PCU в расширенной модели (по умолчанию 8 КБ — оценка).',
+        allowUnknown: true,
+        defaultIfUnknown: 8,
+        assumptionRisk: 'medium'
     },
     {
         id: 'file_storage_volume_tb',
@@ -3166,6 +3325,18 @@ export const SEED_QUESTIONS = [
 /** Хелпер: формулы только для перечисленных стендов; остальные — пусто. */
 const onStands = (map) => Object.fromEntries(STAND_IDS.map(s => [s, map[s] ?? '']));
 
+/* Stage 4 (qty-модель ПРОМ): ЕДИНАЯ база vCPU ПРОМ — ОДНО определение (условие 6),
+ * подставляется И в cpu-vcpu-shared, И в ram-gb (RAM выводится из неё), чтобы не было
+ * двух расходящихся копий. Драйверы остаются видимыми в трассе Паспорта (объяснимость).
+ * Простая модель: peak_rps/50; расширенная (cpu_advanced_model): peak_rps × CPU-время /
+ * целевая_загрузка (10-90%). realtime: max(1, ceil(PCU/1000)). min_instances — нижний порог.
+ * Идентичность подстановки в обоих ЭК проверяется arch-тестом cpu-base-single-source. */
+const CPU_BASE_VCPU = 'max(max(if(Q.cpu_advanced_model, Q.peak_rps * Q.cpu_ms_per_request / 1000 / (clamp(Q.cpu_target_utilization_percent, 10, 90) / 100), Q.peak_rps / 50), Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, max(1, ceil(Q.pcu_target / 1000)), 0), Q.min_instances_per_stand)';
+
+/* Stage 4: доп. RAM (только при ram_advanced_model): app baseline на сервис + RAM на
+ * realtime-соединения. agent memory сюда НЕ входит (отдельный storage-ЭК — условие 8). */
+const RAM_EXTRA_GB = '(if(Q.ram_advanced_model, Q.microservices_count * Q.ram_app_baseline_gb_per_service + if(Q.realtime_required, Q.pcu_target * Q.ram_per_realtime_connection_kb / 1000000, 0), 0))';
+
 export const SEED_ITEMS = [
     /* ===== CPU / RAM / STORAGE / NETWORK ===== */
     {
@@ -3193,13 +3364,13 @@ export const SEED_ITEMS = [
             'Расчёт: 1.15 ₽/core·час × 730 ч ≈ 840 ₽/мес.\n' +
             'В контракте уточняйте по фактическому тарифу провайдера.',
         qtyFormulas: {
-            DEV:  'ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.DEV)',
-            IFT:  'ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.IFT)',
-            PSI:  'ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.PSI)',
-            PROD: 'ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0))',
-            LOAD: 'ceil((max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * S.standSizeRatio.LOAD)'
+            DEV:  `ceil((${CPU_BASE_VCPU}) * S.standSizeRatio.DEV)`,
+            IFT:  `ceil((${CPU_BASE_VCPU}) * S.standSizeRatio.IFT)`,
+            PSI:  `ceil((${CPU_BASE_VCPU}) * S.standSizeRatio.PSI)`,
+            PROD: `ceil(${CPU_BASE_VCPU})`,
+            LOAD: `ceil((${CPU_BASE_VCPU}) * S.standSizeRatio.LOAD)`
         },
-        formulaHelp: 'vCPU = ceil(max(пик. RPS / 50, PCU / 200) + микросервисы + фоновые воркеры + 1 при realtime) × множитель размера стенда.'
+        formulaHelp: 'vCPU = ceil(база × коэф. стенда). База: max(нагрузка_по_RPS, PCU / 200) + микросервисы + фоновые воркеры + realtime (ceil(PCU/1000), мин. 1). Нагрузка_по_RPS = пик_RPS / 50 (простой режим) ИЛИ пик_RPS × CPU-время_запроса/1000 / целевая_загрузка (расширенный режим). min_instances — нижний порог. Та же база используется для расчёта RAM.'
     },
     {
         id: 'cpu-vcpu-dedicated',
@@ -3281,13 +3452,13 @@ export const SEED_ITEMS = [
             'Расчёт: 0.31 ₽/ГБ·час × 730 ч ≈ 226 ₽/ГБ/мес.\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            DEV:  'ceil(((ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb) * S.standSizeRatio.DEV)',
-            IFT:  'ceil(((ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb) * S.standSizeRatio.IFT)',
-            PSI:  'ceil(((ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb) * S.standSizeRatio.PSI)',
-            PROD: 'ceil((ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb)',
-            LOAD: 'ceil(((ceil(max(Q.peak_rps / 50, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, 1, 0)) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb) * S.standSizeRatio.LOAD)'
+            DEV:  `ceil(((ceil(${CPU_BASE_VCPU}) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb + ${RAM_EXTRA_GB}) * S.standSizeRatio.DEV)`,
+            IFT:  `ceil(((ceil(${CPU_BASE_VCPU}) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb + ${RAM_EXTRA_GB}) * S.standSizeRatio.IFT)`,
+            PSI:  `ceil(((ceil(${CPU_BASE_VCPU}) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb + ${RAM_EXTRA_GB}) * S.standSizeRatio.PSI)`,
+            PROD: `ceil((ceil(${CPU_BASE_VCPU}) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb + ${RAM_EXTRA_GB})`,
+            LOAD: `ceil(((ceil(${CPU_BASE_VCPU}) * Q.ram_per_vcpu_ratio) + Q.cache_size_gb + ${RAM_EXTRA_GB}) * S.standSizeRatio.LOAD)`
         },
-        formulaHelp: 'GB RAM = (ПРОМ vCPU после округления × RAM на vCPU + кэш) × коэф. стенда. Для LOAD применяется текущий коэффициент стенда без жёстко заданных ГБ.'
+        formulaHelp: 'GB RAM = (ПРОМ vCPU после округления × RAM на vCPU + кэш + доп. RAM) × коэф. стенда. vCPU — та же единая база, что и у ЭК vCPU. Доп. RAM (расширенный режим): app baseline на сервис + RAM на realtime-соединения; agent memory сюда НЕ входит (отдельный storage-ЭК). Для LOAD применяется текущий коэффициент стенда.'
     },
     {
         id: 'storage-ssd-tb',

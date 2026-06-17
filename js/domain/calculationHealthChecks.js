@@ -562,6 +562,30 @@ function checkStorageModelAssumptionsUpdated(calc) {
     });
 }
 
+/* Stage 4 (qty-модель ПРОМ): есть вычислительная нагрузка (CPU>0), но RAM=0 —
+   физически невозможно (обычно ram_per_vcpu_ratio=0 после битого импорта). */
+function checkCpuPositiveRamZero(calc) {
+    const drivers = ['peak_rps', 'pcu_target', 'microservices_count', 'async_workers_count']
+        .map(id => ans(calc, id));
+    const hasCpu = drivers.some(v => isFiniteNum(v) && v > 0);
+    if (!hasCpu) return null;
+    const ramRatio = ans(calc, 'ram_per_vcpu_ratio');
+    const cache = ans(calc, 'cache_size_gb');
+    const ramRatioZero = isFiniteNum(ramRatio) && ramRatio <= 0;
+    const cacheZero = !isFiniteNum(cache) || cache <= 0;
+    if (!(ramRatioZero && cacheZero)) return null;
+    return makeFinding({
+        id: 'cpu-positive-ram-zero',
+        severity: 'error',
+        category: 'consistency',
+        title: 'Есть вычислительная нагрузка, но RAM получается нулевой',
+        message: 'Заданы драйверы CPU (RPS / PCU / сервисы), но RAM на vCPU = 0 и кэш = 0 — ' +
+            'оперативная память выйдет нулевой, что невозможно для работающего сервиса.',
+        fieldIds: ['ram_per_vcpu_ratio', 'cache_size_gb', 'peak_rps'],
+        suggestedAction: 'Укажите RAM на vCPU (обычно 2-8 ГБ) — без памяти сервис не запустится.'
+    });
+}
+
 function checkAgentIncompleteTools(calc) {
     if (ans(calc, 'ai_agent_mode') !== true) return null;
     const t = ans(calc, 'agent_tool_avg_seconds');
@@ -974,6 +998,7 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkRagContextInSimpleMode,
     checkBackupRetentionWithoutDb,
     checkStorageModelAssumptionsUpdated,
+    checkCpuPositiveRamZero,
     checkAgentIncompleteTools,
     checkPdnWithoutEncryption,
     checkPdnWithoutCategory,

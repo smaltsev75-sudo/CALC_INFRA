@@ -29,7 +29,10 @@ describe('wizardToAnswers: acceptance B2B-standard', () => {
         // токенов, ai_safety_overhead_percent).
         // Stage 3: +8 storage-параметров (db_index_ratio, db_wal_overhead_percent,
         // db_size_per_user_kb, hot/cold file share, s3 versioning ×2, backup_compression_ratio).
-        assert.equal(SEED_QUESTIONS.length, 108,
+        // Stage 4: +7 CPU/RAM-параметров (cpu_advanced_model, cpu_ms_per_request,
+        // cpu_target_utilization_percent, min_instances_per_stand, ram_advanced_model,
+        // ram_app_baseline_gb_per_service, ram_per_realtime_connection_kb).
+        assert.equal(SEED_QUESTIONS.length, 115,
             'Если количество SEED_QUESTIONS изменилось — обновите WIZARD_PROFILES.md §7.2');
     });
 

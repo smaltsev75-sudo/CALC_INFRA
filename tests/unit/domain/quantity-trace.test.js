@@ -68,9 +68,13 @@ describe('quantityTrace: explain one ЭК quantity', () => {
         assert.equal(trace.qty, 18);
         assert.equal(trace.evaluatedQty, 18);
         assert.match(trace.formulaHelp, /RPS/);
+        // Stage 4 (qty-модель ПРОМ): единая база vCPU подставляется инлайн, поэтому все
+        // драйверы (вкл. параметры расширенной модели) остаются видимыми в трассе.
         assert.deepEqual(
             trace.questionInputs.map(input => input.ref).sort(),
-            ['Q.async_workers_count', 'Q.microservices_count', 'Q.pcu_target', 'Q.peak_rps', 'Q.realtime_required']
+            ['Q.async_workers_count', 'Q.cpu_advanced_model', 'Q.cpu_ms_per_request',
+             'Q.cpu_target_utilization_percent', 'Q.microservices_count', 'Q.min_instances_per_stand',
+             'Q.pcu_target', 'Q.peak_rps', 'Q.realtime_required']
         );
         assert.equal(
             trace.questionInputs.find(input => input.ref === 'Q.peak_rps').value,

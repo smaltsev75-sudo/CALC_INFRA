@@ -36,7 +36,12 @@ const LOAD_QUESTION_IDS = [
     'traffic_ingress_tb_month',
     'microservices_count',
     'async_workers_count',
-    'realtime_required'
+    'realtime_required',
+    // Stage 4 (qty-модель ПРОМ): расширенная модель CPU.
+    'cpu_advanced_model',
+    'cpu_ms_per_request',
+    'cpu_target_utilization_percent',
+    'min_instances_per_stand'
 ];
 
 describe('Stage 5.3.C.1 / Business секция — каталог покрывает все 9 полей', () => {
