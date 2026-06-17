@@ -36,6 +36,7 @@ const SETTING_LABELS = Object.freeze({
     agentToolFactor: 'множитель tool-use AI-агента',
     aiModelTierFactor: 'множитель класса AI-модели',
     aiRequestsPerMonth: 'AI-запросов в месяц (расчётное)',
+    aiInputTokensEffective: 'входных токенов на запрос (расчётное)',
     bufferTask: 'буфер задач',
     bufferProject: 'буфер проекта',
     kInflation: 'инфляция',

@@ -2309,6 +2309,7 @@ export const SEED_QUESTIONS = [
         dependsOn: ['ai_llm_used'],
         description:
             'Сколько токенов в среднем содержит входная информация одного запроса к ИИ: системный промпт + история + вложенные документы + вопрос. Токен ≈ 0,7 русского слова. Имеет смысл только при включённом LLM.\n\n' +
+            'ВАЖНО: если включён поиск по базе знаний (RAG) — это среднее ДОЛЖНО уже включать токены найденных фрагментов (+1000–5000). Чтобы не держать это в голове, включите «Детальный расчёт входных токенов» и задайте компоненты по отдельности.\n\n' +
             'Если ответ не указан — расчёт пойдёт от 1500 токенов. Для RAG-чата реальный объём — 3-5 тыс. токенов; для агентов — 10-20 тыс.',
         recommendation:
             'Объём входа критически зависит от того, что ВКЛАДЫВАЕТСЯ в промпт: системные инструкции + история + RAG-документы + пользовательский ввод. По архитектуре запроса:\n' +
@@ -2377,8 +2378,8 @@ export const SEED_QUESTIONS = [
         defaultValue: 20,
         dependsOn: ['ai_llm_used'],
         description:
-            'Какая часть входных токенов реально приходит на повторно используемый контекст: системный промпт, инструкции. Современные провайдеры дают скидку 50-90% на кэшированную часть. Имеет смысл только при включённом LLM.\n\n' +
-            'Если ответ не указан — расчёт пойдёт от 20%. При правильно настроенном кэшировании реальная доля 60-90%, экономия 30-50%.',
+            'Какая доля ВХОДНЫХ токенов не требует повторной тарификации (кэш системного промпта, повторяющийся контекст). Это доля токенов, а НЕ процент экономии стоимости. Снижает только объём тарифицируемых входных токенов; на выходные токены не влияет. Имеет смысл только при включённом LLM.\n\n' +
+            'Если ответ не указан — расчёт пойдёт от 20%. При правильно настроенном кэшировании реальная доля 60-90%.',
         recommendation:
             'Кэширование промпта (prompt caching) — повторяющаяся часть входа (system prompt + инструкции + few-shot примеры + RAG-куски, которые часто пересекаются между запросами) тарифицируется со скидкой 50-90%. Реальный % зависит от того, насколько повторяется контекст. По типам сценариев:\n' +
             '• Холодный single-turn без system prompt (простые однозразовые запросы) — 0-10%.\n' +
@@ -2397,6 +2398,172 @@ export const SEED_QUESTIONS = [
         impact: 'Скидка на входные токены: каждые 10% доли кэша сокращают бюджет токенов на 3-5%.',
         allowUnknown: true,
         defaultIfUnknown: 20,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'ai_token_breakdown_manual',
+        section: 'ai_llm',
+        subgroup: 'Объём токенов',
+        order: 222,
+        title: 'Детальный расчёт входных токенов',
+        type: 'boolean',
+        defaultValue: false,
+        dependsOn: ['ai_llm_used'],
+        description:
+            'По умолчанию (выключено) входной объём берётся из поля «Средний объём входящего запроса». ' +
+            'Включите, чтобы разложить входные токены на компоненты: системный промпт, запрос пользователя, ' +
+            'история диалога, RAG-контекст и контекст инструментов — тогда входной объём = их сумма.\n\n' +
+            'Это удобно, чтобы не держать «средний» объём в голове и явно видеть, из чего он складывается. ' +
+            'Если ответ не указан — используется простой режим (среднее значение).',
+        recommendation:
+            'Оставьте выключенным для быстрой оценки. Включайте, когда важно обосновать структуру входного ' +
+            'контекста (особенно при RAG и больших системных промптах).',
+        impact: 'Переключает источник входного объёма токенов: среднее поле (выкл) ↔ сумма компонентов (вкл).',
+        allowUnknown: true,
+        defaultIfUnknown: false,
+        assumptionRisk: 'low'
+    },
+    {
+        id: 'ai_input_system_prompt_tokens',
+        section: 'ai_llm',
+        subgroup: 'Объём токенов',
+        order: 223,
+        title: 'Токенов: системный промпт',
+        type: 'number',
+        min: 0, max: 1_000_000, step: 1,
+        defaultValue: 500,
+        dependsOn: ['ai_llm_used', 'ai_token_breakdown_manual'],
+        description:
+            'Размер системного промпта (инструкции, роль, правила) в токенах — он отправляется в каждом запросе. ' +
+            'Учитывается только в детальном режиме входных токенов.\n\n' +
+            'Если ответ не указан — расчёт пойдёт от 500 токенов (оценка).',
+        recommendation:
+            '• Короткая инструкция — 100-300 токенов.\n' +
+            '• Типовой ассистент с правилами и тоном — 300-800.\n' +
+            '• Сложный copilot с инструментами и форматами — 1000-3000.',
+        impact: 'Компонента входного объёма токенов в детальном режиме.',
+        allowUnknown: true,
+        defaultIfUnknown: 500,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'ai_input_user_query_tokens',
+        section: 'ai_llm',
+        subgroup: 'Объём токенов',
+        order: 224,
+        title: 'Токенов: запрос пользователя',
+        type: 'number',
+        min: 0, max: 1_000_000, step: 1,
+        defaultValue: 200,
+        dependsOn: ['ai_llm_used', 'ai_token_breakdown_manual'],
+        description:
+            'Средний размер собственно запроса пользователя в токенах (без истории и контекста). ' +
+            'Учитывается только в детальном режиме входных токенов.\n\n' +
+            'Если ответ не указан — расчёт пойдёт от 200 токенов (оценка).',
+        recommendation:
+            '• Короткий вопрос / команда — 20-100 токенов.\n' +
+            '• Развёрнутый запрос — 200-500.\n' +
+            '• Вставка документа/кода в запрос — 1000+.',
+        impact: 'Компонента входного объёма токенов в детальном режиме.',
+        allowUnknown: true,
+        defaultIfUnknown: 200,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'ai_input_history_tokens',
+        section: 'ai_llm',
+        subgroup: 'Объём токенов',
+        order: 225,
+        title: 'Токенов: история диалога',
+        type: 'number',
+        min: 0, max: 1_000_000, step: 1,
+        defaultValue: 500,
+        dependsOn: ['ai_llm_used', 'ai_token_breakdown_manual'],
+        description:
+            'Сколько токенов предыдущего диалога подмешивается в каждый запрос (контекст беседы). ' +
+            'Учитывается только в детальном режиме входных токенов.\n\n' +
+            'Если ответ не указан — расчёт пойдёт от 500 токенов (оценка).',
+        recommendation:
+            '• Single-turn (без истории) — 0.\n' +
+            '• Короткий диалог (3-5 реплик) — 300-800.\n' +
+            '• Длинная беседа со сжатием — 1000-3000.',
+        impact: 'Компонента входного объёма токенов в детальном режиме.',
+        allowUnknown: true,
+        defaultIfUnknown: 500,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'ai_input_rag_context_tokens',
+        section: 'ai_llm',
+        subgroup: 'Объём токенов',
+        order: 226,
+        title: 'Токенов: RAG-контекст',
+        type: 'number',
+        min: 0, max: 1_000_000, step: 1,
+        defaultValue: 1500,
+        dependsOn: ['ai_llm_used', 'ai_token_breakdown_manual', 'rag_needed'],
+        description:
+            'Сколько токенов найденных фрагментов базы знаний подмешивается в запрос при RAG. ' +
+            'Учитывается только в детальном режиме входных токенов И при включённом поиске по базе знаний.\n\n' +
+            'Если ответ не указан — расчёт пойдёт от 1500 токенов (оценка).',
+        recommendation:
+            '• 3-5 коротких фрагментов — 800-1500 токенов.\n' +
+            '• 5-10 фрагментов / длинные чанки — 2000-5000.\n' +
+            '• Agentic-RAG с большим контекстом — 5000-15000.',
+        impact: 'Компонента входного объёма токенов в детальном режиме (только при rag_needed).',
+        allowUnknown: true,
+        defaultIfUnknown: 1500,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'ai_input_tool_context_tokens',
+        section: 'ai_llm',
+        subgroup: 'Объём токенов',
+        order: 227,
+        title: 'Токенов: контекст инструментов',
+        type: 'number',
+        min: 0, max: 1_000_000, step: 1,
+        defaultValue: 500,
+        dependsOn: ['ai_llm_used', 'ai_token_breakdown_manual', 'ai_agent_mode'],
+        description:
+            'ДОПОЛНИТЕЛЬНЫЕ токены контекста инструментов (описания tool-ов, результаты вызовов), ' +
+            'подмешиваемые в ОДИН LLM-вызов. Учитывается только в детальном режиме И при включённом ' +
+            'агентском режиме.\n\n' +
+            'ВАЖНО: это НЕ число шагов агента — множитель шагов уже учтён отдельно (через сложность ' +
+            'агентского пайплайна). Здесь — только объём контекста инструментов на один вызов, чтобы ' +
+            'не было двойного учёта.\n\n' +
+            'Если ответ не указан — расчёт пойдёт от 500 токенов (оценка).',
+        recommendation:
+            '• 1-2 простых инструмента — 200-500 токенов.\n' +
+            '• Несколько инструментов с результатами — 500-2000.\n' +
+            '• Сложный tool-use с большими ответами API — 2000+.',
+        impact: 'Компонента входного объёма токенов в детальном режиме (только при ai_agent_mode).',
+        allowUnknown: true,
+        defaultIfUnknown: 500,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'ai_safety_overhead_percent',
+        section: 'ai_llm',
+        subgroup: 'Кастомизация и приватность',
+        order: 431,
+        title: 'Доля модерационных токенов от основного объёма, %',
+        type: 'number',
+        min: 0, max: 50, step: 1,
+        defaultValue: 10,
+        dependsOn: ['ai_llm_used', 'ai_safety_layer'],
+        description:
+            'Сколько процентов от основного объёма токенов (входные + выходные) уходит на модерацию/safety ' +
+            '(проверка ввода и вывода на небезопасный контент). Зависит от провайдера и строгости проверок.\n\n' +
+            'Значение по умолчанию 10% — инженерная ОЦЕНКА (отдельного тарифа модератора пока нет). ' +
+            'Если ответ не указан — расчёт пойдёт от 10%.',
+        recommendation:
+            '• Лёгкая проверка только ввода — 3-7%.\n' +
+            '• Стандартная модерация ввода и вывода — 10-15%.\n' +
+            '• Строгие проверки (ПДн, токсичность, jailbreak) — 15-30%.',
+        impact: 'Множитель ЭК «AI safety: модерационные токены» (по умолчанию 10% — оценка).',
+        allowUnknown: true,
+        defaultIfUnknown: 10,
         assumptionRisk: 'medium'
     },
     {
@@ -3773,13 +3940,13 @@ export const SEED_ITEMS = [
             'Расчёт: 500 ₽/млн токенов (input).\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            DEV:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.DEV), 0)',
-            IFT:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.IFT), 0)',
-            PSI:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.PSI), 0)',
-            PROD: 'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor), 0)',
-            LOAD: 'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * Q.ai_avg_input_tokens * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.LOAD), 0)'
+            DEV:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * S.aiInputTokensEffective * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.DEV), 0)',
+            IFT:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * S.aiInputTokensEffective * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.IFT), 0)',
+            PSI:  'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * S.aiInputTokensEffective * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.PSI), 0)',
+            PROD: 'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * S.aiInputTokensEffective * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor), 0)',
+            LOAD: 'if(Q.ai_llm_used && Q.ai_hosting_mode != "on_prem_gpu", ceil((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * S.aiInputTokensEffective * 30 * (1 - Q.ai_caching_share/100) / 1000000 * S.agentStepFactor * S.aiModelTierFactor * S.standSizeRatio.LOAD), 0)'
         },
-        formulaHelp: 'Млн вх. токенов = DAU × доля_AI × запросов/день × токенов/запрос × 30 дн × (1 − кэш) / 1M × агентский_множитель × множитель_класса_модели × коэф. стенда. Класс модели: light=0.4, mid=1, heavy=3, frontier=10.'
+        formulaHelp: 'Млн вх. токенов = DAU × доля_AI × запросов/день × токенов/запрос × 30 дн × (1 − кэш) / 1M × агентский_множитель × множитель_класса_модели × коэф. стенда. Токенов/запрос: среднее (простой режим) ИЛИ сумма компонентов (системный промпт + запрос + история + RAG-контекст при RAG + контекст инструментов при агентах) — детальный режим. Класс модели: light=0.4, mid=1, heavy=3, frontier=10.'
     },
     {
         id: 'llm-tokens-output-1m',
@@ -3837,13 +4004,13 @@ export const SEED_ITEMS = [
             'Расчёт: 10% от базовых input+output токенов LLM, цена как у основного LLM-тарифа.\n' +
             'ВАЖНО: если provider даёт отдельный тариф на moderation endpoint, импортируйте его вручную.',
         qtyFormulas: {
-            DEV:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * 0.10 * S.standSizeRatio.DEV), 0)',
-            IFT:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * 0.10 * S.standSizeRatio.IFT), 0)',
-            PSI:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * 0.10 * S.standSizeRatio.PSI), 0)',
-            PROD: 'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * 0.10), 0)',
-            LOAD: 'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((Q.ai_avg_input_tokens * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * 0.10 * S.standSizeRatio.LOAD), 0)'
+            DEV:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((S.aiInputTokensEffective * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * Q.ai_safety_overhead_percent / 100 * S.standSizeRatio.DEV), 0)',
+            IFT:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((S.aiInputTokensEffective * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * Q.ai_safety_overhead_percent / 100 * S.standSizeRatio.IFT), 0)',
+            PSI:  'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((S.aiInputTokensEffective * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * Q.ai_safety_overhead_percent / 100 * S.standSizeRatio.PSI), 0)',
+            PROD: 'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((S.aiInputTokensEffective * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * Q.ai_safety_overhead_percent / 100), 0)',
+            LOAD: 'if(Q.ai_llm_used && Q.ai_safety_layer && Q.ai_hosting_mode != "on_prem_gpu", ceil(((Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * (Q.ai_users_share/100) * Q.ai_requests_per_user_day * ((S.aiInputTokensEffective * (1 - Q.ai_caching_share/100)) + Q.ai_avg_output_tokens) * 30 / 1000000 * S.agentStepFactor * S.aiModelTierFactor) * Q.ai_safety_overhead_percent / 100 * S.standSizeRatio.LOAD), 0)'
         },
-        formulaHelp: 'Млн safety-токенов = 10% × (input после кэша + output) × DAU × доля_AI × запросов/день × 30 / 1M × агентский_множитель × множитель_класса_модели × AI-коэф. стенда.'
+        formulaHelp: 'Млн safety-токенов = доля_модерации% × (input после кэша + output) × DAU × доля_AI × запросов/день × 30 / 1M × агентский_множитель × множитель_класса_модели × AI-коэф. стенда. Доля модерации — параметр (по умолчанию 10%, оценка). Input — среднее или сумма компонентов (детальный режим).'
     },
     {
         id: 'ai-safety-layer-service',

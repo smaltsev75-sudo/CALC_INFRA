@@ -477,6 +477,44 @@ function checkRagFullReindexLargeCorpus(calc) {
     });
 }
 
+/* Stage 2 (qty-модель ПРОМ): LLM включён, но спрос не задан (всё по нулям). */
+function checkLlmEnabledNoDemand(calc) {
+    if (ans(calc, 'ai_llm_used') !== true) return null;
+    const share = ans(calc, 'ai_users_share');
+    const reqs = ans(calc, 'ai_requests_per_user_day');
+    const shareZero = isFiniteNum(share) && share <= 0;
+    const reqsZero = isFiniteNum(reqs) && reqs <= 0;
+    if (!(shareZero && reqsZero)) return null;
+    return makeFinding({
+        id: 'ai-llm-enabled-no-demand',
+        severity: 'warning',
+        category: 'completeness',
+        title: 'Большая языковая модель включена, но спрос не задан',
+        message: 'ai_llm_used=Да, но доля пользователей ИИ и число запросов в день = 0 — ' +
+            'токены и стоимость ИИ получатся нулевыми. Похоже, ИИ включили, но не заполнили параметры спроса.',
+        fieldIds: ['ai_llm_used', 'ai_users_share', 'ai_requests_per_user_day'],
+        suggestedAction: 'Заполните долю пользователей ИИ и число запросов в день — или выключите ИИ.'
+    });
+}
+
+/* Stage 2: RAG включён, но входные токены считаются простым средним —
+   напоминание, что среднее должно уже включать RAG-контекст (или включить детальный режим). */
+function checkRagContextInSimpleMode(calc) {
+    if (ans(calc, 'rag_needed') !== true) return null;
+    if (ans(calc, 'ai_token_breakdown_manual') === true) return null;
+    return makeFinding({
+        id: 'ai-rag-context-in-simple-mode',
+        severity: 'recommendation',
+        category: 'completeness',
+        title: 'При RAG средний входной объём токенов должен включать RAG-контекст',
+        message: 'Поиск по базе знаний включён, а входные токены считаются простым средним. ' +
+            'Убедитесь, что «Средний объём входящего запроса» уже включает токены найденных фрагментов RAG ' +
+            '(обычно +1000–5000), иначе расход на токены будет занижен.',
+        fieldIds: ['rag_needed', 'ai_avg_input_tokens', 'ai_token_breakdown_manual'],
+        suggestedAction: 'Учтите RAG-контекст в среднем объёме входных токенов или включите детальный режим расчёта токенов.'
+    });
+}
+
 function checkAgentIncompleteTools(calc) {
     if (ans(calc, 'ai_agent_mode') !== true) return null;
     const t = ans(calc, 'agent_tool_avg_seconds');
@@ -885,6 +923,8 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkRagIncompleteCorpus,
     checkRagEmbeddingsMismatch,
     checkRagFullReindexLargeCorpus,
+    checkLlmEnabledNoDemand,
+    checkRagContextInSimpleMode,
     checkAgentIncompleteTools,
     checkPdnWithoutEncryption,
     checkPdnWithoutCategory,

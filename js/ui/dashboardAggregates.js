@@ -403,12 +403,11 @@ function ragRefreshMultiplier(value) {
     }
 }
 
-/* Stage 1 (qty-модель ПРОМ): эффективное число AI-запросов в месяц с degenerate-
- * recovery — через ТОТ ЖЕ buildContext, что и calculate() (S.aiRequestsPerMonth),
- * чтобы Dashboard-fallback не расходился с основным расчётом при вырожденной
- * user-base (registered=0 + подтверждённый baseline). Без agent-факторов. */
-function recoveredAiRequestsPerMonth(calc) {
-    if (!calc || typeof calc !== 'object') return 0;
+/* Stage 1-2 (qty-модель ПРОМ): производные AI-значения через ТОТ ЖЕ buildContext,
+ * что и calculate() — чтобы Dashboard-fallback не расходился с основным расчётом
+ * (degenerate-recovery user-base, эффективный объём входных токенов и т.п.). */
+function aiDerivedContextS(calc) {
+    if (!calc || typeof calc !== 'object') return {};
     const questionDefaults = buildQuestionDefaults(calc?.dictionaries?.questions || []);
     const activeScenario = Array.isArray(calc?.scenarios)
         ? calc.scenarios.find(s => s?.id === calc.activeScenarioId)
@@ -422,10 +421,18 @@ function recoveredAiRequestsPerMonth(calc) {
             calc?.answers || {}, calc?.settings || {}, questionDefaults,
             'PROD', null, calc?.answersMeta || {}, demandHints
         );
-        return Number(ctx?.S?.aiRequestsPerMonth) || 0;
+        return ctx?.S || {};
     } catch {
-        return 0;
+        return {};
     }
+}
+// recovered (DAU × доля_AI × запросов/день × 30) с degenerate-recovery, без agent-факторов.
+function recoveredAiRequestsPerMonth(calc) {
+    return Number(aiDerivedContextS(calc).aiRequestsPerMonth) || 0;
+}
+// эффективный объём входных токенов (простой режим или сумма компонентов).
+function effectiveInputTokens(calc) {
+    return Number(aiDerivedContextS(calc).aiInputTokensEffective) || 0;
 }
 
 export function deriveLlmTokenItemQty(calc, itemId, stand) {
@@ -436,10 +443,10 @@ export function deriveLlmTokenItemQty(calc, itemId, stand) {
     const modelFactor = AI_MODEL_TIER_FACTOR[get('ai_model_tier', 'mid')] ?? AI_MODEL_TIER_FACTOR.mid;
     // requestsPerMonth = recovered (DAU × доля_AI × запросов/день × 30) × agentStepFactor.
     const requestsPerMonth = recoveredAiRequestsPerMonth(calc) * agentStepFactor(get);
+    const inputTokens = effectiveInputTokens(calc); // простой режим ИЛИ сумма компонентов
     const ratio = aiStandRatio(calc, stand);
 
     if (itemId === 'llm-tokens-input-1m') {
-        const inputTokens = finiteNumber(get('ai_avg_input_tokens', 0));
         return Math.ceil(Math.max(0,
             requestsPerMonth * inputTokens * (1 - cacheShare) / 1_000_000 * modelFactor * ratio
         ));
@@ -452,11 +459,12 @@ export function deriveLlmTokenItemQty(calc, itemId, stand) {
     }
     if (itemId === 'ai-safety-moderation-tokens-1m') {
         if (!boolAnswer(get('ai_safety_layer', false))) return 0;
-        const inputTokens = finiteNumber(get('ai_avg_input_tokens', 0));
         const outputTokens = finiteNumber(get('ai_avg_output_tokens', 0));
+        // overhead — параметр (0-50%, default 10), а не хардкод 0.10.
+        const overhead = Math.min(50, Math.max(0, finiteNumber(get('ai_safety_overhead_percent', 10)))) / 100;
         const inputMillions = requestsPerMonth * inputTokens * (1 - cacheShare) / 1_000_000 * modelFactor * ratio;
         const outputMillions = requestsPerMonth * outputTokens / 1_000_000 * modelFactor * ratio;
-        return Math.ceil(Math.max(0, (inputMillions + outputMillions) * 0.10));
+        return Math.ceil(Math.max(0, (inputMillions + outputMillions) * overhead));
     }
     return 0;
 }

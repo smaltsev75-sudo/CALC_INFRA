@@ -11,7 +11,7 @@
 | Ошибок на seed-расчёте | 0 |
 | Quick Start-сценариев | 2880 |
 | Ошибок в Quick Start-сценариях | 0 |
-| Проверенных ссылок Q.* и S.* в Quick Start | 2246400 |
+| Проверенных ссылок Q.* и S.* в Quick Start | 2260800 |
 
 Проверка валидирует не только итоговую сумму, а всю цепочку: ответы пользователя, формулы количества, единицы измерения, месячный множитель тарифа, риск-коэффициенты и НДС.
 
@@ -59,6 +59,7 @@
 | `S.standSizeRatio.DEV` | 17 |
 | `S.aiModelTierFactor` | 4 |
 | `S.agentStepFactor` | 3 |
+| `S.aiInputTokensEffective` | 2 |
 | `S.agentToolFactor` | 1 |
 | `S.aiRequestsPerMonth` | 1 |
 

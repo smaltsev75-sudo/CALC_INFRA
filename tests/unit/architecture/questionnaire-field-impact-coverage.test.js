@@ -8,7 +8,16 @@ const DERIVED_CALCULATION_QUESTION_IDS = new Set([
     'ai_agent_type',
     'agent_complexity',
     'agent_parallel_specialists',
-    'agent_tool_use_share'
+    'agent_tool_use_share',
+    // Stage 2 (qty-модель ПРОМ): входной объём токенов считается в calculator.buildContext
+    // (S.aiInputTokensEffective) — простое среднее ИЛИ сумма компонентов детального режима.
+    'ai_avg_input_tokens',
+    'ai_token_breakdown_manual',
+    'ai_input_system_prompt_tokens',
+    'ai_input_user_query_tokens',
+    'ai_input_history_tokens',
+    'ai_input_rag_context_tokens',
+    'ai_input_tool_context_tokens'
 ]);
 
 const NON_EK_CONTROL_QUESTION_IDS = new Set([

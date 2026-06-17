@@ -295,8 +295,8 @@ GOLDEN_REGEN=1          node tests/run.js tests/unit/domain/golden-scenarios.tes
 [dashboardAggregates.js](js/ui/dashboardAggregates.js) (`deriveLlmTokenItemQty`,
 `deriveRagEmbeddingItemQty`, `ragRefreshMultiplier`) и
 [calculator.js](js/domain/calculator.js) (`deriveExternalLlmTokenQtyFallback`).
-Производные `S.*` (`agentStepFactor`, `aiModelTierFactor`, `aiRequestsPerMonth`)
-считаются в `buildContext` и должны получать человекочитаемую метку в
+Производные `S.*` (`agentStepFactor`, `aiModelTierFactor`, `aiRequestsPerMonth`,
+`aiInputTokensEffective`) считаются в `buildContext` и должны получать человекочитаемую метку в
 [prodPassport.js](js/domain/prodPassport.js) и
 [quantityExplanation.js](js/ui/quantityExplanation.js) (иначе forcing-function
 тест «Параметр расчёта …» падает).

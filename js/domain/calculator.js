@@ -323,6 +323,22 @@ export function buildContext(answers, settings, questionDefaults, stand, item = 
         * (Number(aiDemand.requestsPerUserDay) || 0)
         * DEFAULT_DAYS_PER_MONTH;
 
+    /* Stage 2 (qty-модель ПРОМ): эффективный объём ВХОДНЫХ токенов на один запрос.
+       Простой режим (ai_token_breakdown_manual=false, по умолчанию) — ai_avg_input_tokens
+       (прежнее поведение). Детальный — сумма компонентов; RAG-контекст учитывается только
+       при rag_needed, контекст инструментов — только при ai_agent_mode (множитель шагов
+       агента остаётся в agentStepFactor; поле tool-context — лишь доп. контекст инструментов
+       на один LLM-вызов, не дублирует шаги). Output не разбивается (одно поле). */
+    const ragNeeded = answerBool(answerContext, 'rag_needed', false);
+    const tokenBreakdownManual = answerBool(answerContext, 'ai_token_breakdown_manual', false);
+    const aiInputTokensEffective = tokenBreakdownManual
+        ? (answerNumber(answerContext, 'ai_input_system_prompt_tokens', 0)
+            + answerNumber(answerContext, 'ai_input_user_query_tokens', 0)
+            + answerNumber(answerContext, 'ai_input_history_tokens', 0)
+            + (ragNeeded ? answerNumber(answerContext, 'ai_input_rag_context_tokens', 0) : 0)
+            + (agentEnabled ? answerNumber(answerContext, 'ai_input_tool_context_tokens', 0) : 0))
+        : answerNumber(answerContext, 'ai_avg_input_tokens', 0);
+
     return {
         Q: answers || {},
         S: {
@@ -342,7 +358,8 @@ export function buildContext(answers, settings, questionDefaults, stand, item = 
             agentStepFactor,
             agentToolFactor,
             aiModelTierFactor,
-            aiRequestsPerMonth
+            aiRequestsPerMonth,
+            aiInputTokensEffective
         },
         STAND: stand,
         questionDefaults,

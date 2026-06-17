@@ -98,7 +98,10 @@ const SETTING_LABEL_OVERRIDES = Object.freeze({
     /* Stage 1 (qty-модель ПРОМ): эффективное число AI-запросов в месяц
      * (DAU × доля AI × запросов/день × 30, с degenerate-recovery) — драйвер
      * «эмбеддингов запросов» в ЭК «Эмбеддинги для RAG». */
-    aiRequestsPerMonth: 'AI-запросов в месяц (расчётное)'
+    aiRequestsPerMonth: 'AI-запросов в месяц (расчётное)',
+    /* Stage 2 (qty-модель ПРОМ): эффективный объём входных токенов на запрос —
+     * простое среднее или сумма компонентов (детальный режим). */
+    aiInputTokensEffective: 'Входных токенов на запрос (расчётное)'
 });
 
 function finite(value, fallback = 0) {
