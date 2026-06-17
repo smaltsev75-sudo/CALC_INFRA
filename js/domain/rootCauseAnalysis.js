@@ -9,6 +9,7 @@
 import { calculate } from './calculator.js';
 import { applyStandFilter } from './standsFilter.js';
 import { buildQuantityTrace } from './quantityTrace.js';
+import { getInactiveDependency } from './sensitivityAnalysis.js';
 import {
     MONTHS_PER_YEAR,
     SENSITIVITY_FIELD_CATEGORIES,
@@ -154,6 +155,12 @@ function buildDirectLinks(calc, result, disabled, candidate) {
 }
 
 function simulateCandidate(calc, candidate, context) {
+    /* 2.22.4: поле, зависящее от выключенного мастер-тумблера (например AI-demand-поля
+       при ai_llm_used=false), не влияет на реальный бюджет — перебор по нему через
+       domain-fallback материализовал бы фантомную стоимость токенов. Не кандидат на
+       «корень затрат». Тот же gate, что в sensitivityAnalysis (общий источник). */
+    if (candidate.scope === 'answer' && getInactiveDependency(calc, candidate.fieldId)) return null;
+
     const currentValue = getField(calc, candidate);
     const clone = cloneCalc(calc);
     let proposedValue;

@@ -85,6 +85,37 @@ function getCategoryForField(fieldId) {
     return SENSITIVITY_FIELD_CATEGORIES[fieldId] || 'service';
 }
 
+/* 2.22.4: поле, зависящее от ВЫКЛЮЧЕННОГО мастер-тумблера, не влияет на бюджет —
+ * в анализе чувствительности оно должно быть 'na', а не материализовать фантом.
+ *
+ * Баг (подтверждён 7-агентным аудитом + прямой репродукцией): при ai_llm_used=false
+ * перебор AI-demand-полей или переключение ai_agent_mode запускал domain-fallback
+ * deriveExternalLlmTokenQtyFallback (calculator.js), который досчитывал ПОЛНЫЙ
+ * дефолтный объём LLM-токенов (≈29 млрд токенов из невведённых дефолтов) → «фактор
+ * влияния» в 18–45 млн ₽/мес, кратно превышавший ВЕСЬ бюджет сценария. Гипотетика из
+ * дефолтов выглядела как реальная статья затрат (жалоба пользователя: «как одна статья
+ * ПРОМ дороже всей категории по 5 стендам в 9 раз — это бред»).
+ *
+ * Семантика «родитель выключен» совпадает с UI dependsOnUnmet (questionnaire.js):
+ * null / undefined / false / '' = зависимость не выполнена. Это слой анализа —
+ * calculate() (реальный бюджет) не трогаем. Возвращаем title родителя для reason. */
+export function getInactiveDependency(calc, fieldId) {
+    const questions = calc.dictionaries?.questions || SEED_QUESTIONS;
+    const q = questions.find(x => x.id === fieldId)
+        || SEED_QUESTIONS.find(x => x.id === fieldId);
+    const deps = q?.dependsOn;
+    if (!Array.isArray(deps) || deps.length === 0) return null;
+    const answers = calc.answers || {};
+    for (const depId of deps) {
+        const v = answers[depId];
+        if (v === null || v === undefined || v === false || v === '') {
+            const dep = questions.find(x => x.id === depId) || SEED_QUESTIONS.find(x => x.id === depId);
+            return dep?.title || depId;
+        }
+    }
+    return null;
+}
+
 function getDeltaAbsValue(delta, costType) {
     if (costType === 'opex')  return Math.abs(delta.opexMonthly);
     if (costType === 'capex') return Math.abs(delta.capexMonthly);
@@ -126,6 +157,14 @@ export function simulateNumericPerturbation(calc, fieldId, perturbPercent = 10) 
 
     const label    = getLabelForField(calc, fieldId);
     const category = getCategoryForField(fieldId);
+
+    const inactiveDep = getInactiveDependency(calc, fieldId);
+    if (inactiveDep) {
+        return {
+            fieldId, label, category, status: 'na',
+            reason: `Параметр зависит от выключенного переключателя «${inactiveDep}» — не влияет на бюджет.`
+        };
+    }
 
     const numVal = Number(currentValue);
     if (!Number.isFinite(numVal) || numVal === 0) {
@@ -196,6 +235,14 @@ export function simulateTogglePerturbation(calc, fieldId) {
 
     const label    = getLabelForField(calc, fieldId);
     const category = getCategoryForField(fieldId);
+
+    const inactiveDep = getInactiveDependency(calc, fieldId);
+    if (inactiveDep) {
+        return {
+            fieldId, label, category, status: 'na',
+            reason: `Параметр зависит от выключенного переключателя «${inactiveDep}» — не влияет на бюджет.`
+        };
+    }
 
     let baseResult;
     try {
