@@ -91,6 +91,7 @@ const EXTERNAL_LLM_TOKEN_ITEM_IDS = new Set([
 ]);
 import { LruCache } from '../utils/lru.js';
 import { getCostType, makeZeroCostTypeMap } from './costType.js';
+import { getEkClass } from './ekClass.js';
 
 /* ---------- Интервал тарификации → ежемесячный множитель ---------- */
 
@@ -559,6 +560,53 @@ function makeZeroCategoryMap()      { return Object.fromEntries(CATEGORY_IDS.map
 function makeZeroResourceClassMap() { return Object.fromEntries(RESOURCE_CLASS_IDS.map(c => [c, 0])); }
 function makeZeroIntervalMap()      { return Object.fromEntries(BILLING_INTERVAL_IDS.map(c => [c, 0])); }
 
+/* ---------- Stage 5A: агрегаты объёма ПРОМ (для prod-derived DR-ЭК) ---------- */
+
+/**
+ * Группы dashboardResource, формирующие агрегаты объёма ПРОМ.
+ * prodComputeVcpu — все vCPU (cpu-vcpu-shared/dedicated + sandbox агентов);
+ * prodRamGb — оперативная память; prodStorageTb — суммарное хранилище SSD+HDD+S3.
+ * GPU намеренно НЕ входит в compute (отдельная нативная единица; зеркало GPU —
+ * вопрос 5B).
+ */
+const PROD_AGGREGATE_RESOURCES = Object.freeze({
+    prodComputeVcpu: ['CPU'],
+    prodRamGb:       ['RAM'],
+    prodStorageTb:   ['SSD', 'HDD', 'S3']
+});
+
+/**
+ * Stage 5A: вычислить агрегаты объёма ПРОМ из СЫРЫХ PROD-qty core-ЭК.
+ *
+ * Источник — только ЭК с dashboardResource (тот же набор, что агрегат объёмов на
+ * дашборде) ⇒ результат совпадает с числами дашборда. Берётся cell.qty (сырое,
+ * БЕЗ capacity-буфера и риск-множителей — решение 2A): риск-факторы DR-ЭК
+ * получают отдельно, иначе был бы двойной учёт буфера.
+ *
+ * prod-derived DR-ЭК НЕ имеют dashboardResource ⇒ не входят в сумму ⇒ цикл
+ * (self-reference) невозможен по построению (инвариант ekClass I3).
+ *
+ * @param {Object} result — результат основного прохода calculate()
+ * @param {Array}  items  — словарь ЭК (для маппинга id → dashboardResource)
+ * @returns {{prodComputeVcpu:number, prodRamGb:number, prodStorageTb:number}}
+ */
+export function computeProdAggregates(result, items) {
+    const byResource = Object.create(null);
+    const byId = new Map((items || []).map(it => [it.id, it]));
+    const itemsMap = result?.items || {};
+    for (const id of Object.keys(itemsMap)) {
+        const dr = byId.get(id)?.dashboardResource;
+        if (!dr) continue;
+        const q = itemsMap[id]?.stands?.PROD?.qty;
+        if (Number.isFinite(q)) byResource[dr] = (byResource[dr] || 0) + q;
+    }
+    const out = {};
+    for (const key of Object.keys(PROD_AGGREGATE_RESOURCES)) {
+        out[key] = PROD_AGGREGATE_RESOURCES[key].reduce((s, r) => s + (byResource[r] || 0), 0);
+    }
+    return out;
+}
+
 /**
  * Главная функция расчёта.
  *
@@ -769,6 +817,81 @@ export function calculate(calculation, revision = null) {
 
             result.totalMonthly += costFinal;
             result.totalAnnual  += costFinal * MONTHS_PER_YEAR;
+        }
+    }
+
+    /* Stage 5A: DR post-pass. prod-derived ЭК (георезерв / DR-кластер) масштабируются
+       от объёма ПРОМ. В основном проходе их qty = 0 (S.prod* там ещё не определён →
+       тихий 0), здесь пере-вычисляем с инжектированными агрегатами и применяем
+       ДЕЛЬТУ к итогам. Дельта (а не «добавить с нуля») надёжна независимо от того,
+       что вернул основной проход, и переживает будущие изменения порядка ЭК.
+
+       Цикл невозможен: computeProdAggregates суммирует только ЭК с dashboardResource,
+       а prod-derived DR-ЭК его не имеют (инвариант ekClass I3). */
+    if (items.some(it => getEkClass(it) === 'prod-derived')) {
+        const prodAgg = computeProdAggregates(result, items);
+        for (const item of items) {
+            if (getEkClass(item) !== 'prod-derived') continue;
+            const intervalMul = billingIntervalToMonthlyMultiplier(
+                item.billingInterval, daysPerMonth, phaseDuration
+            );
+            const price = Number(item.pricePerUnit) || 0;
+            const ct = getCostType(item);
+            const cat = CATEGORY_IDS.includes(item.category) ? item.category : 'SERVICES';
+            const rc  = RESOURCE_CLASS_IDS.includes(item.resourceClass) ? item.resourceClass : 'SERVICE';
+            const bi  = BILLING_INTERVAL_IDS.includes(item.billingInterval) ? item.billingInterval : 'monthly';
+
+            for (const stand of STAND_IDS) {
+                if (!item.applicableStands.includes(stand)) continue;
+                const ctx = buildContext(
+                    answers, settings, questionDefaults, stand, item,
+                    calculation.answersMeta, demandHints
+                );
+                ctx.S.prodComputeVcpu = prodAgg.prodComputeVcpu;
+                ctx.S.prodRamGb       = prodAgg.prodRamGb;
+                ctx.S.prodStorageTb   = prodAgg.prodStorageTb;
+
+                const { qty: rawQty, error: formulaError } = computeItemQty(item, stand, ctx);
+                const rawCostBase = rawQty * price * intervalMul;
+                const breakdown = riskFactor(item, stand, settings);
+                const riskMul = applyRisks ? breakdown.total : 1;
+                const rawCostFinal = rawCostBase * riskMul * breakdown.vatMul;
+
+                const overflow = !Number.isFinite(rawQty)
+                    || !Number.isFinite(rawCostBase)
+                    || !Number.isFinite(rawCostFinal);
+                const error     = overflow ? 'Числовое переполнение' : formulaError;
+                const qty       = overflow ? 0 : rawQty;
+                const costBase  = overflow ? 0 : rawCostBase;
+                const costFinal = overflow ? 0 : rawCostFinal;
+
+                const oldCell = result.items[item.id].stands[stand];
+                const delta = costFinal - oldCell.costFinal;
+
+                // Обновить ячейку в standBucket.items (тот же объект, что пушился) ...
+                const arrCell = result.stands[stand].items.find(c => c.itemId === item.id);
+                if (arrCell) {
+                    arrCell.qty = qty; arrCell.costBase = costBase;
+                    arrCell.costFinal = costFinal; arrCell.error = error;
+                    arrCell.riskBreakdown = breakdown;
+                }
+                // ... и в result.items map.
+                result.items[item.id].stands[stand] = {
+                    qty, costBase, costFinal, error, riskBreakdown: breakdown
+                };
+
+                if (delta !== 0) {
+                    const sb = result.stands[stand];
+                    sb.totalMonthly += delta; sb.totalAnnual += delta * MONTHS_PER_YEAR;
+                    sb.byCategory[cat] += delta; sb.byResourceClass[rc] += delta;
+                    sb.byBillingInterval[bi] += delta; sb.byCostType[ct] += delta;
+                    result.byCategory[cat] += delta; result.byResourceClass[rc] += delta;
+                    result.byBillingInterval[bi] += delta; result.byCostType[ct] += delta;
+                    result.items[item.id].totalMonthly += delta;
+                    result.items[item.id].totalAnnual  += delta * MONTHS_PER_YEAR;
+                    result.totalMonthly += delta; result.totalAnnual += delta * MONTHS_PER_YEAR;
+                }
+            }
         }
     }
 

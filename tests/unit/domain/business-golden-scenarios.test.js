@@ -76,13 +76,15 @@ const BUSINESS_SCENARIOS = Object.freeze([
             load_test_before_prod: true, pentest_per_year: 4, load_test_per_year: 4
         },
         expected: {
-            // Stage 3 (qty-модель ПРОМ): SSD выше (индексы ×1.3, WAL +10%); storage-ssd-tb поднялся в топе.
-            totalMonthly: 20_424_177,
-            totalAnnual: 245_090_128,
+            // Stage 5A (DR post-pass): res-georedundancy/res-dr-active теперь vCPU резерва
+            // по blended ₽/vCPU (1750/2300) вместо фикс. 300k/400k за площадку → RESERVES ниже,
+            // PROD-итог снизился, res-dr-active опустился в топ-5 PROD.
+            totalMonthly: 19_604_182,
+            totalAnnual: 235_250_179,
             topCategory: 'LICENSE',
-            byStandMonthly: { DEV: 598_295, IFT: 1_693_736, PSI: 2_549_860, PROD: 9_157_394, LOAD: 6_424_892 },
-            byCategoryMonthly: { HW: 4_891_060, LICENSE: 6_888_305, TRAFFIC: 145_790, SERVICES: 4_841_905, RESERVES: 1_562_398, SECURITY: 2_094_719, AI: 0 },
-            topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'storage-ssd-tb', 'res-dr-active', 'service-sms-per-1k']
+            byStandMonthly: { DEV: 598_295, IFT: 1_693_736, PSI: 2_549_860, PROD: 8_337_398, LOAD: 6_424_892 },
+            byCategoryMonthly: { HW: 4_891_060, LICENSE: 6_888_305, TRAFFIC: 145_790, SERVICES: 4_841_905, RESERVES: 742_403, SECURITY: 2_094_719, AI: 0 },
+            topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'storage-ssd-tb', 'service-sms-per-1k', 'res-dr-active']
         }
     },
     {
@@ -122,13 +124,14 @@ const BUSINESS_SCENARIOS = Object.freeze([
             pentest_per_year: 4, load_test_per_year: 4, security_audit_per_year: 2
         },
         expected: {
-            // Stage 3 (qty-модель ПРОМ): SSD выше (индексы ×1.3, WAL +10%); storage-ssd-tb поднялся в топе.
-            totalMonthly: 19_651_631,
-            totalAnnual: 235_819_575,
+            // Stage 5A (DR post-pass): DR-ЭК пересчитаны по blended ₽/vCPU (1750/2300) →
+            // RESERVES ниже, DR вышли из топ-5 PROD (стали дешевле фикс. цены за площадку).
+            totalMonthly: 18_593_589,
+            totalAnnual: 223_123_070,
             topCategory: 'LICENSE',
-            byStandMonthly: { DEV: 638_641, IFT: 1_600_678, PSI: 2_400_161, PROD: 8_985_108, LOAD: 6_027_044 },
-            byCategoryMonthly: { HW: 3_992_372, LICENSE: 7_993_349, TRAFFIC: 86_149, SERVICES: 3_765_431, RESERVES: 1_562_398, SECURITY: 2_251_933, AI: 0 },
-            topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'storage-ssd-tb', 'res-dr-active', 'res-georedundancy']
+            byStandMonthly: { DEV: 638_641, IFT: 1_600_678, PSI: 2_400_161, PROD: 7_927_066, LOAD: 6_027_044 },
+            byCategoryMonthly: { HW: 3_992_372, LICENSE: 7_993_349, TRAFFIC: 86_149, SERVICES: 3_765_431, RESERVES: 504_356, SECURITY: 2_251_933, AI: 0 },
+            topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'storage-ssd-tb', 'service-sms-per-1k', 'one-fstec-certification']
         }
     },
     {

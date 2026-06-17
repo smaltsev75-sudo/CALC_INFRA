@@ -71,21 +71,23 @@ const GOLDEN_SCENARIOS = Object.freeze([
         id: 'fintech_b2b_m',
         wizard: { product_type: 'b2b', industry: 'fintech', scale: 'm', geography: 'ru', pdn: true, activity: 'medium', ai_used: false },
         expected: {
-            // Stage 3: HDD-бэкап ниже (компрессия ÷2) перевешивает рост SSD → итог чуть ниже.
-            totalMonthly: 12_652_589,
-            totalAnnual: 151_831_065,
+            // Stage 5A (DR post-pass): RESERVES пересчитаны по blended ₽/vCPU (1750/2300)
+            // вместо фикс. цены за площадку → RESERVES ниже, итог ниже.
+            totalMonthly: 11_287_298,
+            totalAnnual: 135_447_581,
             topCategory: 'LICENSE',
-            byCategoryMonthly: { HW: 846_629, LICENSE: 3_923_740, TRAFFIC: 86_149, SERVICES: 3_480_337, RESERVES: 2_176_825, SECURITY: 2_138_910, AI: 0 }
+            byCategoryMonthly: { HW: 846_629, LICENSE: 3_923_740, TRAFFIC: 86_149, SERVICES: 3_480_337, RESERVES: 811_534, SECURITY: 2_138_910, AI: 0 }
         }
     },
     {
         id: 'b2g_m_ru_cis',
         wizard: { product_type: 'b2g', industry: 'corporate', scale: 'm', geography: 'ru_cis', pdn: true, activity: 'medium', ai_used: false },
         expected: {
-            totalMonthly: 6_719_759,
-            totalAnnual: 80_637_110,
+            // Stage 5A (DR post-pass): RESERVES по blended ₽/vCPU вместо фикс. цены за площадку.
+            totalMonthly: 6_106_211,
+            totalAnnual: 73_274_527,
             topCategory: 'SERVICES',
-            byCategoryMonthly: { HW: 354_790, LICENSE: 1_846_250, TRAFFIC: 159_043, SERVICES: 2_562_208, RESERVES: 675_869, SECURITY: 1_121_598, AI: 0 }
+            byCategoryMonthly: { HW: 354_790, LICENSE: 1_846_250, TRAFFIC: 159_043, SERVICES: 2_562_208, RESERVES: 62_320, SECURITY: 1_121_598, AI: 0 }
         }
     },
     {
@@ -102,10 +104,11 @@ const GOLDEN_SCENARIOS = Object.freeze([
         id: 'regulated_b2g_fintech_xl_ai_global',
         wizard: { product_type: 'b2g', industry: 'fintech', scale: 'xl', geography: 'global', pdn: true, activity: 'high', ai_used: true },
         expected: {
-            totalMonthly: 587_970_142,
-            totalAnnual: 7_055_641_710,
+            // Stage 5A (DR post-pass): RESERVES по blended ₽/vCPU вместо фикс. цены за площадку.
+            totalMonthly: 588_033_130,
+            totalAnnual: 7_056_397_560,
             topCategory: 'AI',
-            byCategoryMonthly: { HW: 53_860_258, LICENSE: 16_984_903, TRAFFIC: 6_474_392, SERVICES: 160_298_082, RESERVES: 2_176_825, SECURITY: 7_463_136, AI: 340_712_546 }
+            byCategoryMonthly: { HW: 53_860_258, LICENSE: 16_984_903, TRAFFIC: 6_474_392, SERVICES: 160_298_082, RESERVES: 2_239_812, SECURITY: 7_463_136, AI: 340_712_546 }
         }
     }
 ]);

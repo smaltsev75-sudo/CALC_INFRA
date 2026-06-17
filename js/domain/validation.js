@@ -5,7 +5,7 @@
 
 import {
     STAND_IDS, CATEGORY_IDS, BILLING_INTERVAL_IDS, RESOURCE_CLASS_IDS,
-    SECTION_IDS, QUESTION_TYPES, PERIOD_IDS, COST_TYPE_IDS,
+    SECTION_IDS, QUESTION_TYPES, PERIOD_IDS, COST_TYPE_IDS, EKCLASS_IDS,
     DASHBOARD_RESOURCE_LABELS, VALIDATION, STAND_RATIO_RANGES
 } from '../utils/constants.js';
 import { getAst, isAstError } from './formula/cache.js';
@@ -78,6 +78,13 @@ export function validateItem(item, errors = [], path = '') {
     if (item.costType !== undefined && item.costType !== null && item.costType !== '') {
         if (!COST_TYPE_IDS.includes(item.costType))
             err(errors, `${path}.costType`, `costType: ${COST_TYPE_IDS.join(' | ')}`);
+    }
+    // Класс драйвера количества (ekClass) — опционально; если задан, должен быть
+    // из EKCLASS_IDS. Отсутствие = backward-compat (legacy-словари без поля);
+    // полнота на SEED_ITEMS гарантируется arch-тестом ekClass-invariants.
+    if (item.ekClass !== undefined && item.ekClass !== null && item.ekClass !== '') {
+        if (!EKCLASS_IDS.includes(item.ekClass))
+            err(errors, `${path}.ekClass`, `ekClass: ${EKCLASS_IDS.join(' | ')}`);
     }
 
     if (!isArray(item.applicableStands)) err(errors, `${path}.applicableStands`, 'Список совместимых стендов обязателен');

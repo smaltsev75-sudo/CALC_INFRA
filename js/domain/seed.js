@@ -3341,6 +3341,7 @@ export const SEED_ITEMS = [
     /* ===== CPU / RAM / STORAGE / NETWORK ===== */
     {
         id: 'cpu-vcpu-shared',
+        ekClass: 'load-driven',
         name: 'vCPU (общий пул)',
         unit: 'шт.',
         pricePerUnit: 840,  // Cloud.ru shared vCPU: 1.15 ₽/core·час × 730. Источник: ТЗ ИИ-агент Smart v13.0 §14.2 (декомпозиция Cloud.ru), 2026-05.
@@ -3374,6 +3375,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'cpu-vcpu-dedicated',
+        ekClass: 'load-driven',
         name: 'vCPU (выделенный)',
         unit: 'шт.',
         pricePerUnit: 550,  // Yandex.Cloud, dedicated +10% к shared. Источник: yandex.cloud/docs/compute/pricing, 2026-05-02.
@@ -3404,6 +3406,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'cpu-vcpu-gpu',
+        ekClass: 'ai-driven',
         name: 'vCPU GPU-ноды (для self-hosted LLM)',
         unit: 'шт.',
         pricePerUnit: 14400,  // Cloud.ru GPU-нода NVIDIA A100 ~287k₽/мес за 20 vCPU = ~14400 ₽/(GPU-vCPU)/мес. Источник: cloud.ru/documents/tariffs/advanced/services/gpu-accelerated, 2026-04-13.
@@ -3432,6 +3435,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'ram-gb',
+        ekClass: 'load-driven',
         name: 'Оперативная память (GB)',
         unit: 'ГБ',
         pricePerUnit: 226,  // Cloud.ru RAM: 0.31 ₽/ГБ·час × 730. Источник: ТЗ ИИ-агент Smart v13.0 §14.2 (декомпозиция Cloud.ru), 2026-05.
@@ -3462,6 +3466,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'storage-ssd-tb',
+        ekClass: 'data-driven',
         name: 'Хранилище SSD/NVMe (горячее)',
         unit: 'ТБ',
         pricePerUnit: 12378,  // Cloud.ru EVS Ultra-high I/O SSD: 12.09 ₽/ГБ/мес × 1024. Источник: cloud.ru/documents/tariffs/advanced/services/elastic-volume, 2026-01-01.
@@ -3497,6 +3502,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'storage-hdd-tb',
+        ekClass: 'data-driven',
         name: 'Хранилище HDD (холодное)',
         unit: 'ТБ',
         pricePerUnit: 4111,  // Cloud.ru EVS High I/O SAS HDD: ~4.015 ₽/ГБ/мес × 1024. Источник: cloud.ru/documents/tariffs/advanced/services/elastic-volume, 2026-01-01.
@@ -3530,6 +3536,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'storage-object-tb',
+        ekClass: 'data-driven',
         name: 'Объектное хранилище (S3-совместимое)',
         unit: 'ТБ',
         pricePerUnit: 1883,  // Cloud.ru Object Storage: 1.839 ₽/ГБ/мес × 1024. Источник: cloud.ru/docs/s3e/ug/topics/pricing, 2026-05-02.
@@ -3562,6 +3569,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'storage-secure-gb',
+        ekClass: 'data-driven',
         name: 'Защищённое хранилище (152-ФЗ / шифрование)',
         unit: 'ГБ',
         pricePerUnit: 14.2,  // Cloud.ru Облако 152-ФЗ: SSD 12.09 ₽/ГБ + 17.5% надбавка за compliance. ОЦЕНКА — точный тариф «на запрос». Источник: cloud.ru/services/oblako-152fz, 2026-05-02.
@@ -3589,6 +3597,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'network-lb-l7',
+        ekClass: 'flag-fixed',
         name: 'Балансировщик нагрузки L7',
         unit: 'шт.',
         pricePerUnit: 1387,  // Cloud.ru Advanced LB L7 (1AZ): 1.90 ₽/час без НДС / 2.318 ₽/час с НДС × 730 = 1 387 ₽ net / 1 692.14 ₽ gross. Источник: cloud.ru/documents/tariffs/advanced/services/elastic-load-balance, ADV.18 v260101.
@@ -3616,6 +3625,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'network-waf',
+        ekClass: 'flag-fixed',
         name: 'Web Application Firewall (WAF)',
         unit: 'шт.',
         pricePerUnit: 17964.62,  // Cloud.ru Advanced WAF Cloud mode baseline: 1 домен + 5 правил + 1M запросов = 17 964.62 ₽ net / 21 916.84 ₽ gross. Источник: cloud.ru/documents/tariffs/advanced/services/web-app-firewall, ADV.47 v260101.
@@ -3642,6 +3652,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'network-ddos-protection',
+        ekClass: 'flag-fixed',
         name: 'Защита от DDoS-атак',
         unit: 'контур',
         pricePerUnit: 30000,  // Ориентир из impact вопроса ddos_protection_required: базовая защита L3/L4 15-30 тыс. ₽/мес.; для L7 нужен отдельный КП.
@@ -3667,6 +3678,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'network-cdn-edge',
+        ekClass: 'flag-fixed',
         name: 'CDN / edge-доставка по географии',
         unit: 'контур',
         pricePerUnit: 20000,  // Модельная оценка базового CDN-контура для СНГ/глобальной аудитории; точный тариф зависит от трафика и провайдера.
@@ -3691,6 +3703,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'network-realtime-gateway',
+        ekClass: 'load-driven',
         name: 'Realtime gateway / WebSocket-контур',
         unit: 'контур',
         pricePerUnit: 50000,  // Модельная оценка выделенного realtime-контура; точный тариф зависит от числа соединений и выбранного брокера.
@@ -3716,6 +3729,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-seasonal-load-readiness',
+        ekClass: 'count-driven',
         name: 'Подготовка к сезонным пикам',
         unit: 'пик-месяц',
         pricePerUnit: 100000,  // Модельная оценка цикла подготовки/проверки на один сезонный месяц.
@@ -3741,6 +3755,7 @@ export const SEED_ITEMS = [
     /* ===== LICENSE / SERVICE / TRAFFIC / AI_LLM ===== */
     {
         id: 'license-db-per-vcpu',
+        ekClass: 'load-driven',
         name: 'СУБД (на vCPU)',
         unit: 'vCPU',
         pricePerUnit: 167000,  // Tantor SE на 1 ядро/год (как middle-tier; Postgres Pro Enterprise дороже — 622908 ₽). Источник: syssoft.ru/tantor-labs/platforma-tantor/2101972/, 2025-05.
@@ -3771,6 +3786,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'license-os-per-node',
+        ekClass: 'load-driven',
         name: 'ОС (на узел)',
         unit: 'узел',
         pricePerUnit: 30000,  // Red OS Server, базовая лицензия с поддержкой/год. Источник: syssoft.ru/red-soft/red-os-server/, 2025-05.
@@ -3800,6 +3816,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'license-siem-edr-per-node',
+        ekClass: 'load-driven',
         name: 'СЗИ (на узел)',
         unit: 'узел',
         pricePerUnit: 2486,  // Kaspersky EDR Optimum для Windows Server, лицензия на узел/год. Источник: store-kaspersky.ru/dlya_biznesa/kaspersky_edr_dlya_biznesa_optimalnyy/, 2025-05.
@@ -3829,6 +3846,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-siem-integration',
+        ekClass: 'flag-fixed',
         name: 'Интеграция с SIEM',
         unit: 'проект',
         pricePerUnit: 350000,  // Ориентир из impact вопроса siem_integration_required: 200-500 тыс. ₽ разово.
@@ -3852,6 +3870,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'security-pdn-category-hardening',
+        ekClass: 'flag-fixed',
         name: 'Усиление контура по категории ПДн',
         unit: 'уровень',
         pricePerUnit: 50000,  // Модельная оценка доп. работ/сопровождения по категориям ПДн: категория 3 = 1, категории 1-2 выше.
@@ -3875,6 +3894,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'security-siem-monitoring',
+        ekClass: 'flag-fixed',
         name: 'SIEM: сбор и корреляция событий',
         unit: 'контур',
         pricePerUnit: 50000,  // Ориентир из impact вопроса siem_integration_required: 30-80 тыс. ₽/мес. на поддержку/ингест.
@@ -3897,6 +3917,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'security-dlp-implementation',
+        ekClass: 'flag-fixed',
         name: 'Внедрение DLP',
         unit: 'проект',
         pricePerUnit: 1000000,  // Ориентир ниже диапазона question-impact: внедрение/лицензии 1-5 млн ₽.
@@ -3919,6 +3940,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'security-dlp-license',
+        ekClass: 'flag-fixed',
         name: 'DLP: лицензия и сопровождение',
         unit: 'контур/год',
         pricePerUnit: 1500000,  // Ориентир из вопроса dlp_required: лицензия 1.5-5 млн ₽/год.
@@ -3941,6 +3963,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'security-audit-log-storage-gb',
+        ekClass: 'data-driven',
         name: 'Хранилище журналов аудита',
         unit: 'ГБ',
         pricePerUnit: 10.07,  // Та же цена raw SSD storage, что у rag-vector-db-gb: 0.0138 ₽/ГБ·ч × 730.
@@ -3968,6 +3991,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'service-email-per-1k',
+        ekClass: 'data-driven',
         name: 'Email-уведомления (тыс./мес)',
         unit: 'тыс. писем',
         pricePerUnit: 100,  // Тариф 0.1 ₽/письмо (UniSender Go рыночный ориентир). Источник: ТЗ ИИ-агент Smart v13.0 §14.4, 2026-05.
@@ -3996,6 +4020,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'service-sms-per-1k',
+        ekClass: 'data-driven',
         name: 'SMS-уведомления (тыс./мес)',
         unit: 'тыс. SMS',
         pricePerUnit: 3000,  // Оценка по рынку (SMS Aero / SMSC, среднее по операторам Большой четвёрки): ~3 ₽/SMS. УТОЧНИТЬ ПО ТЕКУЩЕМУ ПРАЙСУ.
@@ -4025,6 +4050,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'service-push-per-1m',
+        ekClass: 'data-driven',
         name: 'PUSH-уведомления (млн./мес)',
         unit: 'млн PUSH',
         pricePerUnit: 1000,  // Оценка по рынку (Smartpush / Pushwoosh / Sendpulse Push, mass-push тарифы): ~1 ₽/1000 PUSH = 1000 ₽/млн. УТОЧНИТЬ ПО ТЕКУЩЕМУ ПРАЙСУ.
@@ -4054,6 +4080,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-payment-gateway-integration',
+        ekClass: 'flag-fixed',
         name: 'Интеграция платёжного шлюза',
         unit: 'проект',
         pricePerUnit: 300000,  // Ориентир из impact вопроса payment_gateway: 300-800 тыс. ₽ разово.
@@ -4075,6 +4102,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-sso-integration',
+        ekClass: 'flag-fixed',
         name: 'Интеграция SSO',
         unit: 'проект',
         pricePerUnit: 600000,  // Ориентир из impact вопроса sso_required: 400-1200 тыс. ₽ разово.
@@ -4096,6 +4124,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'service-identity-provider',
+        ekClass: 'flag-fixed',
         name: 'Identity provider / SSO сопровождение',
         unit: 'контур',
         pricePerUnit: 50000,  // Ориентир из описания SSO: 50-200 тыс. ₽/мес при managed/enterprise IDP.
@@ -4113,6 +4142,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-antifraud-integration',
+        ekClass: 'flag-fixed',
         name: 'Интеграция антифрод-системы',
         unit: 'проект',
         pricePerUnit: 700000,  // Ориентир из impact вопроса antifraud_required: 500-1500 тыс. ₽.
@@ -4130,6 +4160,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'service-antifraud-license',
+        ekClass: 'flag-fixed',
         name: 'Антифрод: лицензия / сервис',
         unit: 'контур/год',
         pricePerUnit: 1000000,  // Ориентир из вопроса antifraud_required: лицензия от 1 млн ₽/год.
@@ -4147,6 +4178,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-edo-integration',
+        ekClass: 'flag-fixed',
         name: 'Интеграция ЭДО',
         unit: 'проект',
         pricePerUnit: 600000,  // Ориентир из impact вопроса edo_required: 400-1200 тыс. ₽ разово.
@@ -4164,6 +4196,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'service-edo-operator',
+        ekClass: 'flag-fixed',
         name: 'ЭДО: оператор и КЭП',
         unit: 'контур/год',
         pricePerUnit: 50000,  // Ориентир из вопроса edo_required: лицензия оператора 30-100 тыс. ₽/год.
@@ -4181,6 +4214,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'service-external-api-calls-1m',
+        ekClass: 'data-driven',
         name: 'Внешние API-вызовы (млн./мес)',
         unit: 'млн вызовов',
         pricePerUnit: 50000,  // Модельный blended-rate: 1 млн вызовов внешних API в среднем контуре.
@@ -4207,6 +4241,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'traffic-egress-tb',
+        ekClass: 'data-driven',
         name: 'Исходящий (TB/мес)',
         unit: 'ТБ',
         pricePerUnit: 3308,  // Cloud.ru egress: 3.23 ₽/ГБ × 1024. Источник: cloud.ru/documents/tariffs/advanced/services/vpc, 2026-01-01.
@@ -4236,6 +4271,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'traffic-ingress-tb',
+        ekClass: 'data-driven',
         name: 'Входящий (TB/мес)',
         unit: 'ТБ',
         pricePerUnit: 0,  // Cloud.ru: входящий трафик не тарифицируется. Источник: cloud.ru/docs/eip/ug/topics/pricing, 2026-05-02.
@@ -4265,6 +4301,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'llm-tokens-input-1m',
+        ekClass: 'ai-driven',
         name: 'Входящие токены LLM (1 млн)',
         unit: 'млн токенов',
         pricePerUnit: 500,  // GigaChat 2 Pro синхронный режим: 500 ₽/млн токенов (input). Источник: developers.sber.ru/docs/ru/gigachat/tariffs/legal-tariffs, 2026-05-02.
@@ -4299,6 +4336,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'llm-tokens-output-1m',
+        ekClass: 'ai-driven',
         name: 'Исходящие токены LLM (1 млн)',
         unit: 'млн токенов',
         pricePerUnit: 500,  // GigaChat 2 Pro: цена для output та же что для input (нет разделения). Источник: developers.sber.ru/docs/ru/gigachat/tariffs/legal-tariffs, 2026-05-02.
@@ -4333,6 +4371,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'ai-safety-moderation-tokens-1m',
+        ekClass: 'ai-driven',
         name: 'AI safety: модерационные токены',
         unit: 'млн токенов',
         pricePerUnit: 500,  // Тот же ориентир, что у llm-tokens-input/output для GigaChat 2 Pro, пока нет отдельного тарифа модератора.
@@ -4363,6 +4402,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'ai-safety-layer-service',
+        ekClass: 'flag-fixed',
         name: 'AI safety: сервис модерации',
         unit: 'контур',
         pricePerUnit: 100000,  // Ориентир из impact вопроса ai_safety_layer: 50-150 тыс. ₽/мес. на инфраструктуру модератора.
@@ -4391,6 +4431,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'ai-low-latency-inference-reserve',
+        ekClass: 'flag-fixed',
         name: 'AI low-latency inference reserve',
         unit: 'контур',
         pricePerUnit: 50000,  // Модельная оценка резерва для низкой задержки AI-инференса.
@@ -4416,6 +4457,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'ai-sensitive-data-gateway',
+        ekClass: 'flag-fixed',
         name: 'AI gateway для чувствительных данных',
         unit: 'контур',
         pricePerUnit: 80000,  // Модельная оценка приватного AI-gateway/PII-filter контура.
@@ -4441,6 +4483,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'ai-finetune-run',
+        ekClass: 'count-driven',
         name: 'Fine-tuning модели',
         unit: 'прогон/год',
         pricePerUnit: 500000,  // Ориентир из вопроса ai_finetune_runs_per_year: один прогон 500 тыс. - 5 млн ₽.
@@ -4466,6 +4509,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'rag-embeddings-1m',
+        ekClass: 'ai-driven',
         name: 'Эмбеддинги для RAG (1 млн токенов)',
         unit: 'млн токенов',
         pricePerUnit: 10,  // GigaChat Embeddings: 0.01 ₽/1К токенов = 10 ₽/млн. Источник: ТЗ ИИ-агент Smart v13.0 §14.3, 2026-05.
@@ -4517,6 +4561,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'rag-vector-db-gb',
+        ekClass: 'ai-driven',
         name: 'Хранилище vector-DB для RAG (self-hosted, ГБ)',
         unit: 'ГБ',
         pricePerUnit: 10.07,  // Cloud.ru Managed Redis® / Managed PostgreSQL® network SSD storage: 0.0138 ₽/ГБ·ч без НДС / 0.016836 ₽/ГБ·ч с НДС × 730 = 10.07 ₽ net / 12.29 ₽ gross (EVO.16 п.3 / EVO.4 п.5 v260316).
@@ -4553,6 +4598,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'rag-managed-knowledge-base-gb',
+        ekClass: 'ai-driven',
         name: 'Managed RAG: база знаний (ГБ)',
         unit: 'ГБ',
         pricePerUnit: 817.6,  // Cloud.ru Evolution Managed RAG, EVO.20 п.2: 1.12 ₽/ГБ·ч без НДС / 1.3664 ₽/ГБ·ч с НДС × 730 = 817.60 ₽ net / 997.47 ₽ gross.
@@ -4586,6 +4632,7 @@ export const SEED_ITEMS = [
     /* ===== AI agent infrastructure (Этап 13) ===== */
     {
         id: 'ai-agent-sandbox-vcpu',
+        ekClass: 'ai-driven',
         name: 'AI agent sandbox (vCPU под tool-execute)',
         unit: 'шт.',
         pricePerUnit: 840,  // Cloud.ru shared vCPU: тот же тариф что и cpu-vcpu-shared.
@@ -4624,6 +4671,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'ai-agent-memory-storage-tb',
+        ekClass: 'ai-driven',
         name: 'AI agent memory storage (ТБ)',
         unit: 'ТБ',
         pricePerUnit: 12000,  // Yandex Managed OpenSearch SSD storage: ~12 ₽/ГБ/мес ⇒ 12 000 ₽/ТБ/мес.
@@ -4658,6 +4706,7 @@ export const SEED_ITEMS = [
     /* ===== ONE_TIME / RESERVE ===== */
     {
         id: 'one-pentest-external',
+        ekClass: 'flag-fixed',
         name: 'Пентест внешний (Black/Grey Box)',
         unit: 'мероприятие',
         pricePerUnit: 600000,  // BI.ZONE рынок 2026 (внешний/внутренний/прелонч 600/600/800 тыс. ₽). Источник: ТЗ ИИ-агент Smart v13.0 §15 п.499, §15 п.611.
@@ -4681,6 +4730,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-pentest-internal',
+        ekClass: 'flag-fixed',
         name: 'Пентест внутренний (White Box)',
         unit: 'мероприятие',
         pricePerUnit: 600000,  // BI.ZONE рынок 2026 (внешний/внутренний/прелонч 600/600/800 тыс. ₽). Источник: ТЗ ИИ-агент Smart v13.0 §15 п.499, §15 п.611.
@@ -4704,6 +4754,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-load-test-prelaunch',
+        ekClass: 'flag-fixed',
         name: 'Нагрузочное тестирование до ПРОМ',
         unit: 'мероприятие',
         pricePerUnit: 800000,  // BI.ZONE рынок 2026 (нагрузочное до ПРОМ — 800 тыс. ₽). Источник: ТЗ ИИ-агент Smart v13.0 §15 п.611.
@@ -4727,6 +4778,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-load-test-regular',
+        ekClass: 'count-driven',
         name: 'Нагрузочное тестирование регулярное',
         unit: 'мероприятие/год',
         pricePerUnit: 400000,  // Медиана: абонентская нагрузка ~50% от pre-launch. УТОЧНИТЬ ПО КП.
@@ -4751,6 +4803,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-pentest-regular',
+        ekClass: 'count-driven',
         name: 'Пентесты регулярные',
         unit: 'мероприятие/год',
         pricePerUnit: 350000,  // Медиана: регулярные пентесты ~25-30% скидка от разового. УТОЧНИТЬ ПО КП. Источник: anti-malware.ru/analytics/Market_Analysis/Pentest-pricing.
@@ -4775,6 +4828,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-security-audit',
+        ekClass: 'count-driven',
         name: 'Аудит ИБ (152-ФЗ / ISO 27001)',
         unit: 'аудит/год',
         pricePerUnit: 450000,  // Медиана аудит ИБ (152-ФЗ / ISO 27001) полный цикл/год. УТОЧНИТЬ ПО КП. Источник: audit-it.ru/news/audit/1128532.html, 2026.
@@ -4799,6 +4853,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-fstec-certification',
+        ekClass: 'flag-fixed',
         name: 'Сертификация ФСТЭК / ФСБ',
         unit: 'мероприятие',
         pricePerUnit: 2500000,  // Медиана сертификации ФСТЭК — от 2 млн ₽. УТОЧНИТЬ ПО КП. Источник: sertiki.ru/sertifikat-fstek, 2026.
@@ -4823,6 +4878,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-deployment',
+        ekClass: 'constant',
         name: 'Внедрение и инсталляция',
         unit: 'мероприятие',
         pricePerUnit: 5000000,  // Медиана внедрения системы защиты на 2-3 мес (интеграция, настройка, миграция). УТОЧНИТЬ ПО КП. Источник: infotecs.ru/services/proektnye-raboty/, 2026.
@@ -4847,6 +4903,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-staff-training',
+        ekClass: 'flag-fixed',
         name: 'Обучение персонала',
         unit: 'цикл',
         pricePerUnit: 120000,  // Медиана обучение 10-20 человек, базовый курс. УТОЧНИТЬ ПО КП. Источник: sciti.ru, 2026.
@@ -4871,6 +4928,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-schedule-acceleration',
+        ekClass: 'count-driven',
         name: 'Резерв ускорения при жёстком сроке',
         unit: 'проект',
         pricePerUnit: 300000,  // Модельная оценка доп. работ/ускорения при малой допустимой задержке запуска.
@@ -4892,6 +4950,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-source-code-audit',
+        ekClass: 'flag-fixed',
         name: 'Аудит исходного кода (SAST/DAST)',
         unit: 'мероприятие',
         pricePerUnit: 500000,  // Медиана SAST/DAST аудит 100-500k LOC. УТОЧНИТЬ ПО КП. Источник: rtmtech.ru/services/audit-koda/, 2026.
@@ -4916,54 +4975,74 @@ export const SEED_ITEMS = [
     },
     {
         id: 'res-georedundancy',
+        ekClass: 'prod-derived',
         name: 'Георезерв ×2 (резервный ЦОД)',
-        unit: 'ЦОД',
-        pricePerUnit: 300000,  // Стоимость инфраструктуры резервного ЦОДа — оценка для типового B2B SaaS на 50k пользователей (~50% от стоимости основного PROD-стенда). УТОЧНИТЬ ПОД ПРОЕКТ.
+        unit: 'vCPU резерва',
+        pricePerUnit: 1750,  // Stage 5A: blended ₽/vCPU резерва (active-passive). Деривировано из seed-цен: vCPU 840 + RAM 4ГБ×226=904 ≈ 1744, округлено до 1750. Включает пропорциональную долю RAM/storage/network. Тёплый резерв. УТОЧНИТЬ ПОД ПРОЕКТ (КП). Прежняя цена 300 000 была за ЦЕЛЫЙ ЦОД и несовместима с новой единицей qty (vCPU).
         billingInterval: 'monthly',
         vendor: '',
         category: 'RESERVES',
         resourceClass: 'RESERVE',
         applicableStands: ['PROD'],
         description:
-            'Резервный ЦОД (active-passive) — полное дублирование ПРОМ-кластера.\n' +
+            'Резервный ЦОД (active-passive) — тёплое дублирование ПРОМ-кластера.\n' +
             'Применять при требованиях по георезервированию.\n' +
-            'Единица измерения: 1 контракт на резервный ЦОД.\n' +
-            'Пример: банк с георезервом — 1 ЦОД.\n' +
+            'Единица измерения: vCPU резервной площадки (30% от vCPU ПРОМ).\n' +
+            'Пример: ПРОМ 20 vCPU → георезерв 6 vCPU.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
-            'Источник: оценка инфраструктуры резервного ЦОДа для типового B2B SaaS на 50k пользователей (нет конкретного источника).\n' +
-            'Расчёт: ~50% от стоимости основного ПРОМ-стенда → 300 000 ₽/мес.\n' +
+            'Stage 5A: blended ₽/vCPU резерва — оценка из существующих seed-цен ' +
+            '(vCPU 840 + RAM 4ГБ×226 ≈ 1744 → 1750 ₽/vCPU/мес), включает ' +
+            'пропорциональную долю RAM, хранилища и сети, а не только процессор.\n' +
             'ВАЖНО: цена не подтверждена конкретным КП — для вашего проекта получите КП от подрядчика. ' +
             'Стоимость сильно зависит от размера основного ПРОМ-кластера, провайдера и SLA-контракта.',
-        qtyFormulas: { PROD: 'if(Q.georedundancy_required, 1, 0)' },
-        formulaHelp: 'qty = 1 при Q.georedundancy_required.'
+        qtyFormulas: { PROD: 'if(Q.georedundancy_required, ceil(0.3 * S.prodComputeVcpu), 0)' },
+        formulaHelp:
+            'qty = 30% от вычислительной мощности ПРОМ в vCPU (округление вверх), ' +
+            'если включён георезерв. S.prodComputeVcpu — сумма vCPU ПРОМ (то же число, ' +
+            'что в блоке «vCPU на стенде» дашборда). 30% — типовая доля резервной ' +
+            'площадки active-passive (тёплый резерв). Стоимость единицы — blended ' +
+            '₽/vCPU резерва: оценка из существующих seed-цен CPU/RAM, включает ' +
+            'пропорциональную долю RAM, хранилища и сети, а не только процессор. ' +
+            'Допущение — уточняйте по проектному КП подрядчика.'
     },
     {
         id: 'res-dr-active',
+        ekClass: 'prod-derived',
         name: 'DR-кластер активный (active-active)',
-        unit: 'кластер',
-        pricePerUnit: 400000,  // DR-кластер active-active (горячее зеркало основной инфраструктуры) — оценка для типового B2B SaaS. УТОЧНИТЬ ПОД ПРОЕКТ.
+        unit: 'vCPU резерва',
+        pricePerUnit: 2300,  // Stage 5A: blended ₽/vCPU резерва (active-active, горячее зеркало). Деривировано из seed-цен (vCPU 840 + RAM 904 + доля storage/network) ≈ 2300, выше тёплого резерва (1750) — горячая площадка. Включает пропорциональную долю RAM/storage/network. УТОЧНИТЬ ПОД ПРОЕКТ (КП). Прежняя цена 400 000 была за ЦЕЛЫЙ кластер и несовместима с новой единицей qty (vCPU).
         billingInterval: 'monthly',
         vendor: '',
         category: 'RESERVES',
         resourceClass: 'RESERVE',
         applicableStands: ['PROD'],
         description:
-            'Активный DR-кластер (active-active): второй ЦОД с разделением нагрузки.\n' +
+            'Активный DR-кластер (active-active): второй ЦОД, горячее зеркало нагрузки.\n' +
             'Для систем с SLA от 99.95%.\n' +
-            'Единица измерения: 1 кластер DR.\n' +
-            'Пример: SLA 99.99% — 1 active-active кластер.\n' +
+            'Единица измерения: vCPU резервной площадки (100% от vCPU ПРОМ).\n' +
+            'Пример: ПРОМ 20 vCPU → active-active 20 vCPU.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
-            'Источник: оценка DR-кластера active-active (горячее зеркало основной инфраструктуры) для типового B2B SaaS (нет конкретного источника).\n' +
-            'Расчёт: 400 000 ₽/мес (горячее зеркало, ~67% от стоимости основного кластера).\n' +
+            'Stage 5A: blended ₽/vCPU резерва — оценка из существующих seed-цен ' +
+            '(vCPU 840 + RAM 904 + доля storage/network ≈ 2300 ₽/vCPU/мес), выше ' +
+            'тёплого резерва (1750) — горячая площадка. Включает пропорциональную ' +
+            'долю RAM, хранилища и сети.\n' +
             'ВАЖНО: цена не подтверждена конкретным КП — для вашего проекта получите КП от подрядчика. ' +
             'Стоимость сильно зависит от размера основного ПРОМ-кластера, провайдера и SLA-контракта.',
-        qtyFormulas: { PROD: 'if(Q.sla_target >= 99.95 || Q.rto_hours <= 1 || Q.rpo_minutes <= 5, 1, 0)' },
-        formulaHelp: 'qty = 1 при SLA >= 99.95%, RTO <= 1 часа или RPO <= 5 минут.'
+        qtyFormulas: { PROD: 'if(Q.sla_target >= 99.95 || Q.rto_hours <= 1 || Q.rpo_minutes <= 5, ceil(S.prodComputeVcpu), 0)' },
+        formulaHelp:
+            'qty = 100% от вычислительной мощности ПРОМ в vCPU (горячее зеркало ' +
+            'active-active), если SLA ≥ 99.95%, RTO ≤ 1 часа или RPO ≤ 5 минут. ' +
+            'S.prodComputeVcpu — сумма vCPU ПРОМ (то же число, что в блоке «vCPU на ' +
+            'стенде» дашборда). active-active дублирует мощность полностью (100%). ' +
+            'Стоимость единицы — blended ₽/vCPU резерва: оценка из существующих ' +
+            'seed-цен CPU/RAM, включает пропорциональную долю RAM, хранилища и сети. ' +
+            'Допущение — уточняйте по проектному КП подрядчика.'
     },
     {
         id: 'res-blue-green-deployment',
+        ekClass: 'flag-fixed',
         name: 'Blue-green контур для обновлений без простоя',
         unit: 'контур',
         pricePerUnit: 250000,  // Модельная оценка доп. runtime/операционного резерва на zero-downtime deploy.
@@ -4981,6 +5060,7 @@ export const SEED_ITEMS = [
     },
     {
         id: 'one-dr-drill',
+        ekClass: 'count-driven',
         name: 'DR-учения',
         unit: 'учение/год',
         pricePerUnit: 250000,  // Ориентир из вопроса dr_drills_per_year: 200-500 тыс. ₽ за одно учение.

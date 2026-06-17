@@ -101,7 +101,13 @@ const SETTING_LABEL_OVERRIDES = Object.freeze({
     aiRequestsPerMonth: 'AI-запросов в месяц (расчётное)',
     /* Stage 2 (qty-модель ПРОМ): эффективный объём входных токенов на запрос —
      * простое среднее или сумма компонентов (детальный режим). */
-    aiInputTokensEffective: 'Входных токенов на запрос (расчётное)'
+    aiInputTokensEffective: 'Входных токенов на запрос (расчётное)',
+    /* Stage 5A (DR post-pass): агрегаты объёма ПРОМ из сырых PROD-qty core-ЭК.
+     * Драйверы prod-derived DR-ЭК (георезерв / DR-кластер). Совпадают с числами
+     * блока «X на стенде» дашборда. */
+    prodComputeVcpu: 'vCPU ПРОМ всего (расчётное)',
+    prodRamGb: 'RAM ПРОМ всего, ГБ (расчётное)',
+    prodStorageTb: 'Хранилище ПРОМ всего, ТБ (расчётное)'
 });
 
 function finite(value, fallback = 0) {

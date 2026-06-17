@@ -91,7 +91,19 @@ describe('questionnaire fields are wired to budget items', () => {
             'LOAD',
             { standSizeRatio: { ...SEED_SETTINGS.standSizeRatio, LOAD: 1 } }
         ), 2);
-        assert.equal(qty('res-dr-active', { rto_hours: 1, rpo_minutes: 60, sla_target: 99.9 }), 1);
+        // Stage 5A: res-dr-active (active-active) = 100% от vCPU ПРОМ (prod-derived),
+        // а не фикс. 1. Сверяем с суммой CPU-агрегата ПРОМ при тех же ответах.
+        const drAnswers = { rto_hours: 1, rpo_minutes: 60, sla_target: 99.9 };
+        const prodVcpu = qty('cpu-vcpu-shared', drAnswers)
+            + qty('cpu-vcpu-dedicated', drAnswers)
+            + qty('ai-agent-sandbox-vcpu', drAnswers);
+        assert.ok(prodVcpu > 0, 'prodComputeVcpu должен быть положительным');
+        assert.equal(qty('res-dr-active', drAnswers), prodVcpu);
+        // Stage 5A: res-georedundancy (active-passive) = 30% от vCPU ПРОМ.
+        assert.equal(qty('res-georedundancy', { georedundancy_required: true }),
+            Math.ceil(0.3 * (qty('cpu-vcpu-shared', { georedundancy_required: true })
+                + qty('cpu-vcpu-dedicated', { georedundancy_required: true })
+                + qty('ai-agent-sandbox-vcpu', { georedundancy_required: true }))));
         assert.equal(qty('res-blue-green-deployment', { maintenance_window_hours_month: 0 }), 1);
         assert.equal(qty('one-dr-drill', { georedundancy_required: true, dr_drills_per_year: 4 }), 4);
     });

@@ -23,7 +23,15 @@ const KNOWN_SETTINGS = new Set([
        agentStepFactor — среднее число LLM-вызовов на одну пользовательскую
        задачу (=1 при выключенном master), agentToolFactor — произведение
        на долю tool-use (sandbox-нагрузка). */
-    'agentStepFactor', 'agentToolFactor', 'aiModelTierFactor'
+    'agentStepFactor', 'agentToolFactor', 'aiModelTierFactor',
+    /* Этап 1-2 (qty-модель ПРОМ): производные AI-агрегаты в buildContext().
+       aiInputTokensEffective — эффективный объём входных токенов (простой/
+       детальный режим); aiRequestsPerMonth — запросов/мес с degenerate-recovery. */
+    'aiInputTokensEffective', 'aiRequestsPerMonth',
+    /* Этап 5A (DR post-pass): агрегаты объёма ПРОМ из сырых PROD-qty core-ЭК,
+       инжектируются ПОСЛЕ основного прохода calculate() и читаются только
+       prod-derived DR-ЭК. См. js/domain/calculator.js (computeProdAggregates). */
+    'prodComputeVcpu', 'prodRamGb', 'prodStorageTb'
 ]);
 
 /**

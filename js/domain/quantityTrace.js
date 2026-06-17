@@ -15,7 +15,8 @@ import {
     buildContext,
     buildQuestionDefaults,
     billingIntervalToMonthlyMultiplier,
-    riskFactor
+    riskFactor,
+    computeProdAggregates
 } from './calculator.js';
 import { SEED_ITEMS } from './seed.js';
 import { applyProviderOverlay, DEFAULT_PROVIDER } from './providerOverlay.js';
@@ -240,6 +241,14 @@ export function buildQuantityTrace(calculation, itemId, stand, precomputedResult
     const answersMeta = calculation?.answersMeta || {};
     const ctx = buildContext(answers, settings, questionDefaults, stand, item, answersMeta);
     const result = precomputedResult || calculate(calculation);
+    /* Stage 5A: prod-derived DR-ЭК читают S.prod* (агрегаты объёма ПРОМ), которые
+       инжектируются в calculate() ПОСЛЕ основного прохода. buildContext их не
+       содержит → без этой строки трасса показала бы S.prodComputeVcpu = 0.
+       Берём те же агрегаты из готового result, чтобы Паспорт совпадал с расчётом. */
+    const prodAgg = computeProdAggregates(result, items);
+    ctx.S.prodComputeVcpu = prodAgg.prodComputeVcpu;
+    ctx.S.prodRamGb       = prodAgg.prodRamGb;
+    ctx.S.prodStorageTb   = prodAgg.prodStorageTb;
     const cell = result.items?.[item.id]?.stands?.[stand] || {
         qty: 0,
         costBase: 0,
