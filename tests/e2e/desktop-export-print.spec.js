@@ -173,6 +173,7 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
                     const tableStyle = getComputedStyle(table);
                     const vendorStyle = getComputedStyle(vendorHeader);
                     const wrapStyle = getComputedStyle(wrap);
+                    const mainStyle = getComputedStyle(main);
                     duringPrint = {
                         bodyClass: document.body.className,
                         hasStyle: !!document.getElementById('details-print-page-style'),
@@ -181,6 +182,11 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
                         tableWidth: table.getBoundingClientRect().width,
                         wrapWidth: wrap.getBoundingClientRect().width,
                         mainWidth: main.getBoundingClientRect().width,
+                        /* 2.22.5: левый отступ контента Деталей в PDF задаётся padding'ом
+                           .app-main (а не @page margin) → доступная ширина = content-box. */
+                        mainContentWidth: main.clientWidth
+                            - parseFloat(mainStyle.paddingLeft) - parseFloat(mainStyle.paddingRight),
+                        mainPaddingLeft: parseFloat(mainStyle.paddingLeft),
                         wrapBackground: wrapStyle.backgroundColor,
                         wrapBorderRadius: wrapStyle.borderRadius,
                         wrapBoxShadow: wrapStyle.boxShadow,
@@ -231,8 +237,11 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
         expect(duringPrint.styleText).toContain('A4 landscape');
         expect(duringPrint.tableLayout).toBe('fixed');
         expect(duringPrint.tabContain).toBe('none');
-        expect(duringPrint.tableWidth).toBeGreaterThan(duringPrint.mainWidth * 0.98);
-        expect(duringPrint.wrapWidth).toBeGreaterThan(duringPrint.mainWidth * 0.98);
+        // Таблица заполняет доступную (content-box) ширину .app-main; с 2.22.5
+        // .app-main имеет левый/правый padding для отступа контента от края листа.
+        expect(duringPrint.tableWidth).toBeGreaterThan(duringPrint.mainContentWidth * 0.98);
+        expect(duringPrint.wrapWidth).toBeGreaterThan(duringPrint.mainContentWidth * 0.98);
+        expect(duringPrint.mainPaddingLeft).toBeGreaterThan(20);
         expect(duringPrint.wrapBackground).toBe('rgb(255, 255, 255)');
         expect(duringPrint.wrapBorderRadius).toBe('0px');
         expect(duringPrint.wrapBoxShadow).toBe('none');
@@ -272,6 +281,7 @@ test('Native beforeprint on Details enables full-width landscape price and qty t
         const table = document.querySelector('.details-table-cost');
         const wrap = document.querySelector('.details-table-wrap');
         const main = document.querySelector('.app-main');
+        const mainStyle = getComputedStyle(main);
         return {
             bodyClass: document.body.className,
             hasStyle: !!document.getElementById('details-print-page-style'),
@@ -279,7 +289,10 @@ test('Native beforeprint on Details enables full-width landscape price and qty t
             tableLayout: getComputedStyle(table).tableLayout,
             tableWidth: table.getBoundingClientRect().width,
             wrapWidth: wrap.getBoundingClientRect().width,
-            mainWidth: main.getBoundingClientRect().width
+            mainWidth: main.getBoundingClientRect().width,
+            mainContentWidth: main.clientWidth
+                - parseFloat(mainStyle.paddingLeft) - parseFloat(mainStyle.paddingRight),
+            mainPaddingLeft: parseFloat(mainStyle.paddingLeft)
         };
     });
 
@@ -287,8 +300,10 @@ test('Native beforeprint on Details enables full-width landscape price and qty t
     expect(snapshot.hasStyle).toBe(true);
     expect(snapshot.styleText).toContain('A4 landscape');
     expect(snapshot.tableLayout).toBe('fixed');
-    expect(snapshot.tableWidth).toBeGreaterThan(snapshot.mainWidth * 0.98);
-    expect(snapshot.wrapWidth).toBeGreaterThan(snapshot.mainWidth * 0.98);
+    // Таблица заполняет content-box .app-main; левый отступ контента в PDF (2.22.5).
+    expect(snapshot.tableWidth).toBeGreaterThan(snapshot.mainContentWidth * 0.98);
+    expect(snapshot.wrapWidth).toBeGreaterThan(snapshot.mainContentWidth * 0.98);
+    expect(snapshot.mainPaddingLeft).toBeGreaterThan(20);
 
     const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
     const mediaBox = pdf.toString('latin1').match(/\/MediaBox\s*\[\s*([^\]]+)\]/)?.[1] || '';
@@ -310,19 +325,25 @@ test('Native beforeprint on Details enables full-width landscape price and qty t
         const table = document.querySelector('.details-table-qty');
         const wrap = document.querySelector('.details-table-wrap');
         const main = document.querySelector('.app-main');
+        const mainStyle = getComputedStyle(main);
         return {
             bodyClass: document.body.className,
             tableLayout: getComputedStyle(table).tableLayout,
             tableWidth: table.getBoundingClientRect().width,
             wrapWidth: wrap.getBoundingClientRect().width,
-            mainWidth: main.getBoundingClientRect().width
+            mainWidth: main.getBoundingClientRect().width,
+            mainContentWidth: main.clientWidth
+                - parseFloat(mainStyle.paddingLeft) - parseFloat(mainStyle.paddingRight),
+            mainPaddingLeft: parseFloat(mainStyle.paddingLeft)
         };
     });
 
     expect(qtySnapshot.bodyClass).toContain('printing-details');
     expect(qtySnapshot.tableLayout).toBe('fixed');
-    expect(qtySnapshot.tableWidth).toBeGreaterThan(qtySnapshot.mainWidth * 0.98);
-    expect(qtySnapshot.wrapWidth).toBeGreaterThan(qtySnapshot.mainWidth * 0.98);
+    // Таблица заполняет content-box .app-main; левый отступ контента в PDF (2.22.5).
+    expect(qtySnapshot.tableWidth).toBeGreaterThan(qtySnapshot.mainContentWidth * 0.98);
+    expect(qtySnapshot.wrapWidth).toBeGreaterThan(qtySnapshot.mainContentWidth * 0.98);
+    expect(qtySnapshot.mainPaddingLeft).toBeGreaterThan(20);
     await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
     await expect.poll(() => page.evaluate(() => document.body.classList.contains('printing-details'))).toBe(false);
 

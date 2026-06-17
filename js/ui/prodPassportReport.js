@@ -61,7 +61,6 @@ const SVG = Object.freeze({
     countTile: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
     search: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>',
     legend: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="6.5" cy="13.5" r="2.5"/><circle cx="17" cy="17" r="2.5"/><circle cx="6.5" cy="6.5" r="2.5"/></svg>',
-    factors: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
     info: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
     flagDefault: '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>',
     flagRepair: '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
@@ -105,11 +104,6 @@ function splitQuantity(quantityText, unit) {
         return { value: text.slice(0, text.length - unit.length).trim(), unit };
     }
     return { value: text, unit: '' };
-}
-
-function factorSegColor(index) {
-    /* те же 6 тонов, что в legend через CSS-классы prod-passport-factor-tone-*. */
-    return `prod-passport-factor-tone-${index % 6}`;
 }
 
 /* ============================================================
@@ -375,79 +369,6 @@ function renderCategoryLegend(items) {
             ))
         )
     );
-}
-
-/* ============================================================
- * Факторы влияния — Вариант 3: сегментированная полоса + легенда
- * ============================================================ */
-function renderFactors(model) {
-    const factors = model.summary.topFactors || [];
-    const totalImpact = factors.reduce((sum, factor) => sum + (Number(factor.monthlyImpact) || 0), 0);
-    const segmentAria = factors
-        .map(factor => `${factor.label} ${moneyThousands(factor.monthlyImpact)} — ${formatRelativeShare(factor.monthlyImpact, totalImpact)}`)
-        .join('; ');
-
-    return el('section', {
-        class: 'pp-factors-card',
-        attrs: { 'data-testid': 'prod-passport-top-factors' }
-    },
-        el('div', { class: 'pp-factors-head' },
-            el('div', { class: 'pp-factors-title' },
-                el('h2', null,
-                    inlineSvg(SVG.factors),
-                    el('span', { text: 'Факторы влияния' })
-                ),
-                el('span', { class: 'pp-factors-caption', text: '· изменение бюджета при ±10% / переключении фактора' })
-            ),
-            el('div', { class: 'pp-factors-right' },
-                el('span', { class: 'pp-factors-unit', text: 'тыс.руб./мес.' }),
-                el('span', {
-                    class: 'pp-factors-info',
-                    attrs: {
-                        tabindex: '0',
-                        role: 'img',
-                        'aria-label': 'Насколько изменится месячный бюджет, если изменить параметр на +10% (или переключить). Доли — среди показанных факторов.'
-                    },
-                    title: 'Насколько изменится месячный бюджет, если изменить параметр на +10% (или переключить). Доли — среди показанных факторов.',
-                    trustedHtml: trustedHtml(SVG.info)
-                })
-            )
-        ),
-        factors.length === 0
-            ? el('div', { class: 'pp-empty', text: 'Нет факторов с заметным влиянием на бюджет.' })
-            : [
-                el('div', {
-                    class: 'pp-fct3-bar',
-                    attrs: { role: 'img', 'aria-label': `Состав вклада факторов: ${segmentAria}` }
-                },
-                    factors.map((factor, index) => el('div', {
-                        class: ['pp-fct3-seg', factorSegColor(index)],
-                        title: `${factor.label}${factor.changeLabel ? ` (${factor.changeLabel})` : ''}: ${factor.monthlyText} — ${formatRelativeShare(factor.monthlyImpact, totalImpact)} влияния`,
-                        dataset: { fieldId: factor.fieldId },
-                        style: { width: `${relativeSharePercent(factor.monthlyImpact, totalImpact)}%` }
-                    }))
-                ),
-                el('div', { class: 'pp-fct3-legend' },
-                    factors.map((factor, index) => el('div', { class: 'pp-fct3-item' },
-                        el('span', {
-                            class: ['pp-fct3-swatch', factorSegColor(index)],
-                            attrs: { 'aria-hidden': 'true' }
-                        }),
-                        el('span', { class: 'pp-fct3-name', text: factor.label }),
-                        el('span', { class: 'pp-fct3-sum', text: String(moneyThousands(factor.monthlyImpact)) })
-                    ))
-                )
-            ]
-    );
-}
-
-function relativeSharePercent(value, total) {
-    if (total <= 0) return 0;
-    return Math.round(((Number(value) || 0) / total) * 10000) / 100;
-}
-
-function formatRelativeShare(value, total) {
-    return `${Math.round(relativeSharePercent(value, total))} %`;
 }
 
 /* ============================================================
@@ -772,18 +693,14 @@ function renderStandDisabled(model) {
  * ПРАВО = детализация выбранного ЭК (конвейер расчёта). Данные строго из
  * buildProdPassport(calc, {result}); UI ничего не пересчитывает.
  */
-export function renderProdPassportReport(calc, result, modalState, ctx, sensitivityFilters = null) {
+export function renderProdPassportReport(calc, result, modalState, ctx) {
     const model = buildProdPassport(calc, {
         result,
         stand: 'PROD',
         /* лимит >= числа всех ЭК: на карте показываем всё (пагинации нет) */
         limit: Number.MAX_SAFE_INTEGER,
         offset: 0,
-        topFactorsLimit: 6,
-        search: modalState?.search || '',
-        /* «Факторы влияния» используют тот же фильтр, что «Анализ факторов»
-           (costType + categories) → панели всегда совпадают. */
-        sensitivityFilters
+        search: modalState?.search || ''
     });
 
     if (model.standDisabled) {
@@ -827,8 +744,7 @@ export function renderProdPassportReport(calc, result, modalState, ctx, sensitiv
                         ? renderExpandedGrid(model.items, selectedItemId, ctx)
                         : renderTreemap(model.items, model.summary.totalMonthly, selectedItemId, ctx)),
                 el('div', { class: 'pp-left-bottom' },
-                    renderCategoryLegend(model.items),
-                    renderFactors(model)
+                    renderCategoryLegend(model.items)
                 )
             ),
             el('div', { class: 'pp-right' },
@@ -847,7 +763,6 @@ export function buildProdPassportModel(calc, result, modalState) {
     return buildProdPassport(calc, {
         result,
         stand: 'PROD',
-        topFactorsLimit: 6,
         search: modalState?.search || ''
     });
 }
@@ -861,7 +776,6 @@ export function buildProdPassportCsvModel(calc, result) {
     return buildProdPassport(calc, {
         result,
         stand: 'PROD',
-        topFactorsLimit: 6,
         search: ''
     });
 }

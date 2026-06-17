@@ -7,8 +7,9 @@
  * Классификация известных потребителей:
  *   • sensitivityAnalysisModal.js — «Анализ факторов» (ЭТАЛОН): costType+categories
  *     из state.ui.sensitivityFilters.
- *   • prodPassport.js — «Факторы влияния» Паспорта: читает ТОТ ЖЕ фильтр → совпадает
- *     с эталоном (тест passport-factors-filter-consistency).
+ *   • prodPassport.js — НЕ потребитель с 2.22.5: раздел «Факторы влияния» удалён из
+ *     Паспорта ПРОМ по требованию пользователя (там нужна as-is карта затрат, а не
+ *     what-if sensitivity). Паспорт больше не вызывает rankSensitivityDrivers.
  *   • budgetGuardrails.js — «Причины превышения бюджета»: ДРУГОЙ вопрос (ранг по
  *     превышенной оси), сознательно НЕ привязан к UI-фильтру.
  *   • decisionMemoController.js — Decision Memo: основной список = состав стоимости
@@ -33,7 +34,6 @@ const JS_DIR = path.resolve(__dirname, '../../../js');
 const EXPECTED = new Set([
     'domain/sensitivityAnalysis.js',          // определение (export)
     'ui/modals/sensitivityAnalysisModal.js',  // эталон «Анализ факторов»
-    'domain/prodPassport.js',                 // «Факторы влияния» — делит фильтр эталона
     'domain/budgetGuardrails.js',             // «Причины превышения» — другой вопрос (exempt)
     'controllers/decisionMemoController.js'    // Decision Memo — состав стоимости (exempt)
 ]);
@@ -65,12 +65,11 @@ describe('factor-influence: набор потребителей rankSensitivityD
             `Исчез потребитель: ${removed.join(', ')}. Обнови EXPECTED.`);
     });
 
-    it('Паспорт «Факторы влияния» НЕ хардкодит costType — читает фильтр (как эталон)', () => {
+    it('Паспорт ПРОМ НЕ вызывает rankSensitivityDrivers (раздел «Факторы влияния» удалён, 2.22.5)', () => {
         const src = stripJsComments(readFileSync(path.join(JS_DIR, 'domain/prodPassport.js'), 'utf8'));
-        // Должен извлекать costType/categories из переданного filters, а не из строкового литерала.
-        assert.match(src, /rankSensitivityDrivers\(getCachedSensitivity\(\w+\),\s*costType,\s*categories\)/,
-            'prodPassport должен ранжировать по costType/categories из фильтра, не по хардкоду');
-        assert.match(src, /DEFAULT_SENSITIVITY_FILTERS/,
-            'prodPassport должен использовать DEFAULT_SENSITIVITY_FILTERS как fallback фильтра');
+        assert.doesNotMatch(src, /\brankSensitivityDrivers\b/,
+            'prodPassport не должен использовать sensitivity — Паспорт показывает as-is карту затрат, не what-if');
+        assert.doesNotMatch(src, /\bbuildSensitivityFactors\b/,
+            'buildSensitivityFactors удалён вместе с разделом «Факторы влияния»');
     });
 });

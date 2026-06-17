@@ -168,36 +168,6 @@ describe('buildProdPassport', () => {
         assert.equal(ramRatio.sourceLabel, 'неизвестный источник: future-import');
     });
 
-    it('сводка влияния = sensitivity (влияние на бюджет при ±10%/переключении), значения разные', () => {
-        const calc = makeCalc();
-        const passport = buildProdPassport(calc, { result: calculate(calc), stand: 'PROD', topFactorsLimit: 8 });
-
-        assert.ok(passport.summary.topFactors.length > 0);
-        for (const factor of passport.summary.topFactors) {
-            assert.ok(factor.label, 'у фактора должно быть русское название');
-            assert.ok(factor.monthlyImpact >= 0 && Number.isFinite(factor.monthlyImpact));
-            assert.ok(factor.coveragePercent >= 0);
-            assert.match(factor.monthlyText, /тыс\.руб\.\/мес\./);
-            assert.match(factor.coverageText, /%$/);
-        }
-
-        // Отсортированы по убыванию влияния на бюджет.
-        for (let i = 1; i < passport.summary.topFactors.length; i += 1) {
-            assert.ok(
-                passport.summary.topFactors[i - 1].monthlyImpact >= passport.summary.topFactors[i].monthlyImpact,
-                'факторы должны быть отсортированы по убыванию влияния на бюджет'
-            );
-        }
-
-        // Ключевой фикс: разные факторы дают РАЗНОЕ влияние (sensitivity), а не
-        // одинаковые числа, как при прежней метрике «сумма стоимости затронутых ЭК».
-        if (passport.summary.topFactors.length >= 2) {
-            const impacts = passport.summary.topFactors.map(f => f.monthlyImpact);
-            assert.ok(new Set(impacts).size > 1,
-                `значения влияния должны различаться, получено: ${impacts.join(', ')}`);
-        }
-    });
-
     it('фильтрует список ЭК по названию без изменения сводки ПРОМ', () => {
         const calc = makeCalc();
         const result = calculate(calc);

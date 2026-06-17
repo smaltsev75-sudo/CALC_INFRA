@@ -89,16 +89,9 @@ test('Паспорт ПРОМ открывается из Детализации
         expect(tile.budgetSharePercent).toBeCloseTo(row.budgetSharePercent, 2);
     }
 
-    // категории + факторы под картой
+    // категории под картой; раздел «Факторы влияния» удалён из Паспорта (2.22.5)
     await expect(page.locator('.pp-legend-card')).toBeVisible();
-    const factors = page.getByTestId('prod-passport-top-factors');
-    await expect(factors).toBeVisible();
-    await expect(factors).toContainText('Факторы влияния');
-    await expect(factors.locator('.pp-fct3-bar')).toHaveCount(1);
-    const factorItems = factors.locator('.pp-fct3-item');
-    expect(await factorItems.count()).toBeGreaterThan(0);
-    expect(await factorItems.count()).toBeLessThanOrEqual(6);
-    await expect(factors.locator('.pp-fct3-seg')).toHaveCount(await factorItems.count());
+    await expect(page.getByTestId('prod-passport-top-factors')).toHaveCount(0);
 
     // детализация выбранного ЭК; клик по другой плитке меняет деталь
     const detail = page.getByTestId('prod-passport-detail');

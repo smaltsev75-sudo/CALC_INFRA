@@ -11902,3 +11902,33 @@ TDD: [sensitivity-ai-inactive-gate.test.js](../../tests/unit/domain/sensitivity-
 «Анализ факторов» + Cost Optimization Planner). Модель расчёта / schema / bundle не меняются.
 Метрики последнего прогона: unit **5803/5803 PASS**, e2e **60 passed**, syntax/sanity/quantity/
 prices/diff — все EXIT 0.
+
+## Release 2.22.5 — удаление «Факторов влияния» из Паспорта + левый отступ PDF (2026-06-18)
+
+PATCH. Два user-requested изменения, оба только UI/представление — `calculate()` / schema /
+bundle не меняются.
+
+**(1) Удалён раздел «Факторы влияния» из Паспорта ПРОМ** (прямая директива пользователя:
+«мне не нужна what-if модель, нужна as-is — на какие факторы смотреть, чтобы снизить бюджет
+ПРОМ; удали весь раздел»). As-is уже даёт карта бюджета (treemap самых дорогих статей);
+what-if sensitivity остаётся в отдельной модалке «Анализ факторов». Удалено:
+`buildSensitivityFactors` + `getCachedSensitivity` + `deltaByCostType` + `summary.topFactors`
+([prodPassport.js](../../js/domain/prodPassport.js)); `renderFactors` + helpers + `SVG.factors`
+([prodPassportReport.js](../../js/ui/prodPassportReport.js)); проброс `sensitivityFilters`
+([prodPassportModal.js](../../js/ui/modals/prodPassportModal.js)); CSS `.pp-factors-*`/`.pp-fct3-*`/
+`.prod-passport-factor-tone-*` ([modals.css](../../css/modals.css)). prodPassport больше НЕ
+потребитель `rankSensitivityDrivers` — drift-guard [factor-influence-consumers.test.js](../../tests/unit/architecture/factor-influence-consumers.test.js)
+обновлён (EXPECTED без prodPassport + проверка `doesNotMatch`). Тест filter-consistency удалён.
+
+**(2) Левый отступ PDF Деталей — через content-padding, НЕ @page margin.** Корень
+многократной жалобы «текст у левого края, бамп @page margin (6→10→14мм) не помогает»: `@page
+margin` обнуляется настройкой «Поля: Без полей/Минимум» в диалоге печати браузера. Фикс —
+`body.printing-details .app-main { box-sizing: border-box; padding-left: 12mm; padding-right:
+4mm }` ([print.css](../../css/print.css)): padding на контенте рендерится ВСЕГДА, независимо от
+настроек печати; box-sizing → width:100% таблицы укладывается без overflow справа. e2e
+export-print guard обновлён: таблица заполняет **content-box** .app-main (mainContentWidth), +
+проверка `mainPaddingLeft > 20px`.
+
+`2.22.4 → 2.22.5` (**PATCH**): UI/представление (Паспорт + print-CSS). Модель/schema/bundle не
+меняются. Метрики последнего прогона: unit **5799/5799 PASS** (−4 удалённых теста панели),
+e2e **60 passed**, syntax/sanity/quantity/prices/diff — все EXIT 0.

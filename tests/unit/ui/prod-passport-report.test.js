@@ -256,20 +256,10 @@ describe('Паспорт ПРОМ: DOM-контракт отчёта (treemap-р
         assert.match(collectText(legend[0]), /Категории/);
         assert.ok(allByClass(legend[0], 'pp-lg').length > 0);
 
-        const factors = byTestId(rendered, 'prod-passport-top-factors');
-        assert.ok(factors);
-        assert.match(collectText(factors), /Факторы влияния/);
-        assert.equal(allByClass(factors, 'pp-fct3-bar').length, 1);
-        const segments = allByClass(factors, 'pp-fct3-seg');
-        const legendItems = allByClass(factors, 'pp-fct3-item');
-        assert.ok(legendItems.length > 0);
-        assert.ok(legendItems.length <= 6);
-        assert.equal(segments.length, legendItems.length);
-        // единица измерения один раз
-        assert.equal(allByClass(factors, 'pp-factors-unit').length, 1);
-        assert.match(collectText(factors), /тыс\.руб\.\/мес\./);
-        // дисклеймер про пересечение охватов одной строкой / ⓘ
-        assert.ok(allByClass(factors, 'pp-factors-info').length === 1);
+        // Раздел «Факторы влияния» удалён из Паспорта (2.22.5) — карта затрат as-is,
+        // без what-if sensitivity.
+        assert.ok(!byTestId(rendered, 'prod-passport-top-factors'),
+            'раздел «Факторы влияния» должен отсутствовать в Паспорте');
     });
 
     it('детализация: иконка категории, KPI с ед.изм. под значением, подстановка, параметры с ⓘ, стоимость', async () => {

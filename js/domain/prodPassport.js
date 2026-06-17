@@ -1,10 +1,9 @@
-import { STAND_IDS, STAND_LABELS, MONTHS_PER_YEAR, DEFAULT_SENSITIVITY_FILTERS } from '../utils/constants.js';
+import { STAND_IDS, STAND_LABELS, MONTHS_PER_YEAR } from '../utils/constants.js';
 import { calculate } from './calculator.js';
 import { buildQuantityTrace, getEffectiveItems } from './quantityTrace.js';
 import { getAst, isAstError } from './formula/cache.js';
 import { evaluate } from './formula/evaluator.js';
 import { SEED_ITEMS, SEED_QUESTIONS } from './seed.js';
-import { runSensitivityAnalysis, rankSensitivityDrivers } from './sensitivityAnalysis.js';
 
 const RUB_PER_THOUSAND = 1000;
 const EPS = 1e-6;
@@ -129,11 +128,6 @@ const SETTING_LABEL_OVERRIDES = Object.freeze({
 function finite(value, fallback = 0) {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
-}
-
-function round(value, digits = 2) {
-    const mul = 10 ** digits;
-    return Math.round((finite(value) + Number.EPSILON) * mul) / mul;
 }
 
 function formatRu(value, digits = 0) {
@@ -572,63 +566,6 @@ function buildRow({ item, cell, trace, totalMonthly }) {
     };
 }
 
-/* «Факторы влияния» (Stage 5A-fix 2026-06-17): настоящий sensitivity-анализ
-   вместо суммы стоимости затронутых ЭК. Прежняя buildTopFactors приписывала
-   каждому фактору ПОЛНУЮ стоимость ЭК, чьи формулы на него ссылаются → факторы,
-   совместно драйвящие одни и те же ЭК (все AI-параметры → токены), показывали
-   ОДИНАКОВЫЕ числа (баг «6 раз по 1003»). runSensitivityAnalysis измеряет
-   реальное влияние: насколько меняется бюджет при +10% / переключении фактора →
-   числа разные и осмысленные. Тот же модуль, что в «Анализ факторов» (DRY).
-
-   Мемоизация по ссылке calc (WeakMap): calc иммутабелен (deepFreeze + новый
-   объект на правку), ссылка стабильна между ре-рендерами по search → пересчёт
-   (N×calculate) не повторяется на каждый keystroke; правка расчёта → новая
-   ссылка → пересчёт. */
-const _sensitivityCache = new WeakMap();
-function getCachedSensitivity(calc) {
-    if (!calc || typeof calc !== 'object') return [];
-    if (_sensitivityCache.has(calc)) return _sensitivityCache.get(calc);
-    let results = [];
-    try { results = runSensitivityAnalysis(calc).results || []; } catch (_e) { results = []; }
-    _sensitivityCache.set(calc, results);
-    return results;
-}
-
-function deltaByCostType(delta, costType) {
-    if (!delta) return 0;
-    if (costType === 'opex')  return Number(delta.opexMonthly)  || 0;
-    if (costType === 'capex') return Number(delta.capexMonthly) || 0;
-    return Number(delta.total) || 0;
-}
-
-/* filters — те же, что у «Анализа факторов» (state.ui.sensitivityFilters):
-   costType (opex/capex/total) + categories. Панель Паспорта читает их, чтобы
-   ВСЕГДА совпадать с модалкой (иначе видна «противоречивость» — разный топ-1).
-   Без фильтра используется DEFAULT_SENSITIVITY_FILTERS (= дефолт модалки). */
-function buildSensitivityFactors(calculation, totalMonthly, limit, filters) {
-    const f = filters && typeof filters === 'object' ? filters : DEFAULT_SENSITIVITY_FILTERS;
-    const costType = f.costType || DEFAULT_SENSITIVITY_FILTERS.costType;
-    const categories = Array.isArray(f.categories) ? f.categories : DEFAULT_SENSITIVITY_FILTERS.categories;
-    const ranked = rankSensitivityDrivers(getCachedSensitivity(calculation), costType, categories);
-    return ranked
-        .map(r => ({ r, impact: Math.abs(deltaByCostType(r?.delta, costType)) }))
-        .filter(({ impact }) => impact > EPS)
-        .slice(0, limit)
-        .map(({ r, impact }) => {
-            const share = totalMonthly > EPS ? impact / totalMonthly * 100 : 0;
-            return {
-                fieldId: r.fieldId,
-                label: r.label,
-                changeLabel: r.changeLabel || '',
-                monthlyImpact: round(impact, 2),
-                coveragePercent: round(share, 2),
-                itemIds: [],
-                monthlyText: formatMoneyMonth(impact),
-                coverageText: formatPercent(share)
-            };
-        });
-}
-
 function buildQualityCounts(rows) {
     const withMarker = type => rows.filter(row => row.markers.some(marker => marker.type === type)).length;
     return {
@@ -648,7 +585,6 @@ export function buildProdPassport(calculation, options = {}) {
     const stand = STAND_IDS.includes(options.stand) ? options.stand : 'PROD';
     const search = normalizeSearch(options.search);
     const includeZero = options.includeZero === true;
-    const topFactorsLimit = Math.max(1, Number(options.topFactorsLimit) || 5);
     const result = options.result || calculate(calculation);
     const disabledStands = Array.isArray(calculation?.view?.disabledStands)
         ? calculation.view.disabledStands
@@ -672,8 +608,7 @@ export function buildProdPassport(calculation, options = {}) {
                 totalAnnualText: formatMoneyYear(0),
                 defaultItemsCount: 0,
                 repairedItemsCount: 0,
-                warningItemsCount: 0,
-                topFactors: []
+                warningItemsCount: 0
             }
         };
     }
@@ -743,8 +678,7 @@ export function buildProdPassport(calculation, options = {}) {
             totalMonthlyText: formatMoneyMonth(totalMonthly),
             totalAnnual: totalMonthly * MONTHS_PER_YEAR,
             totalAnnualText: formatMoneyYear(totalMonthly * MONTHS_PER_YEAR),
-            ...qualityCounts,
-            topFactors: buildSensitivityFactors(calculation, totalMonthly, topFactorsLimit, options.sensitivityFilters)
+            ...qualityCounts
         }
     };
 }

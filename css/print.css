@@ -363,6 +363,20 @@
         min-width: 100% !important;
         max-width: none !important;
     }
+
+    /* 2.22.5: ВИДИМЫЙ левый отступ контента Деталей в PDF задаётся PADDING'ом
+       контейнера, а НЕ только @page margin. Причина: @page margin обнуляется
+       настройкой «Поля: Без полей / Минимум» в диалоге печати браузера — из-за
+       этого таблица упиралась в левый край листа, сколько бы мы ни увеличивали
+       @page margin (6→10→14мм не помогало). padding на контенте рендерится
+       всегда, независимо от настроек печати. box-sizing: border-box → width:100%
+       включает padding, таблица не переполняет лист справа (table-layout: fixed
+       сжимается под usable-ширину). */
+    body.printing-details .app-main {
+        box-sizing: border-box !important;
+        padding-left: 12mm !important;
+        padding-right: 4mm !important;
+    }
     body.printing-details .tab-pane {
         contain: none !important;
     }
