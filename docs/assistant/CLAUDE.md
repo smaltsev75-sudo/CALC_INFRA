@@ -2,7 +2,26 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Project Lessons (2026-05-31, v2.20.103)
+## Current Project Lessons (2026-06-17, v2.21.0)
+
+- MINOR 2.21.0 — доработка qty-модели ПРОМ (RAG/LLM/Storage/CPU-RAM; Stage 5
+  Security/DR/project — отдельным пакетом). Ключевые инварианты/ловушки:
+  (1) **Производные `S.*` в `calculator.buildContext`** — единый источник правды:
+  `aiRequestsPerMonth` (с degenerate-recovery user-base), `aiInputTokensEffective`
+  (простой/детальный режим токенов). **Любой fallback ОБЯЗАН их использовать**, не
+  пересчитывать — review нашёл P1, где `deriveExternalLlmTokenQtyFallback` хардкодил
+  `0.10` и `demand.inputTokens` вместо параметра/производной.
+  (2) **Единая база vCPU** — `const CPU_BASE_VCPU` в seed.js подставляется ИНЛАЙН и в
+  `cpu-vcpu-shared`, и в `ram-gb` (RAM выводится из неё). Драйверы остаются видимыми в
+  трассе (не прятать в `S.*`). Anti-drift: `cpu-base-single-source.test.js`.
+  (3) **Dashboard-fallback (`dashboardAggregates.js`) ОБЯЗАН зеркалить seed-формулы** —
+  при правке формулы синхронно править `deriveLlmTokenItemQty`/`deriveRagEmbeddingItemQty`/
+  `ragRefreshMultiplier`. Иначе Dashboard ≠ Детали/Паспорт.
+  (4) **Намеренные сдвиги сумм** (storage SSD/HDD/S3 от index×WAL/compression; realtime
+  CPU/RAM при PCU≥1000) — помечены в DECISIONS/UserManual + health-info при импорте.
+  (5) Новые опц. параметры — в DERIVED-allowlist `questionnaire-field-impact-coverage`
+  ТОЛЬКО если считаются в calculator (не в формуле); если в формуле — не нужно.
+  Метрики: unit 5729/5729, e2e 11/11, все gates зелёные.
 
 - PATCH 2.20.103 — прозрачность коэффициентов. (1) Исправлен stale-комментарий
   `DEFAULT_K_SCHEDULE_SHIFT` ([constants.js](js/utils/constants.js)): сдвиг
