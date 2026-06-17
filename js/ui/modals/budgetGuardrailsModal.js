@@ -108,7 +108,7 @@ function renderSection(label, section, isMonthly) {
 function renderReasons(reasons) {
     if (!reasons || reasons.length === 0) return null;
     return el('section', { class: 'budget-reasons' },
-        el('h4', { class: 'budget-subtitle', text: 'Основные причины' }),
+        el('h4', { class: 'budget-subtitle', text: 'Основные причины превышения' }),
         el('ol', { class: 'budget-reason-list' },
             ...reasons.map(r =>
                 el('li', { class: 'budget-reason-item' },

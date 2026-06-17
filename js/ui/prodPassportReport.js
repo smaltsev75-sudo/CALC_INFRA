@@ -772,7 +772,7 @@ function renderStandDisabled(model) {
  * ПРАВО = детализация выбранного ЭК (конвейер расчёта). Данные строго из
  * buildProdPassport(calc, {result}); UI ничего не пересчитывает.
  */
-export function renderProdPassportReport(calc, result, modalState, ctx) {
+export function renderProdPassportReport(calc, result, modalState, ctx, sensitivityFilters = null) {
     const model = buildProdPassport(calc, {
         result,
         stand: 'PROD',
@@ -780,7 +780,10 @@ export function renderProdPassportReport(calc, result, modalState, ctx) {
         limit: Number.MAX_SAFE_INTEGER,
         offset: 0,
         topFactorsLimit: 6,
-        search: modalState?.search || ''
+        search: modalState?.search || '',
+        /* «Факторы влияния» используют тот же фильтр, что «Анализ факторов»
+           (costType + categories) → панели всегда совпадают. */
+        sensitivityFilters
     });
 
     if (model.standDisabled) {

@@ -43,7 +43,9 @@ export function renderProdPassportModal(state, ctx) {
     }
 
     const result = calculate(calc, state.calcRevision);
-    const content = renderProdPassportReport(calc, result, modal, ctx);
+    /* «Факторы влияния» Паспорта читают тот же фильтр, что «Анализ факторов»
+       (state.ui.sensitivityFilters) → одинаковый топ-1 и числа в обеих панелях. */
+    const content = renderProdPassportReport(calc, result, modal, ctx, state.ui?.sensitivityFilters || null);
 
     const csvButton = el('button', {
         class: ['pp-head-btn', 'pp-head-btn-csv'],

@@ -11787,3 +11787,58 @@ refresh `pricePerUnit` (enrichment обновляет формулу, но не 
 
 `2.22.0 → 2.22.1` (**PATCH**): UI/PDF-фиксы + починка legacy-enrichment storage-дефолтов.
 Schema/provider-формат/публичная модель не меняются.
+
+## Release 2.22.2 — консистентность «факторов влияния» + PDF-поля (2026-06-17)
+
+PATCH. Расчётная модель НЕ менялась — только UI/презентация и единый источник
+ранжирования факторов.
+
+### Что исправлено
+
+- **PDF Детализации — левое поле.** `DETAILS_PRINT_PAGE_CSS` 6мм со всех сторон →
+  `6mm 6mm 6mm 10mm` ([printMode.js](../../js/utils/printMode.js)): контент не прижат к
+  левому краю; правый край не двинут (usable 281мм — безопасный минимум). TDD-тест на
+  левое поле ≥ правого и usable ≥ 281мм.
+- **Консистентность «Факторы влияния» (Паспорт) ↔ «Анализ факторов» (модалка).**
+  Пользователь видел разный топ-1 (ai_agent ~15.6 млн vs pdn_152fz ~0.3 млн). Причина —
+  панель Паспорта ранжировала по `'total'` без фильтра, а модалка фильтрует
+  (costType + categories, у пользователя был не дефолт). Фикс: панель Паспорта читает
+  ТОТ ЖЕ `state.ui.sensitivityFilters` → топ и числа всегда совпадают
+  ([prodPassport.js](../../js/domain/prodPassport.js) `buildSensitivityFactors`,
+  проброс через prodPassportReport.js / prodPassportModal.js). Forcing-function тест
+  `passport-factors-filter-consistency`.
+
+### Аудит всех UI-поверхностей «факторов влияния» (по запросу пользователя)
+
+5 параллельных ридеров: движок sensitivity (`runSensitivityAnalysis`/`rankSensitivityDrivers`)
+используют ровно 4 места:
+- **«Анализ факторов»** (эталон) и **«Факторы влияния» Паспорта** — один фильтр
+  `state.ui.sensitivityFilters`, идентичны (верифицировано).
+- **Budget Guardrails** «причины превышения» — ДРУГОЙ вопрос (ранг по превышенной оси
+  opex/capex/total, экономия = abs(delta.total)); сознательно НЕ привязан к UI-фильтру.
+  Это by design (комментарий budgetGuardrails.js:197-200), не баг.
+- **Decision Memo** — основной список «что повлияло» = состав стоимости (top-10 ЭК), это
+  ДРУГАЯ метрика, не sensitivity; sensitivity проникает лишь косвенно через Budget Guardrails.
+- rootCause / «Вклад риск-коэффициентов» / «Распределение по категориям» — другие концепты
+  (снижаемые ЭК / риск-множители / доли), не sensitivity.
+
+**Решение (вариант A): не сливать разные метрики, а развести по названиям**, чтобы не
+читались как противоречие:
+- Decision Memo раздел 2 «Что повлияло на стоимость больше всего» → **«Состав стоимости:
+  самые дорогие статьи»** (это состав, не факторы) ([decisionMemoExport.js](../../js/services/decisionMemoExport.js)).
+- Budget Guardrails «Основные причины» → **«Основные причины превышения»**
+  ([budgetGuardrailsModal.js](../../js/ui/modals/budgetGuardrailsModal.js)).
+- Arch-инвариант `factor-influence-consumers`: фиксирует набор потребителей
+  `rankSensitivityDrivers` и их классификацию — новый потребитель уронит тест и
+  потребует сознательного решения (фактор влияния → общий фильтр / иная метрика → exempt).
+
+### Проверки (gates)
+
+- `npm test`: см. release-commit. e2e: prod-passport / dashboard-details / export-print.
+- `sanity:check` / `quantity:audit:check` / `prices:freshness:check` / `syntax-check`
+  / `git diff --check`: pass.
+
+### Версионирование
+
+`2.22.1 → 2.22.2` (**PATCH**): UI/PDF/презентация, единый источник ранжирования факторов.
+Расчётная модель, schema, provider-формат не меняются.

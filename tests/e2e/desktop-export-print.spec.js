@@ -35,7 +35,7 @@ test('Decision Memo downloads markdown from the desktop modal', async ({ page })
     const markdown = await readFile(memoPath, 'utf8');
     expect(markdown).toContain('# Обоснование расчёта инфраструктуры');
     expect(markdown).toContain('Desktop memo export');
-    expect(markdown).toContain('## 2. Что повлияло на стоимость больше всего');
+    expect(markdown).toContain('## 2. Состав стоимости: самые дорогие статьи');
     expect(markdown).toMatch(/\|\s*#\s*\|\s*Статья затрат/);
     expect(markdown).toContain('## 4. Использованные прайсы');
 

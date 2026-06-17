@@ -168,7 +168,7 @@ function buildSummarySection(calc, ctx) {
    Source данных — ctx.costComposition (собирается в decisionMemoController через
    calculate(calc).items[id].totalMonthly). */
 function buildCostCompositionSection(ctx) {
-    const lines = ['## 2. Что повлияло на стоимость больше всего', ''];
+    const lines = ['## 2. Состав стоимости: самые дорогие статьи', ''];
     const c = ctx?.costComposition;
     if (!c || !Array.isArray(c.topItems) || c.topItems.length === 0) {
         lines.push('*Состав стоимости не определён.*');
@@ -437,7 +437,7 @@ function buildHealthSection(ctx) {
 
 /* Stage 18.1.12: `buildSensitivitySection` удалена — раздел «Главные драйверы
    стоимости» больше не выводится в memo. Пользователь не видел принципиальной
-   разницы между ним и разделом 2 «Что повлияло на стоимость больше всего» —
+   разницы между ним и разделом 2 «Состав стоимости: самые дорогие статьи» —
    оба показывают «что влияет на стоимость», только один в разрезе **состава**
    (top-10 ЭК с долями), другой в разрезе **чувствительности** (что изменится
    при ±параметре). Для **документа-обоснования** sensitivity избыточна:
@@ -554,7 +554,7 @@ export function buildDecisionMemoMarkdown(calc, context = {}) {
     parts.push('');
     /* Stage 18.1.12: упрощённый порядок без sensitivity-раздела:
          1. Краткое резюме
-         2. Что повлияло на стоимость больше всего (top-10 + Pareto) — главный
+         2. Состав стоимости: самые дорогие статьи (top-10 + Pareto) — главный
          3. Основные параметры
          4. Использованные прайсы
          5. Ключевые допущения

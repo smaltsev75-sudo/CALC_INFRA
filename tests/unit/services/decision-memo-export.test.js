@@ -494,7 +494,7 @@ describe('buildDecisionMemoMarkdown', () => {
      * Stage 18.1.7 — структурная переработка: top-10 + Pareto + порядок секций
      * ============================================================ */
 
-    it('Stage 18.1.7: новый раздел 2 «Что повлияло на стоимость больше всего» с Markdown-таблицей top-10', () => {
+    it('Stage 18.1.7 + 2.22.2: раздел 2 «Состав стоимости: самые дорогие статьи» с Markdown-таблицей top-10', () => {
         const md = buildDecisionMemoMarkdown(makeCalc(), makeCtx({
             costComposition: {
                 totalAll: 1_000_000,
@@ -506,8 +506,8 @@ describe('buildDecisionMemoMarkdown', () => {
                 top10Share: 0.8
             }
         }));
-        assert.match(md, /## 2\.\s*Что повлияло на стоимость больше всего/,
-            'раздел 2 должен называться «Что повлияло на стоимость больше всего»');
+        assert.match(md, /## 2\.\s*Состав стоимости: самые дорогие статьи/,
+            'раздел 2 должен называться «Состав стоимости: самые дорогие статьи» (не путать с «Факторы влияния»)');
         // Table-header
         assert.match(md, /\|\s*#\s*\|\s*Статья затрат\s*\|\s*Категория\s*\|\s*₽\/мес\s*\|\s*Доля\s*\|/,
             'таблица top-10 должна иметь колонки # / Статья затрат / Категория / ₽/мес / Доля');
@@ -536,7 +536,7 @@ describe('buildDecisionMemoMarkdown', () => {
             }
         }));
         // Извлечь раздел 2
-        const m = md.match(/## 2\.\s*Что повлияло[\s\S]*?(?=## 3\.|$)/);
+        const m = md.match(/## 2\.\s*Состав стоимости[\s\S]*?(?=## 3\.|$)/);
         assert.ok(m, 'раздел 2 должен существовать');
         const section2 = m[0];
 
@@ -635,7 +635,7 @@ describe('buildDecisionMemoMarkdown', () => {
     it('Stage 18.1.12: новый порядок разделов — без Sensitivity (раздел 4 удалён): Provider=4, Assumptions=5, Health=6, Budget=7', () => {
         const md = buildDecisionMemoMarkdown(makeCalc(), makeCtx());
         assert.match(md, /## 1\.\s*Краткое резюме/);
-        assert.match(md, /## 2\.\s*Что повлияло/);
+        assert.match(md, /## 2\.\s*Состав стоимости/);
         assert.match(md, /## 3\.\s*Основные параметры/);
         assert.match(md, /## 4\.\s*Использованные прайсы/);
         assert.match(md, /## 5\.\s*Ключевые допущения/);

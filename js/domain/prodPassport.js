@@ -1,4 +1,4 @@
-import { STAND_IDS, STAND_LABELS, MONTHS_PER_YEAR } from '../utils/constants.js';
+import { STAND_IDS, STAND_LABELS, MONTHS_PER_YEAR, DEFAULT_SENSITIVITY_FILTERS } from '../utils/constants.js';
 import { calculate } from './calculator.js';
 import { buildQuantityTrace, getEffectiveItems } from './quantityTrace.js';
 import { getAst, isAstError } from './formula/cache.js';
@@ -594,10 +594,24 @@ function getCachedSensitivity(calc) {
     return results;
 }
 
-function buildSensitivityFactors(calculation, totalMonthly, limit) {
-    const ranked = rankSensitivityDrivers(getCachedSensitivity(calculation), 'total');
+function deltaByCostType(delta, costType) {
+    if (!delta) return 0;
+    if (costType === 'opex')  return Number(delta.opexMonthly)  || 0;
+    if (costType === 'capex') return Number(delta.capexMonthly) || 0;
+    return Number(delta.total) || 0;
+}
+
+/* filters — те же, что у «Анализа факторов» (state.ui.sensitivityFilters):
+   costType (opex/capex/total) + categories. Панель Паспорта читает их, чтобы
+   ВСЕГДА совпадать с модалкой (иначе видна «противоречивость» — разный топ-1).
+   Без фильтра используется DEFAULT_SENSITIVITY_FILTERS (= дефолт модалки). */
+function buildSensitivityFactors(calculation, totalMonthly, limit, filters) {
+    const f = filters && typeof filters === 'object' ? filters : DEFAULT_SENSITIVITY_FILTERS;
+    const costType = f.costType || DEFAULT_SENSITIVITY_FILTERS.costType;
+    const categories = Array.isArray(f.categories) ? f.categories : DEFAULT_SENSITIVITY_FILTERS.categories;
+    const ranked = rankSensitivityDrivers(getCachedSensitivity(calculation), costType, categories);
     return ranked
-        .map(r => ({ r, impact: Math.abs(Number(r?.delta?.total) || 0) }))
+        .map(r => ({ r, impact: Math.abs(deltaByCostType(r?.delta, costType)) }))
         .filter(({ impact }) => impact > EPS)
         .slice(0, limit)
         .map(({ r, impact }) => {
@@ -730,7 +744,7 @@ export function buildProdPassport(calculation, options = {}) {
             totalAnnual: totalMonthly * MONTHS_PER_YEAR,
             totalAnnualText: formatMoneyYear(totalMonthly * MONTHS_PER_YEAR),
             ...qualityCounts,
-            topFactors: buildSensitivityFactors(calculation, totalMonthly, topFactorsLimit)
+            topFactors: buildSensitivityFactors(calculation, totalMonthly, topFactorsLimit, options.sensitivityFilters)
         }
     };
 }

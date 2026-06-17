@@ -1,7 +1,12 @@
 export const DETAILS_PRINT_BODY_CLASS = 'printing-details';
 export const DETAILS_PRINT_NO_QUANTITY_CLASS = 'printing-details-no-quantity-summary';
 export const DETAILS_PRINT_STYLE_ID = 'details-print-page-style';
-export const DETAILS_PRINT_PAGE_CSS = '@page { size: A4 landscape; margin: 6mm; }';
+/* margin: top right bottom left. Левое поле 10мм (было 6мм со всех сторон) —
+   контент Деталей не прижимается к левому краю листа. Правое оставлено 6мм →
+   правый край таблицы не двигается (нет риска обрезки). usable-ширина A4
+   landscape = 297-(10+6) = 281мм — документированный безопасный минимум для
+   14 видимых колонок при 6.5pt (см. css/print.css). */
+export const DETAILS_PRINT_PAGE_CSS = '@page { size: A4 landscape; margin: 6mm 6mm 6mm 10mm; }';
 
 export function beginDetailsPrintMode({
     doc = globalThis.document,

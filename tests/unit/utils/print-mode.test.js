@@ -58,6 +58,23 @@ function makeWindow() {
     };
 }
 
+describe('details print page margins', () => {
+    it('A4 landscape, левое поле >= правого (контент смещён вправо, не у края)', () => {
+        assert.match(DETAILS_PRINT_PAGE_CSS, /size:\s*A4\s+landscape/);
+        const m = DETAILS_PRINT_PAGE_CSS.match(/margin:\s*([^;]+);/);
+        assert.ok(m, 'должно быть объявление margin');
+        const parts = m[1].trim().split(/\s+/).map(v => parseFloat(v));
+        // CSS margin: top right bottom left (или 1 значение = все стороны).
+        const left  = parts.length >= 4 ? parts[3] : parts[parts.length === 2 ? 1 : 0];
+        const right = parts.length >= 2 ? parts[1] : parts[0];
+        assert.ok(left >= right, `левое поле (${left}) должно быть >= правого (${right})`);
+        assert.ok(left >= 9, `левое поле должно быть достаточным (>=9mm), получено ${left}`);
+        // usable-ширина A4 landscape (297мм) должна оставаться >= 281мм (док. безопасный минимум).
+        const usable = 297 - (left + right);
+        assert.ok(usable >= 281, `usable-ширина ${usable}мм < 281мм — риск обрезки таблицы справа`);
+    });
+});
+
 describe('details print mode', () => {
     it('adds transient body class and print-only A4 landscape style', () => {
         const doc = makeDocument();
