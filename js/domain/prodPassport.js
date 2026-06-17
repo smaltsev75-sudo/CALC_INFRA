@@ -3,12 +3,28 @@ import { calculate } from './calculator.js';
 import { buildQuantityTrace, getEffectiveItems } from './quantityTrace.js';
 import { getAst, isAstError } from './formula/cache.js';
 import { evaluate } from './formula/evaluator.js';
-import { SEED_ITEMS } from './seed.js';
+import { SEED_ITEMS, SEED_QUESTIONS } from './seed.js';
+import { runSensitivityAnalysis, rankSensitivityDrivers } from './sensitivityAnalysis.js';
 
 const RUB_PER_THOUSAND = 1000;
 const EPS = 1e-6;
 
 const SEED_ITEM_BY_ID = new Map(SEED_ITEMS.map(item => [item.id, item]));
+/* Глобальная карта id вопроса → человеко-читаемый title. Нужна как fallback,
+   когда вопрос отсутствует в словаре конкретного (legacy) расчёта: трасса в
+   этом случае отдаёт title=null, и без этой карты подпись «провалилась» бы в
+   сырой snake_case-id (нарушение правила «нет code-идентификаторов в UI»). */
+const SEED_QUESTION_TITLE_BY_ID = new Map(
+    SEED_QUESTIONS.map(q => [q.id, q.title]).filter(([, title]) => typeof title === 'string' && title)
+);
+
+/* Последний рубеж: гуманизировать неизвестный id (нет ни title в словаре, ни в
+   SEED). Убирает snake_case, чтобы пользователь никогда не видел `foo_bar_baz`. */
+function humanizeFieldId(id) {
+    const text = String(id || '').replace(/_/g, ' ').trim();
+    if (!text) return 'параметр';
+    return text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 const SOURCE_LABELS = Object.freeze({
     answer: 'из опросника',
@@ -182,7 +198,10 @@ function sourceLabel(source) {
 }
 
 export function questionLabel(input) {
-    return QUESTION_LABEL_OVERRIDES[input.id] || input.title || input.id;
+    return QUESTION_LABEL_OVERRIDES[input.id]
+        || input.title
+        || SEED_QUESTION_TITLE_BY_ID.get(input.id)
+        || humanizeFieldId(input.id);
 }
 
 export function settingLabel(input) {
@@ -553,43 +572,47 @@ function buildRow({ item, cell, trace, totalMonthly }) {
     };
 }
 
-function addFactor(map, key, label, monthlyCost, totalMonthly) {
-    if (!key || monthlyCost <= EPS) return;
-    const prev = map.get(key) || {
-        fieldId: key,
-        label,
-        monthlyImpact: 0,
-        coveragePercent: 0,
-        itemIds: new Set()
-    };
-    prev.monthlyImpact += monthlyCost;
-    prev.coveragePercent = totalMonthly > EPS ? prev.monthlyImpact / totalMonthly * 100 : 0;
-    map.set(key, prev);
+/* «Факторы влияния» (Stage 5A-fix 2026-06-17): настоящий sensitivity-анализ
+   вместо суммы стоимости затронутых ЭК. Прежняя buildTopFactors приписывала
+   каждому фактору ПОЛНУЮ стоимость ЭК, чьи формулы на него ссылаются → факторы,
+   совместно драйвящие одни и те же ЭК (все AI-параметры → токены), показывали
+   ОДИНАКОВЫЕ числа (баг «6 раз по 1003»). runSensitivityAnalysis измеряет
+   реальное влияние: насколько меняется бюджет при +10% / переключении фактора →
+   числа разные и осмысленные. Тот же модуль, что в «Анализ факторов» (DRY).
+
+   Мемоизация по ссылке calc (WeakMap): calc иммутабелен (deepFreeze + новый
+   объект на правку), ссылка стабильна между ре-рендерами по search → пересчёт
+   (N×calculate) не повторяется на каждый keystroke; правка расчёта → новая
+   ссылка → пересчёт. */
+const _sensitivityCache = new WeakMap();
+function getCachedSensitivity(calc) {
+    if (!calc || typeof calc !== 'object') return [];
+    if (_sensitivityCache.has(calc)) return _sensitivityCache.get(calc);
+    let results = [];
+    try { results = runSensitivityAnalysis(calc).results || []; } catch (_e) { results = []; }
+    _sensitivityCache.set(calc, results);
+    return results;
 }
 
-function buildTopFactors(rows, totalMonthly, limit) {
-    const factors = new Map();
-    for (const row of rows) {
-        for (const input of row.inputs.questions || []) {
-            addFactor(factors, input.id, input.label, row.monthlyCost, totalMonthly);
-            factors.get(input.id)?.itemIds.add(row.itemId);
-        }
-        for (const input of row.inputs.settings || []) {
-            addFactor(factors, input.id, input.label, row.monthlyCost, totalMonthly);
-            factors.get(input.id)?.itemIds.add(row.itemId);
-        }
-    }
-    return [...factors.values()]
-        .sort((a, b) => b.monthlyImpact - a.monthlyImpact || a.label.localeCompare(b.label, 'ru'))
+function buildSensitivityFactors(calculation, totalMonthly, limit) {
+    const ranked = rankSensitivityDrivers(getCachedSensitivity(calculation), 'total');
+    return ranked
+        .map(r => ({ r, impact: Math.abs(Number(r?.delta?.total) || 0) }))
+        .filter(({ impact }) => impact > EPS)
         .slice(0, limit)
-        .map(factor => ({
-            ...factor,
-            itemIds: [...factor.itemIds],
-            monthlyImpact: round(factor.monthlyImpact, 2),
-            coveragePercent: round(factor.coveragePercent, 2),
-            monthlyText: formatMoneyMonth(factor.monthlyImpact),
-            coverageText: formatPercent(factor.coveragePercent)
-        }));
+        .map(({ r, impact }) => {
+            const share = totalMonthly > EPS ? impact / totalMonthly * 100 : 0;
+            return {
+                fieldId: r.fieldId,
+                label: r.label,
+                changeLabel: r.changeLabel || '',
+                monthlyImpact: round(impact, 2),
+                coveragePercent: round(share, 2),
+                itemIds: [],
+                monthlyText: formatMoneyMonth(impact),
+                coverageText: formatPercent(share)
+            };
+        });
 }
 
 function buildQualityCounts(rows) {
@@ -707,7 +730,7 @@ export function buildProdPassport(calculation, options = {}) {
             totalAnnual: totalMonthly * MONTHS_PER_YEAR,
             totalAnnualText: formatMoneyYear(totalMonthly * MONTHS_PER_YEAR),
             ...qualityCounts,
-            topFactors: buildTopFactors(rows, totalMonthly, topFactorsLimit)
+            topFactors: buildSensitivityFactors(calculation, totalMonthly, topFactorsLimit)
         }
     };
 }

@@ -1935,6 +1935,17 @@ button.pp-tile { width: 100%; }
     font-variant-numeric: tabular-nums;
 }
 
+/* Единица стоимости плитки (тыс.₽/мес) — без неё крупное число неоднозначно.
+   Приглушённая, компактная, не переносится; на мелких плитках уменьшается. */
+.pp-tile-unit {
+    font-size: 9.5px;
+    font-weight: 600;
+    opacity: .58;
+    white-space: nowrap;
+}
+.pp-tile-sm .pp-tile-unit,
+.pp-tile-xs .pp-tile-unit { font-size: 9px; }
+
 .pp-tile-flag {
     display: inline-flex;
     align-items: center;

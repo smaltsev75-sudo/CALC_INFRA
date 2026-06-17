@@ -55,7 +55,7 @@ export function renderProviderUpdateRow(providerId, state, ctx) {
         },
         onClick: e => ctx.updateProviderPricesFromFile(e, providerId)
     },
-        icon('upload', { size: 14 }),
+        icon('folder-open', { size: 14 }),
         el('span', { text: 'Импорт прайса JSON' })
     );
 
@@ -70,7 +70,7 @@ export function renderProviderUpdateRow(providerId, state, ctx) {
             },
             onClick: () => ctx.openPriceImportMappingModal()
         },
-            icon('upload', { size: 14 }),
+            icon('folder-open', { size: 14 }),
             el('span', { text: 'Импорт CSV/JSON' })
         )
         : null;

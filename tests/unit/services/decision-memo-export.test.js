@@ -359,7 +359,7 @@ describe('buildDecisionMemoMarkdown', () => {
         const md = buildDecisionMemoMarkdown(makeCalc(), makeCtx());
         // Стросnя «Сформировано: <timestamp>.» извлекается отдельно — проверяем
         // что у НЕЁ нет ни лидирующего, ни закрывающего `_`. Другие места в
-        // memo (например, placeholder `_Состав стоимости не определён._`)
+        // memo (например, placeholder `*Состав стоимости не определён.*`)
         // могут иметь курсив намеренно — они не покрыты этой проверкой.
         const generatedLine = md.split('\n').find(line => line.startsWith('Сформировано:'));
         assert.ok(generatedLine, 'строка «Сформировано: ...» должна существовать');

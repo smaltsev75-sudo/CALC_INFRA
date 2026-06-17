@@ -10,6 +10,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDecisionMemoMarkdown } from '../../../js/services/decisionMemoExport.js';
+import { renderMarkdown } from '../../../js/services/markdown.js';
 
 function calcWith(settings, answers = {}) {
     return { name: 'T', settings, answers, dictionaries: { items: [], questions: [] } };
@@ -37,6 +38,14 @@ describe('Decision Memo — допущения по умолчанию (инже
         const md = buildDecisionMemoMarkdown(calcWith({ ...RISK_DEFAULTS, bufferProject: 0.40 }), {});
         assert.match(md, /Буфер задач:\s*\+30[^\n]*по умолчанию/);
         assert.match(md, /Буфер проекта:\s*\+40[^\n]*уточнено/);
+    });
+
+    it('preview не показывает служебные подчёркивания вокруг пометок по умолчанию', () => {
+        const md = buildDecisionMemoMarkdown(calcWith({ ...RISK_DEFAULTS }), {});
+        const html = renderMarkdown(md);
+        assert.doesNotMatch(html, /_\((?:по умолчанию|уточнено)\)_/);
+        assert.doesNotMatch(html, /_Эти значения/);
+        assert.match(html, /<em>\(по умолчанию\)<\/em>/);
     });
 
     it('AI-факторы стендов выводятся только при использовании AI', () => {

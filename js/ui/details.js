@@ -154,11 +154,13 @@ export function renderDetails(state, ctx) {
             ? renderQtySection(byCat, result, ctx, disabledStands, applyRisks, state, presentCats, calc)
             : renderCostSection(byCat, result, ctx, totalsForFilter, isFiltered, disabledStands, applyRisks, calc, state, presentCats),
 
-        renderDetailsQuantityPrintSummary(calc, result, disabledStands),
-
         /* Сводная панель AI-метрик следует выбранной подвкладке: на «Бюджет»
-           показывает ₽/мес по AI-метрикам, на «Объём» — токены/ГБ/vCPU. */
-        renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx, { hideNoBudget: hideZero, mode: subTab })
+           показывает ₽/мес по AI-метрикам, на «Объём» — токены/ГБ/vCPU.
+           Рендерится СРАЗУ под таблицей — ДО print-only блока «Почему столько?»,
+           иначе в PDF (где print-summary виден) AI-сводка уезжает в конец листа. */
+        renderAiMetricsSummary(calc, result, disabledStands, applyRisks, ctx, { hideNoBudget: hideZero, mode: subTab }),
+
+        renderDetailsQuantityPrintSummary(calc, result, disabledStands)
     );
 }
 

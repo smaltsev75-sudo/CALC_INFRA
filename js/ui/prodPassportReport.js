@@ -263,6 +263,7 @@ function renderItemTile(tile, selectedItemId, sizeClass, ctx, grid = false) {
             row.quantityText ? el('div', { class: 'pp-tile-qty', text: row.quantityText }) : null,
             el('div', { class: 'pp-tile-bot' },
                 el('span', { class: 'pp-tile-budget', text: moneyShort }),
+                el('span', { class: 'pp-tile-unit', text: 'тыс.₽/мес' }),
                 el('span', { class: 'pp-tile-pct', text: row.budgetShareText })
             )
         )
@@ -291,6 +292,7 @@ function renderOtherTile(tile, sizeClass, ctx) {
         el('div', { class: 'pp-tile-meta' },
             el('div', { class: 'pp-tile-bot' },
                 el('span', { class: 'pp-tile-budget', text: `~${moneyShort}` }),
+                el('span', { class: 'pp-tile-unit', text: 'тыс.₽/мес' }),
                 el('span', { class: 'pp-tile-pct', text: pct })
             )
         )
@@ -395,7 +397,7 @@ function renderFactors(model) {
                     inlineSvg(SVG.factors),
                     el('span', { text: 'Факторы влияния' })
                 ),
-                el('span', { class: 'pp-factors-caption', text: '· относительный вклад показанных факторов' })
+                el('span', { class: 'pp-factors-caption', text: '· изменение бюджета при ±10% / переключении фактора' })
             ),
             el('div', { class: 'pp-factors-right' },
                 el('span', { class: 'pp-factors-unit', text: 'тыс.руб./мес.' }),
@@ -404,15 +406,15 @@ function renderFactors(model) {
                     attrs: {
                         tabindex: '0',
                         role: 'img',
-                        'aria-label': 'Доли среди показанных факторов, а не от всего бюджета: охваты пересекаются.'
+                        'aria-label': 'Насколько изменится месячный бюджет, если изменить параметр на +10% (или переключить). Доли — среди показанных факторов.'
                     },
-                    title: 'Доли среди показанных факторов, а не от всего бюджета: охваты пересекаются.',
+                    title: 'Насколько изменится месячный бюджет, если изменить параметр на +10% (или переключить). Доли — среди показанных факторов.',
                     trustedHtml: trustedHtml(SVG.info)
                 })
             )
         ),
         factors.length === 0
-            ? el('div', { class: 'pp-empty', text: 'Нет факторов с заметным охватом.' })
+            ? el('div', { class: 'pp-empty', text: 'Нет факторов с заметным влиянием на бюджет.' })
             : [
                 el('div', {
                     class: 'pp-fct3-bar',
@@ -420,7 +422,7 @@ function renderFactors(model) {
                 },
                     factors.map((factor, index) => el('div', {
                         class: ['pp-fct3-seg', factorSegColor(index)],
-                        title: `${factor.label}: ${factor.monthlyText} — ${formatRelativeShare(factor.monthlyImpact, totalImpact)} состава`,
+                        title: `${factor.label}${factor.changeLabel ? ` (${factor.changeLabel})` : ''}: ${factor.monthlyText} — ${formatRelativeShare(factor.monthlyImpact, totalImpact)} влияния`,
                         dataset: { fieldId: factor.fieldId },
                         style: { width: `${relativeSharePercent(factor.monthlyImpact, totalImpact)}%` }
                     }))

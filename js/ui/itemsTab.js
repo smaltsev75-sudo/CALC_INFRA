@@ -100,7 +100,7 @@ export function renderItemsTab(state, ctx) {
                     title: 'Загрузить цены из CSV-файла. Цена обновится для тех элементов, у которых идентификатор совпал. Формат файла — как у выгрузки.',
                     onClick: (e) => ctx.importItemPrices(e)
                 },
-                    icon('upload', { size: 16 }),
+                    icon('folder-open', { size: 16 }),
                     el('span', { text: 'Импорт цен CSV' })
                 ),
                 el('button', {

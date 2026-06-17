@@ -171,7 +171,7 @@ function buildCostCompositionSection(ctx) {
     const lines = ['## 2. Что повлияло на стоимость больше всего', ''];
     const c = ctx?.costComposition;
     if (!c || !Array.isArray(c.topItems) || c.topItems.length === 0) {
-        lines.push('_Состав стоимости не определён._');
+        lines.push('*Состав стоимости не определён.*');
         return lines.join('\n');
     }
 
@@ -260,7 +260,7 @@ function buildKeyParamsSection(calc) {
     }
 
     if (printed === 0) {
-        lines.push('- _Параметры не заполнены._');
+        lines.push('- *Параметры не заполнены.*');
     }
 
     // Аудит коэффициентов (2026-05-31): прозрачность по AI-предложенным дефолтам.
@@ -281,7 +281,7 @@ function buildDefaultCoefficientsLines(calc) {
 
     const pct = (v) => `+${formatNumber((v || 0) * 100, { min: 0, max: 1 })} %`;
     const num = (v, def) => Number.isFinite(v) ? v : def;
-    const mark = (v, def) => Math.abs(num(v, def) - def) < 1e-9 ? '_(по умолчанию)_' : '_(уточнено)_';
+    const mark = (v, def) => Math.abs(num(v, def) - def) < 1e-9 ? '*(по умолчанию)*' : '*(уточнено)*';
 
     const riskItems = [];
     // Риск-коэффициенты применяются к итогу только в режиме «с рисками».
@@ -320,7 +320,7 @@ function buildDefaultCoefficientsLines(calc) {
     out.push(...riskItems);
     if (aiLine) out.push(aiLine);
     out.push('');
-    out.push('_Эти значения — типовые IT-оценки, заложенные в модель разработчиком, а не отраслевой норматив. Проверьте их под конкретный проект; изменить можно в Опроснике → «Параметры расчёта»._');
+    out.push('*Эти значения — типовые IT-оценки, заложенные в модель разработчиком, а не отраслевой норматив. Проверьте их под конкретный проект; изменить можно в Опроснике → «Параметры расчёта».*');
     return out;
 }
 
@@ -358,7 +358,7 @@ function buildAssumptionsSection(ctx) {
     const ass = ctx?.assumptions;
 
     if (!ass) {
-        lines.push('_Допущения не рассчитаны._');
+        lines.push('*Допущения не рассчитаны.*');
         return lines.join('\n');
     }
 
@@ -397,7 +397,7 @@ function buildHealthSection(ctx) {
     const health = ctx?.health;
 
     if (!health) {
-        lines.push('_Качество расчёта не рассчитано._');
+        lines.push('*Качество расчёта не рассчитано.*');
         return lines.join('\n');
     }
 
@@ -540,7 +540,7 @@ export function buildDecisionMemo(calc, context = {}) {
  */
 export function buildDecisionMemoMarkdown(calc, context = {}) {
     if (!calc) {
-        return '# Обоснование расчёта инфраструктуры\n\n_Нет активного расчёта для формирования memo._\n';
+        return '# Обоснование расчёта инфраструктуры\n\n*Нет активного расчёта для формирования memo.*\n';
     }
     const memo = buildDecisionMemo(calc, context);
     const parts = [];

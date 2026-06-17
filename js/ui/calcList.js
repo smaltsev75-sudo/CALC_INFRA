@@ -61,7 +61,7 @@ export function renderCalcList(state, ctx) {
                     attrs: { type: 'button', 'data-testid': 'bundle-import' },
                     onClick: (e) => ctx.importStateBundle(e)
                 },
-                    icon('upload', { size: 16 }),
+                    icon('folder-open', { size: 16 }),
                     el('span', { text: 'Полный импорт' })
                 )
             )

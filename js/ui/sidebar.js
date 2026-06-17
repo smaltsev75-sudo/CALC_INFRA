@@ -44,7 +44,7 @@ const NAV_SECTIONS = Object.freeze([
         advancedOnly: true,
         items: [
             { id: 'items',     label: 'Элементы', iconName: 'package',      requiresActive: true, hotkey: 'Ctrl+Alt+6', desc: 'Каталог ЭК (только в расширенных настройках)' },
-            { id: 'questions', label: 'Вопросы',  iconName: 'help-circle',  requiresActive: true, hotkey: 'Ctrl+Alt+7', desc: 'Справочник вопросов (только в расширенных настройках)' }
+            { id: 'questions', label: 'Вопросы',  iconName: 'book-open',    requiresActive: true, hotkey: 'Ctrl+Alt+7', desc: 'Справочник вопросов (только в расширенных настройках)' }
         ]
     }
 ]);

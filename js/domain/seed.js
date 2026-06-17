@@ -5279,6 +5279,38 @@ export function enrichLegacyDictionaryWithAgentSeed(calc) {
         if (fresh.formulaHelp) item.formulaHelp = fresh.formulaHelp;
     }
 
+    /* 4. Добавить недостающие ВОПРОСЫ, на которые ссылаются формулы словаря.
+       Симметрия к шагу 3: Stage 1-4 обновил формулы (storage/RAG/CPU-RAM/LLM),
+       чтобы те ссылались на новые Q.* (db_index_ratio и др.), но сами вопросы в
+       legacy-словарь не вносились → calculator брал 0 вместо дефолта (неверный
+       storage) и трасса показывала сырой id. Сканируем Q.<id> по всем формулам
+       (DSL: Q — плоский, один сегмент) и до-вносим любой отсутствующий SEED-вопрос.
+       Future-proof: новая формула с новым вопросом подхватится автоматически. */
+    const seedQById = new Map(SEED_QUESTIONS.map(q => [q.id, q]));
+    /* Пересобираем множество присутствующих id из ТЕКУЩЕГО questions: шаги 1-2
+       уже добавили agent-вопросы, но existingQids собран до них (стал stale) —
+       без пересборки можно повторно добавить тот же вопрос → дубликат id. */
+    const presentQids = new Set(questions.map(q => q && q.id).filter(Boolean));
+    const Q_REF_RE = /\bQ\.([A-Za-z][A-Za-z0-9_]*)/g;
+    for (const item of items) {
+        const formulas = item && item.qtyFormulas;
+        if (!formulas || typeof formulas !== 'object') continue;
+        for (const stand of Object.keys(formulas)) {
+            const src = formulas[stand];
+            if (typeof src !== 'string') continue;
+            let m;
+            Q_REF_RE.lastIndex = 0;
+            while ((m = Q_REF_RE.exec(src)) !== null) {
+                const qid = m[1];
+                if (presentQids.has(qid)) continue;
+                const seedQ = seedQById.get(qid);
+                if (!seedQ) continue;
+                questions.push(JSON.parse(JSON.stringify(seedQ)));
+                presentQids.add(qid);
+            }
+        }
+    }
+
     return calc;
 }
 
