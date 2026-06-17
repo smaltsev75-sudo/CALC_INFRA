@@ -11954,3 +11954,25 @@ PATCH. Только CSS-источник цвета swatch'ей легенды. 
 `2.22.5 → 2.22.6` (**PATCH**): только цвет swatch'ей легенды Паспорта. Модель/schema/bundle не
 меняются. Метрики: unit **5799/5799 PASS**, e2e **60 passed**, syntax/sanity/quantity/prices/diff —
 все EXIT 0.
+
+## Release 2.22.7 — PDF Деталей: колонки ИТОГО/мес и ИТОГО/год не сливаются (2026-06-18)
+
+PATCH. Только print-CSS (ширины колонок) + e2e-замер. По жалобе: в PDF Деталей данные в
+последних колонках («ИТОГО / мес» и «ИТОГО / год») сливаются — `2 202 816 ₽26 433 793 ₽`.
+
+**Корень**: `body.printing-details .details-table { table-layout: fixed }` БЕЗ явных ширин →
+колонки делятся ПОРОВНУ. 8-значный «ИТОГО / год» (26 433 793 ₽) шире равной доли → right-aligned
+nowrap-число переполняет узкую ячейку ВЛЕВО и налезает на «ИТОГО / мес». Проявляется только при
+A4 landscape ширине (на десктоп-viewport колонки шире, переполнения нет — поэтому прежний e2e
+не ловил).
+
+**Фикс**: явные ширины колонок под fixed-layout ([print.css](../../css/print.css)) — денежным
+колонкам больше доли (`.col-total` 9.5%), забирая у коротких текстовых (`.col-cost-type` 4.5%,
+`.col-unit` 5.5%, `.col-tariff` 5%). Остаток (название/поставщик/цена/стенды) fixed-layout делит
+поровну. e2e [desktop-export-print.spec.js](../../tests/e2e/desktop-export-print.spec.js) теперь
+меряет при **A4 landscape viewport** (1122px) и проверяет `totalCellOverflow ≤ 1px` (без фикса
+было 16px). Левый отступ контента PDF (2.22.5, padding .app-main) не тронут.
+
+`2.22.6 → 2.22.7` (**PATCH**): только print-CSS Деталей. Модель/schema/bundle не меняются.
+Метрики: unit **5799/5799 PASS**, e2e **60 passed** (export-print замер col-total overflow 16px→0),
+syntax/sanity/quantity/prices/diff — все EXIT 0.

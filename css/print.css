@@ -433,6 +433,17 @@
         white-space: nowrap;
     }
 
+    /* 2.22.7: явные ширины колонок под table-layout:fixed. Без них колонки
+       делятся ПОРОВНУ, и 8-значный «ИТОГО / год» (26 433 793 ₽) переполняет
+       узкую равную ячейку влево, сливаясь с «ИТОГО / мес». Даём денежным
+       колонкам больше доли, забирая у коротких текстовых (тип расхода / ед.изм.
+       / тариф). Сумма явных < 100% — остаток (название/поставщик/цена/стенды)
+       fixed-layout распределит поровну. */
+    body.printing-details .details-table .col-total     { width: 9.5% !important; }
+    body.printing-details .details-table .col-cost-type { width: 4.5% !important; }
+    body.printing-details .details-table .col-unit      { width: 5.5% !important; }
+    body.printing-details .details-table .col-tariff    { width: 5% !important; }
+
     /* PATCH 2.4.39: Sticky-thead на ПЕЧАТИ ломает рендеринг — Chrome
        не режит позицию обратно в static, и thead'ы оказываются вне
        видимого page area (либо overlay'ятся sticky-привязкой к viewport

@@ -146,6 +146,10 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
     await expect(page.locator('.details-table-cost')).toBeVisible();
 
     await page.emulateMedia({ media: 'print' });
+    /* 2.22.7: меряем при A4 landscape usable-ширине (≈1122px @96dpi минус поля),
+       иначе при desktop-viewport колонки шире реальной печати и переполнение
+       ИТОГО-колонок (год, 8 цифр) не воспроизводится. */
+    await page.setViewportSize({ width: 1122, height: 793 });
 
     const snapshot = await page.evaluate(async () => {
         const { printWithDetailsMode } = await import(new URL('js/utils/printMode.js', document.baseURI).href);
@@ -174,7 +178,15 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
                     const vendorStyle = getComputedStyle(vendorHeader);
                     const wrapStyle = getComputedStyle(wrap);
                     const mainStyle = getComputedStyle(main);
+                    /* 2.22.7: колонки ИТОГО/мес и ИТОГО/год (.col-total) — right-aligned
+                       nowrap-числа. Под table-layout:fixed узкая ячейка → 8-значный
+                       год переполняет её влево и сливается с месяцем. scrollWidth >
+                       clientWidth = переполнение (визуальное слияние). Должно быть 0. */
+                    const totalCells = [...table.querySelectorAll('.col-total')];
+                    const totalCellOverflow = totalCells.reduce(
+                        (max, c) => Math.max(max, c.scrollWidth - c.clientWidth), 0);
                     duringPrint = {
+                        totalCellOverflow,
                         bodyClass: document.body.className,
                         hasStyle: !!document.getElementById('details-print-page-style'),
                         styleText: document.getElementById('details-print-page-style')?.textContent || '',
@@ -242,6 +254,8 @@ test('Details PDF print mode uses full-width landscape table layout', async ({ p
         expect(duringPrint.tableWidth).toBeGreaterThan(duringPrint.mainContentWidth * 0.98);
         expect(duringPrint.wrapWidth).toBeGreaterThan(duringPrint.mainContentWidth * 0.98);
         expect(duringPrint.mainPaddingLeft).toBeGreaterThan(20);
+        // Колонки ИТОГО/мес и ИТОГО/год не должны переполняться (числа не сливаются).
+        expect(duringPrint.totalCellOverflow).toBeLessThanOrEqual(1);
         expect(duringPrint.wrapBackground).toBe('rgb(255, 255, 255)');
         expect(duringPrint.wrapBorderRadius).toBe('0px');
         expect(duringPrint.wrapBoxShadow).toBe('none');
