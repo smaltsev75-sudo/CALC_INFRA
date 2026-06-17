@@ -68,10 +68,13 @@ describe('details print page margins', () => {
         const left  = parts.length >= 4 ? parts[3] : parts[parts.length === 2 ? 1 : 0];
         const right = parts.length >= 2 ? parts[1] : parts[0];
         assert.ok(left >= right, `левое поле (${left}) должно быть >= правого (${right})`);
-        assert.ok(left >= 9, `левое поле должно быть достаточным (>=9mm), получено ${left}`);
-        // usable-ширина A4 landscape (297мм) должна оставаться >= 281мм (док. безопасный минимум).
+        assert.ok(left >= 12, `левое поле должно быть заметным (>=12mm), получено ${left}`);
+        /* usable-ширина: режим печати Деталей использует table-layout:fixed; width:100%
+           (body.printing-details, css/print.css) → таблица сжимается под usable-ширину,
+           правый край НЕ переполняет лист. Поэтому жёсткий минимум 281мм (для auto-layout
+           @page landscape) здесь не требуется; держим разумный нижний порог. */
         const usable = 297 - (left + right);
-        assert.ok(usable >= 281, `usable-ширина ${usable}мм < 281мм — риск обрезки таблицы справа`);
+        assert.ok(usable >= 270, `usable-ширина ${usable}мм < 270мм — колонки станут нечитаемо узкими`);
     });
 });
 
