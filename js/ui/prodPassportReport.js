@@ -360,9 +360,13 @@ function renderCategoryLegend(items) {
         ),
         el('div', { class: 'pp-legend' },
             legendCategories.map(category => el('div', { class: 'pp-lg' },
+                /* swatch красится ТЕМ ЖЕ классом .pp-c-<suffix>, что и плитки карты,
+                   а не var(--cat-<suffix>). Иначе в светлой теме плитки (фикс. яркие
+                   градиенты) и легенда (перетемизированные muted --cat-*) расходятся
+                   по цвету (жалоба 2026-06-18). Один источник = гарантированное
+                   совпадение легенды и карты в ОБЕИХ темах. */
                 el('span', {
-                    class: 'pp-lg-sw',
-                    style: { background: `var(--cat-${categorySuffix(category)})` },
+                    class: ['pp-lg-sw', `pp-c-${categorySuffix(category)}`],
                     attrs: { 'aria-hidden': 'true' }
                 }),
                 el('span', { text: categoryLabel(category) })

@@ -11932,3 +11932,25 @@ export-print guard обновлён: таблица заполняет **content
 `2.22.4 → 2.22.5` (**PATCH**): UI/представление (Паспорт + print-CSS). Модель/schema/bundle не
 меняются. Метрики последнего прогона: unit **5799/5799 PASS** (−4 удалённых теста панели),
 e2e **60 passed**, syntax/sanity/quantity/prices/diff — все EXIT 0.
+
+## Release 2.22.6 — цвета легенды Паспорта = цвета плиток карты (2026-06-18)
+
+PATCH. Только CSS-источник цвета swatch'ей легенды. По жалобе: в «Карта бюджета ПРОМ» цвета
+плиток и цвета в легенде не совпадают (видно в светлой теме).
+
+**Корень**: плитки карты красятся CSS-классом `.pp-c-<suffix>` (фикс. яркие градиенты,
+[modals.css](../../css/modals.css)), а swatch'и легенды — `var(--cat-<suffix>)`
+([prodPassportReport.js](../../js/ui/prodPassportReport.js) `renderCategoryLegend`). Переменные
+`--cat-*` намеренно перетемизированы для светлой темы в muted-палитру ([base.css](../../css/base.css)
+:253-259: violet→brown, orange→terracotta, pink→rust и т.д.), а плитки остались яркими. В тёмной
+теме совпадало случайно (там `--cat-*` ≈ ярким градиентам), в светлой — расходилось.
+
+**Фикс**: swatch легенды берёт цвет из ТОГО ЖЕ источника, что плитки — класс `.pp-c-<suffix>`
+(`renderItemTile`), вместо inline `var(--cat-<suffix>)`. Один источник → гарантированное
+совпадение легенды и карты в ОБЕИХ темах. TDD: [prod-passport-report.test.js](../../tests/unit/ui/prod-passport-report.test.js)
+— swatch HW-категории несёт класс `.pp-c-hw` (как плитка). Дашборд/charts продолжают
+использовать `var(--cat-*)` (тонкие бары без текста-на-цвете) — это отдельный scope.
+
+`2.22.5 → 2.22.6` (**PATCH**): только цвет swatch'ей легенды Паспорта. Модель/schema/bundle не
+меняются. Метрики: unit **5799/5799 PASS**, e2e **60 passed**, syntax/sanity/quantity/prices/diff —
+все EXIT 0.

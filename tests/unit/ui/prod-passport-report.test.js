@@ -256,6 +256,13 @@ describe('Паспорт ПРОМ: DOM-контракт отчёта (treemap-р
         assert.match(collectText(legend[0]), /Категории/);
         assert.ok(allByClass(legend[0], 'pp-lg').length > 0);
 
+        // 2.22.6: цвет swatch легенды берётся из того же источника, что плитки карты —
+        // класс .pp-c-<suffix> (renderItemTile), а НЕ var(--cat-*). Иначе в светлой теме
+        // яркие плитки ≠ muted-легенда (--cat-* перетемизированы в base.css:253-259).
+        // makeCalc имеет HW-ЭК → swatch HW обязан нести класс .pp-c-hw (как плитка).
+        assert.ok(allByClass(legend[0], 'pp-c-hw').length >= 1,
+            'swatch легенды должен нести класс .pp-c-hw (тот же, что плитка), не var(--cat-*)');
+
         // Раздел «Факторы влияния» удалён из Паспорта (2.22.5) — карта затрат as-is,
         // без what-if sensitivity.
         assert.ok(!byTestId(rendered, 'prod-passport-top-factors'),
