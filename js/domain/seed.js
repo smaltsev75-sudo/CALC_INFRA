@@ -1740,6 +1740,79 @@ export const SEED_QUESTIONS = [
         defaultIfUnknown: true,
         assumptionRisk: 'low'
     },
+    {
+        id: 'audit_events_per_day',
+        section: 'security',
+        subgroup: 'Мониторинг и контроль',
+        order: 331,
+        title: 'Событий аудита в день (для точной оценки)',
+        type: 'number',
+        min: 0, max: 1_000_000_000, step: 1000,
+        defaultValue: 0,
+        dependsOn: ['audit_logging_required'],
+        description:
+            'Сколько событий аудита (записей в журнал) система пишет в день. Это включает входы, изменения данных, действия администраторов и т.п.\n\n' +
+            'Оставьте 0 — и объём журналов будет оценён грубо как доля от объёма основной БД (≈15%) с минимальным полом. Укажите число — и объём посчитается точно по формуле: события × срок хранения × размер записи.\n\n' +
+            'Прикинуть можно как «активные пользователи в день × среднее число действий на пользователя» (например, 1000 польз. × 30 действий = 30 000 событий/день). Калькулятор НЕ выводит это число сам — задайте его, если нужна точность.',
+        impact: 'При значении > 0 включается точная event-модель объёма журналов вместо грубой оценки «доля от БД». 0 = грубая оценка.',
+        allowUnknown: true,
+        defaultIfUnknown: 0,
+        assumptionRisk: 'low'
+    },
+    {
+        id: 'audit_bytes_per_event',
+        section: 'security',
+        subgroup: 'Мониторинг и контроль',
+        order: 332,
+        title: 'Размер одной записи аудита, байт (оценка)',
+        type: 'number',
+        min: 1, max: 1_000_000, step: 100,
+        defaultValue: 1000,
+        dependsOn: ['audit_logging_required'],
+        description:
+            'Средний размер одной записи журнала аудита в байтах: кто, что, когда, откуда, над каким объектом. Типовая структурированная запись — порядка 0,5-1,5 КБ.\n\n' +
+            'Значение по умолчанию 1000 байт — это ОЦЕНКА; уточните под свой формат логов (JSON с контекстом тяжелее, плоский текст легче). Используется только при заданном числе событий/день.',
+        impact: 'Множитель объёма в event-модели: запись 2 КБ вместо 1 КБ удваивает объём журналов.',
+        allowUnknown: true,
+        defaultIfUnknown: 1000,
+        assumptionRisk: 'low'
+    },
+    {
+        id: 'audit_retention_years',
+        section: 'security',
+        subgroup: 'Мониторинг и контроль',
+        order: 333,
+        title: 'Срок хранения журналов аудита, лет (оценка)',
+        type: 'number',
+        min: 1, max: 30, step: 1,
+        defaultValue: 1,
+        dependsOn: ['audit_logging_required'],
+        description:
+            'Сколько лет хранятся журналы аудита. Срок обычно диктуется требованиями: типовой продукт — 1 год; финансовые операции — 3-7 лет (ЦБ, НК РФ); медицина — до 25 лет.\n\n' +
+            'Значение по умолчанию 1 год — это ОЦЕНКА; поднимите под свой регуляторный профиль. Используется только при заданном числе событий/день (в грубой оценке «доля от БД» срок не учитывается).',
+        impact: 'Линейный множитель объёма в event-модели: 5 лет хранения = ×5 к объёму журналов.',
+        allowUnknown: true,
+        defaultIfUnknown: 1,
+        assumptionRisk: 'low'
+    },
+    {
+        id: 'audit_log_compression_ratio',
+        section: 'security',
+        subgroup: 'Мониторинг и контроль',
+        order: 334,
+        title: 'Коэффициент сжатия журналов (оценка)',
+        type: 'number',
+        min: 1, max: 50, step: 1,
+        defaultValue: 5,
+        dependsOn: ['audit_logging_required'],
+        description:
+            'Во сколько раз журналы сжимаются при хранении. Текстовые/JSON-логи жмутся хорошо — обычно ×5-10. Значение 1 = без сжатия.\n\n' +
+            'Значение по умолчанию 5 — это ОЦЕНКА; уточните под выбранное хранилище/формат. Используется только при заданном числе событий/день. Значения меньше 1 трактуются как 1 (без раздувания объёма).',
+        impact: 'Делитель объёма в event-модели: сжатие ×10 вместо ×5 уменьшает объём журналов вдвое.',
+        allowUnknown: true,
+        defaultIfUnknown: 5,
+        assumptionRisk: 'low'
+    },
 
     /* ============================================================
      * SECTION: integrations
@@ -3983,11 +4056,11 @@ export const SEED_ITEMS = [
             'Расчёт: 10.07 ₽/ГБ/мес; минимум 1 ТБ на ПРОМ для searchable audit log.\n' +
             'ВАЖНО: WORM/архив на 3-7 лет и полноценный SIEM могут потребовать отдельного КП.',
         qtyFormulas: {
-            PSI:  'if(Q.audit_logging_required, max(100, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15 * S.standSizeRatio.PSI), 0)',
-            PROD: 'if(Q.audit_logging_required, max(1000, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15), 0)',
-            LOAD: 'if(Q.audit_logging_required, max(100, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15 * S.standSizeRatio.LOAD), 0)'
+            PSI:  'if(Q.audit_logging_required, if(Q.audit_events_per_day > 0, max(1, Q.audit_events_per_day * 365 * Q.audit_retention_years * Q.audit_bytes_per_event / max(1, Q.audit_log_compression_ratio) / 1000000000 * S.standSizeRatio.PSI), max(100, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15 * S.standSizeRatio.PSI)), 0)',
+            PROD: 'if(Q.audit_logging_required, if(Q.audit_events_per_day > 0, max(1, Q.audit_events_per_day * 365 * Q.audit_retention_years * Q.audit_bytes_per_event / max(1, Q.audit_log_compression_ratio) / 1000000000), max(1000, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15)), 0)',
+            LOAD: 'if(Q.audit_logging_required, if(Q.audit_events_per_day > 0, max(1, Q.audit_events_per_day * 365 * Q.audit_retention_years * Q.audit_bytes_per_event / max(1, Q.audit_log_compression_ratio) / 1000000000 * min(1, S.standSizeRatio.LOAD)), max(100, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15 * S.standSizeRatio.LOAD)), 0)'
         },
-        formulaHelp: 'ГБ audit log = 15% от годового объёма БД × коэф. стенда; минимум 1000 ГБ на ПРОМ и 100 ГБ на ПСИ/НТ.'
+        formulaHelp: 'ГБ журналов аудита: при заданных «событиях/день» — events × 365 × срок_хранения × байт_на_событие / сжатие / 1e9 × коэф. стенда (НТ ≤ ПРОМ через cap, минимум 1 ГБ, без пола 1000); иначе (события=0) грубая оценка 15% от годового объёма БД × коэф. стенда с полами 1000 ГБ ПРОМ / 100 ГБ ПСИ-НТ.'
     },
     {
         id: 'service-email-per-1k',

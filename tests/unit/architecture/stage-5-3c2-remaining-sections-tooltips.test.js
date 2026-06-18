@@ -32,7 +32,10 @@ const SECTIONS = {
     security: [
         'pdn_152fz', 'pdn_category', 'fstec_certification_required', 'iso_27001_required',
         'encryption_at_rest', 'waf_required', 'ddos_protection_required',
-        'siem_integration_required', 'dlp_required', 'audit_logging_required'
+        'siem_integration_required', 'dlp_required', 'audit_logging_required',
+        // 5B-Sec audit-log completeness: event-параметры объёма журналов аудита.
+        'audit_events_per_day', 'audit_bytes_per_event', 'audit_retention_years',
+        'audit_log_compression_ratio'
     ],
     integrations: [
         'email_per_month', 'sms_per_month', 'push_per_month', 'payment_gateway',

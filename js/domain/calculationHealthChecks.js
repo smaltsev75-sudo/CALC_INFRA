@@ -833,6 +833,36 @@ function checkSeasonalSurchargeManual(calc) {
     });
 }
 
+/*
+ * audit-log completeness (5B-Sec): журналирование аудита включено, но «событий в
+ * день» не задано → объём журналов оценён грубо как доля от объёма БД (fallback).
+ * Нудж к точной event-модели. Info (не ошибка).
+ */
+function checkAuditLoggingRoughEstimate(calc) {
+    if (ans(calc, 'audit_logging_required') !== true) return null;
+    const events = ans(calc, 'audit_events_per_day');
+    const eventsNum = isFiniteNum(events) ? events : 0;
+    if (eventsNum > 0) return null; // задана точная event-модель
+
+    const fieldIds = ['audit_logging_required', 'audit_events_per_day'];
+    if (isHealthAcknowledged(calc, 'security-audit-log-rough-estimate', fieldIds)) return null;
+
+    return makeFinding({
+        id: 'security-audit-log-rough-estimate',
+        severity: 'info',
+        category: 'security',
+        title: 'Объём журналов аудита оценён грубо',
+        message:
+            'Журналирование аудита включено, но «событий в день» не задано — объём журналов ' +
+            'оценён грубо как доля от объёма БД (≈15%) с минимальным полом. Для точной оценки ' +
+            'задайте события/день, размер события, срок хранения и сжатие.',
+        fieldIds,
+        suggestedAction:
+            'В блоке «Мониторинг и контроль» Опросника заполните «Событий аудита в день», ' +
+            '«Размер записи аудита», «Срок хранения журналов» и «Коэффициент сжатия».'
+    });
+}
+
 /* --- Группа: Прайсы --- */
 
 function checkStaleBundle(calc, options) {
@@ -1076,6 +1106,7 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkSeasonalActivityNotApplied,
     checkSeasonalTooManyPeakMonths,
     checkSeasonalSurchargeManual,
+    checkAuditLoggingRoughEstimate,
     checkStaleBundle,
     checkStubBundle,
     checkBundleNotApplied,

@@ -12112,3 +12112,46 @@ user-facing текст вопроса `pdn_category` в соответствие
 
 `2.22.10 → 2.22.11` (**PATCH**): только текст seed + arch-тест. Формул/schema/bundle/golden
 НЕ касается. Метрики: unit **5826/5826 PASS** (+4 arch), sanity/quantity/syntax — EXIT 0.
+
+## Release 2.22.12 — audit-log completeness: опциональная event-модель объёма журналов (Stage 5B-Sec) (2026-06-18)
+
+PATCH. Второй срез УЗ-hardening/5B-Sec. Опциональная event-based модель объёма журналов
+аудита поверх старой грубой «15% от БД». **Дефолт `events=0` → fallback → golden без дрейфа**;
+точная модель — opt-in (пользователь задаёт события/день).
+
+**Было**: `security-audit-log-storage-gb` считал объём как 15% годового объёма БД с жёсткими
+полами 1000 ГБ ПРОМ / 100 ГБ ПСИ-НТ. Пол доминировал для малых/средних БД (10 ГБ БД →
+1200 ГБ в счёте ≈ ×360, ~12k ₽/мес baseline при `audit_logging_required` default=true).
+Объём аудита коррелирует с числом СОБЫТИЙ, а не с размером БД; retention/сжатие игнорировались.
+
+**Стало** (4 новых вопроса, секция security/«Мониторинг и контроль», dependsOn audit_logging_required):
+`audit_events_per_day` (0=fallback), `audit_bytes_per_event` (1000, оценка),
+`audit_retention_years` (1, оценка), `audit_log_compression_ratio` (5, min 1, оценка).
+Формула элемента: при `events>0` — `ГБ = events × 365 × retention × bytes / max(1,compression)
+/ 1e9 × коэф.стенда`, минимум 1 ГБ (без пола 1000); иначе старый fallback «15% от БД».
+
+**Условия пользователя (все выполнены)**: (1) event-модель опциональна, `events≤0` → fallback;
+(2) дефолты как выше; (3) события НЕ выводятся из DAU автоматически (только ориентир в подсказке);
+(4) формула как выше; (5) **НТ ≤ ПРОМ** через `min(1, S.standSizeRatio.LOAD)` — применён **только
+в event-ветке** (fallback оставлен байт-в-байт ради отсутствия legacy-дрейфа, осознанное решение
+по конфликту условий 1↔5); (6) пол 1000 ГБ только в fallback, в event-ветке `max(1 ГБ, …)`;
+(7) health-check `security-audit-log-rough-estimate` (info) при `audit on + events=0`.
+
+**Health-info по умолчанию виден почти везде** (default audit=true + events=0) — осознанный
+мягкий нудж к точной модели (условие 7).
+
+TDD: [audit-log-completeness-5b.test.js](../../tests/unit/domain/audit-log-completeness-5b.test.js)
+(12 проверок: event-модель / НТ≤ПРОМ / нет пола 1000 в event / compression<1 / fallback
+байт-в-байт / health-info / arch-guard единиц+formulaHelp). Рябь от +4 вопросов: счётчик
+`SEED_QUESTIONS.length` 115→**119**, каталог тултипов `UI_TOOLTIPS_SHORT` (+4 `q.audit_*`,
+security 10→14), список `security` в stage-5-3c2-тесте, `WIZARD_PROFILES.md` (счётчики 115→119
++ §7.2: audit-параметры wizard не заполняет). `QUANTITY_LOGIC_AUDIT.md` регенерирован (изменилась
+только метрика числа проверенных ссылок Q.*/S.*, не расчётные числа).
+
+`2.22.11 → 2.22.12` (**PATCH**): новые опц. вопросы + формула элемента. **Golden без дрейфа**
+(default events=0 → fallback идентичен прежнему; `sanity:check` зелёный, golden-scenarios зелёные).
+Числа меняются только при `events>0` (opt-in). Метрики: unit **5838/5838 PASS** (+12),
+e2e **60 passed**, sanity/quantity/prices/syntax/diff — все EXIT 0.
+
+**Stage 5B-Sec следующее** (по выбору): SIEM/WAF scaling, варианты B/C по УЗ (только с доменными
+коэффициентами). DR-mode не трогаем.
