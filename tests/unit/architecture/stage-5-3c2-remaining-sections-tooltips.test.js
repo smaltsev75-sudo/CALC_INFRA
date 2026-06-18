@@ -37,7 +37,9 @@ const SECTIONS = {
         'audit_events_per_day', 'audit_bytes_per_event', 'audit_retention_years',
         'audit_log_compression_ratio',
         // 5B-Sec SIEM scaling: драйверы масштаба SIEM-мониторинга/интеграции.
-        'siem_log_gb_per_day', 'siem_sources_count', 'siem_tier'
+        'siem_log_gb_per_day', 'siem_sources_count', 'siem_tier',
+        // 5B-Sec DDoS tier-select: класс защиты от DDoS.
+        'ddos_tier'
     ],
     integrations: [
         'email_per_month', 'sms_per_month', 'push_per_month', 'payment_gateway',

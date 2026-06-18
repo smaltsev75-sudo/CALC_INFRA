@@ -894,6 +894,41 @@ function checkSiemFlatEstimate(calc) {
     });
 }
 
+/*
+ * DDoS tier-select (5B-Sec): DDoS включён на базовом L3/L4, но профиль выглядит
+ * критичным/регулируемым (ФСТЭК / SIEM / DLP / госсектор) — для таких обычно нужен
+ * L7 или premium. Info-нудж к проверке класса защиты. pdn_152fz НЕ триггер (шумно).
+ */
+function checkDdosBasicTierForCritical(calc) {
+    if (ans(calc, 'ddos_protection_required') !== true) return null;
+    const tier = ans(calc, 'ddos_tier');
+    if (tier && tier !== 'basic_l3_l4') return null; // явно выбран L7/premium
+
+    const critical = ans(calc, 'fstec_certification_required') === true
+        || ans(calc, 'siem_integration_required') === true
+        || ans(calc, 'dlp_required') === true
+        || ans(calc, 'product_type') === 'b2g';
+    if (!critical) return null;
+
+    const fieldIds = ['ddos_protection_required', 'ddos_tier', 'fstec_certification_required',
+        'siem_integration_required', 'dlp_required', 'product_type'];
+    if (isHealthAcknowledged(calc, 'security-ddos-basic-tier-critical', fieldIds)) return null;
+
+    return makeFinding({
+        id: 'security-ddos-basic-tier-critical',
+        severity: 'info',
+        category: 'security',
+        title: 'DDoS рассчитан как базовый L3/L4',
+        message:
+            'DDoS рассчитан как базовый L3/L4. Для финтеха, госсектора и критичных публичных ' +
+            'сервисов обычно требуется L7 или premium; проверьте класс защиты.',
+        fieldIds,
+        suggestedAction:
+            'В блоке «Защита периметра» Опросника выберите «Класс защиты от DDoS»: ' +
+            'L7 или premium, если продукт критичный/регулируемый.'
+    });
+}
+
 /* --- Группа: Прайсы --- */
 
 function checkStaleBundle(calc, options) {
@@ -1139,6 +1174,7 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkSeasonalSurchargeManual,
     checkAuditLoggingRoughEstimate,
     checkSiemFlatEstimate,
+    checkDdosBasicTierForCritical,
     checkStaleBundle,
     checkStubBundle,
     checkBundleNotApplied,

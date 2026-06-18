@@ -21,7 +21,7 @@
  *   PATCH (1.1.X) — багфиксы, рефакторинг, мелкие UX-правки, hardening,
  *                   обновления прайсов без новых фич, compatibility-миграции
  *                   без нового формата данных. */
-export const APP_VERSION = '2.22.13';
+export const APP_VERSION = '2.22.14';
 export const APP_NAME = 'Калькулятор инфраструктуры';
 
 /* ============================================================
@@ -321,7 +321,7 @@ export const UI_TOOLTIPS_SHORT = Object.freeze({
     'q.dr_drills_per_year':
         'Сколько раз в год прогонять учения по восстановлению (DR-учения).',
 
-    /* Security (17) */
+    /* Security (18) */
     'q.pdn_152fz':
         'Если обрабатываются персональные данные — применяются требования 152-ФЗ.',
     'q.pdn_category':
@@ -336,6 +336,8 @@ export const UI_TOOLTIPS_SHORT = Object.freeze({
         'Защита веб-приложений (WAF) фильтрует SQL-injection, XSS, ботов.',
     'q.ddos_protection_required':
         'Защита от DDoS-атак. Обязательна для B2C и публичных сервисов.',
+    'q.ddos_tier':
+        'Класс защиты от DDoS: базовый L3/L4 (×1) / расширенный L7 (×4) / premium (×16); влияет при включённой защите.',
     'q.siem_integration_required':
         'Мониторинг безопасности (SIEM/EDR) собирает события и реагирует на инциденты.',
     'q.siem_log_gb_per_day':

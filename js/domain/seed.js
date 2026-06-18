@@ -1664,6 +1664,28 @@ export const SEED_QUESTIONS = [
         assumptionRisk: 'medium'
     },
     {
+        id: 'ddos_tier',
+        section: 'security',
+        subgroup: 'Защита периметра',
+        order: 221,
+        title: 'Класс защиты от DDoS',
+        type: 'select',
+        options: [
+            { value: 'basic_l3_l4', label: 'Базовый L3/L4 — фильтрация сетевого флуда' },
+            { value: 'l7',          label: 'Расширенный L7 — анализ HTTP-запросов и поведения' },
+            { value: 'premium',     label: 'Premium L3/L4/L7 — банки/биржи/гос, крупные атаки' }
+        ],
+        defaultValue: 'basic_l3_l4',
+        dependsOn: ['ddos_protection_required'],
+        description:
+            'Уровень защиты от DDoS. Базовый L3/L4 фильтрует сетевой флуд (пакетный уровень); расширенный L7 анализирует HTTP-запросы и поведение (нужен финтеху, маркетплейсам, играм); premium — максимум для банков, бирж, госсектора и крупных атак (сотни Гбит/с).\n\n' +
+            'Влияет на расчёт ТОЛЬКО при включённой защите от DDoS. Стоимость: базовый ≈ 30 тыс. ₽/мес (1 блок), L7 ≈ 120 тыс. (4 блока), premium ≈ 480 тыс. (16 блоков). Это инженерная оценка, уточняйте по КП провайдера.',
+        impact: 'Множитель базового контура DDoS: L3/L4 ×1 (≈30 тыс. ₽/мес), L7 ×4 (≈120 тыс.), premium ×16 (≈480 тыс.).',
+        allowUnknown: true,
+        defaultIfUnknown: 'basic_l3_l4',
+        assumptionRisk: 'medium'
+    },
+    {
         id: 'siem_integration_required',
         section: 'security',
         subgroup: 'Мониторинг и контроль',
@@ -3801,12 +3823,13 @@ export const SEED_ITEMS = [
             '\n' +
             '— Цена-ориентир —\n' +
             'Источник: модельный ориентир из вопроса «Требуется защита от DDoS-атак», 2026-05.\n' +
-            'Расчёт: верхняя граница базового L3/L4-диапазона 30 000 ₽/мес. без НДС.\n' +
-            'ВАЖНО: для расширенной L7-защиты и крупных атак требуется КП провайдера; публичные прайсы часто дают цену по запросу.',
+            'Расчёт: 1 блок = верхняя граница базового L3/L4-диапазона 30 000 ₽/мес. без НДС.\n' +
+            'Масштаб по классу защиты (Q.ddos_tier): базовый L3/L4 = 1 блок (30 тыс.), L7 = 4 блока (≈120 тыс.), premium = 16 блоков (≈480 тыс.). Множители — инженерная оценка.\n' +
+            'ВАЖНО: для расширенной L7-защиты, premium и крупных атак требуется КП провайдера; публичные прайсы часто дают цену по запросу.',
         qtyFormulas: {
-            PROD: 'if(Q.ddos_protection_required, 1, 0)'
+            PROD: 'if(Q.ddos_protection_required, if(Q.ddos_tier == "premium", 16, if(Q.ddos_tier == "l7", 4, 1)), 0)'
         },
-        formulaHelp: 'qty = 1 на ПРОМ при Q.ddos_protection_required. Расширенный L7-DDoS уточняется КП.'
+        formulaHelp: 'qty = множитель по классу защиты (Q.ddos_tier): базовый L3/L4 = 1 (30 тыс. ₽/мес), L7 = 4 (≈120 тыс.), premium = 16 (≈480 тыс.); 0 без DDoS. Множители — инженерная оценка, уточнять по КП.'
     },
     {
         id: 'network-cdn-edge',
@@ -5377,7 +5400,10 @@ const _AGENT_FORMULA_REFRESH_IDS = [
     // 5B-Sec SIEM scaling: формулы стали масштабируемыми (log_gb / sources) — legacy
     // должен получить новые qtyFormulas, иначе останется на старой flat-модели.
     'one-siem-integration',
-    'security-siem-monitoring'
+    'security-siem-monitoring',
+    // 5B-Sec DDoS tier-select: формула стала тир-масштабируемой (ddos_tier) — legacy
+    // должен получить новую qtyFormula (был только в item-mix, не в formula-refresh).
+    'network-ddos-protection'
 ];
 
 /* P6 (2.22.8): ЭК, у которых в Stage 5A сменилась ЕДИНИЦА qty (DR: «площадка» →

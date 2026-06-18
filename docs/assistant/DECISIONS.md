@@ -12199,3 +12199,43 @@ sanity/quantity/prices/syntax/diff — все EXIT 0.
 
 **Stage 5B-Sec следующее** (по выбору): DDoS tier-select → WAF домены/запросы → DLP seats/channels.
 DR-mode и УЗ B/C — не трогаем (B/C только с доменными коэффициентами).
+
+## Release 2.22.14 — DDoS tier-select (Stage 5B-Sec) (2026-06-18)
+
+PATCH (Вариант A — тир-множитель на существующем ЭК, без новых ЭК и без смены цены). Четвёртый
+срез 5B-Sec. Делает `network-ddos-protection` масштабируемым по классу защиты, **без golden-дрейфа**.
+
+**Было**: `network-ddos-protection` flat `qty=if(ddos_protection_required,1,0)`, 30 000 ₽/мес —
+один тир (верх L3/L4). FinTech/банк/гос/gaming по `recommendation` самого вопроса нужен L7
+(50-150к) или premium (до 500к), но платили те же 30к (занижение 1.7-16×). Воспроизведено:
+**63 198 ₽/мес идентично** на малом/среднем/крупном профиле (×10 000 масштаб).
+
+**Стало** (1 новый вопрос `ddos_tier`: basic_l3_l4 / l7 / premium, default basic_l3_l4,
+dependsOn ddos_protection_required, влияет только при ddos on):
+
+- `network-ddos-protection` qty: `if(ddos on, if(tier=="premium", 16, if(tier=="l7", 4, 1)), 0)`.
+- Множители: basic_l3_l4 ×1 (30к, = текущее), l7 ×4 (≈120к), premium ×16 (≈480к). `unit`/`pricePerUnit` НЕ менялись. Множители — инженерная оценка, в UI «уточнять по КП».
+- Оба условия пользователя: default basic → текущая сумма (no-drift); Quick Start НЕ авто-переключает тир (golden не дрейфит).
+
+**Обязательная правка**: `network-ddos-protection` добавлен в `_AGENT_FORMULA_REFRESH_IDS`
+([seed.js](../../js/domain/seed.js)) — был только в legacy item-mix (`_AGENT_ITEM_IDS`), не в
+formula-refresh, иначе legacy остался бы на flat-формуле.
+
+**Health-check** `security-ddos-basic-tier-critical` (info): `ddos on + tier=basic + критичный
+профиль` (`fstec_certification_required` ИЛИ `siem_integration_required` ИЛИ `dlp_required` ИЛИ
+`product_type='b2g'`) → «DDoS рассчитан как базовый L3/L4; для финтеха/госов/критичных нужен L7 или
+premium». **`pdn_152fz` НЕ триггер** (по решению пользователя — слишком шумно).
+
+TDD: [ddos-tier-5b.test.js](../../tests/unit/domain/ddos-tier-5b.test.js) (15 проверок: qty по
+тиру 1/4/16 / default basic / ddos off→0 / legacy-enrichment рефреш / health-info для critical+basic /
+не-триггеры (l7, off, non-critical, pdn) / arch-guard unit+price+formulaHelp).
+
+`2.22.13 → 2.22.14` (**PATCH**): тир-множитель DDoS. **Golden без дрейфа** (default basic_l3_l4 →
+qty=1, `sanity:check` зелёный). Числа меняются только при выборе l7/premium (opt-in). Рябь:
+`SEED_QUESTIONS` 122→**123**, `UI_TOOLTIPS_SHORT` security 17→18, `WIZARD_PROFILES.md` счётчики
+122→123 + §7.2. **Урок (повторно)**: perf-guard `buildProdPassport <16мс` флакнул в полном
+параллельном прогоне (656мс), в изоляции 3/3 + чистый re-run — не код, нагрузка машины. Метрики:
+unit **5866/5866 PASS** (+15), e2e **60 passed**, sanity/quantity/prices/syntax/diff — все EXIT 0.
+
+**Stage 5B-Sec следующее** (по выбору): WAF домены/запросы → DLP seats/channels. DR-mode и УЗ B/C —
+не трогаем.
