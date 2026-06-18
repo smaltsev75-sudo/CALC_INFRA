@@ -3635,9 +3635,9 @@ export const SEED_ITEMS = [
             'Расчёт: GPU-нода NVIDIA A100 ~287 000 ₽/мес за 20 vCPU = ~14 400 ₽/(GPU-vCPU)/мес.\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            PSI:  'ceil(if(Q.ai_hosting_mode == "on_prem_gpu", max(4, (Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * Q.ai_users_share / 100 * Q.ai_requests_per_user_day / 5000 * S.aiModelTierFactor), 0) * S.standSizeRatio.PSI)',
-            PROD: 'ceil(if(Q.ai_hosting_mode == "on_prem_gpu", max(4, (Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * Q.ai_users_share / 100 * Q.ai_requests_per_user_day / 5000 * S.aiModelTierFactor), 0))',
-            LOAD: 'ceil(if(Q.ai_hosting_mode == "on_prem_gpu", max(4, (Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * Q.ai_users_share / 100 * Q.ai_requests_per_user_day / 5000 * S.aiModelTierFactor), 0) * S.standSizeRatio.LOAD)'
+            PSI:  'ceil(if(Q.ai_llm_used && Q.ai_hosting_mode == "on_prem_gpu", max(4, (Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * Q.ai_users_share / 100 * Q.ai_requests_per_user_day / 5000 * S.aiModelTierFactor), 0) * S.standSizeRatio.PSI)',
+            PROD: 'ceil(if(Q.ai_llm_used && Q.ai_hosting_mode == "on_prem_gpu", max(4, (Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * Q.ai_users_share / 100 * Q.ai_requests_per_user_day / 5000 * S.aiModelTierFactor), 0))',
+            LOAD: 'ceil(if(Q.ai_llm_used && Q.ai_hosting_mode == "on_prem_gpu", max(4, (Q.registered_users_total * Q.dau_share_of_registered_percent / 100) * Q.ai_users_share / 100 * Q.ai_requests_per_user_day / 5000 * S.aiModelTierFactor), 0) * S.standSizeRatio.LOAD)'
         },
         formulaHelp: 'qty = ceil(max(4, DAU × доля_AI × запросов/день / 5000 × множитель_класса_модели)) × коэф. стенда; иначе 0.'
     },
@@ -4653,18 +4653,18 @@ export const SEED_ITEMS = [
         applicableStands: ['PSI','PROD','LOAD'],
         description:
             'Резерв на низкую задержку AI-инференса: provisioned throughput, выделенный route/gateway или pre-warmed capacity у провайдера.\n' +
-            'Включается, если LLM используется и целевая задержка ответа ИИ не выше 1500 мс.\n' +
+            'Включается, если LLM используется и выбран самый строгий режим задержки «<500 мс» (голосовой/realtime, provisioned throughput); режимы «<2с»/«<10с»/«batch» резерв не требуют.\n' +
             'Единица измерения: 1 контур низкой задержки в месяц.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
             'Источник: модельная оценка из вопроса «Целевой latency ответа ИИ», 2026-05.\n' +
             'ВАЖНО: точный тариф зависит от provider SLA/provisioned throughput и должен уточняться КП.',
         qtyFormulas: {
-            PSI:  'if(Q.ai_llm_used && Q.ai_inference_latency_ms > 0 && Q.ai_inference_latency_ms <= 1500, S.standSizeRatio.PSI, 0)',
-            PROD: 'if(Q.ai_llm_used && Q.ai_inference_latency_ms > 0 && Q.ai_inference_latency_ms <= 1500, 1, 0)',
-            LOAD: 'if(Q.ai_llm_used && Q.ai_inference_latency_ms > 0 && Q.ai_inference_latency_ms <= 1500, S.standSizeRatio.LOAD, 0)'
+            PSI:  'if(Q.ai_llm_used && Q.ai_inference_latency_ms == "<500ms", S.standSizeRatio.PSI, 0)',
+            PROD: 'if(Q.ai_llm_used && Q.ai_inference_latency_ms == "<500ms", 1, 0)',
+            LOAD: 'if(Q.ai_llm_used && Q.ai_inference_latency_ms == "<500ms", S.standSizeRatio.LOAD, 0)'
         },
-        formulaHelp: 'qty = 1 на ПРОМ при ai_llm_used и latency <= 1500 мс; ПСИ/НТ масштабируются AI-коэф. стенда.'
+        formulaHelp: 'qty = 1 на ПРОМ при ai_llm_used и режиме задержки «<500 мс» (самый строгий, голосовой/realtime); ПСИ/НТ масштабируются AI-коэф. стенда; иначе 0.'
     },
     {
         id: 'ai-sensitive-data-gateway',
@@ -5442,6 +5442,11 @@ const _AGENT_FORMULA_REFRESH_IDS = [
     'llm-tokens-input-1m',
     'llm-tokens-output-1m',
     'ai-safety-moderation-tokens-1m',
+    // Audit Пакет 1 (2.22.19): AI-agent ЭК были только в _AGENT_ITEM_IDS, но НЕ в
+    // formula-refresh — legacy JSON со старой формулой "0" не получали актуальную
+    // ai_agent_mode-формулу при openCalc, ответы по агентам тихо игнорировались.
+    'ai-agent-sandbox-vcpu',
+    'ai-agent-memory-storage-tb',
     'rag-embeddings-1m',
     'rag-vector-db-gb',
     'rag-managed-knowledge-base-gb',

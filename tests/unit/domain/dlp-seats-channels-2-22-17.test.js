@@ -107,22 +107,36 @@ describe('5B DLP: health-check flat-estimate', () => {
             dictionaries: { questions: [], items: [], settings: {} }, view: {}
         };
     }
-    const find = (c) => evaluateCalculationHealth(c).findings.find(f => f.id === 'security-dlp-flat-estimate');
+    // Audit Пакет 1: нудж разделён на license (число рабочих мест) и implementation (каналы).
+    const lic = (c) => evaluateCalculationHealth(c).findings.find(f => f.id === 'security-dlp-license-flat');
+    const impl = (c) => evaluateCalculationHealth(c).findings.find(f => f.id === 'security-dlp-implementation-flat');
 
-    it('dlp on + оба драйвера 0 → info', () => {
-        const f = find(makeCalc({ dlp_required: true, dlp_protected_users_count: 0, dlp_channels_count: 0 }));
-        assert.ok(f, 'finding должен существовать');
-        assert.equal(f.severity, 'info');
-        assert.equal(f.category, 'security');
+    it('dlp on + оба драйвера 0 → ОБА нуджа (license + implementation), severity info', () => {
+        const c = makeCalc({ dlp_required: true, dlp_protected_users_count: 0, dlp_channels_count: 0 });
+        const l = lic(c), i = impl(c);
+        assert.ok(l && i, 'оба finding должны существовать');
+        assert.equal(l.severity, 'info'); assert.equal(l.category, 'security');
+        assert.equal(i.severity, 'info'); assert.equal(i.category, 'security');
     });
-    it('dlp on + users задан → нет finding', () => {
-        assert.equal(find(makeCalc({ dlp_required: true, dlp_protected_users_count: 1200, dlp_channels_count: 0 })), undefined);
+    it('dlp on + только users задан → license молчит, implementation ВСЁ ЕЩЁ нудж (channels=0)', () => {
+        const c = makeCalc({ dlp_required: true, dlp_protected_users_count: 1200, dlp_channels_count: 0 });
+        assert.equal(lic(c), undefined);
+        assert.ok(impl(c));
     });
-    it('dlp on + channels задан → нет finding', () => {
-        assert.equal(find(makeCalc({ dlp_required: true, dlp_protected_users_count: 0, dlp_channels_count: 7 })), undefined);
+    it('dlp on + только channels задан → implementation молчит, license ВСЁ ЕЩЁ нудж (users=0)', () => {
+        const c = makeCalc({ dlp_required: true, dlp_protected_users_count: 0, dlp_channels_count: 7 });
+        assert.equal(impl(c), undefined);
+        assert.ok(lic(c));
     });
-    it('dlp off → нет finding', () => {
-        assert.equal(find(makeCalc({ dlp_required: false, dlp_protected_users_count: 0, dlp_channels_count: 0 })), undefined);
+    it('dlp on + оба заданы → нет нуджей', () => {
+        const c = makeCalc({ dlp_required: true, dlp_protected_users_count: 1200, dlp_channels_count: 7 });
+        assert.equal(lic(c), undefined);
+        assert.equal(impl(c), undefined);
+    });
+    it('dlp off → нет нуджей', () => {
+        const c = makeCalc({ dlp_required: false, dlp_protected_users_count: 0, dlp_channels_count: 0 });
+        assert.equal(lic(c), undefined);
+        assert.equal(impl(c), undefined);
     });
 });
 

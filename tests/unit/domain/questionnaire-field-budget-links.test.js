@@ -122,8 +122,9 @@ describe('questionnaire fields are wired to budget items', () => {
         };
         assert.ok(qty('llm-tokens-input-1m', { ...aiBase, ai_model_tier: 'frontier' }) >
             qty('llm-tokens-input-1m', { ...aiBase, ai_model_tier: 'light' }));
-        assert.equal(qty('ai-low-latency-inference-reserve', { ...aiBase, ai_inference_latency_ms: 1000 }), 1);
-        assert.equal(qty('ai-low-latency-inference-reserve', { ...aiBase, ai_inference_latency_ms: 3000 }), 0);
+        // Audit Пакет 1: latency — строковые option values; reserve только при «<500ms».
+        assert.equal(qty('ai-low-latency-inference-reserve', { ...aiBase, ai_inference_latency_ms: '<500ms' }), 1);
+        assert.equal(qty('ai-low-latency-inference-reserve', { ...aiBase, ai_inference_latency_ms: '<2s' }), 0);
         assert.equal(qty('ai-sensitive-data-gateway', { ...aiBase, ai_data_sensitivity: 'pdn' }), 1);
         assert.equal(qty('ai-sensitive-data-gateway', { ...aiBase, ai_data_sensitivity: 'public' }), 0);
         // Stage 1 (qty-модель ПРОМ): retrieval_calls переехал из размера vector-DB

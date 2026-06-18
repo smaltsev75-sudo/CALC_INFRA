@@ -12384,3 +12384,27 @@ sanity/quantity/prices/app-version-sync/arch-invariant).
 
 **После 2.22.18 — пауза на стабилизацию**: новые модели (DR-mode, УЗ B/C) НЕ начинаем; даём версии пожить,
 тестируем старые JSON / Quick Start / UI. DR-mode — позже, отдельным дизайном с golden impact.
+
+## Release 2.22.19 — Audit Пакет 1: очевидные баги без доменных коэффициентов (2026-06-18)
+
+PATCH — 6 воспроизводимых багов из полного аудита 63 ЭК, БЕЗ доменных развилок (те — Пакеты 2-5,
+отложены). TDD: RED **10/43** до фикса → GREEN. Формулы менялись только там, где старое поведение
+было сломано; **golden по дефолтам не дрейфит** (`sanity:check` зелёный).
+
+- **Item 1 — ai-low-latency-inference-reserve**: вопрос `ai_inference_latency_ms` хранит СТРОКОВЫЕ option-values («<500ms»/«<2s»/«<10s»/«batch»), формула сравнивала как число `<=1500` → резерв НИКОГДА не срабатывал (NaN). Fix: `== "<500ms"` (единственный режим ≤1500мс по существующему порогу) + текст/formulaHelp «<500мс only». Default «<2s» → 0 (no drift); сумма растёт только при явном «<500ms».
+- **Item 2 — cpu-vcpu-gpu**: GPU-vCPU считались при `ai_hosting_mode=on_prem_gpu` даже когда `ai_llm_used=false`. Fix: гейт `Q.ai_llm_used && …`. Default `external_api` → GPU и так 0 (no drift); падает до 0 только для битого комбо (AI off + on_prem_gpu).
+- **Item 3 — AI-agent ЭК legacy-refresh**: `ai-agent-sandbox-vcpu`/`ai-agent-memory-storage-tb` были в `_AGENT_ITEM_IDS`, но не в `_AGENT_FORMULA_REFRESH_IDS` → legacy со старой формулой «0» не обновлялись. Fix: добавлены в refresh-list. Legacy с `ai_agent_mode=on` при открытии считаются корректно; fresh — без изменений.
+- **Item 4 — SIEM health split**: OR-нудж `security-siem-flat-estimate` гас при любом из двух драйверов, хотя второй ЭК оставался flat. Разделён на `security-siem-monitoring-flat` (siem_log_gb_per_day) и `security-siem-integration-flat` (siem_sources_count). Health-only, сумм не меняет.
+- **Item 5 — DLP health split**: аналогично — `security-dlp-license-flat` (dlp_protected_users_count) и `security-dlp-implementation-flat` (dlp_channels_count). Health-only.
+- **Item 6 — DDoS unknown tier**: `checkDdosBasicTierForCritical` гасил нудж при `tier !== 'basic_l3_l4'`, т.е. неизвестный/битый `ddos_tier` (corrupt import) тоже гасил. Fix: гасим только при явных `l7`/`premium`; unknown трактуем как basic (формула так и делает) → нудж для критичного профиля не теряется. Health-only.
+
+`2.22.18 → 2.22.19` (**PATCH**). **Метрики (мой прогон):** unit **5912/5912 PASS** (+16), e2e **60 passed**,
+sanity/quantity/prices/syntax/diff — все **EXIT 0**. `QUANTITY_LOGIC_AUDIT.md` регенерирован (текст формул item 1/2);
+health-реестр +2 функции (SIEM/DLP split). Новый регресс-файл `tests/unit/domain/audit-package-1.test.js`.
+
+**Сдвиги сумм** (осознанные коррекции сломанного, НЕ дефолты): (1) `<500ms` → +low-latency reserve;
+(2) AI-off + on_prem_gpu → −GPU; (3) legacy AI-agent с формулой «0» → корректный пересчёт при открытии.
+
+**Пакеты 2-5 (доменные развилки) НЕ трогались** — ждут отдельного решения: Managed RAG double-count,
+on-prem RAG cross-view explainability, storage floors, OS-license gate, DR additive semantics,
+blue-green / one-deployment / staff-training / DB-license scaling.

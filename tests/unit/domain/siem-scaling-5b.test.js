@@ -76,7 +76,7 @@ describe('5B SIEM scaling: siem_tier влияет только при log_gb>0',
     });
 });
 
-describe('5B SIEM scaling: health-check flat-оценки', () => {
+describe('5B SIEM scaling: health-check flat-оценки (split monitoring/integration, Audit Пакет 1)', () => {
     function makeCalc(answers) {
         return {
             id: 't', name: 't', schemaVersion: 12, answers: { ...answers },
@@ -84,22 +84,35 @@ describe('5B SIEM scaling: health-check flat-оценки', () => {
             dictionaries: { questions: [], items: [], settings: {} }, view: {}
         };
     }
-    const find = (calc) => evaluateCalculationHealth(calc).findings.find(f => f.id === 'security-siem-flat-estimate');
+    const mon = (calc) => evaluateCalculationHealth(calc).findings.find(f => f.id === 'security-siem-monitoring-flat');
+    const integ = (calc) => evaluateCalculationHealth(calc).findings.find(f => f.id === 'security-siem-integration-flat');
 
-    it('siem on + оба драйвера 0 → info', () => {
-        const f = find(makeCalc({ siem_integration_required: true, siem_log_gb_per_day: 0, siem_sources_count: 0 }));
-        assert.ok(f, 'finding должен существовать');
-        assert.equal(f.severity, 'info');
-        assert.equal(f.category, 'security');
+    it('siem on + оба драйвера 0 → ОБА нуджа (monitoring + integration), severity info', () => {
+        const c = makeCalc({ siem_integration_required: true, siem_log_gb_per_day: 0, siem_sources_count: 0 });
+        const m = mon(c), i = integ(c);
+        assert.ok(m && i, 'оба finding должны существовать');
+        assert.equal(m.severity, 'info'); assert.equal(m.category, 'security');
+        assert.equal(i.severity, 'info'); assert.equal(i.category, 'security');
     });
-    it('siem on + log>0 → нет finding', () => {
-        assert.equal(find(makeCalc({ siem_integration_required: true, siem_log_gb_per_day: 10, siem_sources_count: 0 })), undefined);
+    it('siem on + только log>0 → monitoring молчит, integration ВСЁ ЕЩЁ нудж (sources=0)', () => {
+        const c = makeCalc({ siem_integration_required: true, siem_log_gb_per_day: 10, siem_sources_count: 0 });
+        assert.equal(mon(c), undefined);
+        assert.ok(integ(c));
     });
-    it('siem on + sources>0 → нет finding', () => {
-        assert.equal(find(makeCalc({ siem_integration_required: true, siem_log_gb_per_day: 0, siem_sources_count: 5 })), undefined);
+    it('siem on + только sources>0 → integration молчит, monitoring ВСЁ ЕЩЁ нудж (log=0)', () => {
+        const c = makeCalc({ siem_integration_required: true, siem_log_gb_per_day: 0, siem_sources_count: 5 });
+        assert.equal(integ(c), undefined);
+        assert.ok(mon(c));
     });
-    it('siem off → нет finding', () => {
-        assert.equal(find(makeCalc({ siem_integration_required: false, siem_log_gb_per_day: 0, siem_sources_count: 0 })), undefined);
+    it('siem on + оба заданы → нет нуджей', () => {
+        const c = makeCalc({ siem_integration_required: true, siem_log_gb_per_day: 10, siem_sources_count: 5 });
+        assert.equal(mon(c), undefined);
+        assert.equal(integ(c), undefined);
+    });
+    it('siem off → нет нуджей', () => {
+        const c = makeCalc({ siem_integration_required: false, siem_log_gb_per_day: 0, siem_sources_count: 0 });
+        assert.equal(mon(c), undefined);
+        assert.equal(integ(c), undefined);
     });
 });
 

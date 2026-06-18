@@ -864,33 +864,56 @@ function checkAuditLoggingRoughEstimate(calc) {
 }
 
 /*
- * SIEM scaling (5B-Sec): SIEM включён, но драйверы объёма не заданы → стоимость
- * оценена как один базовый контур + один проект (flat fallback). Нудж к точной модели.
+ * SIEM scaling (5B-Sec, split в Audit Пакет 1): два независимых драйвера масштабируют
+ * РАЗНЫЕ ЭК — siem_log_gb_per_day → security-siem-monitoring, siem_sources_count →
+ * one-siem-integration. Нудж по каждому отдельно: если задан только один драйвер,
+ * второй ЭК остаётся на flat fallback и должен сигналить сам (старый объединённый
+ * OR-нудж гас при любом из двух → один ЭК молча занижался).
  */
-function checkSiemFlatEstimate(calc) {
+function checkSiemMonitoringFlat(calc) {
     if (ans(calc, 'siem_integration_required') !== true) return null;
     const logGb = ans(calc, 'siem_log_gb_per_day');
-    const sources = ans(calc, 'siem_sources_count');
     const logNum = isFiniteNum(logGb) ? logGb : 0;
-    const srcNum = isFiniteNum(sources) ? sources : 0;
-    if (logNum > 0 || srcNum > 0) return null; // задан хотя бы один драйвер масштаба
+    if (logNum > 0) return null; // объём логов задан → monitoring масштабируется
 
-    const fieldIds = ['siem_integration_required', 'siem_log_gb_per_day', 'siem_sources_count'];
-    if (isHealthAcknowledged(calc, 'security-siem-flat-estimate', fieldIds)) return null;
+    const fieldIds = ['siem_integration_required', 'siem_log_gb_per_day', 'siem_tier'];
+    if (isHealthAcknowledged(calc, 'security-siem-monitoring-flat', fieldIds)) return null;
 
     return makeFinding({
-        id: 'security-siem-flat-estimate',
+        id: 'security-siem-monitoring-flat',
         severity: 'info',
         category: 'security',
-        title: 'SIEM оценён как один базовый контур',
+        title: 'SIEM-мониторинг оценён как один базовый контур',
         message:
-            'Интеграция с SIEM включена, но объём логов и число источников не заданы — ' +
-            'стоимость оценена как один базовый контур мониторинга и один интеграционный проект. ' +
-            'Для точности задайте объём логов (ГБ/день) или число источников.',
+            'Интеграция с SIEM включена, но объём логов (ГБ/день) не задан — мониторинг ' +
+            'оценён как один базовый контур. Для точности задайте объём логов.',
         fieldIds,
         suggestedAction:
-            'В блоке «Мониторинг и контроль» Опросника заполните «Объём логов для SIEM» ' +
-            'и/или «Число источников/интеграций для SIEM» (опционально — «Класс SIEM»).'
+            'В блоке «Мониторинг и контроль» Опросника заполните «Объём логов для SIEM (ГБ/день)» ' +
+            '(опционально — «Класс SIEM»).'
+    });
+}
+
+function checkSiemIntegrationFlat(calc) {
+    if (ans(calc, 'siem_integration_required') !== true) return null;
+    const sources = ans(calc, 'siem_sources_count');
+    const srcNum = isFiniteNum(sources) ? sources : 0;
+    if (srcNum > 0) return null; // число источников задано → integration масштабируется
+
+    const fieldIds = ['siem_integration_required', 'siem_sources_count'];
+    if (isHealthAcknowledged(calc, 'security-siem-integration-flat', fieldIds)) return null;
+
+    return makeFinding({
+        id: 'security-siem-integration-flat',
+        severity: 'info',
+        category: 'security',
+        title: 'SIEM-интеграция оценена как один проект',
+        message:
+            'Интеграция с SIEM включена, но число источников/интеграций не задано — ' +
+            'интеграция оценена как один базовый проект. Для точности задайте число источников.',
+        fieldIds,
+        suggestedAction:
+            'В блоке «Мониторинг и контроль» Опросника заполните «Число источников/интеграций для SIEM».'
     });
 }
 
@@ -902,7 +925,10 @@ function checkSiemFlatEstimate(calc) {
 function checkDdosBasicTierForCritical(calc) {
     if (ans(calc, 'ddos_protection_required') !== true) return null;
     const tier = ans(calc, 'ddos_tier');
-    if (tier && tier !== 'basic_l3_l4') return null; // явно выбран L7/premium
+    // Подавляем нудж ТОЛЬКО при явно выбранном валидном escalated-тире (L7/premium).
+    // Неизвестный/битый ddos_tier (corrupt import: 'enterprise', мусор) формула трактует
+    // как базовый (×1) — значит и нудж о базовом тире для критичного профиля гасить нельзя.
+    if (tier === 'l7' || tier === 'premium') return null;
 
     const critical = ans(calc, 'fstec_certification_required') === true
         || ans(calc, 'siem_integration_required') === true
@@ -957,34 +983,55 @@ function checkWafSingleDomain(calc) {
 }
 
 /*
- * DLP seats/channels (5B-Sec): DLP включён, но драйверы масштаба (число рабочих мест,
- * число каналов контроля) не заданы → лицензия и внедрение оценены как один контур +
- * один проект (flat fallback). Info-нудж к точной модели.
+ * DLP seats/channels (5B-Sec, split в Audit Пакет 1): два независимых драйвера
+ * масштабируют РАЗНЫЕ ЭК — dlp_protected_users_count → security-dlp-license,
+ * dlp_channels_count → security-dlp-implementation. Нудж по каждому отдельно: если
+ * задан только один драйвер, второй ЭК остаётся flat и сигналит сам (старый
+ * объединённый OR-нудж гас при любом из двух → один ЭК молча занижался).
  */
-function checkDlpFlatEstimate(calc) {
+function checkDlpLicenseFlat(calc) {
     if (ans(calc, 'dlp_required') !== true) return null;
     const users = ans(calc, 'dlp_protected_users_count');
-    const channels = ans(calc, 'dlp_channels_count');
     const usersNum = isFiniteNum(users) ? users : 0;
-    const chanNum = isFiniteNum(channels) ? channels : 0;
-    if (usersNum > 0 || chanNum > 0) return null; // задан хотя бы один драйвер масштаба
+    if (usersNum > 0) return null; // число рабочих мест задано → лицензия масштабируется
 
-    const fieldIds = ['dlp_required', 'dlp_protected_users_count', 'dlp_channels_count'];
-    if (isHealthAcknowledged(calc, 'security-dlp-flat-estimate', fieldIds)) return null;
+    const fieldIds = ['dlp_required', 'dlp_protected_users_count'];
+    if (isHealthAcknowledged(calc, 'security-dlp-license-flat', fieldIds)) return null;
 
     return makeFinding({
-        id: 'security-dlp-flat-estimate',
+        id: 'security-dlp-license-flat',
         severity: 'info',
         category: 'security',
-        title: 'DLP рассчитан как один контур и один проект',
+        title: 'DLP-лицензия оценена как один контур',
         message:
-            'DLP рассчитан грубо как один лицензионный контур и один проект внедрения. ' +
-            'Для точности укажите число защищаемых рабочих мест и число каналов контроля — ' +
-            'стоимость DLP масштабируется по ним.',
+            'DLP включён, но число защищаемых рабочих мест не задано — лицензия оценена ' +
+            'как один контур. Для точности укажите число рабочих мест (лицензия масштабируется по ним).',
         fieldIds,
         suggestedAction:
-            'В блоке «Мониторинг и контроль» Опросника заполните «Число защищаемых рабочих мест DLP» ' +
-            'и «Число контролируемых каналов DLP».'
+            'В блоке «Мониторинг и контроль» Опросника заполните «Число защищаемых рабочих мест DLP».'
+    });
+}
+
+function checkDlpImplementationFlat(calc) {
+    if (ans(calc, 'dlp_required') !== true) return null;
+    const channels = ans(calc, 'dlp_channels_count');
+    const chanNum = isFiniteNum(channels) ? channels : 0;
+    if (chanNum > 0) return null; // число каналов задано → внедрение масштабируется
+
+    const fieldIds = ['dlp_required', 'dlp_channels_count'];
+    if (isHealthAcknowledged(calc, 'security-dlp-implementation-flat', fieldIds)) return null;
+
+    return makeFinding({
+        id: 'security-dlp-implementation-flat',
+        severity: 'info',
+        category: 'security',
+        title: 'DLP-внедрение оценено как один проект',
+        message:
+            'DLP включён, но число контролируемых каналов не задано — внедрение оценено ' +
+            'как один проект. Для точности укажите число каналов контроля (внедрение масштабируется по ним).',
+        fieldIds,
+        suggestedAction:
+            'В блоке «Мониторинг и контроль» Опросника заполните «Число контролируемых каналов DLP».'
     });
 }
 
@@ -1232,10 +1279,12 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkSeasonalTooManyPeakMonths,
     checkSeasonalSurchargeManual,
     checkAuditLoggingRoughEstimate,
-    checkSiemFlatEstimate,
+    checkSiemMonitoringFlat,
+    checkSiemIntegrationFlat,
     checkDdosBasicTierForCritical,
     checkWafSingleDomain,
-    checkDlpFlatEstimate,
+    checkDlpLicenseFlat,
+    checkDlpImplementationFlat,
     checkStaleBundle,
     checkStubBundle,
     checkBundleNotApplied,
