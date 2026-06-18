@@ -29,7 +29,8 @@ const SEED_SRC = readFileSync(SEED_PATH, 'utf8');
 const DRIVERS_5B_SEC = [
     'audit_events_per_day', 'audit_bytes_per_event', 'audit_retention_years', 'audit_log_compression_ratio',
     'siem_log_gb_per_day', 'siem_sources_count', 'siem_tier',
-    'ddos_tier', 'waf_domains_count'
+    'ddos_tier', 'waf_domains_count',
+    'dlp_protected_users_count', 'dlp_channels_count'
 ];
 const DRIVER_RE = new RegExp('\\bQ\\.(' + DRIVERS_5B_SEC.join('|') + ')\\b');
 
@@ -63,10 +64,11 @@ describe('2.22.16 — _AGENT_FORMULA_REFRESH_IDS покрывает все 5B-Se
         // Минимум 5: audit-log, one-siem-integration, security-siem-monitoring,
         // network-ddos-protection, network-waf. Если detection вернул пусто —
         // инвариант ниже тривиально-зелёный и бесполезен (§6.ter.8).
-        assert.ok(driverItems.length >= 5,
-            `ожидалось ≥5 ЭК со ссылкой на 5B-Sec драйверы, найдено ${driverItems.length}: ${driverItems.join(', ')}`);
+        assert.ok(driverItems.length >= 7,
+            `ожидалось ≥7 ЭК со ссылкой на 5B-Sec драйверы, найдено ${driverItems.length}: ${driverItems.join(', ')}`);
         for (const expected of ['security-audit-log-storage-gb', 'one-siem-integration',
-            'security-siem-monitoring', 'network-ddos-protection', 'network-waf']) {
+            'security-siem-monitoring', 'network-ddos-protection', 'network-waf',
+            'security-dlp-implementation', 'security-dlp-license']) {
             assert.ok(driverItems.includes(expected),
                 `driver-detection должен покрывать ${expected}`);
         }

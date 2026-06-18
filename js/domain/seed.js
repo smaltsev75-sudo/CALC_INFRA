@@ -1814,6 +1814,42 @@ export const SEED_QUESTIONS = [
         assumptionRisk: 'low'
     },
     {
+        id: 'dlp_protected_users_count',
+        section: 'security',
+        subgroup: 'Мониторинг и контроль',
+        order: 321,
+        title: 'Число защищаемых рабочих мест DLP (для точной оценки)',
+        type: 'number',
+        min: 0, max: 1000000, step: 1,
+        defaultValue: 0,
+        dependsOn: ['dlp_required'],
+        description:
+            'Сколько рабочих мест защищает DLP — это число сотрудников/операторов с доступом к чувствительным данным, НЕ вся аудитория продукта. Лицензия DLP масштабируется по числу защищаемых рабочих мест — это главный драйвер её стоимости.\n\n' +
+            'Оставьте 0 — и лицензия оценится как один контур (baseline). Укажите число — и стоимость умножится на число лицензионных контуров (≈500 рабочих мест на контур, инженерная оценка; уточняйте по КП вендора).',
+        impact: 'При значении > 0 число лицензионных контуров = ceil(рабочих мест / 500); каждый контур ≈ 1,5 млн ₽/год. 0 = один контур (как раньше).',
+        allowUnknown: true,
+        defaultIfUnknown: 0,
+        assumptionRisk: 'low'
+    },
+    {
+        id: 'dlp_channels_count',
+        section: 'security',
+        subgroup: 'Мониторинг и контроль',
+        order: 322,
+        title: 'Число контролируемых каналов DLP (для точной оценки)',
+        type: 'number',
+        min: 0, max: 100, step: 1,
+        defaultValue: 0,
+        dependsOn: ['dlp_required'],
+        description:
+            'Сколько каналов утечки контролирует DLP (email, веб, съёмные носители/USB, печать, облачные сервисы, мессенджеры). Трудоёмкость внедрения масштабируется по числу подключаемых каналов — каждый канал требует отдельной интеграции и набора правил.\n\n' +
+            'Оставьте 0 — и внедрение оценится как один проектный блок (baseline). Укажите число — и стоимость умножится на число блоков внедрения (≈3 канала на блок, инженерная оценка).',
+        impact: 'При значении > 0 число блоков внедрения = ceil(каналов / 3); каждый блок ≈ 1 млн ₽ разово. 0 = один блок (как раньше).',
+        allowUnknown: true,
+        defaultIfUnknown: 0,
+        assumptionRisk: 'low'
+    },
+    {
         id: 'audit_logging_required',
         section: 'security',
         subgroup: 'Мониторинг и контроль',
@@ -4110,8 +4146,8 @@ export const SEED_ITEMS = [
             'Источник: модельный ориентир из вопроса «Требуется система предотвращения утечек (DLP)», 2026-05.\n' +
             'Расчёт: 1 000 000 ₽ разово как нижняя граница проекта внедрения.\n' +
             'ВАЖНО: точная сумма зависит от каналов контроля, числа пользователей и выбранного DLP-вендора.',
-        qtyFormulas: { PROD: 'if(Q.dlp_required, 1, 0)' },
-        formulaHelp: 'qty = 1 при Q.dlp_required.'
+        qtyFormulas: { PROD: 'if(Q.dlp_required, max(1, ceil(Q.dlp_channels_count / 3)), 0)' },
+        formulaHelp: 'qty = число блоков внедрения = ceil(Q.dlp_channels_count / 3) при Q.dlp_required (≈3 канала контроля на блок, инженерная оценка); минимум 1 блок; 0 без DLP. Каналы=0 → 1 блок (как раньше).'
     },
     {
         id: 'security-dlp-license',
@@ -4133,8 +4169,8 @@ export const SEED_ITEMS = [
             'Источник: модельный ориентир из вопроса «Требуется система предотвращения утечек (DLP)», 2026-05.\n' +
             'Расчёт: нижняя граница лицензии 1 500 000 ₽/год.\n' +
             'ВАЖНО: для банка/госсектора и большого числа рабочих мест требуется КП — публичная оценка может быть ниже реальности.',
-        qtyFormulas: { PROD: 'if(Q.dlp_required, 1, 0)' },
-        formulaHelp: 'qty = 1 при Q.dlp_required. Тариф annual.'
+        qtyFormulas: { PROD: 'if(Q.dlp_required, max(1, ceil(Q.dlp_protected_users_count / 500)), 0)' },
+        formulaHelp: 'qty = число лицензионных контуров = ceil(Q.dlp_protected_users_count / 500) при Q.dlp_required (≈500 защищаемых рабочих мест на контур, инженерная оценка; уточняйте по КП вендора); минимум 1 контур; 0 без DLP. Мест=0 → 1 контур (как раньше). Тариф annual.'
     },
     {
         id: 'security-audit-log-storage-gb',
@@ -5429,7 +5465,12 @@ const _AGENT_FORMULA_REFRESH_IDS = [
     // на event-драйверы (audit_events_per_day и др.) ещё в v2.22.12, но ЭК выпал из
     // refresh-list — legacy-расчёты не получали новую формулу, ввод в новые поля
     // тихо игнорировался. После рефреша step-4 авто-добавит 4 новых audit_* вопроса.
-    'security-audit-log-storage-gb'
+    'security-audit-log-storage-gb',
+    // 5B-Sec DLP seats/channels (2.22.17): формулы стали масштабируемыми по числу
+    // защищаемых рабочих мест (license) и каналов контроля (implementation) — legacy
+    // должен получить новые qtyFormulas; step-4 авто-добавит оба новых вопроса.
+    'security-dlp-implementation',
+    'security-dlp-license'
 ];
 
 /* P6 (2.22.8): ЭК, у которых в Stage 5A сменилась ЕДИНИЦА qty (DR: «площадка» →

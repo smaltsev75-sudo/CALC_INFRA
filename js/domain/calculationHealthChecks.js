@@ -956,6 +956,38 @@ function checkWafSingleDomain(calc) {
     });
 }
 
+/*
+ * DLP seats/channels (5B-Sec): DLP включён, но драйверы масштаба (число рабочих мест,
+ * число каналов контроля) не заданы → лицензия и внедрение оценены как один контур +
+ * один проект (flat fallback). Info-нудж к точной модели.
+ */
+function checkDlpFlatEstimate(calc) {
+    if (ans(calc, 'dlp_required') !== true) return null;
+    const users = ans(calc, 'dlp_protected_users_count');
+    const channels = ans(calc, 'dlp_channels_count');
+    const usersNum = isFiniteNum(users) ? users : 0;
+    const chanNum = isFiniteNum(channels) ? channels : 0;
+    if (usersNum > 0 || chanNum > 0) return null; // задан хотя бы один драйвер масштаба
+
+    const fieldIds = ['dlp_required', 'dlp_protected_users_count', 'dlp_channels_count'];
+    if (isHealthAcknowledged(calc, 'security-dlp-flat-estimate', fieldIds)) return null;
+
+    return makeFinding({
+        id: 'security-dlp-flat-estimate',
+        severity: 'info',
+        category: 'security',
+        title: 'DLP рассчитан как один контур и один проект',
+        message:
+            'DLP рассчитан грубо как один лицензионный контур и один проект внедрения. ' +
+            'Для точности укажите число защищаемых рабочих мест и число каналов контроля — ' +
+            'стоимость DLP масштабируется по ним.',
+        fieldIds,
+        suggestedAction:
+            'В блоке «Мониторинг и контроль» Опросника заполните «Число защищаемых рабочих мест DLP» ' +
+            'и «Число контролируемых каналов DLP».'
+    });
+}
+
 /* --- Группа: Прайсы --- */
 
 function checkStaleBundle(calc, options) {
@@ -1203,6 +1235,7 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkSiemFlatEstimate,
     checkDdosBasicTierForCritical,
     checkWafSingleDomain,
+    checkDlpFlatEstimate,
     checkStaleBundle,
     checkStubBundle,
     checkBundleNotApplied,

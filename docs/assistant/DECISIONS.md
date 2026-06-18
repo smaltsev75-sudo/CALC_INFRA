@@ -12316,3 +12316,43 @@ WIZARD_PROFILES «26 вопросов AI»→37, имя теста «=123»→12
 дефолтном расчёте (info, score не падает, отдельная вкладка «не требуют действий»).
 
 **Stage 5B-Sec следующее**: DLP seats/channels (последний кандидат) — ANALYSIS ONLY по согласованию. DR-mode и УЗ B/C — не трогаем.
+
+## Release 2.22.17 — DLP seats/channels scaling (Stage 5B-Sec, финальный срез) (2026-06-18)
+
+PATCH (минимальная no-drift модель). Последний flat security-ЭК серии 5B-Sec. Делает обе DLP-ЭК
+масштабируемыми, **без golden-дрейфа**. Решение по модели и коэффициентам — пользователя (после
+adversarial-аудита через Workflow: 3 оси, факты подтверждены моим node-repro).
+
+**Было**: оба DLP-ЭК flat `qty = if(Q.dlp_required, 1, 0)`, только ПРОМ. Воспроизведено: при росте
+пользователей 1 000 → 10 000 000 и db_count 1 → 50 сумма **465 209 ₽/мес идентична** (внедрение
+201 883 + лицензия 263 326). Драйверы (рабочие места, каналы, класс) не учитывались.
+
+**Стало** (2 новых вопроса, оба number, default **0**, dependsOn `dlp_required`):
+- `dlp_protected_users_count` → `security-dlp-license` qty = `if(Q.dlp_required, max(1, ceil(Q.dlp_protected_users_count / 500)), 0)` (≈500 рабочих мест на лицензионный контур).
+- `dlp_channels_count` → `security-dlp-implementation` qty = `if(Q.dlp_required, max(1, ceil(Q.dlp_channels_count / 3)), 0)` (≈3 канала контроля на блок внедрения).
+- `unit`/`pricePerUnit`/`billingInterval` НЕ менялись (qty-множитель поверх «контур»/«проект» — избегаем DR-класса money-бага «смена unit ломает pricePerUnit»). default 0 → `max(1, ceil(0/N))=1` → текущая сумма.
+
+**Коэффициенты** (от пользователя, инженерная оценка): N_SEATS=500, M_CHANNELS=3. Драйверы НЕ выводятся
+из `users_total`/PCU — DLP защищает рабочие места/каналы, а не аудиторию продукта.
+
+**Обязательное (урок v2.22.16)**: оба ЭК добавлены в `_AGENT_FORMULA_REFRESH_IDS`; арх-инвариант
+[formula-refresh-list-covers-5b-drivers.test.js](../../tests/unit/architecture/formula-refresh-list-covers-5b-drivers.test.js)
+расширен драйверами `dlp_protected_users_count`/`dlp_channels_count` (порог ≥7, whitelist +2 DLP-ЭК) —
+ловит выпадение DLP из refresh-list.
+
+**Health-check** `security-dlp-flat-estimate` (info): `dlp on + оба драйвера 0` → «DLP рассчитан грубо как
+один контур и один проект; укажите число рабочих мест и каналов». Исчезает при заданном users или channels.
+
+TDD: [dlp-seats-channels-2-22-17.test.js](../../tests/unit/domain/dlp-seats-channels-2-22-17.test.js) (14 проверок:
+qty масштаб 1200→3 / 7→3 / fallback 1/1 / off→0, legacy-enrichment рефреш обеих формул + до-внос 2 вопросов,
+unit/price неизменны, health-info, arch-guard).
+
+`2.22.16 → 2.22.17` (**PATCH**). **Golden без дрейфа** (`sanity:check` зелёный). Рябь: `SEED_QUESTIONS`
+124→**126**, `UI_TOOLTIPS_SHORT` security 19→21, `QUANTITY_LOGIC_AUDIT.md` ссылки Q.*/S.* регенерированы,
+`WIZARD_PROFILES.md` 124→126 + §7.2, UserManual «90→126 вопросов», jsdoc wizardProfiles 87→126.
+**Метрики (мой прогон):** unit **5896/5896 PASS** (+14), e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**.
+
+**Full-модель отложено в backlog**: `dlp_tier`-множители (по образцу DDoS 1/4/16) — только при подтверждении
+реальных tier-коэффициентов. Quick Start blind-spot (DLP только для FinTech, не B2G) — отдельным микро-срезом
+по решению пользователя. На этом Stage 5B-Sec по security-масштабированию закрыт (все security/network-ЭК
+масштабируемы); DR-mode и УЗ B/C — не трогаем.

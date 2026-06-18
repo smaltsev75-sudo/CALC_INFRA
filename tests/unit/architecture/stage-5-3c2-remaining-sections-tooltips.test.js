@@ -41,7 +41,9 @@ const SECTIONS = {
         // 5B-Sec DDoS tier-select: класс защиты от DDoS.
         'ddos_tier',
         // 5B-Sec WAF domains scaling: число защищаемых доменов.
-        'waf_domains_count'
+        'waf_domains_count',
+        // 5B-Sec DLP seats/channels: число рабочих мест и каналов контроля DLP.
+        'dlp_protected_users_count', 'dlp_channels_count'
     ],
     integrations: [
         'email_per_month', 'sms_per_month', 'push_per_month', 'payment_gateway',

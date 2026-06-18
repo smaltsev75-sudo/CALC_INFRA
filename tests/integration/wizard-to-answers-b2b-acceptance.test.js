@@ -39,7 +39,8 @@ describe('wizardToAnswers: acceptance B2B-standard', () => {
         // (siem_log_gb_per_day, siem_sources_count, siem_tier).
         // Stage 5B-Sec (DDoS tier-select): +1 параметр класса защиты (ddos_tier).
         // Stage 5B-Sec (WAF domains scaling): +1 параметр числа доменов (waf_domains_count).
-        assert.equal(SEED_QUESTIONS.length, 124,
+        // Stage 5B-Sec (DLP seats/channels): +2 параметра (dlp_protected_users_count, dlp_channels_count).
+        assert.equal(SEED_QUESTIONS.length, 126,
             'Если количество SEED_QUESTIONS изменилось — обновите WIZARD_PROFILES.md §7.2');
     });
 
