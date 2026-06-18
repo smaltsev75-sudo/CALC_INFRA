@@ -928,7 +928,7 @@ CSS-refactor'ам критичные элементы получают `data-tes
 
 **Правило обновления**: при крупных изменениях в проекте обязательно дописывать секцию в `DECISIONS.md` (внутри проекта) и обновлять статус в `CLAUDE.md`. Журнал прогресса в `memory/project_progress.md` — для незавершённой работы; после закрытия — переносить итог в `DECISIONS.md`.
 
-**Последний релиз модели qty:** v2.22.24 — Package 4, no-payload storage floors: минимальные объёмы SSD/HDD/S3/audit/RAG применяются только при реальном payload; golden/sanity drift отсутствует.
+**Последний релиз модели qty:** v2.22.24 — Package 4, no-payload storage floors: минимальные объёмы SSD/HDD/S3/audit/RAG применяются только при реальном payload; golden/sanity drift отсутствует. v2.22.25 — CI-only follow-up: убран retry-loop `timeout 240` вокруг Playwright `--with-deps`, который оставлял dpkg-lock на GitHub runner.
 
 ---
 

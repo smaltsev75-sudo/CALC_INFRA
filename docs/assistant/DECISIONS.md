@@ -12588,3 +12588,19 @@ payload; audit event branch не зависит от наличия БД.
 
 `2.22.23 → 2.22.24` (**PATCH**, domain fix + docs, без schema bump). **Метрики (мой прогон):** unit
 **5953/5953 PASS** (+10), desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**.
+
+## Release 2.22.25 — CI-only: Playwright install timeout without dpkg-lock retry loop (2026-06-19)
+
+PATCH **CI-only** поверх 2.22.24. Production-код Package 4 не менялся. Причина: CI для 2.22.24 упал на шаге
+`Install Playwright browser`. Старый guard из 2.22.21 запускал `timeout 240 npx playwright install --with-deps
+chromium` в цикле retry. На GitHub runner первая попытка успела запустить `apt-get`, но была убита по timeout;
+дочерний `apt-get` продолжил держать `/var/lib/dpkg/lock-frontend`, а следующие попытки падали на dpkg-lock.
+
+**Решение:** убрать внутренний `timeout 240` и retry-цикл. Оставить `npx playwright install --with-deps chromium`
+как один шаг с `timeout-minutes: 20` и `DEBIAN_FRONTEND=noninteractive`. То же правило добавлено в `pages.yml`
+для published smoke. Если установка реально зависнет, шаг упадёт за 20 минут, но не оставит retry-цикл, который
+сам ломает dpkg-lock. Добавлен architecture guard в `pages-workflow.test.js`, запрещающий возврат старого паттерна.
+
+`2.22.24 → 2.22.25` (**PATCH**, CI-only). **Метрики (мой прогон):** targeted workflow guard PASS,
+unit/sanity/quantity/prices/syntax/diff — все **EXIT 0**. Desktop smoke production-части уже был зелёным на
+2.22.24; этот патч меняет только GitHub workflow и версию.

@@ -65,17 +65,10 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Install Playwright browser
-        timeout-minutes: 15
+        timeout-minutes: 20
         env:
           DEBIAN_FRONTEND: noninteractive
-        run: |
-          for a in 1 2 3; do
-            timeout 240 npx playwright install --with-deps chromium && exit 0
-            echo "::warning::install attempt $a failed/timed out, retry"
-            sleep 5
-          done
-          echo "::error::install failed after 3 attempts"
-          exit 1
+        run: npx playwright install --with-deps chromium
 
       - name: Desktop smoke
         run: npm run smoke:desktop

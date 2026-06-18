@@ -53,6 +53,9 @@ jobs:
         uses: actions/deploy-pages@v5
 
       - name: Install Chromium for published smoke
+        timeout-minutes: 20
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: npx playwright install --with-deps chromium
 
       - name: Smoke published Pages

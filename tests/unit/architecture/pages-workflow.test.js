@@ -48,6 +48,7 @@ describe('GitHub Pages workflow', () => {
 
     it('runs published smoke after deploy against the actual Pages URL', () => {
         assert.match(workflow, /npx playwright install --with-deps chromium/);
+        assert.match(workflow, /Install Chromium for published smoke[\s\S]+timeout-minutes:\s*20/);
         assert.match(workflow, /PLAYWRIGHT_PUBLISHED_URL:\s*\$\{\{\s*steps\.deployment\.outputs\.page_url\s*\}\}/);
         assert.match(workflow, /PLAYWRIGHT_PUBLISHED_RETRIES:\s*2/);
         assert.match(workflow, /npm run smoke:published/);
@@ -55,5 +56,12 @@ describe('GitHub Pages workflow', () => {
 
     it('CI validates the Pages artifact before whitespace check', () => {
         assert.match(ci, /Pages artifact check[\s\S]+npm run pages:build/);
+    });
+
+    it('CI Playwright install does not kill apt mid-run and retry into dpkg locks', () => {
+        assert.match(ci, /Install Playwright browser[\s\S]+timeout-minutes:\s*20/);
+        assert.match(ci, /npx playwright install --with-deps chromium/);
+        assert.doesNotMatch(ci, /timeout\s+240\s+npx playwright install --with-deps chromium/);
+        assert.doesNotMatch(ci, /for a in 1 2 3/);
     });
 });
