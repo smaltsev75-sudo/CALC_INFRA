@@ -21,7 +21,7 @@ import { wizardToAnswers } from '../../js/domain/wizardProfiles.js';
 import { SEED_QUESTIONS } from '../../js/domain/seed.js';
 
 describe('wizardToAnswers: acceptance B2B-standard', () => {
-    it('SEED_QUESTIONS.length = 123 — общее количество вопросов в детальном опроснике', () => {
+    it('SEED_QUESTIONS.length = 126 — общее количество вопросов в детальном опроснике', () => {
         // ⚠ При изменении этого числа — синхронно обновите WIZARD_PROFILES.md «X полей из N».
         // Stage 1 (qty-модель ПРОМ): +3 RAG-параметра (rag_embeddings_manual,
         // rag_avg_chunk_tokens, rag_refresh_delta_percent).
@@ -44,7 +44,7 @@ describe('wizardToAnswers: acceptance B2B-standard', () => {
             'Если количество SEED_QUESTIONS изменилось — обновите WIZARD_PROFILES.md §7.2');
     });
 
-    it('стандартный B2B-профиль без AI заполняет 59 из 90 (не заполняется 31)', () => {
+    it('стандартный B2B-профиль без AI заполняет 59 из 126 (не заполняется 67)', () => {
         const result = wizardToAnswers({
             product_type: 'b2b',
             industry: 'corporate',
@@ -57,7 +57,7 @@ describe('wizardToAnswers: acceptance B2B-standard', () => {
         const answers = result.answers || result;
         const count = Object.keys(answers).length;
         // ⚠ При изменении этого числа — синхронно обновите WIZARD_PROFILES.md §7.2
-        //   («59 полей из 90» и «НЕ заполняется (31)»).
+        //   («59 полей из 126» и «НЕ заполняется (67)»).
         assert.equal(count, 59,
             `wizardToAnswers(B2B-standard).count = ${count}, ожидалось 59. ` +
             `Если матрица заполнения изменилась — обновите WIZARD_PROFILES.md §7.2.`);

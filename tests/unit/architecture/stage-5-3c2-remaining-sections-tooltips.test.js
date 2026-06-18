@@ -1,7 +1,7 @@
 /**
  * Stage 5.3.C.2 — Tooltip Short/Full spread на 6 оставшихся секций seed.js.
  *
- * 56 полей: data_storage(22) + sla(6) + security(10) + integrations(8) +
+ * 67 полей: data_storage(22) + sla(6) + security(21) + integrations(8) +
  * testing(6) + budget(4). Завершает покрытие всех seed-вопросов через
  * UI_TOOLTIPS_SHORT['q.<id>'].
  *

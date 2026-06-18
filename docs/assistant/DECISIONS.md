@@ -12356,3 +12356,31 @@ unit/price неизменны, health-info, arch-guard).
 реальных tier-коэффициентов. Quick Start blind-spot (DLP только для FinTech, не B2G) — отдельным микро-срезом
 по решению пользователя. На этом Stage 5B-Sec по security-масштабированию закрыт (все security/network-ЭК
 масштабируемы); DR-mode и УЗ B/C — не трогаем.
+
+## Release 2.22.18 — doc-cleanup по Final consistency audit Stage 5B-Sec (2026-06-18)
+
+PATCH **только документация/комментарии** — НЕ менялись формулы, health-логика, calculator, Quick Start,
+golden, модели. Закрывает единственный actionable-результат финального consistency-аудита 5B-Sec (5 осей через
+Workflow; модель / legacy-refresh / health / cross-view / версия — **0 дефектов**, подтверждено моим node-repro +
+sanity/quantity/prices/app-version-sync/arch-invariant).
+
+**Doc-drift исправлен** (6 точек, чистые строки/комментарии, без правки assert-логики):
+- `WIZARD_PROFILES.md`: «26 вопросов AI» → **37** (×3: строки 39/474/613; секция ai_llm=37); якорь `seed.js#L48`→`#L53`; «126 вопроса»→«126 вопросов».
+- `tests/integration/wizard-to-answers-b2b-acceptance.test.js`: имя теста «= 123»→«= 126»; «59 из 90 (не заполняется 31)»→«59 из 126 (не заполняется 67)» (assert count=59 и length=126 верны, НЕ тронуты).
+- `tests/unit/architecture/stage-5-3c2-remaining-sections-tooltips.test.js`: header «56 полей… security(10)»→«67 полей… security(21)» (assert-логика не тронута).
+- `README.md`: «Опросник из 90 вопросов»→**126** (найдено сверх отчёта ревьюеров — §5.bis-проверка родственных доков).
+- `UserManual.md`: уже «126 вопросов» (исправлено в 2.22.17) — правка не требовалась.
+
+**Low observations — deferred (осознанно отложены, вне doc-cleanup):**
+- **(a) SIEM OR-gate**: `checkSiemFlatEstimate` гаснет при заданном только `siem_sources_count`, тогда как `security-siem-monitoring` (гейт по `siem_log_gb_per_day`) остаётся на flat fallback. Соответствует тексту подсказки («объём логов ИЛИ источники»). НЕ трогаем — это изменение поведения health-check, не doc.
+- **(b) corrupt-import `ddos_tier` edge**: при битом импорте (`Infinity` / неизвестный tier) health-гейт и формула-гейт могут разойтись. Через UI недостижимо (number min/max, select фикс-опции). Отложено в отдельный системный import-hardening проход.
+
+**Отбраковано (false-positive аудита):** «UI_TOOLTIPS_SHORT security=21 не подтверждается (насчитано 24)» — «21»
+это вопросы **секции** security (enforced `stage-5-3c2` через cross-check `q.section==='security'`); ревьюер
+посчитал security-семантические ключи across секций (pentest живёт в `testing`). Корректно, не трогаем.
+
+`2.22.17 → 2.22.18` (**PATCH**, doc-only). **Golden не затрагивается** (формулы не менялись; `sanity:check`
+зелёный). **Метрики (мой прогон):** unit **5896/5896 PASS**, e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**.
+
+**После 2.22.18 — пауза на стабилизацию**: новые модели (DR-mode, УЗ B/C) НЕ начинаем; даём версии пожить,
+тестируем старые JSON / Quick Start / UI. DR-mode — позже, отдельным дизайном с golden impact.
