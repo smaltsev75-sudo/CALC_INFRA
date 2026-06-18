@@ -1639,6 +1639,24 @@ export const SEED_QUESTIONS = [
         assumptionRisk: 'medium'
     },
     {
+        id: 'waf_domains_count',
+        section: 'security',
+        subgroup: 'Защита периметра',
+        order: 211,
+        title: 'Число защищаемых доменов WAF (для точной оценки)',
+        type: 'number',
+        min: 0, max: 10000, step: 1,
+        defaultValue: 0,
+        dependsOn: ['waf_required'],
+        description:
+            'Сколько доменов/сайтов защищает WAF. Стоимость управляемого WAF масштабируется в первую очередь по числу доменов — каждый домен это отдельный защищаемый контур с правилами.\n\n' +
+            'Оставьте 0 — и WAF оценится как 1 домен (baseline). Укажите число — и стоимость умножится на число доменов. Запросы и правила уже учтены в baseline; для нетипового тарифа с дорогими запросами используйте ручной прайс / КП.',
+        impact: 'При значении > 0 стоимость WAF = число доменов × baseline (≈18 тыс. ₽/мес/домен, на ПСИ и ПРОМ). 0 = 1 домен (как раньше).',
+        allowUnknown: true,
+        defaultIfUnknown: 0,
+        assumptionRisk: 'low'
+    },
+    {
         id: 'ddos_protection_required',
         section: 'security',
         subgroup: 'Защита периметра',
@@ -3791,18 +3809,18 @@ export const SEED_ITEMS = [
         description:
             'Управляемый межсетевой экран уровня приложения. Фильтрует SQL-инъекции, XSS, бот-трафик.\n' +
             'Применять при Q.waf_required.\n' +
-            'Единица измерения: 1 экземпляр WAF на стенд.\n' +
-            'Пример: Q.waf_required = true → 1 WAF на ПРОМ + 1 на ПСИ.\n' +
+            'Единица измерения: 1 экземпляр WAF на домен на стенд.\n' +
+            'Масштаб: число защищаемых доменов (Q.waf_domains_count) умножает baseline; при 0 — 1 домен. На ПСИ и ПРОМ по qty доменов.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
-            'Источник: cloud.ru/documents/tariffs/advanced/services/web-app-firewall, ADV.47 v260101, на 2026-01-01. Это минимальная рабочая Cloud-mode конфигурация; тариф зависит от числа доменов, правил и запросов.\n' +
-            'Расчёт: 1 домен (29,1336 ₽/час с НДС) + 5 правил (0,1586 ₽/правило·час с НДС) + 1М запросов (70,4184 ₽/мес с НДС) = 17 964,62 ₽/мес без НДС / 21 916,84 ₽/мес с НДС.\n' +
+            'Источник: cloud.ru/documents/tariffs/advanced/services/web-app-firewall, ADV.47 v260101, на 2026-01-01. Это минимальная рабочая Cloud-mode конфигурация (1 домен); тариф зависит от числа доменов, правил и запросов.\n' +
+            'Расчёт baseline на 1 домен: 1 домен (29,1336 ₽/час с НДС) + 5 правил (0,1586 ₽/правило·час с НДС) + 1М запросов (70,4184 ₽/мес с НДС) = 17 964,62 ₽/мес без НДС / 21 916,84 ₽/мес с НДС. Домен — главный драйвер (~97%); запросы/правила в текущем тарифе малы и отдельно не моделируются — для нетипового тарифа используйте КП.\n' +
             'В контракте уточняйте у провайдера.',
         qtyFormulas: {
-            PSI:  'if(Q.waf_required, 1, 0)',
-            PROD: 'if(Q.waf_required, 1, 0)'
+            PSI:  'if(Q.waf_required, max(1, Q.waf_domains_count), 0)',
+            PROD: 'if(Q.waf_required, max(1, Q.waf_domains_count), 0)'
         },
-        formulaHelp: 'qty = 1 при Q.waf_required, иначе 0.'
+        formulaHelp: 'qty = max(1, число доменов WAF) на ПСИ и ПРОМ при Q.waf_required; 0 без WAF. Каждый домен = baseline 17 964.62 ₽/мес (1 домен + 5 правил + 1М запросов). Нетиповой тариф — КП.'
     },
     {
         id: 'network-ddos-protection',
@@ -5403,7 +5421,10 @@ const _AGENT_FORMULA_REFRESH_IDS = [
     'security-siem-monitoring',
     // 5B-Sec DDoS tier-select: формула стала тир-масштабируемой (ddos_tier) — legacy
     // должен получить новую qtyFormula (был только в item-mix, не в formula-refresh).
-    'network-ddos-protection'
+    'network-ddos-protection',
+    // 5B-Sec WAF domains scaling: формула стала масштабируемой по числу доменов
+    // (waf_domains_count) — legacy должен получить новую qtyFormula.
+    'network-waf'
 ];
 
 /* P6 (2.22.8): ЭК, у которых в Stage 5A сменилась ЕДИНИЦА qty (DR: «площадка» →

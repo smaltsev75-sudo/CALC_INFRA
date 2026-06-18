@@ -39,7 +39,9 @@ const SECTIONS = {
         // 5B-Sec SIEM scaling: драйверы масштаба SIEM-мониторинга/интеграции.
         'siem_log_gb_per_day', 'siem_sources_count', 'siem_tier',
         // 5B-Sec DDoS tier-select: класс защиты от DDoS.
-        'ddos_tier'
+        'ddos_tier',
+        // 5B-Sec WAF domains scaling: число защищаемых доменов.
+        'waf_domains_count'
     ],
     integrations: [
         'email_per_month', 'sms_per_month', 'push_per_month', 'payment_gateway',

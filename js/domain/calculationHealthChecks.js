@@ -929,6 +929,33 @@ function checkDdosBasicTierForCritical(calc) {
     });
 }
 
+/*
+ * WAF domains scaling (5B-Sec): WAF включён, но число доменов не задано → оценка
+ * по одному домену (baseline). Info-нудж указать число доменов для multi-domain.
+ */
+function checkWafSingleDomain(calc) {
+    if (ans(calc, 'waf_required') !== true) return null;
+    const domains = ans(calc, 'waf_domains_count');
+    const n = isFiniteNum(domains) ? domains : 0;
+    if (n > 0) return null; // число доменов задано
+
+    const fieldIds = ['waf_required', 'waf_domains_count'];
+    if (isHealthAcknowledged(calc, 'security-waf-single-domain', fieldIds)) return null;
+
+    return makeFinding({
+        id: 'security-waf-single-domain',
+        severity: 'info',
+        category: 'security',
+        title: 'WAF рассчитан на один домен',
+        message:
+            'WAF рассчитан как защита одного домена (baseline). Если доменов несколько, ' +
+            'укажите их число — стоимость WAF масштабируется по числу защищаемых доменов.',
+        fieldIds,
+        suggestedAction:
+            'В блоке «Защита периметра» Опросника заполните «Число защищаемых доменов WAF».'
+    });
+}
+
 /* --- Группа: Прайсы --- */
 
 function checkStaleBundle(calc, options) {
@@ -1175,6 +1202,7 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkAuditLoggingRoughEstimate,
     checkSiemFlatEstimate,
     checkDdosBasicTierForCritical,
+    checkWafSingleDomain,
     checkStaleBundle,
     checkStubBundle,
     checkBundleNotApplied,

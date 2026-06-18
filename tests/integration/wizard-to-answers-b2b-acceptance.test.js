@@ -38,7 +38,8 @@ describe('wizardToAnswers: acceptance B2B-standard', () => {
         // Stage 5B-Sec (SIEM scaling): +3 параметра масштаба SIEM
         // (siem_log_gb_per_day, siem_sources_count, siem_tier).
         // Stage 5B-Sec (DDoS tier-select): +1 параметр класса защиты (ddos_tier).
-        assert.equal(SEED_QUESTIONS.length, 123,
+        // Stage 5B-Sec (WAF domains scaling): +1 параметр числа доменов (waf_domains_count).
+        assert.equal(SEED_QUESTIONS.length, 124,
             'Если количество SEED_QUESTIONS изменилось — обновите WIZARD_PROFILES.md §7.2');
     });
 

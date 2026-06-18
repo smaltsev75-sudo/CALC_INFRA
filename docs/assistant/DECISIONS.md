@@ -12239,3 +12239,41 @@ unit **5866/5866 PASS** (+15), e2e **60 passed**, sanity/quantity/prices/syntax/
 
 **Stage 5B-Sec следующее** (по выбору): WAF домены/запросы → DLP seats/channels. DR-mode и УЗ B/C —
 не трогаем.
+
+## Release 2.22.15 — WAF domains scaling (Stage 5B-Sec) (2026-06-18)
+
+PATCH (Вариант A — qty по доменам на существующем ЭК, без новых ЭК и без смены цены). Пятый срез
+5B-Sec. Делает `network-waf` масштабируемым по числу защищаемых доменов, **без golden-дрейфа**.
+
+**Было**: `network-waf` flat `qty=if(waf_required,1,0)` на ПСИ+ПРОМ (2 экземпляра), 17 964.62 ₽/мес.
+Воспроизведено: **75 689 ₽/мес идентично** на малом/среднем/крупном профиле. Цена-baseline по описанию =
+1 домен + 5 правил + 1М запросов, где **домен ~97% суммы**. Multi-domain (маркетплейс с десятками
+витрин) платил как за 1 домен.
+
+**Находка по «запросам»**: тариф-baseline = 1М запросов/мес, но продукты имеют 130М-130млрд (по пику);
+ОДНАКО request-компонент в текущем тарифе ~0.3% (≈58 ₽ net за 1М) против ~17.4к за домен. Поэтому
+масштабируем по **доменам** (главный драйвер), запросы/правила в первом срезе отдельно НЕ моделируем
+(на текущем тарифе ничтожны). Это скорректировало исходную формулировку «домены и запросы».
+
+**Стало** (1 новый вопрос `waf_domains_count`, number, default **0**, dependsOn waf_required):
+
+- `network-waf` qty (ПСИ и ПРОМ): `if(waf_required, max(1, waf_domains_count), 0)`. Каждый домен =
+  baseline 17 964.62 ₽/мес. default 0 → `max(1,0)`=1 → **текущая сумма, без дрейфа**.
+- `unit`/`pricePerUnit` НЕ менялись.
+
+**Обязательная правка**: `network-waf` добавлен в `_AGENT_FORMULA_REFRESH_IDS` ([seed.js](../../js/domain/seed.js)) —
+был только в legacy item-mix, не в formula-refresh.
+
+**Health-check** `security-waf-single-domain` (info): `waf on + waf_domains_count=0` → «WAF рассчитан как
+один домен (baseline); если доменов несколько, укажите их число». (info, не warning — по решению пользователя.)
+
+TDD: [waf-domains-5b.test.js](../../tests/unit/domain/waf-domains-5b.test.js) (10 проверок: fallback
+ПСИ/ПРОМ=1 / domains=N / waf off→0 / legacy-enrichment рефреш / health-info / arch-guard unit+price+formulaHelp).
+
+`2.22.14 → 2.22.15` (**PATCH**): qty WAF по доменам. **Golden без дрейфа** (default 0 → qty 1 на ПСИ+ПРОМ,
+`sanity:check` зелёный). Числа меняются только при `domains>1` (opt-in). Рябь: `SEED_QUESTIONS` 123→**124**,
+`UI_TOOLTIPS_SHORT` security 18→19, `WIZARD_PROFILES.md` счётчики 123→124 + §7.2. Метрики: unit
+**5876/5876 PASS** (+10), e2e **60 passed** (re-run; первый прогон флакнул известный layout-тест
+details-stand-header-alignment), sanity/quantity/prices/syntax/diff — все EXIT 0.
+
+**Stage 5B-Sec следующее** (по выбору): DLP seats/channels — последний кандидат. DR-mode и УЗ B/C — не трогаем.
