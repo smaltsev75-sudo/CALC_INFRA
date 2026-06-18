@@ -12555,3 +12555,36 @@ sanity/quantity реген.
 `2.22.22 → 2.22.23` (**PATCH**, доменная развилка + UI-фикс, schema 20→21). **Метрики (мой прогон):** unit
 **5943/5943 PASS** (+19), desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**.
 Пакеты 4-5 (storage floors и др.) — не трогаются.
+
+## Release 2.22.24 — Package 4: no-payload storage floors (2026-06-19)
+
+PATCH, исправление фантомных минимальных объёмов хранения. Golden/sanity drift отсутствует: все текущие
+golden-сценарии имеют реальный payload БД/файлов/корпуса базы знаний, поэтому их суммы не меняются.
+
+**Проблема:** floor-формулы вида `max(минимум, 0)` покупали минимальный объём даже при пустом payload:
+- SSD/HDD/S3 могли добавлять около 18 тыс. ₽/мес при нулевых БД и файлах;
+- `security-audit-log-storage-gb` давал минимум audit-log storage при `audit_logging_required=true`, но без БД
+  и без событий аудита;
+- `rag-vector-db-gb` / `rag-managed-knowledge-base-gb` покупали 1 ГБ на DEV/IFT при включённом RAG, но
+  нулевом корпусе.
+
+**Решение:** минимальные закупочные объёмы применяются только при наличии соответствующего payload:
+- SSD: БД или горячий файловый слой;
+- HDD: бэкапы БД или холодный файловый слой;
+- S3: файловый payload;
+- audit fallback: БД payload; event-ветка с событиями аудита сохраняет минимум 1 ГБ;
+- vector DB / Managed RAG: ненулевое число эмбеддингов. Пустой корпус базы знаний = 0 ГБ.
+
+Поведение при реальном payload сохранено: маленькая БД всё ещё получает SSD floor, бэкап БД — HDD floor,
+маленькие файлы — S3 floor, маленький корпус базы знаний — DEV/IFT floor 1 ГБ.
+
+**Документация:** UserManual уточняет правило «нет payload → нет закупочного минимума» и исправляет
+формулировку про HDD Нагрузочного стенда: при больших объёмах коэффициент НТ применяется к той же базе, но на
+очень малых объёмах итог может упираться в разные минимумы стендов.
+
+**Тесты:** новый [storage-no-payload-floors-4.test.js](../../tests/unit/domain/storage-no-payload-floors-4.test.js)
+закрепляет 10 кейсов: нулевой storage/audit/RAG payload = 0; сохранение SSD/HDD/S3/audit/RAG floor при реальном
+payload; audit event branch не зависит от наличия БД.
+
+`2.22.23 → 2.22.24` (**PATCH**, domain fix + docs, без schema bump). **Метрики (мой прогон):** unit
+**5953/5953 PASS** (+10), desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**.

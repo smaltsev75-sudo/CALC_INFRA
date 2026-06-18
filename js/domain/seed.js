@@ -3576,6 +3576,28 @@ const CPU_BASE_VCPU = 'max(max(if(Q.cpu_advanced_model, Q.peak_rps * Q.cpu_ms_pe
  * realtime-соединения. agent memory сюда НЕ входит (отдельный storage-ЭК — условие 8). */
 const RAM_EXTRA_GB = '(if(Q.ram_advanced_model, Q.microservices_count * Q.ram_app_baseline_gb_per_service + if(Q.realtime_required, Q.pcu_target * Q.ram_per_realtime_connection_kb / 1000000, 0), 0))';
 
+/* Package 4: storage floors apply only when there is real payload.
+ * Without these guards max(floor, 0) bought SSD/HDD/S3/audit/RAG minimums for
+ * empty legacy/import calculations with no DB, files, backups, audit events or
+ * RAG corpus. */
+const STORAGE_DB_EFFECTIVE_GB = '(if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000))';
+const STORAGE_DB_PAYLOAD = `(Q.db_count > 0 && ${STORAGE_DB_EFFECTIVE_GB} > 0)`;
+const STORAGE_FILE_TOTAL_TB = '(Q.file_storage_volume_tb + Q.file_storage_growth_tb_year)';
+const STORAGE_FILE_PAYLOAD = `(${STORAGE_FILE_TOTAL_TB} > 0)`;
+const STORAGE_HOT_FILE_SSD_PAYLOAD = `(${STORAGE_FILE_PAYLOAD} && Q.hot_data_share_percent > 0 && Q.hot_file_ssd_share_percent > 0)`;
+const STORAGE_COLD_FILE_HDD_PAYLOAD = `(Q.file_storage_volume_tb > 0 && max(0, 100 - Q.hot_data_share_percent) > 0 && Q.cold_file_hdd_share_percent > 0)`;
+const STORAGE_SSD_PAYLOAD = `(${STORAGE_DB_PAYLOAD} || ${STORAGE_HOT_FILE_SSD_PAYLOAD})`;
+const STORAGE_BACKUP_PAYLOAD = `(${STORAGE_DB_PAYLOAD} && Q.backup_retention_days > 0)`;
+const STORAGE_HDD_PAYLOAD = `(${STORAGE_BACKUP_PAYLOAD} || ${STORAGE_COLD_FILE_HDD_PAYLOAD})`;
+const STORAGE_DB_SSD_NO_REPL_TB = `(${STORAGE_DB_EFFECTIVE_GB} * Q.db_index_ratio * (1 + Q.db_wal_overhead_percent / 100) * Q.db_count / 1024)`;
+const STORAGE_DB_SSD_REPL_TB = `(${STORAGE_DB_EFFECTIVE_GB} * Q.db_index_ratio * (1 + Q.db_wal_overhead_percent / 100) * Q.db_count * (1 + Q.db_replicas_count) / 1024)`;
+const STORAGE_HOT_FILE_SSD_TB = `(${STORAGE_FILE_TOTAL_TB} * Q.hot_data_share_percent / 100 * Q.hot_file_ssd_share_percent / 100)`;
+const STORAGE_DB_BACKUP_TB = `(${STORAGE_DB_EFFECTIVE_GB} * Q.db_count * Q.backup_retention_days / 30 / max(1, Q.backup_compression_ratio) / 1024)`;
+const STORAGE_COLD_FILE_HDD_TB = `(Q.file_storage_volume_tb * max(0, 100 - Q.hot_data_share_percent) / 100 * Q.cold_file_hdd_share_percent / 100)`;
+const STORAGE_OBJECT_TB = `(${STORAGE_FILE_TOTAL_TB} * (1 + if(Q.s3_versioning_enabled, Q.s3_versioning_overhead_percent, 0) / 100))`;
+const RAG_EMBEDDINGS_MILLION = '(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000))';
+const RAG_EMBEDDINGS_PAYLOAD = `(${RAG_EMBEDDINGS_MILLION} > 0)`;
+
 export const SEED_ITEMS = [
     /* ===== CPU / RAM / STORAGE / NETWORK ===== */
     {
@@ -3731,13 +3753,13 @@ export const SEED_ITEMS = [
         // Горячий файловый слой на SSD = доля горячих файлов × доля горячих файлов на SSD.
         // 13.U13: cache учтён в ram-gb (не в SSD) — без двойного учёта.
         qtyFormulas: {
-            DEV:  'max(0.1, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_index_ratio * (1 + Q.db_wal_overhead_percent / 100) * Q.db_count / 1024) * S.standSizeRatio.DEV + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * Q.hot_file_ssd_share_percent / 100 * S.standSizeRatio.DEV)',
-            IFT:  'max(0.1, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_index_ratio * (1 + Q.db_wal_overhead_percent / 100) * Q.db_count / 1024) * S.standSizeRatio.IFT + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * Q.hot_file_ssd_share_percent / 100 * S.standSizeRatio.IFT)',
-            PSI:  'max(0.2, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_index_ratio * (1 + Q.db_wal_overhead_percent / 100) * Q.db_count * (1 + Q.db_replicas_count) / 1024) * S.standSizeRatio.PSI + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * Q.hot_file_ssd_share_percent / 100 * S.standSizeRatio.PSI)',
-            PROD: 'max(0.5, if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_index_ratio * (1 + Q.db_wal_overhead_percent / 100) * Q.db_count * (1 + Q.db_replicas_count) / 1024 + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * Q.hot_file_ssd_share_percent / 100)',
-            LOAD: 'max(0.2, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_index_ratio * (1 + Q.db_wal_overhead_percent / 100) * Q.db_count * (1 + Q.db_replicas_count) / 1024) * S.standSizeRatio.LOAD + (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * Q.hot_data_share_percent / 100 * Q.hot_file_ssd_share_percent / 100 * S.standSizeRatio.LOAD)'
+            DEV:  `if(${STORAGE_SSD_PAYLOAD}, max(0.1, (${STORAGE_DB_SSD_NO_REPL_TB} + ${STORAGE_HOT_FILE_SSD_TB}) * S.standSizeRatio.DEV), 0)`,
+            IFT:  `if(${STORAGE_SSD_PAYLOAD}, max(0.1, (${STORAGE_DB_SSD_NO_REPL_TB} + ${STORAGE_HOT_FILE_SSD_TB}) * S.standSizeRatio.IFT), 0)`,
+            PSI:  `if(${STORAGE_SSD_PAYLOAD}, max(0.2, (${STORAGE_DB_SSD_REPL_TB} + ${STORAGE_HOT_FILE_SSD_TB}) * S.standSizeRatio.PSI), 0)`,
+            PROD: `if(${STORAGE_SSD_PAYLOAD}, max(0.5, ${STORAGE_DB_SSD_REPL_TB} + ${STORAGE_HOT_FILE_SSD_TB}), 0)`,
+            LOAD: `if(${STORAGE_SSD_PAYLOAD}, max(0.2, (${STORAGE_DB_SSD_REPL_TB} + ${STORAGE_HOT_FILE_SSD_TB}) * S.standSizeRatio.LOAD), 0)`
         },
-        formulaHelp: 'TB SSD = (заданный размер БД + рост за год, иначе оценка users × КБ/польз) × коэф.индексов × (1 + WAL%) × кластеров × (1 + реплики) / 1024 + горячий файловый слой (доля горячих файлов × доля на SSD). Коэф. индексов (1.3), WAL (10%), доля на SSD (10%) — оценки по умолчанию.'
+        formulaHelp: 'TB SSD = (заданный размер БД + рост за год, иначе оценка users × КБ/польз) × коэф.индексов × (1 + WAL%) × кластеров × (1 + реплики) / 1024 + горячий файловый слой (доля горячих файлов × доля на SSD). Минимальный закупочный объём применяется только если есть БД или горячие файлы; без payload = 0. Коэф. индексов (1.3), WAL (10%), доля на SSD (10%) — оценки по умолчанию.'
     },
     {
         id: 'storage-hdd-tb',
@@ -3765,13 +3787,13 @@ export const SEED_ITEMS = [
         // коэф. компрессии-дедупа (валидируется ≥1 через max(1,...) — условие 6) / 1024.
         // Холодный файловый слой на HDD = доля холодных файлов × доля холодных файлов на HDD.
         qtyFormulas: {
-            DEV:  'max(0.1, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count * Q.backup_retention_days / 30 / max(1, Q.backup_compression_ratio) / 1024) * S.standSizeRatio.DEV)',
-            IFT:  'max(0.2, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count * Q.backup_retention_days / 30 / max(1, Q.backup_compression_ratio) / 1024) * S.standSizeRatio.IFT)',
-            PSI:  'max(0.5, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count * Q.backup_retention_days / 30 / max(1, Q.backup_compression_ratio) / 1024) * S.standSizeRatio.PSI)',
-            PROD: 'max(1, if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count * Q.backup_retention_days / 30 / max(1, Q.backup_compression_ratio) / 1024 + Q.file_storage_volume_tb * max(0, 100 - Q.hot_data_share_percent) / 100 * Q.cold_file_hdd_share_percent / 100)',
-            LOAD: 'max(0.5, (if(Q.db_size_initial_gb + Q.db_growth_gb_month * 12 > 0, Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count * Q.backup_retention_days / 30 / max(1, Q.backup_compression_ratio) / 1024 + Q.file_storage_volume_tb * max(0, 100 - Q.hot_data_share_percent) / 100 * Q.cold_file_hdd_share_percent / 100) * S.standSizeRatio.LOAD)'
+            DEV:  `if(${STORAGE_HDD_PAYLOAD}, max(0.1, ${STORAGE_DB_BACKUP_TB} * S.standSizeRatio.DEV), 0)`,
+            IFT:  `if(${STORAGE_HDD_PAYLOAD}, max(0.2, ${STORAGE_DB_BACKUP_TB} * S.standSizeRatio.IFT), 0)`,
+            PSI:  `if(${STORAGE_HDD_PAYLOAD}, max(0.5, ${STORAGE_DB_BACKUP_TB} * S.standSizeRatio.PSI), 0)`,
+            PROD: `if(${STORAGE_HDD_PAYLOAD}, max(1, ${STORAGE_DB_BACKUP_TB} + ${STORAGE_COLD_FILE_HDD_TB}), 0)`,
+            LOAD: `if(${STORAGE_HDD_PAYLOAD}, max(0.5, (${STORAGE_DB_BACKUP_TB} + ${STORAGE_COLD_FILE_HDD_TB}) * S.standSizeRatio.LOAD), 0)`
         },
-        formulaHelp: 'TB HDD = (заданный размер БД + рост, иначе оценка users × КБ/польз) × кластеров × глубина бэкапов / коэф.компрессии (≥1) / 1024 + холодный файловый слой (доля холодных файлов × доля на HDD). ПРОМ/Нагрузка включают холодный слой. Компрессия (÷2) и доля на HDD (50%) — оценки по умолчанию.'
+        formulaHelp: 'TB HDD = (заданный размер БД + рост, иначе оценка users × КБ/польз) × кластеров × глубина бэкапов / коэф.компрессии (≥1) / 1024 + холодный файловый слой (доля холодных файлов × доля на HDD). Минимальный закупочный объём применяется только если есть бэкапы БД или холодные файлы; без payload = 0. ПРОМ/Нагрузка включают холодный слой. Компрессия (÷2) и доля на HDD (50%) — оценки по умолчанию.'
     },
     {
         id: 'storage-object-tb',
@@ -3798,13 +3820,13 @@ export const SEED_ITEMS = [
         // Stage 3 (qty-модель ПРОМ): при включённом версионировании объём растёт на overhead%
         // (хранение прошлых версий объектов). По умолчанию версионирование выключено.
         qtyFormulas: {
-            DEV:  'max(0.1, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * (1 + if(Q.s3_versioning_enabled, Q.s3_versioning_overhead_percent, 0) / 100) * S.standSizeRatio.DEV)',
-            IFT:  'max(0.1, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * (1 + if(Q.s3_versioning_enabled, Q.s3_versioning_overhead_percent, 0) / 100) * S.standSizeRatio.IFT)',
-            PSI:  'max(0.5, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * (1 + if(Q.s3_versioning_enabled, Q.s3_versioning_overhead_percent, 0) / 100) * S.standSizeRatio.PSI)',
-            PROD: 'max(0.5, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * (1 + if(Q.s3_versioning_enabled, Q.s3_versioning_overhead_percent, 0) / 100))',
-            LOAD: 'max(0.2, (Q.file_storage_volume_tb + Q.file_storage_growth_tb_year) * (1 + if(Q.s3_versioning_enabled, Q.s3_versioning_overhead_percent, 0) / 100) * S.standSizeRatio.LOAD)'
+            DEV:  `if(${STORAGE_FILE_PAYLOAD}, max(0.1, ${STORAGE_OBJECT_TB} * S.standSizeRatio.DEV), 0)`,
+            IFT:  `if(${STORAGE_FILE_PAYLOAD}, max(0.1, ${STORAGE_OBJECT_TB} * S.standSizeRatio.IFT), 0)`,
+            PSI:  `if(${STORAGE_FILE_PAYLOAD}, max(0.5, ${STORAGE_OBJECT_TB} * S.standSizeRatio.PSI), 0)`,
+            PROD: `if(${STORAGE_FILE_PAYLOAD}, max(0.5, ${STORAGE_OBJECT_TB}), 0)`,
+            LOAD: `if(${STORAGE_FILE_PAYLOAD}, max(0.2, ${STORAGE_OBJECT_TB} * S.standSizeRatio.LOAD), 0)`
         },
-        formulaHelp: 'TB Object = (объём файлов + годовой прирост) × (1 + overhead версий, если версионирование включено) × коэф. стенда. Версионирование по умолчанию выключено.'
+        formulaHelp: 'TB Object = (объём файлов + годовой прирост) × (1 + overhead версий, если версионирование включено) × коэф. стенда. Минимальный закупочный объём применяется только если есть файловый payload; без файлов = 0. Версионирование по умолчанию выключено.'
     },
     {
         id: 'storage-secure-gb',
@@ -4226,11 +4248,11 @@ export const SEED_ITEMS = [
             'Расчёт: 10.07 ₽/ГБ/мес; минимум 1 ТБ на ПРОМ для searchable audit log.\n' +
             'ВАЖНО: WORM/архив на 3-7 лет и полноценный SIEM могут потребовать отдельного КП.',
         qtyFormulas: {
-            PSI:  'if(Q.audit_logging_required, if(Q.audit_events_per_day > 0, max(1, Q.audit_events_per_day * 365 * Q.audit_retention_years * Q.audit_bytes_per_event / max(1, Q.audit_log_compression_ratio) / 1000000000 * S.standSizeRatio.PSI), max(100, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15 * S.standSizeRatio.PSI)), 0)',
-            PROD: 'if(Q.audit_logging_required, if(Q.audit_events_per_day > 0, max(1, Q.audit_events_per_day * 365 * Q.audit_retention_years * Q.audit_bytes_per_event / max(1, Q.audit_log_compression_ratio) / 1000000000), max(1000, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15)), 0)',
-            LOAD: 'if(Q.audit_logging_required, if(Q.audit_events_per_day > 0, max(1, Q.audit_events_per_day * 365 * Q.audit_retention_years * Q.audit_bytes_per_event / max(1, Q.audit_log_compression_ratio) / 1000000000 * min(1, S.standSizeRatio.LOAD)), max(100, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15 * S.standSizeRatio.LOAD)), 0)'
+            PSI:  `if(Q.audit_logging_required, if(Q.audit_events_per_day > 0, max(1, Q.audit_events_per_day * 365 * Q.audit_retention_years * Q.audit_bytes_per_event / max(1, Q.audit_log_compression_ratio) / 1000000000 * S.standSizeRatio.PSI), if(${STORAGE_DB_PAYLOAD}, max(100, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15 * S.standSizeRatio.PSI), 0)), 0)`,
+            PROD: `if(Q.audit_logging_required, if(Q.audit_events_per_day > 0, max(1, Q.audit_events_per_day * 365 * Q.audit_retention_years * Q.audit_bytes_per_event / max(1, Q.audit_log_compression_ratio) / 1000000000), if(${STORAGE_DB_PAYLOAD}, max(1000, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15), 0)), 0)`,
+            LOAD: `if(Q.audit_logging_required, if(Q.audit_events_per_day > 0, max(1, Q.audit_events_per_day * 365 * Q.audit_retention_years * Q.audit_bytes_per_event / max(1, Q.audit_log_compression_ratio) / 1000000000 * min(1, S.standSizeRatio.LOAD)), if(${STORAGE_DB_PAYLOAD}, max(100, (Q.db_size_initial_gb + Q.db_growth_gb_month * 12) * Q.db_count * 0.15 * S.standSizeRatio.LOAD), 0)), 0)`
         },
-        formulaHelp: 'ГБ журналов аудита: при заданных «событиях/день» — events × 365 × срок_хранения × байт_на_событие / сжатие / 1e9 × коэф. стенда (НТ ≤ ПРОМ через cap, минимум 1 ГБ, без пола 1000); иначе (события=0) грубая оценка 15% от годового объёма БД × коэф. стенда с полами 1000 ГБ ПРОМ / 100 ГБ ПСИ-НТ.'
+        formulaHelp: 'ГБ журналов аудита: при заданных «событиях/день» — events × 365 × срок_хранения × байт_на_событие / сжатие / 1e9 × коэф. стенда (НТ ≤ ПРОМ через cap, минимум 1 ГБ, без пола 1000); иначе (события=0) грубая оценка 15% от годового объёма БД × коэф. стенда с полами 1000 ГБ ПРОМ / 100 ГБ ПСИ-НТ, но только при наличии DB payload; без БД и событий = 0.'
     },
     {
         id: 'service-email-per-1k',
@@ -4831,13 +4853,13 @@ export const SEED_ITEMS = [
             'Источник: ПРИЛОЖЕНИЕ №7.EVO.16 п.3 (Managed Redis) / №7.EVO.4 п.5 (Managed PostgreSQL) версия 260316 (2026-03-26): «Хранилище на сетевых SSD дисках» = 0,0138 ₽/ГБ·ч без НДС / 0,016836 ₽/ГБ·ч с НДС 22% × 730 = 10,07 ₽/ГБ/мес без НДС.\n' +
             'Когда выбирать: команда может админить vector DB сама, важна гибкость / экономия. Альтернатива — готовый Managed RAG-сервис провайдера (rag-managed-knowledge-base-gb), но дороже примерно в 81 раз (управляемое хранение + index + search-API). Генерация эмбеддингов в обоих вариантах тарифицируется отдельно — ЭК «Эмбеддинги для RAG».',
         qtyFormulas: {
-            DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.DEV))), 0)',
-            IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.IFT))), 0)',
-            PSI:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.PSI)), 0)',
-            PROD: 'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4)), 0)',
-            LOAD: 'if(Q.rag_needed, if(Q.rag_managed_used, 0, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.LOAD)), 0)'
+            DEV:  `if(Q.rag_needed, if(Q.rag_managed_used, 0, if(${RAG_EMBEDDINGS_PAYLOAD}, max(1, ceil(${RAG_EMBEDDINGS_MILLION} * 4 * S.standSizeRatio.DEV)), 0)), 0)`,
+            IFT:  `if(Q.rag_needed, if(Q.rag_managed_used, 0, if(${RAG_EMBEDDINGS_PAYLOAD}, max(1, ceil(${RAG_EMBEDDINGS_MILLION} * 4 * S.standSizeRatio.IFT)), 0)), 0)`,
+            PSI:  `if(Q.rag_needed, if(Q.rag_managed_used, 0, if(${RAG_EMBEDDINGS_PAYLOAD}, ceil(${RAG_EMBEDDINGS_MILLION} * 4 * S.standSizeRatio.PSI), 0)), 0)`,
+            PROD: `if(Q.rag_needed, if(Q.rag_managed_used, 0, if(${RAG_EMBEDDINGS_PAYLOAD}, ceil(${RAG_EMBEDDINGS_MILLION} * 4), 0)), 0)`,
+            LOAD: `if(Q.rag_needed, if(Q.rag_managed_used, 0, if(${RAG_EMBEDDINGS_PAYLOAD}, ceil(${RAG_EMBEDDINGS_MILLION} * 4 * S.standSizeRatio.LOAD), 0)), 0)`
         },
-        formulaHelp: 'GB self-hosted vector DB = эмбеддинги × 4 КБ/эмбеддинг × коэф. стенда. Эмбеддинги: авто (corpus_gb × 200M ÷ размер_чанка) либо ручное поле при «Указать эмбеддинги вручную». НЕ зависит от числа поисков (это стоимость поиска в ЭК «Эмбеддинги для RAG»). Активно при RAG включён И НЕ выбран Managed RAG-сервис.'
+        formulaHelp: 'GB self-hosted vector DB = эмбеддинги × 4 КБ/эмбеддинг × коэф. стенда. Эмбеддинги: авто (corpus_gb × 200M ÷ размер_чанка) либо ручное поле при «Указать эмбеддинги вручную». Минимум 1 ГБ на DEV/IFT применяется только при ненулевом числе эмбеддингов; при пустом RAG-корпусе = 0. НЕ зависит от числа поисков (это стоимость поиска в ЭК «Эмбеддинги для RAG»). Активно при RAG включён И НЕ выбран Managed RAG-сервис.'
     },
     {
         id: 'rag-managed-knowledge-base-gb',
@@ -4863,13 +4885,13 @@ export const SEED_ITEMS = [
             'Источник: ПРИЛОЖЕНИЕ №7.EVO.20 п.2 версия 260316 (2026-03-26): «Хранение преобразованных текстовых данных в базе знаний» = 1,12 ₽/ГБ·ч без НДС / 1,3664 ₽/ГБ·ч с НДС 22% × 730 = 817,60 ₽/ГБ/мес без НДС.\n' +
             'Когда выбирать: ограниченные DevOps-ресурсы, нужен быстрый старт, готовы платить за full-managed. Если важна экономия — оставьте rag-vector-db-gb (self-hosted).',
         qtyFormulas: {
-            DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, max(1, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.DEV)), 0), 0)',
-            IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, max(1, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.IFT)), 0), 0)',
-            PSI:  'if(Q.rag_needed, if(Q.rag_managed_used, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.PSI), 0), 0)',
-            PROD: 'if(Q.rag_needed, if(Q.rag_managed_used, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4), 0), 0)',
-            LOAD: 'if(Q.rag_needed, if(Q.rag_managed_used, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.LOAD), 0), 0)'
+            DEV:  `if(Q.rag_needed, if(Q.rag_managed_used, if(${RAG_EMBEDDINGS_PAYLOAD}, max(1, ceil(${RAG_EMBEDDINGS_MILLION} * 4 * S.standSizeRatio.DEV)), 0), 0), 0)`,
+            IFT:  `if(Q.rag_needed, if(Q.rag_managed_used, if(${RAG_EMBEDDINGS_PAYLOAD}, max(1, ceil(${RAG_EMBEDDINGS_MILLION} * 4 * S.standSizeRatio.IFT)), 0), 0), 0)`,
+            PSI:  `if(Q.rag_needed, if(Q.rag_managed_used, if(${RAG_EMBEDDINGS_PAYLOAD}, ceil(${RAG_EMBEDDINGS_MILLION} * 4 * S.standSizeRatio.PSI), 0), 0), 0)`,
+            PROD: `if(Q.rag_needed, if(Q.rag_managed_used, if(${RAG_EMBEDDINGS_PAYLOAD}, ceil(${RAG_EMBEDDINGS_MILLION} * 4), 0), 0), 0)`,
+            LOAD: `if(Q.rag_needed, if(Q.rag_managed_used, if(${RAG_EMBEDDINGS_PAYLOAD}, ceil(${RAG_EMBEDDINGS_MILLION} * 4 * S.standSizeRatio.LOAD), 0), 0), 0)`
         },
-        formulaHelp: 'GB Managed RAG = эмбеддинги × 4 КБ/эмбеддинг × коэф. стенда. Эмбеддинги: авто (corpus_gb × 200M ÷ размер_чанка) либо ручное поле. НЕ зависит от числа поисков. Активно при RAG включён И выбран Managed RAG-сервис провайдера.'
+        formulaHelp: 'GB Managed RAG = эмбеддинги × 4 КБ/эмбеддинг × коэф. стенда. Эмбеддинги: авто (corpus_gb × 200M ÷ размер_чанка) либо ручное поле. Минимум 1 ГБ на DEV/IFT применяется только при ненулевом числе эмбеддингов; при пустом RAG-корпусе = 0. НЕ зависит от числа поисков. Активно при RAG включён И выбран Managed RAG-сервис провайдера.'
     },
 
     /* ===== AI agent infrastructure (Этап 13) ===== */
