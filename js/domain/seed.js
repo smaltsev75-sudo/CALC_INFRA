@@ -5424,7 +5424,12 @@ const _AGENT_FORMULA_REFRESH_IDS = [
     'network-ddos-protection',
     // 5B-Sec WAF domains scaling: формула стала масштабируемой по числу доменов
     // (waf_domains_count) — legacy должен получить новую qtyFormula.
-    'network-waf'
+    'network-waf',
+    // 5B-Sec audit-log event-model (2.22.16, аудит осей A/B/E): формула переведена
+    // на event-драйверы (audit_events_per_day и др.) ещё в v2.22.12, но ЭК выпал из
+    // refresh-list — legacy-расчёты не получали новую формулу, ввод в новые поля
+    // тихо игнорировался. После рефреша step-4 авто-добавит 4 новых audit_* вопроса.
+    'security-audit-log-storage-gb'
 ];
 
 /* P6 (2.22.8): ЭК, у которых в Stage 5A сменилась ЕДИНИЦА qty (DR: «площадка» →

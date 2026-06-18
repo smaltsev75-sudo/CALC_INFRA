@@ -12277,3 +12277,42 @@ TDD: [waf-domains-5b.test.js](../../tests/unit/domain/waf-domains-5b.test.js) (1
 details-stand-header-alignment), sanity/quantity/prices/syntax/diff — все EXIT 0.
 
 **Stage 5B-Sec следующее** (по выбору): DLP seats/channels — последний кандидат. DR-mode и УЗ B/C — не трогаем.
+
+## Release 2.22.16 — audit-log legacy-refresh fix + arch-invariant (Stage 5B-Sec hardening) (2026-06-18)
+
+PATCH-хотфикс по результатам adversarial-аудита 5B-Sec (5 параллельных ревьюеров через Workflow, оси A–E;
+три оси A/B/E **независимо** сошлись на одном HIGH-дефекте). **Не новая фича — закрытие латентного no-drift бага.**
+
+**Дефект (HIGH)**: `security-audit-log-storage-gb` сменил формулу на event-модель в v2.22.12 (commit b1ae04e), но
+НЕ был добавлен в `_AGENT_FORMULA_REFRESH_IDS`. Item старый (введён в v2.20.59) → legacy-расчёты уже содержат ЭК со
+старой flat-формулой «15% от годового объёма БД». При открытии (`enrichLegacyDictionaryWithAgentSeed`) формула НЕ
+рефрешилась, 4 новых вопроса (`audit_events_per_day` и др.) НЕ до-вносились (step-4 сканирует Q-ссылки в текущей
+формуле, а там их нет) → **ввод пользователя в новые поля тихо игнорировался**. Контраст: SIEM/DDoS/WAF (v2.22.13–15)
+были добавлены в список явно, audit-log (первый срез серии, v2.22.12) выпал.
+
+**Воспроизведено** (node-repro): legacy при `audit_events_per_day=1 000 000` → PROD qty **1000 ГБ** (старый пол),
+fresh → **73 ГБ** (event-модель). После фикса legacy == fresh == 73.
+
+**Фикс** (1 строка): `security-audit-log-storage-gb` добавлен в `_AGENT_FORMULA_REFRESH_IDS`
+([seed.js](../../js/domain/seed.js)). Step-4 после рефреша формулы сам до-вносит 4 вопроса по Q-ссылкам.
+`unit`/`pricePerUnit` НЕ меняются (ЭК не в `_AGENT_UNIT_PRICE_REFRESH_IDS`). **Golden без дрейфа**: для нового
+расчёта at-default `audit_events_per_day=0` → event-ветка падает в тот же flat-fallback, числа идентичны
+(`sanity:check` зелёный).
+
+**Forcing-function** (против рецидива класса): новый арх-инвариант
+[formula-refresh-list-covers-5b-drivers.test.js](../../tests/unit/architecture/formula-refresh-list-covers-5b-drivers.test.js) —
+любой SEED-ЭК, чья qtyFormula ссылается на 5B-Sec driver (`audit_events_per_day`/`siem_*`/`ddos_tier`/`waf_domains_count`),
+ОБЯЗАН быть в `_AGENT_FORMULA_REFRESH_IDS`. Покрывает audit-log + SIEM×2 + DDoS + WAF; защита от ложно-зелёного
+(assert «detection нашёл ≥5 driver-ЭК»). Regress-тест
+[audit-log-legacy-refresh-2-22-16.test.js](../../tests/unit/domain/audit-log-legacy-refresh-2-22-16.test.js) — рефреш
+формулы, до-внос 4 вопросов, unit/price неизменны, acceptance legacy==fresh.
+
+`2.22.15 → 2.22.16` (**PATCH**). **Метрики (мой прогон):** unit **5882/5882 PASS** (+6: 4 regress + 2 arch),
+e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**.
+
+**Аудит-наблюдения (не блокеры, отдельным срезом по решению пользователя)**: doc-дрейф UserManual «90 вопросов»→124,
+WIZARD_PROFILES «26 вопросов AI»→37, имя теста «=123»→124; low: грубая LOAD-ветка audit-log без cap (унаследовано от
+старой формулы, formulaHelp честен); два info-нуджа (WAF single-domain / audit rough-estimate) срабатывают на
+дефолтном расчёте (info, score не падает, отдельная вкладка «не требуют действий»).
+
+**Stage 5B-Sec следующее**: DLP seats/channels (последний кандидат) — ANALYSIS ONLY по согласованию. DR-mode и УЗ B/C — не трогаем.
