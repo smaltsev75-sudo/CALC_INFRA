@@ -778,15 +778,20 @@ function renderCategoriesCard(result, period, activeStandsCount, ctx = {}) {
                     'aria-label': 'Доли категорий в общем бюджете'
                 }
             },
-                ...sorted.map(cat => {
+                ...sorted.map((cat, idx) => {
                     const v = byCat[cat] || 0;
                     const share = total > 0 ? v / total : 0;
+                    // Крупнейшая категория (sorted отсортирован по убыванию, [0] —
+                    // максимум) растягивается через flex:1 1 auto и впитывает slack
+                    // от min-width:3px почти нулевых сегментов → бар точно укладывается
+                    // в контейнер. Остальные — фиксированы по доле. Без этого сумма
+                    // мелких сегментов с min-width перекрывала контейнер (Package 3A).
+                    const isLargest = idx === 0;
+                    const style = { background: CATEGORY_COLORS[cat] };
+                    if (!isLargest) style.width = `${(share * 100).toFixed(2)}%`;
                     return el('span', {
-                        class: 'dash-category-segment',
-                        style: {
-                            width: `${(share * 100).toFixed(2)}%`,
-                            background: CATEGORY_COLORS[cat]
-                        },
+                        class: ['dash-category-segment', isLargest && 'dash-category-segment--grow'],
+                        style,
                         title: `${CATEGORY_LABELS[cat]}: ${percent(share)} бюджета`
                     });
                 })

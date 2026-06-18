@@ -289,8 +289,8 @@ describe('Migration: LATEST_SCHEMA_VERSION после Phase 2', () => {
      * (удаление dead-вопроса mau_growth_rate_percent). Тесты на промежуточные
      * шаги (16→17 VAT modes, 17→18 priceSource) проверяются как наличие шага
      * в массиве MIGRATIONS, а не как «последний». */
-    it('LATEST_SCHEMA_VERSION = 20 (Stage VAT-1 + audit migrations + Quick Start select normalization)', () => {
-        assert.equal(LATEST_SCHEMA_VERSION, 20);
+    it('LATEST_SCHEMA_VERSION = 21 (Stage VAT-1 + audit migrations + Quick Start select normalization + Package 3A OS license gate)', () => {
+        assert.equal(LATEST_SCHEMA_VERSION, 21);
     });
 
     it('Шаг 16→17 — VAT modes (Stage VAT-1)', () => {
@@ -311,11 +311,17 @@ describe('Migration: LATEST_SCHEMA_VERSION после Phase 2', () => {
         assert.match(step.description, /MINOR 2\.18\.0|mau_growth_rate_percent/);
     });
 
-    it('Последний шаг — 19→20 нормализация Quick Start select-answer values', () => {
+    it('Шаг 19→20 — нормализация Quick Start select-answer values', () => {
+        const step = MIGRATIONS.find(m => m.from === 19 && m.to === 20);
+        assert.ok(step, 'Шаг 19→20 должен присутствовать');
+        assert.match(step.description, /Quick Start select-answer/);
+    });
+
+    it('Последний шаг — 20→21 OS license gate (Package 3A)', () => {
         const last = MIGRATIONS[MIGRATIONS.length - 1];
-        assert.equal(last.from, 19);
-        assert.equal(last.to, 20);
-        assert.match(last.description, /Quick Start select-answer/);
+        assert.equal(last.from, 20);
+        assert.equal(last.to, 21);
+        assert.match(last.description, /Package 3A|OS license/i);
     });
 
     it('Любой v0-расчёт мигрирует до LATEST (полная цепочка)', () => {

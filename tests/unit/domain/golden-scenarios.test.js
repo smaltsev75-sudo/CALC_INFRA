@@ -21,50 +21,60 @@ const GOLDEN_SCENARIOS = Object.freeze([
         id: 'internal_xs',
         wizard: { product_type: 'internal', industry: 'corporate', scale: 'xs', geography: 'ru', pdn: false, activity: 'low', ai_used: false },
         expected: {
-            totalMonthly: 1_596_668,
-            totalAnnual: 19_160_017,
+            // Package 3A (OS license gate): internal/corporate не fintech/b2g → os=false,
+            // OS-лицензия убрана (LICENSE 63_198 → 0; pdn=false → СЗИ нет).
+            totalMonthly: 1_533_470,
+            totalAnnual: 18_401_640,
             topCategory: 'SERVICES',
-            byCategoryMonthly: { HW: 66_958, LICENSE: 63_198, TRAFFIC: 26_507, SERVICES: 1_440_005, RESERVES: 0, SECURITY: 0, AI: 0 }
+            byCategoryMonthly: { HW: 66_958, LICENSE: 0, TRAFFIC: 26_507, SERVICES: 1_440_005, RESERVES: 0, SECURITY: 0, AI: 0 }
         }
     },
     {
         id: 'startup_b2b_s',
         wizard: { product_type: 'b2b', industry: 'corporate', scale: 's', geography: 'ru', pdn: true, activity: 'medium', ai_used: false },
         expected: {
-            totalMonthly: 2_064_019,
-            totalAnnual: 24_768_229,
+            // Package 3A (OS license gate): b2b/corporate не fintech/b2g → os=false,
+            // OS-лицензия убрана (LICENSE 142_573 → 10_910; остаток = СЗИ при pdn).
+            totalMonthly: 1_932_356,
+            totalAnnual: 23_188_276,
             topCategory: 'SERVICES',
-            byCategoryMonthly: { HW: 107_419, LICENSE: 142_573, TRAFFIC: 33_134, SERVICES: 1_568_788, RESERVES: 0, SECURITY: 212_105, AI: 0 }
+            byCategoryMonthly: { HW: 107_419, LICENSE: 10_910, TRAFFIC: 33_134, SERVICES: 1_568_788, RESERVES: 0, SECURITY: 212_105, AI: 0 }
         }
     },
     {
         id: 'smb_b2b_m',
         wizard: { product_type: 'b2b', industry: 'corporate', scale: 'm', geography: 'ru', pdn: true, activity: 'medium', ai_used: false },
         expected: {
-            totalMonthly: 3_510_349,
-            totalAnnual: 42_124_187,
+            // Package 3A (OS license gate): b2b/corporate не fintech/b2g → os=false,
+            // OS-лицензия убрана (LICENSE 233_820 → 17_893; остаток = СЗИ при pdn).
+            totalMonthly: 3_294_422,
+            totalAnnual: 39_533_064,
             topCategory: 'SERVICES',
-            byCategoryMonthly: { HW: 354_790, LICENSE: 233_820, TRAFFIC: 106_029, SERVICES: 2_198_819, RESERVES: 0, SECURITY: 616_891, AI: 0 }
+            byCategoryMonthly: { HW: 354_790, LICENSE: 17_893, TRAFFIC: 106_029, SERVICES: 2_198_819, RESERVES: 0, SECURITY: 616_891, AI: 0 }
         }
     },
     {
         id: 'edtech_b2c_m_ai',
         wizard: { product_type: 'b2c', industry: 'edtech', scale: 'm', geography: 'ru', pdn: true, activity: 'high', ai_used: true },
         expected: {
-            totalMonthly: 31_224_348,
-            totalAnnual: 374_692_180,
+            // Package 3A (OS license gate): b2c/edtech не fintech/b2g → os=false,
+            // OS-лицензия убрана (LICENSE 222_414 → 17_020; остаток = СЗИ при pdn).
+            totalMonthly: 31_018_954,
+            totalAnnual: 372_227_452,
             topCategory: 'AI',
-            byCategoryMonthly: { HW: 1_067_478, LICENSE: 222_414, TRAFFIC: 205_431, SERVICES: 3_228_949, RESERVES: 0, SECURITY: 785_419, AI: 25_714_657 }
+            byCategoryMonthly: { HW: 1_067_478, LICENSE: 17_020, TRAFFIC: 205_431, SERVICES: 3_228_949, RESERVES: 0, SECURITY: 785_419, AI: 25_714_657 }
         }
     },
     {
         id: 'consumer_b2c_l_ai_global',
         wizard: { product_type: 'b2c', industry: 'consumer', scale: 'l', geography: 'global', pdn: true, activity: 'high', ai_used: true },
         expected: {
-            totalMonthly: 149_763_086,
-            totalAnnual: 1_797_157_033,
+            // Package 3A (OS license gate): b2c/consumer не fintech/b2g → os=false,
+            // OS-лицензия убрана (LICENSE 564_590 → 43_205; остаток = СЗИ при pdn).
+            totalMonthly: 149_241_701,
+            totalAnnual: 1_790_900_418,
             topCategory: 'AI',
-            byCategoryMonthly: { HW: 29_851_065, LICENSE: 564_590, TRAFFIC: 9_244_399, SERVICES: 27_381_696, RESERVES: 0, SECURITY: 1_446_108, AI: 81_275_229 }
+            byCategoryMonthly: { HW: 29_851_065, LICENSE: 43_205, TRAFFIC: 9_244_399, SERVICES: 27_381_696, RESERVES: 0, SECURITY: 1_446_108, AI: 81_275_229 }
         }
     },
     {
@@ -94,10 +104,12 @@ const GOLDEN_SCENARIOS = Object.freeze([
         id: 'enterprise_b2c_xl_ai_global',
         wizard: { product_type: 'b2c', industry: 'consumer', scale: 'xl', geography: 'global', pdn: true, activity: 'high', ai_used: true },
         expected: {
-            totalMonthly: 727_940_139,
-            totalAnnual: 8_735_281_668,
+            // Package 3A (OS license gate): b2c/consumer не fintech/b2g → os=false,
+            // OS-лицензия убрана (LICENSE 1_209_021 → 92_521; остаток = СЗИ при pdn).
+            totalMonthly: 726_823_639,
+            totalAnnual: 8_721_883_663,
             topCategory: 'HW',
-            byCategoryMonthly: { HW: 291_698_621, LICENSE: 1_209_021, TRAFFIC: 46_221_993, SERVICES: 127_782_466, RESERVES: 0, SECURITY: 5_648_622, AI: 255_379_416 }
+            byCategoryMonthly: { HW: 291_698_621, LICENSE: 92_521, TRAFFIC: 46_221_993, SERVICES: 127_782_466, RESERVES: 0, SECURITY: 5_648_622, AI: 255_379_416 }
         }
     },
     {

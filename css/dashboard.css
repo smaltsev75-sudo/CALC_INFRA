@@ -1599,6 +1599,13 @@
     height: 100%;
 }
 
+/* Крупнейший сегмент растягивается и впитывает slack от min-width:3px мелких
+   сегментов, чтобы стек точно укладывался в контейнер даже при почти нулевых
+   категориях (Package 3A). Фиксированная ширина у него не задаётся. */
+.dash-category-segment--grow {
+    flex: 1 1 auto;
+}
+
 .dash-category-table {
     display: flex;
     flex-direction: column;

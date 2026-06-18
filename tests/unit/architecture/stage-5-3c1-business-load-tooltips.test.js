@@ -41,7 +41,9 @@ const LOAD_QUESTION_IDS = [
     'cpu_advanced_model',
     'cpu_ms_per_request',
     'cpu_target_utilization_percent',
-    'min_instances_per_stand'
+    'min_instances_per_stand',
+    // Package 3A: платная лицензия серверной ОС (гейт license-os-per-node).
+    'os_commercial_license_required'
 ];
 
 describe('Stage 5.3.C.1 / Business секция — каталог покрывает все 9 полей', () => {

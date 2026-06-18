@@ -30,17 +30,20 @@ const BUSINESS_SCENARIOS = Object.freeze([
             pentest_per_year: 1, load_test_per_year: 1
         },
         expected: {
-            totalMonthly: 2_273_729,
-            totalAnnual: 27_284_750,
+            // Package 3A (OS license gate): startup_mvp нерегулируемый (os_commercial_license_required=false) →
+            // OS-лицензия убрана: LICENSE 89_531 → 0, total −89_531. Прочие категории неизменны.
+            totalMonthly: 2_184_198,
+            totalAnnual: 26_210_382,
             topCategory: 'SERVICES',
-            byStandMonthly: { DEV: 10_901, IFT: 140_358, PSI: 192_475, PROD: 1_518_160, LOAD: 411_834 },
-            byCategoryMonthly: { HW: 84_678, LICENSE: 89_531, TRAFFIC: 26_507, SERVICES: 1_723_764, RESERVES: 0, SECURITY: 349_249, AI: 0 },
+            byStandMonthly: { DEV: 5_634, IFT: 129_825, PSI: 176_676, PROD: 1_491_828, LOAD: 380_235 },
+            byCategoryMonthly: { HW: 84_678, LICENSE: 0, TRAFFIC: 26_507, SERVICES: 1_723_764, RESERVES: 0, SECURITY: 349_249, AI: 0 },
             topProdItemIds: ['one-deployment', 'one-pentest-external', 'service-external-api-calls-1m', 'network-ddos-protection', 'one-pentest-regular']
         }
     },
     {
         id: 'smb_b2b_saas',
         answers: {
+            os_commercial_license_required: true,  // Package 3A: регулируемый (ПДн) → платная сертиф. ОС, OS-лицензия сохраняется
             users_total: 50000, registered_users_total: 50000, dau_target: 10000, pcu_target: 1000,
             peak_rps: 200, avg_rps: 50, microservices_count: 10, async_workers_count: 4,
             db_count: 3, db_replicas_count: 1, db_size_initial_gb: 100, db_growth_gb_month: 10,
@@ -64,6 +67,7 @@ const BUSINESS_SCENARIOS = Object.freeze([
     {
         id: 'enterprise',
         answers: {
+            os_commercial_license_required: true,  // Package 3A: регулируемый (ПДн+ФСТЭК) → платная сертиф. ОС, OS-лицензия сохраняется
             users_total: 500000, registered_users_total: 500000, dau_target: 100000, pcu_target: 10000,
             peak_rps: 1000, avg_rps: 200, microservices_count: 30, async_workers_count: 12,
             db_count: 5, db_replicas_count: 2, db_size_initial_gb: 1000, db_growth_gb_month: 100,
@@ -101,17 +105,20 @@ const BUSINESS_SCENARIOS = Object.freeze([
             pentest_per_year: 0, load_test_per_year: 0
         },
         expected: {
-            totalMonthly: 1_808_638,
-            totalAnnual: 21_703_660,
+            // Package 3A (OS license gate): internal_ops_tool нерегулируемый → OS-лицензия убрана:
+            // LICENSE 131_663 → 0, total −131_662. license-os-per-node вышел из топ-5 PROD.
+            totalMonthly: 1_676_976,
+            totalAnnual: 20_123_706,
             topCategory: 'SERVICES',
-            byStandMonthly: { DEV: 18_039, IFT: 139_221, PSI: 153_713, PROD: 1_304_545, LOAD: 193_119 },
-            byCategoryMonthly: { HW: 102_237, LICENSE: 131_663, TRAFFIC: 26_507, SERVICES: 1_456_436, RESERVES: 0, SECURITY: 91_795, AI: 0 },
-            topProdItemIds: ['one-deployment', 'service-external-api-calls-1m', 'network-ddos-protection', 'license-os-per-node', 'one-staff-training']
+            byStandMonthly: { DEV: 7_506, IFT: 123_421, PSI: 132_647, PROD: 1_267_680, LOAD: 145_721 },
+            byCategoryMonthly: { HW: 102_237, LICENSE: 0, TRAFFIC: 26_507, SERVICES: 1_456_436, RESERVES: 0, SECURITY: 91_795, AI: 0 },
+            topProdItemIds: ['one-deployment', 'service-external-api-calls-1m', 'network-ddos-protection', 'one-staff-training', 'security-audit-log-storage-gb']
         }
     },
     {
         id: 'regulated_fintech_high',
         answers: {
+            os_commercial_license_required: true,  // Package 3A: регулируемый (ПДн+ФСТЭК) → платная сертиф. ОС, OS-лицензия сохраняется
             users_total: 200000, registered_users_total: 200000, dau_target: 50000, dau_share_of_registered_percent: 25, pcu_target: 5000,
             peak_rps: 650, avg_rps: 160, microservices_count: 24, async_workers_count: 10,
             db_count: 6, db_replicas_count: 2, db_size_initial_gb: 800, db_growth_gb_month: 80,
@@ -137,6 +144,7 @@ const BUSINESS_SCENARIOS = Object.freeze([
     {
         id: 'ai_agent_support',
         answers: {
+            os_commercial_license_required: true,  // Package 3A: регулируемый (ПДн) → платная сертиф. ОС, OS-лицензия сохраняется
             users_total: 120000, registered_users_total: 120000, dau_target: 36000, dau_share_of_registered_percent: 30, pcu_target: 2400,
             peak_rps: 300, avg_rps: 80, microservices_count: 14, async_workers_count: 6,
             db_count: 3, db_replicas_count: 1, db_size_initial_gb: 250, db_growth_gb_month: 30,

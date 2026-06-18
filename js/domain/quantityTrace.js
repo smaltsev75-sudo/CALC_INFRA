@@ -195,12 +195,17 @@ function auditSemanticInvariants(calculation, result, items) {
                     'Лицензируемые узлы должны соответствовать вычислительным ресурсам.'
             });
         }
-        if (securityNodes > 0 && osNodes <= 0) {
+        // Package 3A: раньше прокси числа узлов была лицензия ОС, но теперь
+        // license-os-per-node гейтится по Q.os_commercial_license_required и
+        // может быть 0 при бесплатном Linux в регулируемом проекте (СЗИ>0). Узлы
+        // существуют независимо от платной ОС → проверяем СЗИ против CPU (как
+        // соседняя licenseWithoutCompute), а не против OS-лицензии.
+        if (securityNodes > 0 && cpu <= 0) {
             errors.push({
                 type: 'securityLicenseWithoutNodes',
                 stand,
-                message: `${stand}: СЗИ=${securityNodes}, но лицензии ОС/узлы=0. ` +
-                    'Средства защиты должны привязываться к существующим узлам.'
+                message: `${stand}: СЗИ=${securityNodes}, но CPU=0. ` +
+                    'Средства защиты должны привязываться к существующим вычислительным узлам.'
             });
         }
     }

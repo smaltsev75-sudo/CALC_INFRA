@@ -97,6 +97,10 @@ export function computeCompliance({ product_type, industry, scale, pdn }) {
         fstec_certification_required: isFin || isB2G,
         iso_27001_required: isFin,
         db_commercial_license_required: isFin || isB2G,
+        // Package 3A: платная лицензия ОС — разумный default для регулируемых вертикалей
+        // (fintech/b2g часто на сертифицированной платной ОС). Подсказка, не жёсткий гейт:
+        // пользователь может отключить вручную (формула зависит только от этого флага).
+        os_commercial_license_required: isFin || isB2G,
 
         // Шифрование и защита (waf/ddos — только при публичном периметре)
         encryption_at_rest: pdn || isFin || isB2G,

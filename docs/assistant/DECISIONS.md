@@ -12502,3 +12502,56 @@ EMBEDDINGS metric>0; C text-guard на 3 места модели против «
 `2.22.21 → 2.22.22` (**PATCH**, text+test only). **Метрики (мой прогон):** unit **5924/5924 PASS** (+7),
 sanity/quantity/prices/syntax/diff — все **EXIT 0**. Production-формулы/модель/golden-суммы не менялись.
 Пакеты 3-5 (доменные развилки) — не трогаются.
+
+## Release 2.22.23 — Package 3A: OS license gate (фантомная ОС-лицензия) + Variant A layout-fix бара категорий (2026-06-19)
+
+PATCH, доменная развилка + сопутствующий UI-фикс. Schema bump **20 → 21** (миграция answer-backfill).
+**Намеренный drift:** нерегулируемые сценарии теряют фантомную ОС-лицензию; regulated/fintech/b2g её сохраняют
+через явный флаг/backfill.
+
+**Проблема:** `license-os-per-node` считался ВСЕГДА (узлы = микросервисы + воркеры + БД×(1+реплики)), хотя
+описание гласило «применять, когда ОС платная». Давал фантомные десятки тыс. — ~1 млн ₽/мес на проектах с
+бесплатным Linux. (DB-лицензия уже gated через `db_commercial_license_required` — не трогалась.)
+
+**Решение (C-proxy с гейтом ТОЛЬКО по явному вопросу):**
+1. Новый вопрос `os_commercial_license_required` (boolean, default false, секция `load_profile`/Архитектурные
+   параметры). Все 5 формул `license-os-per-node` обёрнуты в `if(Q.os_commercial_license_required, <старое>, 0)`.
+   **Регуляторика `pdn||fstec` в формулу НЕ добавлялась** — иначе фантом просто переименовался бы, и
+   пользователь не смог бы отключить ОС-лицензию в регулируемом проекте.
+2. Quick Start: `wizardToAnswers`/`computeCompliance` ставит `os_commercial_license_required: isFin || isB2G`
+   (как уже делает для DB-лицензии/ФСТЭК) — fintech/b2g получают разумный default true.
+3. Legacy: миграция 20→21 до-вносит `true` ТОЛЬКО при явном `pdn_152fz===true` или
+   `fstec_certification_required===true` в сохранённых answers (seed-default не основание); явный флаг (в т.ч.
+   false) не перезаписывается; нерегулируемый legacy дрейфует вниз — намеренное исправление фантома.
+4. `license-os-per-node` добавлен в `_AGENT_FORMULA_REFRESH_IDS`.
+5. **§5.bis-находка:** аудит `securityLicenseWithoutNodes` ([quantityTrace.js](../../js/domain/quantityTrace.js))
+   использовал qty OS-лицензии как прокси числа узлов → ложно ругался на «СЗИ>0 при бесплатном Linux».
+   Переведён на CPU-прокси (узлы существуют независимо от платной ОС).
+
+**ПДн/ФСТЭК — подсказка, не гейт:** документировано в UserManual («Красные флаги») и здесь. Сертифицированная
+ОС часто платная, поэтому регуляторика предлагает default true, но итоговое решение — отдельный вопрос ОС;
+бесплатный Linux / лицензия в тарифе провайдера → «Нет».
+
+**Golden drift (мой прогон, валидировано):** нерегулируемые business-голдены — startup_mvp −89 531, internal_ops_tool
+−131 662 ₽/мес (LICENSE → 0, license-os-per-node вышел из топ-5 PROD у internal_ops). Quick Start голдены
+internal_xs / startup_b2b_s / smb_b2b_m / edtech / consumer / enterprise_b2c теряют OS (−63к…−1,1М). Регулируемые
+(business: 4 с ПДн/ФСТЭК + явный флаг; wizard: fintech_b2b_m / b2g_m_ru_cis / regulated_b2g_fintech) — drift 0.
+Везде падает ТОЛЬКО LICENSE на величину OS, прочие категории неизменны.
+
+**Variant A layout-fix (UI, сопутствующий — мой же дифф его вскрыл):** убирание OS-лицензии сделало LICENSE-долю
+high_ai крошечной (0.03%), а `.dash-category-segment { min-width: 3px }` ([dashboard.css](../../css/dashboard.css))
+раздувал такой сегмент → стек «Распределение по категориям» перекрывал контейнер на ~2.76px (e2e
+`dashboard-risk-bars-layout.spec.js` падал на допуске ≤2px; пре-существующая хрупкость — было ~1.87px, мой дифф
+толкнул за порог). Фикс: крупнейшая категория (`sorted[0]`) рендерится `flex: 1 1 auto` без фиксированной ширины
+и впитывает slack от min-width мелких → бар точно укладывается в контейнер при любых долях. Допуск теста НЕ
+расширялся, сценарий high_ai НЕ менялся.
+
+**Тесты:** новый [os-license-gate-3a.test.js](../../tests/unit/domain/os-license-gate-3a.test.js) (18 проверок:
+гейт false→0 / true→старое, источник формулы, refresh-list, DB+СЗИ не задеты, Quick Start fintech/b2g→true и
+обычные→false, миграция explicit pdn/fstec→backfill / без них→false / явный false не флипается). Обновлены: count
+126→127 (filled 60), tooltip-каталог load_profile, миграционные тесты (схема→21), business+Quick Start golden,
+sanity/quantity реген.
+
+`2.22.22 → 2.22.23` (**PATCH**, доменная развилка + UI-фикс, schema 20→21). **Метрики (мой прогон):** unit
+**5943/5943 PASS** (+19), desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**.
+Пакеты 4-5 (storage floors и др.) — не трогаются.

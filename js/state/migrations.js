@@ -104,6 +104,32 @@ function normalizeWizardSelectAnswers(calc) {
     }
 }
 
+/**
+ * Package 3A (OS license gate): для legacy-расчётов без явного
+ * os_commercial_license_required до-вносим true ТОЛЬКО при явном регулируемом
+ * сигнале (pdn_152fz===true ИЛИ fstec_certification_required===true) в
+ * сохранённых answers — чтобы regulated-расчёты не потеряли ОС-лицензию молча.
+ * Нерегулируемые остаются без флага (formula default=false) — намеренное
+ * исправление фантомной безусловной ОС-лицензии. Явно заданный флаг (в т.ч.
+ * false) НЕ перезаписываем — уважаем выбор пользователя. seed-default
+ * pdn_152fz=false основанием для backfill НЕ является (проверяем === true).
+ */
+function backfillOsLicenseFlag(calc) {
+    const backfill = (answers) => {
+        if (!answers || typeof answers !== 'object') return;
+        if (answers.os_commercial_license_required !== undefined) return;
+        if (answers.pdn_152fz === true || answers.fstec_certification_required === true) {
+            answers.os_commercial_license_required = true;
+        }
+    };
+    backfill(calc.answers);
+    if (Array.isArray(calc.scenarios)) {
+        for (const scenario of calc.scenarios) {
+            backfill(scenario?.answers);
+        }
+    }
+}
+
 export const MIGRATIONS = [
     {
         from: 0, to: 1,
@@ -668,6 +694,19 @@ export const MIGRATIONS = [
                      'Миграция чинит root.answers и все scenarios[*].answers.',
         run(calc) {
             normalizeWizardSelectAnswers(calc);
+        }
+    },
+    {
+        from: 20, to: 21,
+        description: 'Package 3A (PATCH): OS license gate. license-os-per-node теперь зависит ' +
+                     'от Q.os_commercial_license_required (по умолчанию false). Чтобы regulated ' +
+                     'legacy-расчёты не потеряли платную ОС молча — до-вносим ' +
+                     'os_commercial_license_required=true при ЯВНОМ pdn_152fz===true или ' +
+                     'fstec_certification_required===true в сохранённых answers. Нерегулируемые ' +
+                     'остаются без флага (ОС-лицензия становится 0) — намеренное исправление ' +
+                     'фантомной безусловной ОС-лицензии. Явный флаг (в т.ч. false) не трогаем.',
+        run(calc) {
+            backfillOsLicenseFlag(calc);
         }
     }
 ];

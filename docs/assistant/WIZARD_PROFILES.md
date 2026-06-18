@@ -10,13 +10,13 @@ Design-doc для Этапа 14: **Quick Start Wizard + Industry Matrix**.
 - [DECISIONS.md](DECISIONS.md) — журнал решений (запись 13.U13 про Phase 0)
 - [ТЗ.md](ТЗ.md) — исходное ТЗ
 - [CLAUDE.md](CLAUDE.md) — архитектурные правила проекта
-- [seed.js:SEED_QUESTIONS](js/domain/seed.js#L53) — текущий каталог 126 вопросов
+- [seed.js:SEED_QUESTIONS](js/domain/seed.js#L53) — текущий каталог 127 вопросов
 
 ---
 
 ## 1. Цель
 
-Снизить барьер входа: вместо 126 полей пользователь отвечает на **7 макро-вопросов** и получает полностью предзаполненный опросник + рабочую смету. Архитектор остаётся primary пользователем — все 126 поля видны в Опроснике, помечены бейджем «Из профиля» и доступны для override.
+Снизить барьер входа: вместо 127 полей пользователь отвечает на **7 макро-вопросов** и получает полностью предзаполненный опросник + рабочую смету. Архитектор остаётся primary пользователем — все 127 поля видны в Опроснике, помечены бейджем «Из профиля» и доступны для override.
 
 ### Не-цели
 
@@ -447,9 +447,9 @@ UI: рядом с полем — мини-бейдж:
 
 ### 7.2 Что НЕ заполняется wizard'ом
 
-Wizard заполняет только **критичные драйверы стоимости** (59 полей из 126 для стандартного B2B-профиля без AI). Остальные оставляются на defaults из seed.js, доступны в expert-mode. Точное число привязано к acceptance-тесту [tests/integration/wizard-to-answers-b2b-acceptance.test.js](tests/integration/wizard-to-answers-b2b-acceptance.test.js) — если матрица заполнения меняется, обновите эту строку.
+Wizard заполняет только **критичные драйверы стоимости** (60 полей из 127 для стандартного B2B-профиля без AI). Остальные оставляются на defaults из seed.js, доступны в expert-mode. Точное число привязано к acceptance-тесту [tests/integration/wizard-to-answers-b2b-acceptance.test.js](tests/integration/wizard-to-answers-b2b-acceptance.test.js) — если матрица заполнения меняется, обновите эту строку.
 
-**Заполняется** (59 для B2B-standard):
+**Заполняется** (60 для B2B-standard):
 - Все `business` (кроме `seasonal_activity`/`peak_months` — только для EdTech)
 - Все `load_profile`
 - Все `data_storage`

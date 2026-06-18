@@ -644,6 +644,37 @@ export const SEED_QUESTIONS = [
         assumptionRisk: 'medium'
     },
     {
+        id: 'os_commercial_license_required',
+        section: 'load_profile',
+        subgroup: 'Архитектурные параметры',
+        order: 315,
+        title: 'Нужна платная лицензия серверной ОС',
+        type: 'boolean',
+        defaultValue: false,
+        description:
+            'Нужна ли отдельная платная лицензия на серверную ОС каждого узла: Windows Server, ' +
+            'сертифицированная российская ОС (Astra Linux Special Edition / РЕД ОС с поддержкой), ' +
+            'платный образ или ОС, лицензируемая отдельной покупкой.' +
+            '\n\n' +
+            'Если используется бесплатный Linux (Ubuntu / Debian / обычная Astra Common) ' +
+            'или облачный образ с лицензией, уже включённой в тариф вычислительных ресурсов, — ' +
+            'оставьте «Нет», иначе бюджет будет завышен отдельной строкой лицензии ОС на каждый узел.' +
+            '\n\n' +
+            'По умолчанию «Нет». Регуляторика (ПДн / ФСТЭК) может ПОДСКАЗАТЬ включение ' +
+            '(сертифицированная ОС часто платная), но не включает лицензию автоматически — ' +
+            'итоговое решение за вами: если сертифицированная ОС у вас уже в составе образа ' +
+            'или закуплена иначе, оставьте «Нет».',
+        recommendation:
+            'Когда «Да»: Windows Server, Astra Linux Special Edition / РЕД ОС с платной поддержкой, ' +
+            'сертифицированная ОС по требованиям регулятора, платный коммерческий образ.\n' +
+            'Когда «Нет»: бесплатный Linux (Ubuntu / Debian / Astra Common), облачный образ с ' +
+            'ОС-лицензией, включённой в тариф провайдера, internal-окружения на open-source ОС.',
+        impact: 'При значении «Да» включает ЭК «ОС (на узел)»: (микросервисы + воркеры + БД-узлы) на каждый стенд × коэф. стенда. Для нескольких стендов это заметная статья лицензий.',
+        allowUnknown: true,
+        defaultIfUnknown: false,
+        assumptionRisk: 'medium'
+    },
+    {
         id: 'realtime_required',
         section: 'load_profile',
         subgroup: 'Архитектурные параметры',
@@ -4006,7 +4037,8 @@ export const SEED_ITEMS = [
         applicableStands: ['DEV','IFT','PSI','PROD','LOAD'],
         description:
             'Лицензия на серверную ОС (Astra Linux / RedOS / Windows Server).\n' +
-            'Применять, когда ОС платная.\n' +
+            'Активно при включённом вопросе «Нужна платная лицензия серверной ОС» (Q.os_commercial_license_required). ' +
+            'Применять, когда ОС платная (Windows Server / сертифицированная ОС / платный образ); для бесплатного Linux или образа с лицензией в тарифе — выключить.\n' +
             'Единица измерения: 1 узел в год.\n' +
             'Пример: 5 микросервисов + 3 воркера + 2 БД-узла = 10 узлов.\n' +
             '\n' +
@@ -4015,13 +4047,13 @@ export const SEED_ITEMS = [
             'Расчёт: 30 000 ₽/узел/год.\n' +
             'ВАЖНО: цена с 2025-05 может быть устаревшей — российские вендоры обычно индексируют +5–15%/год. Проверьте актуальную цену у вендора.',
         qtyFormulas: {
-            DEV:  'ceil((Q.microservices_count + Q.async_workers_count + Q.db_count * (1 + Q.db_replicas_count)) * S.standSizeRatio.DEV)',
-            IFT:  'ceil((Q.microservices_count + Q.async_workers_count + Q.db_count * (1 + Q.db_replicas_count)) * S.standSizeRatio.IFT)',
-            PSI:  'ceil((Q.microservices_count + Q.async_workers_count + Q.db_count * (1 + Q.db_replicas_count)) * S.standSizeRatio.PSI)',
-            PROD: 'ceil(Q.microservices_count + Q.async_workers_count + Q.db_count * (1 + Q.db_replicas_count))',
-            LOAD: 'ceil((Q.microservices_count + Q.async_workers_count + Q.db_count * (1 + Q.db_replicas_count)) * S.standSizeRatio.LOAD)'
+            DEV:  'if(Q.os_commercial_license_required, ceil((Q.microservices_count + Q.async_workers_count + Q.db_count * (1 + Q.db_replicas_count)) * S.standSizeRatio.DEV), 0)',
+            IFT:  'if(Q.os_commercial_license_required, ceil((Q.microservices_count + Q.async_workers_count + Q.db_count * (1 + Q.db_replicas_count)) * S.standSizeRatio.IFT), 0)',
+            PSI:  'if(Q.os_commercial_license_required, ceil((Q.microservices_count + Q.async_workers_count + Q.db_count * (1 + Q.db_replicas_count)) * S.standSizeRatio.PSI), 0)',
+            PROD: 'if(Q.os_commercial_license_required, ceil(Q.microservices_count + Q.async_workers_count + Q.db_count * (1 + Q.db_replicas_count)), 0)',
+            LOAD: 'if(Q.os_commercial_license_required, ceil((Q.microservices_count + Q.async_workers_count + Q.db_count * (1 + Q.db_replicas_count)) * S.standSizeRatio.LOAD), 0)'
         },
-        formulaHelp: 'Узлы = микросервисы + воркеры + БД-узлы × коэф. стенда.'
+        formulaHelp: 'Если нужна платная лицензия ОС (Q.os_commercial_license_required): узлы = микросервисы + воркеры + БД-узлы × коэф. стенда. Иначе 0.'
     },
     {
         id: 'license-siem-edr-per-node',
@@ -5439,6 +5471,10 @@ const _AGENT_FORMULA_REFRESH_IDS = [
     'storage-hdd-tb',
     'storage-secure-gb',
     'license-db-per-vcpu',
+    // Package 3A (OS license gate): формула license-os-per-node стала гейтнутой по
+    // Q.os_commercial_license_required — legacy должен получить новую формулу, иначе
+    // продолжит считать ОС безусловно; step-4 авто-добавит новый вопрос в словарь.
+    'license-os-per-node',
     'llm-tokens-input-1m',
     'llm-tokens-output-1m',
     'ai-safety-moderation-tokens-1m',
