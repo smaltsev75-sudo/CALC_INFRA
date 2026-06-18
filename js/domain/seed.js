@@ -3155,7 +3155,7 @@ export const SEED_QUESTIONS = [
         defaultValue: false,
         dependsOn: ['ai_llm_used', 'rag_needed'],
         description:
-            'Если «Да» — стоимость хранения корпуса считается по тарифу Managed RAG провайдера (готовая «база знаний»: embeddings + index + search-API в одном тарифе, например Cloud.ru Evolution Managed RAG, EVO.20: 817,60 ₽/ГБ/мес без НДС / 997,47 ₽/ГБ/мес с НДС).\n\n' +
+            'Если «Да» — стоимость хранения корпуса считается по тарифу Managed RAG провайдера (готовая «база знаний»: управляемое хранение + index + search-API, например Cloud.ru Evolution Managed RAG, EVO.20: 817,60 ₽/ГБ/мес без НДС / 997,47 ₽/ГБ/мес с НДС). Генерация эмбеддингов тарифицируется отдельно (ЭК «Эмбеддинги для RAG») и не входит в этот тариф.\n\n' +
             'Если «Нет» (по умолчанию) — считается self-hosted: pgvector поверх Managed PostgreSQL или RediSearch поверх Managed Redis, 10,07 ₽/ГБ/мес без НДС (12,29 ₽ с НДС). Примерно в 81 раз дешевле, но требует своего DevOps на vector-DB.\n\n' +
             'Имеет смысл только при включённом RAG.',
         recommendation:
@@ -4797,7 +4797,7 @@ export const SEED_ITEMS = [
             '\n' +
             '— Цена-ориентир —\n' +
             'Источник: ПРИЛОЖЕНИЕ №7.EVO.16 п.3 (Managed Redis) / №7.EVO.4 п.5 (Managed PostgreSQL) версия 260316 (2026-03-26): «Хранилище на сетевых SSD дисках» = 0,0138 ₽/ГБ·ч без НДС / 0,016836 ₽/ГБ·ч с НДС 22% × 730 = 10,07 ₽/ГБ/мес без НДС.\n' +
-            'Когда выбирать: команда может админить vector DB сама, важна гибкость / экономия. Альтернатива — готовый Managed RAG-сервис провайдера (rag-managed-knowledge-base-gb), но дороже примерно в 81 раз (готовые embeddings + index + search-API в одном тарифе).',
+            'Когда выбирать: команда может админить vector DB сама, важна гибкость / экономия. Альтернатива — готовый Managed RAG-сервис провайдера (rag-managed-knowledge-base-gb), но дороже примерно в 81 раз (управляемое хранение + index + search-API). Генерация эмбеддингов в обоих вариантах тарифицируется отдельно — ЭК «Эмбеддинги для RAG».',
         qtyFormulas: {
             DEV:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.DEV))), 0)',
             IFT:  'if(Q.rag_needed, if(Q.rag_managed_used, 0, max(1, ceil(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000) * 4 * S.standSizeRatio.IFT))), 0)',
@@ -4820,7 +4820,7 @@ export const SEED_ITEMS = [
         dashboardAiMetric: 'RAG_VECTORS',
         applicableStands: ['DEV','IFT','PSI','PROD','LOAD'],
         description:
-            'Готовая «база знаний» провайдера (Cloud.ru Evolution Managed RAG и аналоги): хранение преобразованных текстовых данных + встроенные embeddings + index + search-API в одном тарифе.\n' +
+            'Готовая «база знаний» провайдера (Cloud.ru Evolution Managed RAG и аналоги): управляемое хранение преобразованных текстовых данных (готовых векторов) с index + search-API. Тариф покрывает хранение и инфраструктуру поиска; ГЕНЕРАЦИЯ эмбеддингов (векторизация корпуса и запросов через embedding-модель) тарифицируется ОТДЕЛЬНО — см. ЭК «Эмбеддинги для RAG» (rag-embeddings-1m), она не входит в этот тариф.\n' +
             'При Q.rag_needed И Q.rag_managed_used. Если RAG включён, но Managed-сервис не выбран — используется self-hosted (rag-vector-db-gb), который ~в 80 раз дешевле, но требует своего DevOps.\n' +
             'Размер считается так же, как у self-hosted vector DB: число эмбеддингов × ~4 КБ. Число эмбеддингов — авто из ' +
             'корпуса (corpus_ГБ × 200 млн ÷ размер_чанка) либо ручное поле при «Указать эмбеддинги вручную». Не зависит от числа поисков.\n' +

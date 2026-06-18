@@ -12458,3 +12458,47 @@ apt-фазе `--with-deps` (2 из 3 последних прогонов: 2.22.1
 `2.22.20 → 2.22.21` (**PATCH**, CI+test-only). **Метрики (мой прогон):** unit **5917/5917 PASS**,
 e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**. Production-код/формулы/модель не менялись.
 Пакеты 2-5 (доменные развилки) — не трогаются.
+
+## Release 2.22.22 — Managed RAG семантика (Variant B) + EMBEDDINGS operational vs billable (2026-06-19)
+
+PATCH, **только тексты + тесты**. Формулы, модель и golden-суммы НЕ менялись (`quantity:audit:check` EXIT 0
+без регена). Решение по тарифной семантике Managed RAG — **Variant B**: managed-тариф НЕ включает генерацию
+эмбеддингов «в один тариф/SKU». `rag-embeddings-1m` остаётся отдельным платным ЭК для внешнего embedding-API
+независимо от managed/self-hosted; гейтится в 0 только при `ai_hosting_mode = on_prem_gpu` (локальная
+embedding-модель).
+
+**Что сделано:**
+1. Тексты модели (3 места в [seed.js](../../js/domain/seed.js)) очищены от обещания all-in:
+   - `rag-managed-knowledge-base-gb` description — «управляемое хранение + index + search-API; ГЕНЕРАЦИЯ
+     эмбеддингов тарифицируется ОТДЕЛЬНО — ЭК «Эмбеддинги для RAG» (rag-embeddings-1m), не входит в этот тариф».
+   - `rag-vector-db-gb` description («Когда выбирать») — та же поправка для описания альтернативы.
+   - `rag_managed_used` (вопрос) description — «генерация эмбеддингов тарифицируется отдельно и не входит
+     в этот тариф».
+2. UI-пояснение operational vs billable — единая точка `DASHBOARD_AI_METRIC_DESCRIPTIONS.EMBEDDINGS`
+   ([constants.js](../../js/utils/constants.js)), используется И в info-модалке Сводки AI-метрик Деталей, И
+   в AI-метриках Dashboard. Добавлен абзац с обязательными фразами «операционный объём» и «не отдельный
+   внешний API-счёт». Формулы/fallback не тронуты — операционный объём остаётся полезен.
+
+**Семантическое различие (зафиксировать для будущих правок):**
+- `rag-embeddings-1m` = ПЛАТНАЯ строка внешнего embedding-API (генерация векторов корпуса+запросов). Гейт
+  `Q.rag_needed && Q.ai_hosting_mode != "on_prem_gpu"` в qtyFormula.
+- `Dashboard/Details EMBEDDINGS` = операционный ОБЪЁМ нагрузки на векторизацию. Источник —
+  `deriveRagEmbeddingItemQty` ([dashboardAggregates.js](../../js/ui/dashboardAggregates.js)), который НЕ гейтит
+  по on_prem (см. NB в коде) и вливается через `applyAiMetricDemandFallback`. Объём может быть платным
+  (external API) или локальным (on-prem GPU) в зависимости от hosting mode. При on-prem платная строка = 0,
+  операционный объём остаётся виден для планирования мощности.
+
+**Тесты:** новый [managed-rag-embeddings-2-22-22.test.js](../../tests/unit/domain/managed-rag-embeddings-2-22-22.test.js)
+— 7 проверок (A managed+external: managed>0 / vector-db=0 / embeddings>0; B on-prem: embeddings PROD=0, но
+EMBEDDINGS metric>0; C text-guard на 3 места модели против «embeddings + index + search-API в одном
+тарифе/SKU» + честная отсылка к отдельному ЭК; D описание EMBEDDINGS содержит обязательные фразы).
+
+**Известное (surfaced, НЕ входит в 2.22.22):** provider priceSource в
+`data/providers/sbercloud-latest.json:109` (+ зеркало в `js/data/providers-bundled.generated.js`) описывает
+реальный SKU провайдера фразой «embeddings + index + search-API в одном SKU». Это provider-факт о хранении
+готовых векторов (storage SKU), не модельное утверждение калькулятора; правка затронула бы provider-данные +
+регенерацию bundle + риск `prices:freshness`. НЕ тронуто — ждёт отдельного решения пользователя.
+
+`2.22.21 → 2.22.22` (**PATCH**, text+test only). **Метрики (мой прогон):** unit **5924/5924 PASS** (+7),
+sanity/quantity/prices/syntax/diff — все **EXIT 0**. Production-формулы/модель/golden-суммы не менялись.
+Пакеты 3-5 (доменные развилки) — не трогаются.
