@@ -12437,3 +12437,24 @@ unknown ddos_tier не гасит critical-нудж.
 `timeout-minutes: 15` на шаг `npx playwright install --with-deps chromium` + `timeout-minutes: 30` на
 джобу `desktop-smoke` в `.github/workflows/ci.yml` (сейчас нет job-timeout → дефолт 6 ч, поэтому
 зависший install крутился 41 мин до ручного cancel+rerun). Пакеты 2-5 (доменные развилки) — не трогаются.
+
+## Release 2.22.21 — CI hardening: страховка от зависания Playwright install (2026-06-18)
+
+PATCH **CI-only** (+ включает уже закоммиченный в 2.22.20 test-only guard). НЕ менялись формулы/модель/
+production-код. Причина: `npx playwright install --with-deps chromium` в джобе `desktop-smoke` зависал на
+apt-фазе `--with-deps` (2 из 3 последних прогонов: 2.22.19 — 41 мин до ручного cancel+rerun, который тогда
+помог; 2.22.20 — снова завис на том же шаге). Job-timeout отсутствовал → дефолт 6 ч, прогон крутился
+вместо быстрого падения. `cancel+rerun` оказался ненадёжной лотереей (1 из 2) — нужен системный фикс.
+
+Фикс в `.github/workflows/ci.yml` (джоба `desktop-smoke`):
+- `timeout-minutes: 30` на джобу (раньше дефолт 6 ч);
+- `timeout-minutes: 15` на шаг установки браузера;
+- `DEBIAN_FRONTEND: noninteractive` (против apt-промпта / debconf-залипания);
+- retry-обёртка: 3 попытки `timeout 240 npx playwright install --with-deps chromium` — зависшая попытка убивается за 4 мин и ретраится, а не висит часами.
+
+Прочее не тронуто (`unit-and-sanity` джоба, `pages.yml`). 2.22.20 был test-only и не успел задеплоиться
+(его CI сняли вручную) — его acceptance-guard входит в этот коммит, поэтому live придёт сразу как **2.22.21**.
+
+`2.22.20 → 2.22.21` (**PATCH**, CI+test-only). **Метрики (мой прогон):** unit **5917/5917 PASS**,
+e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**. Production-код/формулы/модель не менялись.
+Пакеты 2-5 (доменные развилки) — не трогаются.
