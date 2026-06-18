@@ -863,6 +863,37 @@ function checkAuditLoggingRoughEstimate(calc) {
     });
 }
 
+/*
+ * SIEM scaling (5B-Sec): SIEM включён, но драйверы объёма не заданы → стоимость
+ * оценена как один базовый контур + один проект (flat fallback). Нудж к точной модели.
+ */
+function checkSiemFlatEstimate(calc) {
+    if (ans(calc, 'siem_integration_required') !== true) return null;
+    const logGb = ans(calc, 'siem_log_gb_per_day');
+    const sources = ans(calc, 'siem_sources_count');
+    const logNum = isFiniteNum(logGb) ? logGb : 0;
+    const srcNum = isFiniteNum(sources) ? sources : 0;
+    if (logNum > 0 || srcNum > 0) return null; // задан хотя бы один драйвер масштаба
+
+    const fieldIds = ['siem_integration_required', 'siem_log_gb_per_day', 'siem_sources_count'];
+    if (isHealthAcknowledged(calc, 'security-siem-flat-estimate', fieldIds)) return null;
+
+    return makeFinding({
+        id: 'security-siem-flat-estimate',
+        severity: 'info',
+        category: 'security',
+        title: 'SIEM оценён как один базовый контур',
+        message:
+            'Интеграция с SIEM включена, но объём логов и число источников не заданы — ' +
+            'стоимость оценена как один базовый контур мониторинга и один интеграционный проект. ' +
+            'Для точности задайте объём логов (ГБ/день) или число источников.',
+        fieldIds,
+        suggestedAction:
+            'В блоке «Мониторинг и контроль» Опросника заполните «Объём логов для SIEM» ' +
+            'и/или «Число источников/интеграций для SIEM» (опционально — «Класс SIEM»).'
+    });
+}
+
 /* --- Группа: Прайсы --- */
 
 function checkStaleBundle(calc, options) {
@@ -1107,6 +1138,7 @@ export const CALCULATION_HEALTH_CHECKS = [
     checkSeasonalTooManyPeakMonths,
     checkSeasonalSurchargeManual,
     checkAuditLoggingRoughEstimate,
+    checkSiemFlatEstimate,
     checkStaleBundle,
     checkStubBundle,
     checkBundleNotApplied,

@@ -21,7 +21,7 @@ import { wizardToAnswers } from '../../js/domain/wizardProfiles.js';
 import { SEED_QUESTIONS } from '../../js/domain/seed.js';
 
 describe('wizardToAnswers: acceptance B2B-standard', () => {
-    it('SEED_QUESTIONS.length = 119 — общее количество вопросов в детальном опроснике', () => {
+    it('SEED_QUESTIONS.length = 122 — общее количество вопросов в детальном опроснике', () => {
         // ⚠ При изменении этого числа — синхронно обновите WIZARD_PROFILES.md «X полей из N».
         // Stage 1 (qty-модель ПРОМ): +3 RAG-параметра (rag_embeddings_manual,
         // rag_avg_chunk_tokens, rag_refresh_delta_percent).
@@ -35,7 +35,9 @@ describe('wizardToAnswers: acceptance B2B-standard', () => {
         // Stage 5B-Sec (audit-log completeness): +4 параметра объёма журналов аудита
         // (audit_events_per_day, audit_bytes_per_event, audit_retention_years,
         // audit_log_compression_ratio).
-        assert.equal(SEED_QUESTIONS.length, 119,
+        // Stage 5B-Sec (SIEM scaling): +3 параметра масштаба SIEM
+        // (siem_log_gb_per_day, siem_sources_count, siem_tier).
+        assert.equal(SEED_QUESTIONS.length, 122,
             'Если количество SEED_QUESTIONS изменилось — обновите WIZARD_PROFILES.md §7.2');
     });
 

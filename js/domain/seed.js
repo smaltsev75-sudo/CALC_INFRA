@@ -1689,6 +1689,65 @@ export const SEED_QUESTIONS = [
         assumptionRisk: 'low'
     },
     {
+        id: 'siem_log_gb_per_day',
+        section: 'security',
+        subgroup: 'Мониторинг и контроль',
+        order: 311,
+        title: 'Объём логов для SIEM, ГБ/день (для точной оценки)',
+        type: 'number',
+        min: 0, max: 1_000_000, step: 10,
+        defaultValue: 0,
+        dependsOn: ['siem_integration_required'],
+        description:
+            'Сколько гигабайт логов в день собирает SIEM: системные, сетевые и приложенческие события (не только аудит).\n\n' +
+            'Оставьте 0 — и SIEM-мониторинг оценится как один базовый контур (фиксированная стоимость). Укажите объём — и число контуров мониторинга посчитается по ёмкости класса SIEM (см. «Класс SIEM»).\n\n' +
+            'Ориентир: аудит-логи ≈ «событий аудита в день» × «размер записи» / 1e9 ГБ/день; SIEM обычно собирает шире аудита (×2-5). Калькулятор НЕ берёт это число из аудита автоматически — задайте объём здесь.',
+        impact: 'При значении > 0 число контуров мониторинга = объём логов ÷ ёмкость контура (по классу SIEM). 0 = один базовый контур (как раньше).',
+        allowUnknown: true,
+        defaultIfUnknown: 0,
+        assumptionRisk: 'low'
+    },
+    {
+        id: 'siem_sources_count',
+        section: 'security',
+        subgroup: 'Мониторинг и контроль',
+        order: 312,
+        title: 'Число источников/интеграций для SIEM (для точной оценки)',
+        type: 'number',
+        min: 0, max: 100_000, step: 1,
+        defaultValue: 0,
+        dependsOn: ['siem_integration_required'],
+        description:
+            'Сколько систем-источников подключается к SIEM: приложения, базы данных, сетевое оборудование, облачные сервисы.\n\n' +
+            'Оставьте 0 — и интеграция оценится как один проект (фиксированная стоимость). Укажите число — и объём интеграционных работ посчитается из расчёта ~10 источников на один проектный блок. Это инженерная оценка; уточняйте по КП / требованиям SOC.',
+        impact: 'При значении > 0 число интеграционных проектов = источники ÷ 10 (округление вверх). 0 = один базовый проект (как раньше).',
+        allowUnknown: true,
+        defaultIfUnknown: 0,
+        assumptionRisk: 'low'
+    },
+    {
+        id: 'siem_tier',
+        section: 'security',
+        subgroup: 'Мониторинг и контроль',
+        order: 313,
+        title: 'Класс SIEM (ёмкость контура мониторинга)',
+        type: 'select',
+        options: [
+            { value: 'basic',      label: 'Базовый — до 50 ГБ логов/день на контур' },
+            { value: 'standard',   label: 'Стандарт — до 25 ГБ/день на контур' },
+            { value: 'enterprise', label: 'Enterprise — до 10 ГБ/день на контур (глубокая корреляция, SOC)' }
+        ],
+        defaultValue: 'basic',
+        dependsOn: ['siem_integration_required'],
+        description:
+            'Класс SIEM задаёт, сколько логов обрабатывает один контур мониторинга: чем выше класс, тем меньше ГБ/день на контур (больше корреляции, правил, хранения) → тем больше контуров на тот же объём.\n\n' +
+            'Влияет на расчёт ТОЛЬКО если задан «Объём логов для SIEM» (> 0). Ёмкости 50/25/10 ГБ/день — инженерная оценка, уточняйте по КП / SOC.',
+        impact: 'Ёмкость контура по классу: базовый 50 ГБ/день, стандарт 25, enterprise 10. Меньше ёмкость → больше контуров → выше стоимость мониторинга.',
+        allowUnknown: true,
+        defaultIfUnknown: 'basic',
+        assumptionRisk: 'low'
+    },
+    {
         id: 'dlp_required',
         section: 'security',
         subgroup: 'Мониторинг и контроль',
@@ -3937,9 +3996,10 @@ export const SEED_ITEMS = [
             '— Цена-ориентир —\n' +
             'Источник: модельный ориентир из вопроса «Требуется интеграция с SIEM», 2026-05.\n' +
             'Расчёт: середина диапазона 200-500 тыс. ₽ = 350 000 ₽ разово.\n' +
+            'Масштаб: 1 проект покрывает до 10 источников; при заданном «Число источников для SIEM» число проектов = источники ÷ 10 (округление вверх).\n' +
             'ВАЖНО: точный объём зависит от SIEM-платформы, числа источников событий и требований SOC.',
-        qtyFormulas: { PROD: 'if(Q.siem_integration_required, 1, 0)' },
-        formulaHelp: 'qty = 1 при Q.siem_integration_required.'
+        qtyFormulas: { PROD: 'if(Q.siem_integration_required, if(Q.siem_sources_count > 0, max(1, ceil(Q.siem_sources_count / 10)), 1), 0)' },
+        formulaHelp: 'qty: при заданном «Число источников для SIEM» = ceil(источники / 10) проектов (минимум 1); иначе 1 базовый проект; 0 без SIEM.'
     },
     {
         id: 'security-pdn-category-hardening',
@@ -3984,9 +4044,10 @@ export const SEED_ITEMS = [
             '— Цена-ориентир —\n' +
             'Источник: модельный ориентир из вопроса «Требуется интеграция с SIEM», 2026-05.\n' +
             'Расчёт: середина диапазона 30-80 тыс. ₽/мес. = 50 000 ₽/мес.\n' +
+            'Масштаб: 1 контур обрабатывает до N ГБ логов/день по классу SIEM (базовый 50 / стандарт 25 / enterprise 10); при заданном «Объём логов для SIEM» число контуров = объём ÷ ёмкость (округление вверх).\n' +
             'ВАЖНО: полноценная лицензия SIEM/SOC может быть существенно дороже; при enterprise-контуре импортируйте КП.',
-        qtyFormulas: { PROD: 'if(Q.siem_integration_required, 1, 0)' },
-        formulaHelp: 'qty = 1 при Q.siem_integration_required.'
+        qtyFormulas: { PROD: 'if(Q.siem_integration_required, if(Q.siem_log_gb_per_day > 0, max(1, ceil(Q.siem_log_gb_per_day / if(Q.siem_tier == "enterprise", 10, if(Q.siem_tier == "standard", 25, 50)))), 1), 0)' },
+        formulaHelp: 'qty: при заданном «Объём логов для SIEM» = ceil(ГБ-день / ёмкость контура по классу SIEM: базовый 50 / стандарт 25 / enterprise 10), минимум 1; иначе 1 базовый контур; 0 без SIEM.'
     },
     {
         id: 'security-dlp-implementation',
@@ -5312,7 +5373,11 @@ const _AGENT_FORMULA_REFRESH_IDS = [
     'traffic-ingress-tb',
     'res-dr-active',
     'res-georedundancy',
-    'storage-object-tb'
+    'storage-object-tb',
+    // 5B-Sec SIEM scaling: формулы стали масштабируемыми (log_gb / sources) — legacy
+    // должен получить новые qtyFormulas, иначе останется на старой flat-модели.
+    'one-siem-integration',
+    'security-siem-monitoring'
 ];
 
 /* P6 (2.22.8): ЭК, у которых в Stage 5A сменилась ЕДИНИЦА qty (DR: «площадка» →

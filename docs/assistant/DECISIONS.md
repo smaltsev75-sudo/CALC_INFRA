@@ -12155,3 +12155,47 @@ e2e **60 passed**, sanity/quantity/prices/syntax/diff — все EXIT 0.
 
 **Stage 5B-Sec следующее** (по выбору): SIEM/WAF scaling, варианты B/C по УЗ (только с доменными
 коэффициентами). DR-mode не трогаем.
+
+## Release 2.22.13 — SIEM scaling: opt-in масштаб мониторинга/интеграции (Stage 5B-Sec) (2026-06-18)
+
+PATCH (Вариант A — блоки на существующих ЭК, без новых ЭК и без новых ₽-цен). Третий срез
+5B-Sec. Делает 2 SIEM-ЭК масштабируемыми opt-in драйверами, **без golden-дрейфа** для legacy.
+
+**Было**: `one-siem-integration` (350к, oneTime) и `security-siem-monitoring` (50к/мес) — flat
+`qty=if(siem_integration_required,1,0)`, не масштабировались по объёму логов/источникам;
+enterprise-SIEM (по описанию 3-15 млн/год) недооценён в разы (аудит-факты — см. отчёт 5B-Sec).
+
+**Стало** (3 новых вопроса, секция security/«Мониторинг и контроль», dependsOn siem_integration_required):
+`siem_log_gb_per_day` (0), `siem_sources_count` (0), `siem_tier` (basic/standard/enterprise, default basic).
+
+- `security-siem-monitoring` qty: при `log>0` = `ceil(log_gb / ёмкость_тира)` контуров (минимум 1); иначе 1 базовый контур.
+- `one-siem-integration` qty: при `sources>0` = `ceil(sources / 10)` проектов (минимум 1); иначе 1 базовый проект.
+- Ёмкость контура по тиру: **basic 50 / standard 25 / enterprise 10 ГБ-день**; источников на проект — **10**. **siem_tier влияет только при `log_gb>0`.** Коэффициенты — инженерная оценка, в UI помечены «уточнить по КП/SOC».
+- `unit`/`pricePerUnit` НЕ менялись; переиспользуем текущие ₽/блок.
+
+**Обязательная правка**: оба id (`one-siem-integration`, `security-siem-monitoring`) добавлены в
+`_AGENT_FORMULA_REFRESH_IDS` ([seed.js](../../js/domain/seed.js)) — раньше были в legacy-mix-списке,
+но НЕ в formula-refresh, поэтому legacy остался бы на старой flat-формуле. Теперь legacy получает
+масштабируемую формулу (backward-compatible: при драйверах 0 → flat).
+
+**Health-check** `security-siem-flat-estimate` (info): `siem on + log=0 + sources=0` → «SIEM оценён
+как один базовый контур; для точности задайте объём логов или число источников».
+
+**Связь с audit-log**: подсказка `siem_log_gb_per_day` даёт ориентир `events × bytes / 1e9`, но
+формула SIEM `audit_*` НЕ читает (без скрытой связи).
+
+TDD: [siem-scaling-5b.test.js](../../tests/unit/domain/siem-scaling-5b.test.js) (13 проверок:
+fallback / monitoring←log / integration←sources / tier только при log>0 / siem off→0 /
+health-info / legacy-enrichment рефреш формул / arch-guard unit+price+formulaHelp).
+**Урок**: первый прогон дал qty=0 — оказалось баг в ТЕСТ-ХЕЛПЕРЕ (итерация по всем стендам
+перезаписывала PROD-значение нулём с неприменимого LOAD), не в коде. Воспроизведением через
+`calculate` напрямую подтвердил корректность формул, починил хелпер (читать PROD напрямую).
+
+`2.22.12 → 2.22.13` (**PATCH**): opt-in масштаб SIEM. **Golden без дрейфа** (default
+log=0/sources=0/tier=basic → flat qty=1/1; `sanity:check` зелёный). Числа меняются только при
+opt-in. Рябь: `SEED_QUESTIONS` 119→**122**, `UI_TOOLTIPS_SHORT` security 14→17, `WIZARD_PROFILES.md`
+счётчики 119→122 + §7.2. Метрики: unit **5851/5851 PASS** (+13), e2e **60 passed**,
+sanity/quantity/prices/syntax/diff — все EXIT 0.
+
+**Stage 5B-Sec следующее** (по выбору): DDoS tier-select → WAF домены/запросы → DLP seats/channels.
+DR-mode и УЗ B/C — не трогаем (B/C только с доменными коэффициентами).
