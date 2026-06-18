@@ -68,7 +68,7 @@ export function renderSidebar(state, ctx) {
         class: 'app-sidebar',
         attrs: { 'aria-label': 'Главное меню', 'data-testid': 'app-sidebar' }
     },
-        renderBrand(state),
+        renderBrand(state, ctx),
         el('nav', { class: 'sidebar-nav', attrs: { role: 'navigation' } },
             // Разделитель между КАЖДОЙ группой (в icon-only заголовки скрыты —
             // дивайдер единственный визуальный маркер границы групп).
@@ -86,19 +86,31 @@ function renderDivider() {
     return el('div', { class: 'sidebar-divider', attrs: { 'aria-hidden': 'true' } });
 }
 
-function renderBrand(state) {
+function renderBrand(state, ctx) {
     const iconVariant = state?.ui?.theme === 'light' ? 'light' : 'dark';
+    // Иконка-логотип кликабельна (по требованию пользователя 2026-06-18):
+    // переход на экран «Расчёты» (id='calculations', requiresActive:false —
+    // доступен всегда). Нативная <button> вместо clickable-div: даёт keyboard
+    // (Enter/Space) и корректную роль без nested-interactive (контейнер бренда
+    // больше НЕ role=img — img-роль не может содержать интерактивный элемент).
     return el('div', {
         class: 'sidebar-brand',
-        title: `${APP_NAME} v${APP_VERSION}`,
-        // role=img+aria-label дают доступное имя продукта screen-reader'у
-        // (на title неинтерактивного div полагаться нельзя). Полное имя длинное
-        // для узкого rail → остаётся только в title/aria-label.
-        attrs: { role: 'img', 'aria-label': `${APP_NAME} v${APP_VERSION}` }
+        // Имя продукта на hover контейнера (для версии-подписи); доступное имя
+        // действия — на самой кнопке-логотипе через aria-label.
+        title: `${APP_NAME} v${APP_VERSION}`
     },
         // Иконка приложения (вариант K) — единый источник js/ui/appIcon.js.
         // Палитра подбирается под тему (на светлой — светлая плитка).
-        el('span', { class: 'sidebar-brand-logo' }, appIconEl({ size: 34, variant: iconVariant })),
+        el('button', {
+            class: 'sidebar-brand-logo',
+            title: 'Открыть «Расчёты» (Ctrl+Alt+1)',
+            attrs: {
+                type: 'button',
+                'data-testid': 'sidebar-brand-home',
+                'aria-label': 'Открыть список расчётов'
+            },
+            onClick: () => ctx?.setActiveTab?.('calculations')
+        }, appIconEl({ size: 34, variant: iconVariant })),
         // Номер версии — видимая подпись ПОД иконкой (по требованию пользователя).
         // Текст ровно `v<версия>` — на него завязан published-smoke.spec.js.
         el('div', { class: 'sidebar-brand-version', text: `v${APP_VERSION}` })

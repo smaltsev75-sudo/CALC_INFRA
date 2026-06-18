@@ -46,10 +46,26 @@
 .sidebar-brand-logo {
     /* Контейнер иконки приложения (вариант K). Сама иконка несёт собственный
        фон-плитку и скругление → градиент/перекраска контейнера не нужны,
-       только мягкое свечение для глубины. */
+       только мягкое свечение для глубины. С 2026-06-18 — нативная <button>
+       (клик → экран «Расчёты»), поэтому сбрасываем стиль кнопки и добавляем
+       аффорданс кликабельности + видимый focus-ring (WCAG 2.4.7). */
     flex-shrink: 0;
     line-height: 0;
     filter: drop-shadow(0 0 9px var(--accent-glow));
+    background: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: filter var(--t-fast, 0.15s) ease, transform var(--t-fast, 0.15s) ease;
+}
+.sidebar-brand-logo:hover {
+    filter: drop-shadow(0 0 12px var(--accent-glow)) brightness(1.08);
+}
+.sidebar-brand-logo:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
 }
 .sidebar-brand-logo .app-icon,
 .sidebar-brand-logo .app-icon svg {

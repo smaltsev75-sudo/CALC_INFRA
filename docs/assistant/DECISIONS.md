@@ -12057,3 +12057,28 @@ domain-only, рендер/CSS не тронуты).
 (категория ПДн эскалирует всю SECURITY, не только счётчик СЗИ) → audit-log (новый вопрос
 «событий аудита в день» + storage) → SIEM/WAF масштабирование. DR-mode (cold/warm/hot из
 RTO/RPO) отложен — DR стабилизирован в 5A+P6, не трогаем.
+
+## Release 2.22.10 — иконка приложения в sidebar открывает «Расчёты» (2026-06-18)
+
+PATCH (UI-навигация, без расчётной модели). По требованию пользователя: клик по иконке
+приложения в sidebar открывает экран «Расчёты». Отдельный релиз, не смешан с УЗ-hardening.
+
+**Что изменено** ([sidebar.js](../../js/ui/sidebar.js) `renderBrand`): логотип стал нативной
+`<button class="sidebar-brand-logo" type="button" data-testid="sidebar-brand-home"
+aria-label="Открыть список расчётов">` (вместо `<span>` внутри `div role="img"`),
+`onClick → ctx.setActiveTab('calculations')`. Вкладка `calculations` имеет
+`requiresActive:false` → доступна всегда (в т.ч. без активного расчёта). Контейнер бренда
+больше НЕ `role="img"` — img-роль не может содержать интерактивный элемент (WCAG 4.1.2).
+`renderSidebar` прокидывает `ctx` в `renderBrand`. CSS ([sidebar.css](../../css/sidebar.css)):
+button-reset для `.sidebar-brand-logo` + `:focus-visible` ring (WCAG 2.4.7) + лёгкий
+hover-аффорданс; вид иконки не изменился. Подпись версии `v<X.Y.Z>` сохранена (контракт
+published-smoke).
+
+TDD: [sidebar-brand-home-nav.test.js](../../tests/unit/ui/sidebar-brand-home-nav.test.js)
+(5 проверок: реальный fire click → `setActiveTab('calculations')`; native button; не вложен
+в другую кнопку; работает без активного расчёта; версия `v…` на месте). Браузер-смоук
+подтверждён: уход на «Сравнение» → клик логотипа → активна вкладка «Расчёты», иконка
+рендерится корректно.
+
+`2.22.9 → 2.22.10` (**PATCH**): только sidebar-навигация. Формулы/schema/bundle/golden не
+затронуты. Метрики: unit **5822/5822 PASS** (+5), syntax/sanity/quantity/prices/diff — EXIT 0.
