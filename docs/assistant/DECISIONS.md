@@ -12784,3 +12784,33 @@ LOAD ≤ PROD при ratio>1, PROD/IFT/PSI неизменны, LOAD-формул
 
 `2.22.29 → 2.22.30` (**PATCH**, known LOAD-cap drift + text-only). **Метрики (мой прогон):** targeted **14/14 PASS**,
 unit **6015/6015 PASS**, desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**.
+
+## Release 2.22.31 — Package 8A: vCPU override для коммерческой DB-лицензии (2026-06-19)
+
+PATCH поверх 2.22.30. Schema без изменений. Golden drift 0: default нового параметра равен прежнему hardcode `4`.
+
+Аудит Package 8A подтвердил: `license-db-per-vcpu` был корректно gated через `db_commercial_license_required`, но
+размер лицензируемого DB-узла был зашит как `4 vCPU` во всех стендах. Поэтому крупные DB-ноды (8/16 vCPU) нельзя было
+отразить без искусственного изменения `db_count`.
+
+**Реализация.** Добавлен вопрос `db_license_vcpu_per_node` (секция `data_storage`, подгруппа «База данных»,
+default/defaultIfUnknown `4`, min `1`, step `1`). Формулы `license-db-per-vcpu` теперь считают:
+`db_count × (1 + db_replicas_count) × Q.db_license_vcpu_per_node × standRatio`, при сохранении прежнего gate
+`Q.db_commercial_license_required`. Цена `167000 ₽/vCPU/год`, `unit`, `billingInterval`, `ekClass`, `applicableStands`
+не менялись.
+
+**Legacy.** `license-db-per-vcpu` уже находился в `_AGENT_FORMULA_REFRESH_IDS`, поэтому старые расчёты получают новую
+формулу при openCalc, а шаг 4 `enrichLegacyDictionaryWithAgentSeed` автоматически до-вносит новый вопрос из ссылки
+`Q.db_license_vcpu_per_node`. Отдельная миграция не нужна: отсутствие ответа берёт default `4`, что сохраняет прежнюю
+стоимость.
+
+**Collateral.** Добавлен tooltip `q.db_license_vcpu_per_node`, каталог `stage-5-3c2` обновлён до
+`data_storage(23)` / всего `70` полей в 6 секциях, acceptance-счётчик `SEED_QUESTIONS` — `130`, `README.md` и
+`WIZARD_PROFILES.md` синхронизированы. `QUANTITY_LOGIC_AUDIT.md` регенерирован из-за новой `Q.*` ссылки.
+
+**Тесты:** новый [db-license-vcpu-override-8a.test.js](../../tests/unit/domain/db-license-vcpu-override-8a.test.js)
+(5 проверок: вопрос с default 4, default сохраняет qty 16, override 8 даёт qty 32, opt-out даёт 0, формулы читают
+`Q.db_license_vcpu_per_node` без hardcoded `* 4`, legacy refresh до-вносит вопрос и сохраняет default 4).
+
+`2.22.30 → 2.22.31` (**PATCH**, no-drift). **Метрики (мой прогон до bump):** targeted **5/5 PASS**, unit
+**6020/6020 PASS**, desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**.

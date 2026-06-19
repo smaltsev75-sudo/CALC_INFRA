@@ -21,7 +21,7 @@
  *   PATCH (1.1.X) — багфиксы, рефакторинг, мелкие UX-правки, hardening,
  *                   обновления прайсов без новых фич, compatibility-миграции
  *                   без нового формата данных. */
-export const APP_VERSION = '2.22.30';
+export const APP_VERSION = '2.22.31';
 export const APP_NAME = 'Калькулятор инфраструктуры';
 
 /* ============================================================
@@ -274,6 +274,8 @@ export const UI_TOOLTIPS_SHORT = Object.freeze({
         'Реплик чтения на кластер. Снижают нагрузку на мастер.',
     'q.db_commercial_license_required':
         'Отдельная платная лицензия СУБД. Для open-source/managed DB обычно не нужна.',
+    'q.db_license_vcpu_per_node':
+        'vCPU на один узел БД для расчёта коммерческой лицензии СУБД. По умолчанию 4.',
     'q.ram_per_vcpu_ratio':
         'Сколько ГБ оперативной памяти на одно виртуальное ядро (vCPU) кластера БД.',
     'q.ram_advanced_model':

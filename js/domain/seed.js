@@ -919,10 +919,29 @@ export const SEED_QUESTIONS = [
         recommendation:
             'Когда «Да»: Oracle/MS SQL Enterprise, Postgres Pro Enterprise, Tantor SE/Certified, сертифицированная коммерческая СУБД по требованиям заказчика или регулятора.\n' +
             'Когда «Нет»: open-source PostgreSQL/MySQL/MariaDB, managed PostgreSQL/MySQL у облачного провайдера без отдельной лицензии, внутренняя разработка без vendor DB-лицензии.',
-        impact: 'При значении «Да» включает ЭК «СУБД (на vCPU)»: db_count × (1 + реплики) × 4 vCPU на каждый стенд. Для нескольких стендов это может стать крупнейшей статьёй лицензий.',
+        impact: 'При значении «Да» включает ЭК «СУБД (на vCPU)»: db_count × (1 + реплики) × vCPU на узел БД. Для нескольких стендов это может стать крупнейшей статьёй лицензий.',
         allowUnknown: true,
         defaultIfUnknown: false,
         assumptionRisk: 'high'
+    },
+    {
+        id: 'db_license_vcpu_per_node',
+        section: 'data_storage',
+        subgroup: 'База данных',
+        order: 147,
+        title: 'vCPU на узел БД для лицензии СУБД',
+        type: 'number',
+        min: 1, max: 128, step: 1,
+        defaultValue: 4,
+        description:
+            'Сколько vCPU лицензируется на один узел БД (master или реплика) при включённой коммерческой лицензии СУБД.\n\n' +
+            'Если ответ не указан — будет принято значение 4 vCPU на узел, как в прежней модели. Увеличьте значение для крупных DB-нод, где коммерческая лицензия считается по фактическим ядрам.',
+        recommendation:
+            'Оставьте 4 для типовой средней БД. Используйте 8-16 для высоконагруженных OLTP-кластеров, аналитических БД и крупных инстансов с большим числом ядер. Значение должно соответствовать КП или выбранному размеру DB-ноды.',
+        impact: 'Линейно множит ЭК «СУБД (на vCPU)» при включённой коммерческой лицензии СУБД.',
+        allowUnknown: true,
+        defaultIfUnknown: 4,
+        assumptionRisk: 'medium'
     },
     {
         id: 'ram_per_vcpu_ratio',
@@ -4087,13 +4106,13 @@ export const SEED_ITEMS = [
             'ВАЖНО: цена с 2025-05 — может быть устаревшей (российские СУБД-вендоры обычно индексируют +5–15%/год). ' +
             'Перепроверьте актуальную цену у вендора.',
         qtyFormulas: {
-            DEV:  'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * 4 * S.standSizeRatio.DEV), 0)',
-            IFT:  'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * 4 * S.standSizeRatio.IFT), 0)',
-            PSI:  'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * 4 * S.standSizeRatio.PSI), 0)',
-            PROD: 'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * 4), 0)',
-            LOAD: 'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * 4 * S.standSizeRatio.LOAD), 0)'
+            DEV:  'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * Q.db_license_vcpu_per_node * S.standSizeRatio.DEV), 0)',
+            IFT:  'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * Q.db_license_vcpu_per_node * S.standSizeRatio.IFT), 0)',
+            PSI:  'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * Q.db_license_vcpu_per_node * S.standSizeRatio.PSI), 0)',
+            PROD: 'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * Q.db_license_vcpu_per_node), 0)',
+            LOAD: 'if(Q.db_commercial_license_required, ceil(Q.db_count * (1 + Q.db_replicas_count) * Q.db_license_vcpu_per_node * S.standSizeRatio.LOAD), 0)'
         },
-        formulaHelp: 'Если нужна коммерческая лицензия СУБД: vCPU = кластеры × (1 + реплики) × 4 vCPU/узел × коэф. стенда. Иначе 0.'
+        formulaHelp: 'Если нужна коммерческая лицензия СУБД: vCPU = кластеры × (1 + реплики) × vCPU на узел БД × коэф. стенда. Иначе 0.'
     },
     {
         id: 'license-os-per-node',
