@@ -734,8 +734,16 @@
 .questionnaire-cell-empty {
     /* Пустая ячейка — занимает место в сетке, но визуально невидима. */
 }
+@media (max-width: 1180px) {
+    /* Явные 3-4-колоночные подгруппы на компактных экранах с боковой панелью
+       давали ячейки около 190px: переключатели и длинные select'ы вылезали за
+       карточки. Две колонки сохраняют сетку, но дают контролам рабочую ширину. */
+    .questionnaire-grid-explicit { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
 @media (max-width: 720px) {
     /* На узком экране сворачиваем в один столбец, чтобы поля не схлопывались до неюзабельной ширины. */
+    .settings-grid,
+    .questionnaire-grid { grid-template-columns: 1fr !important; }
     .questionnaire-grid-explicit { grid-template-columns: 1fr !important; }
     .questionnaire-cell-empty { display: none; }
 }
@@ -755,9 +763,13 @@
     grid-template-rows: minmax(4.5em, auto) auto 1fr;
     gap: 6px;
     min-height: 64px;
+    min-width: 0;
 }
 .questionnaire-grid .field-label {
     align-items: flex-start;
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 .questionnaire-grid .field > .field-description {
     align-self: start;
@@ -769,6 +781,10 @@
 .questionnaire-grid .field > .segmented,
 .questionnaire-grid .field > .multiselect {
     align-self: center;
+    justify-self: stretch;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .questionnaire-grid .field > .input,
 .questionnaire-grid .field > select.input {
@@ -797,9 +813,13 @@
     grid-template-rows: minmax(4.5em, auto) auto 1fr;
     gap: 6px;
     min-height: 64px;
+    min-width: 0;
 }
 .questionnaire-grid-explicit .field-label {
     align-items: flex-start;
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 .questionnaire-grid-explicit .field > .field-description {
     align-self: start;
@@ -811,6 +831,10 @@
 .questionnaire-grid-explicit .field > .segmented,
 .questionnaire-grid-explicit .field > .multiselect {
     align-self: center;
+    justify-self: stretch;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .questionnaire-grid-explicit .field > .input,
 .questionnaire-grid-explicit .field > select.input {
