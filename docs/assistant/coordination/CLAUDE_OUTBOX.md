@@ -4,57 +4,95 @@ Claude writes reports, blockers, and questions here.
 
 ## Latest Report
 
-Task: Package 9A / CPU Dedicated Semantics — TDD Implementation (replacement, incl. advanced-mode per coordinator decision)
+Task: Package 9D / Remaining Flat SECURITY & SERVICES Contours
 
-Status: WIP — near-GREEN, blocked on a shared-file ownership question (see below). Not releasing.
+Status: analysis-only (no code/test/doc/version/golden changes; live point v2.22.33)
 
-Files touched by me (Claude):
-- `js/domain/seed.js` — initial simple-mode cap (CPU_BASE_VCPU_SHARED_CAPPED), cpu-vcpu-shared
-  PSI/PROD/LOAD → capped base (DEV/IFT + ram-gb full), added `cpu-vcpu-dedicated` to
-  `_AGENT_FORMULA_REFRESH_IDS`, updated descriptions/formulaHelp.
-- `tests/unit/architecture/cpu-base-single-source.test.js` — rewrote invariant for the split.
-- `tests/unit/domain/cpu-dedicated-replacement-9a.test.js` — NEW (created RED, now GREEN).
+Files touched: none. Read-only repro: `d:/tmp/9d-repro.mjs` (outside repo).
 
-Shared-file collision (IMPORTANT — please clarify ownership):
-- After my edits, `js/domain/seed.js` was modified again by another actor (not me): the CPU base was
-  refactored into extracted constants `CPU_RPS_FULL` / `CPU_RPS_CAPPED_100` / `CPU_RPS_OVERAGE_100`
-  (simple+advanced), and `CPU_BASE_VCPU_SHARED_CAPPED` + `cpu-vcpu-dedicated` now implement the
-  advanced-mode replacement EXACTLY as the coordinator decision specified.
-- `cpu-base-single-source.test.js` and `quantity-trace.test.js` were also updated by another actor
-  (advanced-aware invariant; qty 18→17).
-- My two follow-up seed.js edits (to add the advanced cap myself) failed with "file modified since
-  read" — the harness stopped me before any clobber. I did NOT overwrite anything.
-- CODEX_STATUS.md states "Codex does not touch seed.js while Claude owns Package 9A", yet seed.js
-  changed. Per anti-clobber rules I stopped and am surfacing this instead of racing. Who owns the
-  seed.js implementation finish now — me or the other actor?
+Commands run:
+- `node d:/tmp/9d-repro.mjs` — EK qty + ₽/мес on a small (1k users) vs large (10M users) profile.
+- Read-only: seed.js SECURITY/SERVICES EK defs; cross-check vs question impact text.
 
-Commands run (read-only, current tree after the parallel edits):
-- `node tests/run.js` (full unit) → tests 6043 / pass 6040 / fail 3, EXIT 1.
-- The 3 failures are ONLY the golden snapshots (smb_b2b_m, fintech_b2b_m, b2g_m_ru_cis).
-- The 9A test (incl. the advanced tests added by the other actor), the rewritten
-  cpu-base-single-source invariant, and quantity-trace ALL PASS. Implementation is correct.
+Inventory table — flag-fixed `if(flag,1,0)` contours (the flat set):
+- `one-payment-gateway-integration` SERVICES/ONE_TIME oneTime 300000 [PROD] `if(Q.payment_gateway,1,0)`.
+- `one-sso-integration` SERVICES/ONE_TIME oneTime 600000 [PROD] `if(Q.sso_required,1,0)`.
+- `service-identity-provider` SERVICES/SERVICE monthly 50000 [PROD] `if(Q.sso_required,1,0)`.
+- `one-antifraud-integration` SERVICES/ONE_TIME oneTime 700000 [PROD] `if(Q.antifraud_required,1,0)`.
+- `service-antifraud-license` SERVICES/LICENSE annual 1000000 [PROD] `if(Q.antifraud_required,1,0)`.
+- `one-edo-integration` SERVICES/ONE_TIME oneTime 600000 [PROD] `if(Q.edo_required,1,0)`.
+- `service-edo-operator` SERVICES/SERVICE annual 50000 [PROD] `if(Q.edo_required,1,0)`.
+- `one-fstec-certification` SECURITY/ONE_TIME oneTime 2500000 [PROD] `if(Q.fstec_certification_required,1,0)`.
+- `one-source-code-audit` SECURITY/ONE_TIME oneTime 500000 [PROD] `if(Q.pdn_152fz||Q.iso_27001_required,1,0)`.
+- `one-pentest-external` / `one-pentest-internal` SECURITY oneTime 600000 [PROD] `if(Q.pentest_*,1,0)`.
+- `one-load-test-prelaunch` SERVICES oneTime 800000 [LOAD] `if(Q.load_test_before_prod,1,0)`.
+(ekClass = flag-fixed for all above.)
 
-Drift/golden impact (independently regenerated via GOLDEN_REGEN=1 — verified against Codex's expected):
-- smb_b2b_m:     3_279_676 → 3_275_987  (−3_689). HW 354_790 → 351_102. RESERVES 0. annual 39_311_849.
-- fintech_b2b_m: 11_218_834 → 11_210_300 (−8_534). HW 846_629 → 842_941 (−3_688) + RESERVES 789_415 → 784_570 (−4_845). annual 134_523_603.
-- b2g_m_ru_cis:  6_072_505 → 6_065_130  (−7_375). HW 354_790 → 351_102 (−3_688) + RESERVES 62_320 → 58_634 (−3_686). annual 72_781_561.
-- All other golden (incl. PCU-dominated AI scenarios) and ALL 6 business golden: 0 drift.
+Reproduction table (flags on; small=1k users / large=10M users, 5000 RPS, 5 DB):
+- Every flat EK above returns qty=1 and IDENTICAL ₽/мес on small and large. Examples:
+  service-edo-operator 8 778 ₽/мес (both); service-antifraud-license 175 550 ₽/мес (both);
+  one-fstec-certification 504 707 ₽/мес amortized (both); one-source-code-audit 100 941 ₽/мес (both).
+- Confirms: no scale term in any of these formulas — cost is invariant to users/transactions/docs/LOC.
 
-KEY FINDING (not obvious — flagging): the drift for fintech/b2g is NOT only HW. Capping shared PROD
-vCPU lowers `S.prodComputeVcpu`, which the DR post-pass uses to size reserves — so RESERVES cascade
-DOWN too (−4_845 / −3_686). smb has no DR → HW-only. This is the correct consequence of the fix (the
-reserve was previously oversized on the double-counted PROD CPU), and it makes the totals match
-Codex's expected drift exactly (−3_689 / −8_534 / −7_375).
+Findings by severity:
 
-The ONLY remaining collateral = the 3 golden snapshots (not yet updated; still the 3 failures). I have
-NOT edited `tests/unit/domain/golden-scenarios.test.js` to avoid clobbering the other actor.
+1) Text-only honesty fix (LOW; drift 0) — terse descriptions missing the range/КП disclaimer that
+   the comparable SSO/payment EKs already carry ("фиксированная медианная оценка … крупные … КП"):
+   - `one-antifraud-integration` (700k): desc = bare "1 проект интеграции"; question impact gives the
+     range 500–1500k. Add median/КП disclaimer.
+   - `service-antifraud-license` (1M/year): bare "1 защищаемый контур в год"; question gives 1–5M/year.
+   - `one-edo-integration` (600k): bare "1 проект интеграции".
+   - `service-edo-operator` (50k/year): bare "1 контур в год"; ignores EDO per-document economics.
+   These are honesty/consistency fixes only — no formula, no drift.
 
-Questions for Codex:
-1. Ownership: should I apply the 3 golden snapshot updates (values above are ready), or is the other
-   actor finishing them? I will apply immediately on your confirmation — no clobber meanwhile.
-2. seed.js: confirm the refactored advanced implementation is the intended final form (it passes all
-   targeted tests + invariant); I will not touch it further unless asked.
+2) Opt-in scale-driver candidates (MEDIUM; real cost scales but needs a DOMAIN coefficient — I do NOT
+   invent; recommend defer unless you supply coefficients + a new Q field):
+   - `service-edo-operator` — strongest case. Real EDO is per-document (Диадок/СБИС ≈ 5–25 ₽/doc); flat
+     50k/year is a weak proxy that can undercount high-volume B2B by 10–100×. Needs docs/year + ₽/doc.
+   - `service-antifraud-license` — antifraud SaaS scales with transaction/operation volume; flat 1M/year
+     undercounts high-volume fintech. Needs transactions/month or vendor tier.
+   - `one-fstec-certification` — cost scales with protection class (КИИ K1/K2/K3, ГИС class); flat 2.5M.
+     Needs a cert-class Q + class multipliers.
+   - `one-source-code-audit` — cost scales with LOC; flat 500k. Needs a LOC/size Q + tiers.
+   (All four descriptions already say "зависит от … получите КП", so the text is honest; the gap is
+   model granularity, which is a deliberate domain choice.)
 
-Next recommended step: Codex confirms golden ownership. On "go" I apply the 3 snapshots, then run all
-gates (sanity:check / quantity:audit:check / prices:freshness:check / syntax-check / git diff --check)
-and report the final GREEN + drift table for release go/no-go (release is coordinator-only).
+3) Defensible flat (no change): `one-payment-gateway-integration` (6C text-stabilized),
+   `one-sso-integration` + `service-identity-provider` (already carry the median/КП disclaimer),
+   `one-pentest-external/internal`, `one-load-test-prelaunch` — fixed project/engagement medians from a
+   cited market source (BI.ZONE); a pentest/load-test is a per-engagement unit, not volume-scaled.
+   No false positives — gates verified (qty 0 when flag off).
+
+Already covered / excluded (listed, NOT reworked):
+- Count-driven (already scaled): `one-pentest-regular` (pentest_per_year), `one-load-test-regular`
+  (load_test_per_year), `one-security-audit` (security_audit_per_year), `one-deployment` (mln₽ override),
+  `one-staff-training` (staff_training_cycles), `one-schedule-acceleration` (tolerance).
+- Recently guarded/scaled: WAF (waf_domains), DDoS (ddos_tier), SIEM (sources + log_gb/tier), DLP
+  (channels), audit-log (events), email/SMS/push (7A LOAD-cap), traffic egress/ingress, payment/SSO text
+  (6C), DR (5A), OS/DB license, storage no-payload floors, Managed RAG.
+
+Recommended next mini-package: a small **9E text-only honesty pass** — add the median-of-range + "КП for
+your volume" disclaimer to the 4 terse antifraud/EDO descriptions (matches SSO/payment precedent).
+Drift 0, no coefficients, low risk. The four scale-driver candidates → keep DEFERRED as a separate
+opt-in-driver package (model like SIEM/DLP scaling) ONLY if you decide to model them; each needs a domain
+decision + new Q field + coefficients I will not invent.
+
+Drift/golden impact: 0 for 9E text-only. Scale-driver options are opt-in (zero drift unless the new
+driver is set); exact drift deferred until coefficients are chosen.
+
+Refresh-list impact:
+- Text-only honesty fix changes only `description` — NOT propagated by `_AGENT_FORMULA_REFRESH_IDS`
+  (that refreshes qtyFormulas/applicableStands, not descriptions); legacy calcs keep old description text
+  (cosmetic, shown in Passport/tooltip). No action needed.
+- None of these 8 flat EKs are in `_AGENT_FORMULA_REFRESH_IDS` today (correct — never had formula churn).
+  IF a scale driver is later added (e.g. service-edo-operator), that EK must be added to
+  `_AGENT_FORMULA_REFRESH_IDS`; a unit change (annual contour → per-document) would also need
+  `_AGENT_UNIT_PRICE_REFRESH_IDS`.
+
+Questions for Codex/user:
+1. Approve a 9E text-only honesty pass for the 4 terse antifraud/EDO descriptions (drift 0)?
+2. Do you want any of the 4 scale-driver candidates modeled as opt-in drivers? Each needs a domain
+   decision + new Q + coefficients (I will not invent). If yes, which, and supply the coefficients/КП.
+
+Next recommended step: Codex verify the inventory + repro (flat cost invariant to scale), then decide
+9E text-only vs defer. No implementation or release now (analysis-only).

@@ -289,8 +289,8 @@ describe('Migration: LATEST_SCHEMA_VERSION после Phase 2', () => {
      * (удаление dead-вопроса mau_growth_rate_percent). Тесты на промежуточные
      * шаги (16→17 VAT modes, 17→18 priceSource) проверяются как наличие шага
      * в массиве MIGRATIONS, а не как «последний». */
-    it('LATEST_SCHEMA_VERSION = 22 (… + Package 3A OS license gate + Package 6A deployment override)', () => {
-        assert.equal(LATEST_SCHEMA_VERSION, 22);
+    it('LATEST_SCHEMA_VERSION = 23 (… + Package 9B aiStandFactor clamp)', () => {
+        assert.equal(LATEST_SCHEMA_VERSION, 23);
     });
 
     it('Шаг 16→17 — VAT modes (Stage VAT-1)', () => {
@@ -323,11 +323,17 @@ describe('Migration: LATEST_SCHEMA_VERSION после Phase 2', () => {
         assert.match(step.description, /Package 3A|OS license/i);
     });
 
-    it('Последний шаг — 21→22 deployment override (Package 6A)', () => {
+    it('Шаг 21→22 — deployment override (Package 6A)', () => {
+        const step = MIGRATIONS.find(m => m.from === 21 && m.to === 22);
+        assert.ok(step, 'Шаг 21→22 должен присутствовать');
+        assert.match(step.description, /Package 6A|deployment/i);
+    });
+
+    it('Последний шаг — 22→23 aiStandFactor clamp (Package 9B hardening)', () => {
         const last = MIGRATIONS[MIGRATIONS.length - 1];
-        assert.equal(last.from, 21);
-        assert.equal(last.to, 22);
-        assert.match(last.description, /Package 6A|deployment/i);
+        assert.equal(last.from, 22);
+        assert.equal(last.to, 23);
+        assert.match(last.description, /Package 9B|aiStandFactor/i);
     });
 
     it('Любой v0-расчёт мигрирует до LATEST (полная цепочка)', () => {

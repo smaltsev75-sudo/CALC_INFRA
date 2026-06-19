@@ -1,161 +1,88 @@
 # Claude Inbox
 
-## Active Task: Package 9A / CPU Dedicated Semantics — TDD Implementation
+## Active Task: Package 9D / Remaining Flat SECURITY & SERVICES Contours — ANALYSIS ONLY
 
-Mode: Codex takeover in progress. Claude must stand down from editing
-`js/domain/seed.js`, `tests/unit/domain/cpu-dedicated-replacement-9a.test.js`,
-`tests/unit/architecture/cpu-base-single-source.test.js`,
-`tests/unit/domain/quantity-trace.test.js`, and golden/sanity artifacts until
-Codex posts a WIP report. Claude's next role is review/verification after Codex
-reports.
+Mode: analysis-only. Do **not** edit production code, tests, docs, versions, or
+golden files for this task. Write the report to `CLAUDE_OUTBOX.md`.
 
-Do not release, push, tag, or bump version.
+Stable live point: v2.22.33. Codex is preparing v2.22.34 separately
+(`aiStandFactor` migration hardening); do not touch migrations or version files.
 
-Live stable point for this task: v2.22.32.
+## Package 9C Status
 
-Codex decision after independent verification:
+Your Package 9C / `storage-secure-gb` report has been received.
 
-- Use **replacement semantics** for `cpu-vcpu-dedicated`.
-- `cpu-vcpu-dedicated` replaces the shared RPS overage above 100 RPS on the stands where dedicated exists.
-- Keep RAM sized from the original full CPU load; do not let the shared CPU cap reduce `ram-gb`.
-- Cap shared RPS only on `PSI`, `PROD`, and `LOAD`.
-- Do not add a new user opt-in gate in this package; keep automatic `peak_rps > 100` behavior.
+Codex will independently verify the repro and route the domain decision:
+whether protected storage is a raw PDn/encrypted footprint or a full DB
+footprint with indexes/WAL/replicas. Until Codex/user chooses an option, do not
+implement 9C.
 
-Implementation target:
+## New Audit Target
 
-1. In `js/domain/seed.js`, split CPU base constants so:
-   - `ram-gb` continues to use the current full `CPU_BASE_VCPU`.
-   - `cpu-vcpu-shared` uses a capped shared base only on `PSI`/`PROD`/`LOAD`, where the simple RPS term is `min(Q.peak_rps, 100) / 50`.
-   - `DEV` and `IFT` shared formulas stay on the full base because `cpu-vcpu-dedicated` does not apply there.
-   - advanced CPU model behavior must be considered explicitly. If capping advanced mode needs a formula choice, stop and report before implementing that part.
-2. Leave `cpu-vcpu-dedicated` formula itself unchanged unless a test proves it must change.
-3. Add `cpu-vcpu-dedicated` to `_AGENT_FORMULA_REFRESH_IDS` if any CPU formula semantics change, so legacy/imported calculations refresh consistently.
-4. Update `description`/`formulaHelp` for `cpu-vcpu-shared` and/or `cpu-vcpu-dedicated` to state the split:
-   - shared covers baseline/general CPU;
-   - dedicated covers the RPS overage above 100 on PSI/PROD/LOAD;
-   - RAM remains sized from total CPU load.
-5. Add TDD tests:
-   - RPS-dominated `peak_rps=200` case: PROD shared decreases by 1, dedicated remains 2, RAM unchanged.
-   - `DEV`/`IFT` shared remain unchanged for the same case.
-   - PCU-dominated case: shared unchanged, dedicated unchanged.
-   - `peak_rps <= 100`: no change.
-   - `_AGENT_FORMULA_REFRESH_IDS` contains `cpu-vcpu-dedicated`.
-   - Legacy enrichment refreshes the changed formula(s).
-6. Confirm expected drift before release report:
-   - Quick Start approximate model drift from Codex verification:
-     - `smb_b2b_m`: about `-3689` RUB/month.
-     - `fintech_b2b_m`: about `-8534` RUB/month.
-     - `b2g_m_ru_cis`: about `-7375` RUB/month.
-     - high PCU-dominated scenarios: `0`.
-   - Recompute exact golden values after implementation and report them.
+Find remaining flat or weakly-scaled SECURITY / SERVICES / project-like EK
+contours that were not already fixed or intentionally deferred in recent
+packages.
 
-Required checks before reporting:
+Start from `js/domain/seed.js`, then cross-check docs/tests where relevant.
 
-- Targeted 9A tests.
-- Full unit.
-- `npm run sanity:check`
-- `npm run quantity:audit:check`
-- `npm run prices:freshness:check`
-- `npm run syntax-check`
-- `git diff --check`
-- Desktop e2e smoke if any rendered text/layout changed enough to affect UI; otherwise explain why skipped.
+Candidates to include if present:
 
-Report to `CLAUDE_OUTBOX.md` with files touched, commands, drift table, and release recommendation.
+- antifraud / fraud monitoring services;
+- EDO / document exchange service;
+- pentest / security audit / FSTEC certification one-time or recurring lines;
+- other SECURITY/SERVICES items whose `qtyFormula` is a flat `0/1`, constant,
+  or weak proxy while the description promises scale, tier, user count, traffic,
+  nodes, channels, domains, events, or certification class;
+- items already recently stabilized should be listed as "already covered" but
+  not reworked: WAF, DDoS, SIEM, DLP, audit-log, SSO/IdP/payment text,
+  traffic/email/SMS/push, deployment, staff training, DR, OS/DB license,
+  storage floors, Managed RAG.
 
-## Coordinator Feedback While Task Is Active
+Questions to answer with facts:
 
-Codex ran a read-only targeted check against the current WIP:
+1. Which EK ids remain flat/weakly-scaled, with exact metadata:
+   `category`, `resourceClass`, `ekClass`, `unit`, `pricePerUnit`,
+   `billingInterval`, `applicableStands`, `qtyFormula`, `formulaHelp`.
+2. For each candidate, is flat pricing defensible as a fixed project/service
+   median, or does text/formula promise scaling that is not implemented?
+3. Reproduce at least small/medium/large profile numbers where the flatness
+   affects budget interpretation.
+4. Classify each finding:
+   - confirmed bug;
+   - text-only honesty fix;
+   - opt-in scale driver candidate;
+   - defer until domain coefficients/KP;
+   - false-positive/already covered.
+5. If a formula change is recommended, identify required domain coefficients
+   and expected drift shape. Do not invent coefficients.
+6. Check legacy refresh impact: whether the EK is or should be in
+   `_AGENT_FORMULA_REFRESH_IDS` and whether unit/price would require
+   `_AGENT_UNIT_PRICE_REFRESH_IDS`.
 
-`npm test -- tests/unit/domain/cpu-dedicated-replacement-9a.test.js`
+Report format in `CLAUDE_OUTBOX.md`:
 
-Result: 6/7 PASS, 1 FAIL.
+```text
+Task: Package 9D / Remaining Flat SECURITY & SERVICES Contours
+Status: analysis-only
+Files touched: none
+Commands run:
+Inventory table:
+Reproduction table:
+Findings by severity:
+Already covered / excluded:
+Recommended next mini-package:
+Drift/golden impact:
+Refresh-list impact:
+Questions for Codex/user:
+Next recommended step:
+```
 
-Failing acceptance:
+## Completed Handoff: Package 9B / AI Service Contours
 
-- `legacy enrichment refreshes cpu-vcpu-dedicated formula (it is in the refresh list)`
+Closed as analysis-only false-positive for formulas. Codex is separately
+preparing a small migration hardening patch for corrupt persisted
+`aiStandFactor` values.
 
-Observed diff: enriched legacy item kept `{ PROD: '0' }` instead of the current
-`PSI`/`PROD`/`LOAD` dedicated formulas. This means the implementation still
-needs to add `cpu-vcpu-dedicated` to `_AGENT_FORMULA_REFRESH_IDS` (or otherwise
-make the legacy refresh contract pass). Please fix this before reporting GREEN.
+## Completed Handoff: Package 9A / CPU Dedicated Semantics
 
-Second Codex read-only check after refresh-list fix:
-
-`npm test -- tests/unit/domain/cpu-dedicated-replacement-9a.test.js`
-
-Result: 7/7 PASS.
-
-Full suite check:
-
-`npm test`
-
-Result: 6033/6039 PASS, 6 FAIL. Remaining collateral to finish before reporting:
-
-1. `tests/unit/architecture/cpu-base-single-source.test.js`
-   - Old invariant assumes `cpu-vcpu-shared` and `ram-gb` always use the same
-     literal CPU base.
-   - 9A intentionally splits `cpu-vcpu-shared` into full base on DEV/IFT and
-     capped base on PSI/PROD/LOAD, while `ram-gb` stays full base.
-   - Update the invariant to protect the new contract instead of the old one.
-2. `tests/unit/domain/golden-scenarios.test.js`
-   - Expected 9A drift must be regenerated/updated:
-     - `smb_b2b_m`: `3279676 -> 3275987` (`-3689`)
-     - `fintech_b2b_m`: `11218834 -> 11210300` (`-8534`)
-     - `b2g_m_ru_cis`: `6072505 -> 6065130` (`-7375`)
-3. `tests/unit/domain/quantity-trace.test.js`
-   - `cpu-vcpu-shared/PROD` expected qty changed `18 -> 17`; update the
-     assertion and verify trace explains the capped shared base.
-
-Do not treat these as unexpected blockers; they are the required collateral for
-the approved 9A model. After updating, rerun full unit and the standard gates.
-
-Third coordinator decision: advanced CPU mode must use the same replacement
-semantics, not keep the old double-count behind an opt-in flag.
-
-Reason: current WIP comment says `cpu_advanced_model` is not capped, while
-`cpu-vcpu-dedicated` still adds overage above 100. That means advanced-mode
-calculations still pay full RPS load in `cpu-vcpu-shared` plus dedicated overage.
-This contradicts the approved replacement model.
-
-Implementation decision:
-
-- In shared capped base on `PSI`/`PROD`/`LOAD`:
-  - simple mode: `min(Q.peak_rps, 100) / 50`
-  - advanced mode: `min(Q.peak_rps, 100) * Q.cpu_ms_per_request / 1000 / (clamp(Q.cpu_target_utilization_percent, 10, 90) / 100)`
-- In `cpu-vcpu-dedicated` overage formulas:
-  - simple mode: `max(0, Q.peak_rps - 100) / 50`
-  - advanced mode: `max(0, Q.peak_rps - 100) * Q.cpu_ms_per_request / 1000 / (clamp(Q.cpu_target_utilization_percent, 10, 90) / 100)`
-- Keep DEV/IFT shared on the full base.
-- Keep `ram-gb` on the full uncapped CPU base.
-
-Add tests:
-
-- advanced `peak_rps=200`, `cpu_ms_per_request=50`, `target_util=50`:
-  shared PROD should be `10`, dedicated PROD should be `10`, sum `20`, matching
-  full advanced RPS CPU (`200 * 50ms / 1000 / 0.5 = 20`) with no double-count.
-- advanced `peak_rps<=100`: dedicated zero, shared equals full advanced base.
-- PCU-dominated advanced case remains dominated by PCU after the cap if PCU is
-  larger than capped RPS CPU.
-
-This is a coordinator decision, not a new user question. If you find a formula
-parser limitation that prevents this expression, report immediately; otherwise
-implement and include the advanced-mode drift note (default/golden should remain
-unchanged unless scenarios enable advanced CPU).
-
-Follow-up read-only check:
-
-- `tests/unit/domain/cpu-dedicated-replacement-9a.test.js` still states
-  "Advanced CPU model ... intentionally NOT capped here".
-- `js/domain/seed.js` still says advanced mode is not capped and
-  `CPU_BASE_VCPU_SHARED_CAPPED` keeps the full advanced RPS term.
-
-Do not report Package 9A as complete in this state. Update formulaHelp/comments
-and tests to the advanced replacement contract above, then rerun targeted/full.
-
-## Completed Handoff: Package 8B-light / DB License Edition Text Cleanup
-
-Released as v2.22.32. No further action.
-
-## Queued Task
-
-To be assigned after Package 9A implementation and Codex review.
+Released live as v2.22.33 by Codex.

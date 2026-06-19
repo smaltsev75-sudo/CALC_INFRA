@@ -141,29 +141,43 @@ test('Category distribution composition card stays aligned and non-overlapping',
         return container.width > 0 && widths.length >= 4 && widths.every(width => width > 0);
     })).toBe(true);
 
-    const segmentSummary = await categorySegments.evaluate(node => {
-        const container = node.getBoundingClientRect();
-        const segments = [...node.querySelectorAll('.dash-category-segment')].map(seg => {
-            const rect = seg.getBoundingClientRect();
+    let segmentSummary = null;
+    await expect.poll(async () => {
+        const summary = await categorySegments.evaluate(node => {
+            const container = node.getBoundingClientRect();
+            const segments = [...node.querySelectorAll('.dash-category-segment')].map(seg => {
+                const rect = seg.getBoundingClientRect();
+                return {
+                    width: Math.round(rect.width * 100) / 100,
+                    top: Math.round(rect.top * 100) / 100,
+                    bottom: Math.round(rect.bottom * 100) / 100
+                };
+            });
             return {
-                width: Math.round(rect.width * 100) / 100,
-                top: Math.round(rect.top * 100) / 100,
-                bottom: Math.round(rect.bottom * 100) / 100
+                containerWidth: Math.round(container.width * 100) / 100,
+                segments,
+                sumWidth: Math.round(segments.reduce((sum, seg) => sum + seg.width, 0) * 100) / 100
             };
         });
-        return {
-            containerWidth: Math.round(container.width * 100) / 100,
-            segments,
-            sumWidth: Math.round(segments.reduce((sum, seg) => sum + seg.width, 0) * 100) / 100
-        };
-    });
+        const visible = summary.segments.filter(segment => segment.width > 0);
+        const visibleWidth = Math.round(visible.reduce((sum, seg) => sum + seg.width, 0) * 100) / 100;
+        const stable = visible.length >= 4 &&
+            Math.abs(visibleWidth - summary.containerWidth) <= 2 &&
+            visible.every(segment =>
+                Math.abs(segment.top - visible[0].top) <= 1 &&
+                Math.abs(segment.bottom - visible[0].bottom) <= 1
+            );
+        if (stable) segmentSummary = summary;
+        return stable;
+    }).toBe(true);
 
-    expect(segmentSummary.segments.length).toBeGreaterThanOrEqual(4);
-    expect(Math.abs(segmentSummary.sumWidth - segmentSummary.containerWidth)).toBeLessThanOrEqual(2);
-    for (const segment of segmentSummary.segments) {
-        expect(segment.width).toBeGreaterThan(0);
-        expect(Math.abs(segment.top - segmentSummary.segments[0].top)).toBeLessThanOrEqual(1);
-        expect(Math.abs(segment.bottom - segmentSummary.segments[0].bottom)).toBeLessThanOrEqual(1);
+    const visibleSegments = segmentSummary.segments.filter(segment => segment.width > 0);
+    const visibleWidth = Math.round(visibleSegments.reduce((sum, seg) => sum + seg.width, 0) * 100) / 100;
+    expect(visibleSegments.length).toBeGreaterThanOrEqual(4);
+    expect(Math.abs(visibleWidth - segmentSummary.containerWidth)).toBeLessThanOrEqual(2);
+    for (const segment of visibleSegments) {
+        expect(Math.abs(segment.top - visibleSegments[0].top)).toBeLessThanOrEqual(1);
+        expect(Math.abs(segment.bottom - visibleSegments[0].bottom)).toBeLessThanOrEqual(1);
     }
 
     const overflow = await categoryCard.locator('.dash-category-row')

@@ -12897,3 +12897,36 @@ CAPEX; источник истины — `js/data/providers-bundled.generated.js
 `2.22.32 → 2.22.33` (**PATCH**, known CPU drift + docs/process). **Метрики (до bump):** targeted 9A/Stage4/trace —
 **42/42 PASS**, provider overlay guard group — **18/18 PASS**, unit **6043/6043 PASS**, desktop e2e **60 passed**,
 sanity/quantity/prices/syntax/diff — все **EXIT 0**.
+
+## Release 2.22.34 — Package 9B hardening: AI stand factor clamp (2026-06-19)
+
+PATCH поверх 2.22.33. Формулы, цены и состав ЭК не менялись.
+
+**Package 9B / AI service contours — результат аудита.** Проверены `ai-safety-layer-service`,
+`ai-low-latency-inference-reserve`, `ai-sensitive-data-gateway`. Подозрение «НТ может стать больше ПРОМ из-за
+`S.standSizeRatio.LOAD=1.2`» оказалось false-positive: для AI-ЭК без hardware `dashboardResource` калькулятор
+подменяет стендовые коэффициенты на `settings.aiStandFactor`. В обычном UI/import пути `aiStandFactor`
+валидируется в диапазоне `0..1`, а `PROD` фиксируется как `1`, поэтому нормальный НТ-объём не может превысить ПРОМ.
+
+**Hardening.** Найден только edge для битых сохранений: если расчёт уже лежал в localStorage/JSON с ручным
+`settings.aiStandFactor.LOAD > 1` или нечисловыми значениями, прямой расчёт мог завысить AI-объём НТ. Добавлена
+миграция `22→23`, которая при открытии расчёта:
+- заполняет отсутствующий `aiStandFactor` дефолтами;
+- заменяет нечисловые значения дефолтами;
+- ограничивает non-PROD стенды диапазоном `0..1`;
+- фиксирует `PROD=1.00`.
+
+**Drift.** Для валидных расчётов drift 0. Изменятся только битые/ручные сохранения с `aiStandFactor` вне `0..1`:
+они будут приведены к допустимому диапазону вместо завышенного AI LOAD.
+
+**Tests/guards.**
+- Новый [migration-22-23-ai-stand-factor-clamp.test.js](../../tests/unit/state/migration-22-23-ai-stand-factor-clamp.test.js):
+  clamp, missing/non-numeric defaults, `PROD=1`, idempotency.
+- Обновлены migration schema guards под `LATEST_SCHEMA_VERSION=23`.
+- Test-only hardening: [dashboard-risk-bars-layout.spec.js](../../tests/e2e/dashboard-risk-bars-layout.spec.js)
+  теперь ждёт стабильное видимое состояние category bar, как соседний risk-bar тест. Это убирает race, где full-smoke
+  мог поймать промежуточный ререндер с сегментом шириной 0; production CSS/JS не менялись.
+
+`2.22.33 → 2.22.34` (**PATCH**, migration hardening + test-only e2e hardening). **Метрики (финальный прогон):**
+targeted migrations — **33/33 PASS**, unit **6048/6048 PASS**, desktop e2e **60 passed**,
+sanity/quantity/prices/syntax/diff — все **EXIT 0**.

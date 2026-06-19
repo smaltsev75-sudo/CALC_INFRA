@@ -104,6 +104,24 @@ function normalizeWizardSelectAnswers(calc) {
     }
 }
 
+function normalizeAiStandFactorSettings(calc) {
+    const s = calc.settings || (calc.settings = {});
+    if (!s.aiStandFactor || typeof s.aiStandFactor !== 'object') {
+        s.aiStandFactor = { ...DEFAULT_AI_STAND_FACTOR };
+        return;
+    }
+
+    for (const stand of STAND_IDS) {
+        const v = s.aiStandFactor[stand];
+        if (typeof v !== 'number' || !Number.isFinite(v)) {
+            s.aiStandFactor[stand] = DEFAULT_AI_STAND_FACTOR[stand];
+            continue;
+        }
+        s.aiStandFactor[stand] = Math.min(1, Math.max(0, v));
+    }
+    s.aiStandFactor.PROD = 1.00;
+}
+
 /**
  * Package 3A (OS license gate): для legacy-расчётов без явного
  * os_commercial_license_required до-вносим true ТОЛЬКО при явном регулируемом
@@ -748,6 +766,17 @@ export const MIGRATIONS = [
                      'вносим (остаётся медиана 5 млн ₽), golden drift 0.',
         run(calc) {
             backfillDeploymentCostOverride(calc);
+        }
+    },
+    {
+        from: 22, to: 23,
+        description: 'Package 9B hardening: нормализуем settings.aiStandFactor в 0..1 и ' +
+                     'фиксируем PROD=1.00 для persisted/corrupt current-schema расчётов. ' +
+                     'UI и JSON-import уже валидируют этот диапазон, но localStorage/bundle ' +
+                     'могли содержать старое или ручное значение >1, из-за чего AI-ЭК на НТ ' +
+                     'могли превысить ПРОМ при прямом calculate().',
+        run(calc) {
+            normalizeAiStandFactorSettings(calc);
         }
     }
 ];

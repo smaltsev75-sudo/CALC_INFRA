@@ -2,75 +2,53 @@
 
 ## Coordinator State
 
-- Stable live version confirmed: v2.22.32.
-- Package 8B-light is released and live.
-- Coordination protocol is released and live.
-- Claude's next active task is Package 9A / CPU Dedicated Semantics implementation.
+- Stable live version confirmed: v2.22.33.
+- Current Codex work: release v2.22.34, a small migration hardening patch for
+  corrupt saved `settings.aiStandFactor` values.
+- No production EK formulas or prices are changed in v2.22.34.
+- GitHub CI/Pages for v2.22.33 were green and live checks confirmed
+  `APP_VERSION = 2.22.33`.
 
-## Parallel Codex Work
+## Claude Work
 
-Current independent Codex track: Package 8C-light provider-overlay documentation guard.
+- Package 9B / AI Service Contours: completed as formula false-positive.
+  Runtime uses `aiStandFactor`, and valid UI/import values cannot make AI LOAD
+  exceed PROD.
+- Package 9C / `storage-secure-gb`: report received. Codex must independently
+  verify before any decision. Main domain question: protected storage as raw
+  PDn/encrypted footprint vs full DB footprint with indexes/WAL/replicas.
+- Active Claude task now: Package 9D / Remaining Flat SECURITY & SERVICES
+  Contours, analysis-only. No code edits.
 
-- Codex owns `docs/assistant/WIZARD_PROFILES.md` and
-  `tests/unit/architecture/provider-overlay-doc-guard-8c.test.js`.
-- RED confirmed: the new guard failed on old MVP/stub/TBD §6 provider-overlay
-  documentation.
-- GREEN confirmed: targeted `provider-overlay-doc-guard-8c.test.js` is now
-  4/4 PASS after updating §6 to runtime bundled providers.
-- Codex does not touch `js/domain/seed.js` while Claude owns Package 9A.
+## Current Codex Patch: v2.22.34
 
-Current coordination/verification track: Package 9A CPU Dedicated Semantics.
+Purpose in plain language: if an old/manual saved calculation contains invalid
+AI stand percentages, clamp them when the calculation is opened.
 
-Current finding:
+Expected behavior:
 
-- `cpu-vcpu-shared` counts full `peak_rps / 50`.
-- `cpu-vcpu-dedicated` additionally counts overage above 100 RPS.
-- Verified double-count in RPS-dominated cases.
-- Decision: replacement semantics. Cap shared RPS at 100 only on PSI/PROD/LOAD; keep RAM from full CPU base.
-- Claude has been assigned implementation via `CLAUDE_INBOX.md`.
-- Codex read-only verification:
-  - Targeted `cpu-dedicated-replacement-9a.test.js` is now 7/7 PASS.
-  - Full `npm test` is 6033/6039 PASS.
-  - Remaining 9A collateral sent to Claude: update old CPU-base arch invariant,
-    update 3 golden snapshots with expected drifts, update quantity-trace qty
-    expectation from 18 to 17 and verify capped-base trace.
-  - Additional coordinator decision sent to Claude: advanced CPU mode must use
-    the same replacement split. Capped shared advanced RPS uses first 100 RPS;
-    dedicated advanced overage uses `peak_rps - 100` with the same
-    `cpu_ms_per_request / target_util` conversion. RAM stays on full base.
-  - Follow-up check found current WIP still says advanced mode is not capped;
-    this is a 9A blocker and has been sent back to Claude.
+- Valid calculations: no budget change.
+- Corrupt saved values above 100% or below 0%: normalized into 0..100%.
+- PROD AI factor: always restored to 100%.
 
-Additional read-only scan: SERVICES/NETWORK flat baselines.
+Verification already run before bump:
 
-- `network-lb-l7`: cheap threshold model; text explicitly says qty does not scale by stand size. No HIGH finding.
-- `network-cdn-edge`: geography-driven contour count; traffic is separate in TRAFFIC ЭК. No HIGH finding.
-- `network-realtime-gateway`: already scales by PCU. No HIGH finding.
-- `antifraud` and `EDO`: formulas are defensible baseline flat estimates, but question text mentions wider market ranges / per-document economics. Candidate for later text-only clarification or opt-in tier/count model, not a blocking formula bug.
-- Codex will not edit `seed.js` for this while Claude is doing Package 9A analysis against the same file.
+- targeted migration tests: 33/33 PASS;
+- full unit: 6048/6048 PASS;
+- sanity / quantity / prices / syntax / diff: EXIT 0.
 
-Additional inventory after 9A started:
+Still required before release:
 
-- Candidate next audits after 9A:
-  - AI service-contours with `LOAD-ratio`: `ai-safety-layer-service`,
-    `ai-sensitive-data-gateway`, `ai-low-latency-inference-reserve`.
-  - SECURITY/SERVICES flat project/licence contours that are probably
-    defensible baselines but need text/driver review before any model change:
-    antifraud, EDO, SSO/IdP, pentests/audits, FSTEC certification.
-  - Existing scaled items that should be treated carefully, not reworked
-    blindly: WAF/DDoS/SIEM/DLP/audit-log and traffic/email/SMS/push have recent
-    guard coverage.
-  - Storage/security storage cross-check candidate: `storage-secure-gb`.
-
-## Next Coordinator Actions
-
-1. Keep monitoring `CLAUDE_OUTBOX.md`; do not wait silently if no report lands.
-2. Finish non-overlapping Package 8C-light verification.
-3. When Claude reports Package 9A, verify diff, tests, and drift independently.
-4. Decide combined or separate release packaging after both tracks are known.
+1. bump to 2.22.34;
+2. rerun full release gates after bump;
+3. commit/push/tag/release;
+4. monitor CI → Pages → live `APP_VERSION = 2.22.34`.
 
 ## No-Idle Commitment
 
-- Codex checks `CLAUDE_OUTBOX.md` and the monitor log before starting each next work slice.
-- Claude question to Codex must be answered by Codex in the next coordination pass unless it truly needs a user-owned domain decision.
-- While Claude owns `seed.js` for Package 9A, Codex will use only read-only verification or non-overlapping coordination/docs work.
+- Codex does not wait idly for Claude when a safe non-overlapping action exists.
+- Claude questions to Codex are Codex-owned blockers and must be answered or
+  routed in the next coordination pass.
+- If a decision belongs to the user, Codex still gives Claude another safe
+  read-only task instead of leaving Claude idle.
+- Shared-state changes require explicit takeover/stand-down in these files.
