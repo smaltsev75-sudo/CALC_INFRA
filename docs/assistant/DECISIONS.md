@@ -12704,3 +12704,38 @@ enrichment). Collateral: `SEED_QUESTIONS` 128→129, `UI_TOOLTIPS_SHORT` budget 
 `staff-training-cycles-6b.test.js` — **9/9 PASS**, targeted `details-stand-header-alignment.spec.js --repeat-each=5`
 — **5/5 PASS**, unit **5993/5993 PASS**, desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все
 **EXIT 0**.
+
+## Release 2.22.29 — Package 6C-light: честный текст SSO/IdP/payment (text-only, no-drift) (2026-06-19)
+
+PATCH поверх 2.22.28. **Только текст** — формулы, цены, `unit`, `ekClass`, `applicableStands`, миграции и golden НЕ менялись.
+
+Аудит Package 6C (analysis-only) подтвердил: реальных денежных дефектов в SSO/payment нет, единственная проблема — текстовая.
+
+**Payment.** `impact` вопроса `payment_gateway` [seed.js] обещал «+ PCI DSS аудит (~500-1500 тыс. ₽/год при хранении
+карточных данных)», но такого ЭК под флагом `payment_gateway` нет: годовой PCI/ИБ-аудит покрывается общим
+`one-security-audit` (count-driven, гейт `iso_27001_required`/`pdn_152fz`/`security_audit_per_year`), не привязанным к
+платёжному флагу. Impact приведён к фактической модели: ЭК покрывает разовую интеграцию (300-800 тыс. ₽); эквайринговые
+комиссии и отдельный PCI DSS / ИБ-аудит — вне этой статьи, учитываются отдельно при применимости. Описание самого ЭК
+`one-payment-gateway-integration` уже честно выносило комиссии эквайринга за инфраструктурный бюджет — не трогалось.
+
+**SSO/IdP.** В описания `one-sso-integration` и `service-identity-provider` добавлена строка: цена — фиксированная
+медианная оценка типового SSO/IdP-контура; крупные федерации, много приложений и сложные SAML/OIDC-политики требуют
+отдельной оценки/КП. Это честный дисклеймер к flat-модели (на малых проектах SSO+IdP — заметная доля бюджета именно
+из-за фиксированной абсолютной цены при малом знаменателе). Формулы `if(Q.sso_required, 1, 0)` не менялись.
+
+**Что НЕ делалось (по решению пользователя):** opt-in scale-драйверы (`idp_users_count`, `payment_transactions_per_month`,
+GMV-модель) и tier-модели basic/enterprise — они требуют доменных коэффициентов (per-MAU ставка, % эквайринга, цены
+tier'ов), которые не выдумываются; для payment добавление transaction-fee противоречило бы уже задокументированной
+границе «эквайринг вне инфра-бюджета». Регресс-тест явно запрещает появление этих драйверов.
+
+**Поправка к прежнему отчёту (Quick Start):** в аудите 6C было неточно сказано, что Quick Start включает платежи «только
+enterprise/fintech». Фактическое условие [wizardProfiles.js:121]: `payment_gateway = isFin || (isB2C && scale≥m) ||
+(b2b && scale≥l)`. В репро-профилях 6B/6C `payment_gateway` был false на small (b2c/s) и medium (b2b/m), true только на
+enterprise — отсюда и возникло неточное обобщение.
+
+**Тесты:** новый [payment-sso-text-6c.test.js](../../tests/unit/domain/payment-sso-text-6c.test.js) (8 проверок:
+impact без промиса PCI 500-1500 и без «+ PCI DSS», impact честно описывает разовую интеграцию + вынос комиссий/аудита,
+SSO/IdP-текст содержит «медиан…»+«федераци…», no-drift инварианты по 3 ЭК — формула/цена/unit/billing/ekClass,
+отсутствие новых scale-драйверов).
+
+`2.22.28 → 2.22.29` (**PATCH**, text-only/no-drift). Заодно синхронизирован отставший `package-lock.json` (был 2.22.27).
