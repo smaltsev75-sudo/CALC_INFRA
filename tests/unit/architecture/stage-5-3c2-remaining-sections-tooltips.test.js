@@ -55,7 +55,8 @@ const SECTIONS = {
     ],
     budget: [
         'target_capex_rub', 'target_opex_monthly_rub', 'launch_year',
-        'schedule_shift_tolerance_months', 'deployment_cost_override_mrub'
+        'schedule_shift_tolerance_months', 'deployment_cost_override_mrub',
+        'staff_training_cycles'
     ]
 };
 

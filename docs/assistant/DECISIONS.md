@@ -12675,3 +12675,32 @@ F2/F3 из аудита Package 6 (flat-кластер проектов, one-sta
 `2.22.26 → 2.22.27` (**PATCH**, no-drift, schema 21→22). **Метрики (мой прогон):** unit **5984/5984 PASS** (+14),
 desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**. Golden drift 0 (one-deployment
 cost=5 млн ₽ при default). F1-M/F2/F3 — не трогались.
+
+## Release 2.22.28 — Package 6B-light: циклы обучения персонала + test-only hardening e2e-выравнивания (2026-06-19)
+
+PATCH поверх 2.22.27. Schema не менялась; golden drift 0.
+
+**6B-light / staff training cycles.** `one-staff-training` больше не flat `1 цикл` для любого внешнего продукта.
+Добавлен вопрос `staff_training_cycles` (секция `budget`, default/defaultIfUnknown 1, min 0, step 1). Формула ЭК:
+`if(Q.product_type != "internal", Q.staff_training_cycles, 0)`. Это вариант B из design-only:
+default 1 сохраняет прежнюю сумму; `0` означает «обучение не требуется»; `N` масштабирует число циклов; внутренние
+продукты остаются `0` независимо от значения. `unit`, `pricePerUnit`, `billingInterval` не менялись. ЭК добавлен в
+`_AGENT_FORMULA_REFRESH_IDS`; `_AGENT_UNIT_PRICE_REFRESH_IDS` и миграции не нужны.
+
+**L2 / seasonal-readiness не трогался.** Контракт `max(1, Q.peak_months)` для включённой сезонности остаётся
+намеренным и test-locked.
+
+**Test-only hardening.** `details-stand-header-alignment.spec.js` под нагрузкой полного desktop smoke мог читать
+геометрию AI-сводки и таблицы Детализации в промежуточном состоянии layout. Одноразовый DOM-снимок заменён на
+`expect.poll` с явными guards: узел подключён к DOM, ожидаемые 5 стендовых колонок присутствуют, ширины положительные,
+выравнивание `right`, `.col-stand-unit` отсутствует, а дельты `left/width` стабилизировались в пределах 1px. Допуски
+не расширялись, сценарий не менялся.
+
+**Тесты:** новый [staff-training-cycles-6b.test.js](../../tests/unit/domain/staff-training-cycles-6b.test.js)
+(9 проверок: вопрос, default drift 0, internal=0, cycles=3, cycles=0, source-guard, unit/price/billing, legacy
+enrichment). Collateral: `SEED_QUESTIONS` 128→129, `UI_TOOLTIPS_SHORT` budget +1, `WIZARD_PROFILES.md` 60/129.
+
+`2.22.27 → 2.22.28` (**PATCH**, no-drift + test-only hardening). **Метрики (мой прогон):** targeted
+`staff-training-cycles-6b.test.js` — **9/9 PASS**, targeted `details-stand-header-alignment.spec.js --repeat-each=5`
+— **5/5 PASS**, unit **5993/5993 PASS**, desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все
+**EXIT 0**.
