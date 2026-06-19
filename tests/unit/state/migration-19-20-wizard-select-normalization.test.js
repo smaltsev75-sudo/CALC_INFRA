@@ -5,10 +5,10 @@ import { migrateCalculation, LATEST_SCHEMA_VERSION, MIGRATIONS } from '../../../
 const STEP = MIGRATIONS.find(m => m.from === 19 && m.to === 20);
 
 describe('Migration v19 → v20 — Quick Start select-answer normalization', () => {
-    it('миграция 19→20 зарегистрирована (схема доросла до 21 после Package 3A)', () => {
+    it('миграция 19→20 зарегистрирована (схема доросла до 22 после Package 6A)', () => {
         assert.ok(STEP, 'миграция 19→20 должна существовать');
-        assert.equal(LATEST_SCHEMA_VERSION, 21);
-        assert.equal(MIGRATIONS[MIGRATIONS.length - 1].to, 21);
+        assert.equal(LATEST_SCHEMA_VERSION, 22);
+        assert.equal(MIGRATIONS[MIGRATIONS.length - 1].to, 22);
     });
 
     it('нормализует root.answers и scenarios[*].answers к актуальным option ids', () => {

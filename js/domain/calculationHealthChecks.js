@@ -1245,10 +1245,43 @@ function checkInfrastructureCoreResources(calc) {
     });
 }
 
+/* Package 6A: ЭК «Внедрение» использует оценочную медиану 5 млн ₽. Если она
+   доминирует в бюджете (>25% месячного итога) и пользователь ещё не задал свою
+   оценку — info-подсказка задать «Оценка внедрения, млн ₽» по КП. */
+function checkDeploymentCostDominant(calc) {
+    const override = Number(ans(calc, 'deployment_cost_override_mrub'));
+    if (Number.isFinite(override) && override > 0) return null; // оценка уже задана
+
+    let result;
+    try {
+        result = calculate(calc);
+    } catch (_err) {
+        return null;
+    }
+    const dep = Number(result?.items?.['one-deployment']?.totalMonthly) || 0;
+    const total = Number(result?.totalMonthly) || 0;
+    if (!(total > 0) || !(dep / total > 0.25)) return null;
+
+    return makeFinding({
+        id: 'deployment-cost-dominant',
+        severity: 'info',
+        category: 'pricing',
+        title: 'Внедрение — крупная доля бюджета',
+        message:
+            'ЭК «Внедрение и инсталляция» использует оценочную медиану (5 млн ₽) и составляет ' +
+            'более четверти месячного бюджета. Для небольшого проекта медиана может завышать смету.',
+        fieldIds: ['deployment_cost_override_mrub'],
+        suggestedAction:
+            'Задайте свою оценку внедрения по КП подрядчика в поле «Оценка внедрения, млн ₽» ' +
+            '(0 = использовать медиану 5 млн ₽).'
+    });
+}
+
 /* ---------- Реестр всех правил ---------- */
 
 export const CALCULATION_HEALTH_CHECKS = [
     checkAvgRpsGtPeak,
+    checkDeploymentCostDominant,
     checkPcuGtUsersTotal,
     checkPeakDurationGt24,
     checkRegisteredGtUsersTotal,

@@ -12639,3 +12639,39 @@ source-guard + refresh-list; F3-A текст без «+100%/удвоение» +
 `2.22.25 → 2.22.26` (**PATCH**, доменная развилка DR + текст). **Метрики (мой прогон):** unit **5970/5970 PASS**
 (+17), desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**. Формула/цена blue-green,
 post-pass, enrichment unit/price, цены 1750/2300 — не тронуты.
+
+## Release 2.22.27 — Package 6A: one-deployment override через единицу «млн ₽» (no-drift) (2026-06-19)
+
+PATCH, F1-O из аудита Package 6. Убирает боль flat-внедрения (5 млн ₽ = ~37% бюджета малого проекта) без
+golden drift и без выдуманных коэффициентов. Schema bump **21 → 22** (миграция backfill). F1-M (скейлинг по
+сложности) НЕ делаем — нужны доменные коэффициенты.
+
+**Проблема:** ЭК `one-deployment` был `constant`, qty=1 × 5 000 000 ₽ → одинаков для всех масштабов
+(репро v2.22.26: 1 009 415 ₽/мес = 36.7% бюджета startup, 30.6% medium, 0.2% enterprise).
+
+**Решение (F1-O, единица «млн ₽»):**
+- Новый вопрос `deployment_cost_override_mrub` (секция budget, default 0, шаг 0.1). 0 = медиана 5 млн ₽;
+  >0 = пользовательская оценка.
+- ЭК `one-deployment`: `unit='млн ₽'`, `pricePerUnit=1 000 000`, `ekClass='count-driven'` (инвариант I4
+  запрещает constant с Q-ссылкой), `qtyFormula = if(Q.deployment_cost_override_mrub > 0, Q.deployment_cost_override_mrub, 5)`.
+  default → qty 5 × 1М = 5 млн ₽ (прежнее, **golden drift 0**). Деталь/Паспорт показывают «5 млн ₽» / «2.5 млн ₽»,
+  а не «0.5 проекта» — единица не дробит «проект».
+- ЭК добавлен в `_AGENT_FORMULA_REFRESH_IDS` + `_AGENT_UNIT_PRICE_REFRESH_IDS` (legacy получит формулу+unit+price).
+- Миграция 21→22: legacy с кастомной ценой внедрения (≠5М, старая единица) → backfill
+  `deployment_cost_override_mrub = price/1e6` (сохраняет пользовательскую оценку, чтобы рефреш unit/price её не
+  стёр); дефолт 5М → не вносим; явный override не перезаписываем.
+- Health (info, pricing): `deployment-cost-dominant` — если one-deployment >25% бюджета и override=0, подсказка
+  задать «Оценка внедрения, млн ₽» по КП.
+
+**F1-M (скейлинг по микросервисам/интеграциям) — отложен:** требует доменных коэффициентов от заказчика.
+F2/F3 из аудита Package 6 (flat-кластер проектов, one-staff-training count) — backlog, low priority.
+
+**Тесты:** новый [deployment-override-6a.test.js](../../tests/unit/domain/deployment-override-6a.test.js) (13 проверок:
+вопрос, ЭК unit/price/ekClass, qty default=5 / override=2.5, drift 0 cost@5==default, линейность, source-guards
+обоих refresh-list, миграция backfill/дефолт/явный-override, health present/absent/override). Обновлены: счётчик
+127→128, budget-каталог 5.3.C2, миграционные тесты (схема→22), регён QUANTITY_LOGIC_AUDIT (SANITY_REPORT без
+изменений — суммы те же).
+
+`2.22.26 → 2.22.27` (**PATCH**, no-drift, schema 21→22). **Метрики (мой прогон):** unit **5984/5984 PASS** (+14),
+desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**. Golden drift 0 (one-deployment
+cost=5 млн ₽ при default). F1-M/F2/F3 — не трогались.

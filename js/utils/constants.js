@@ -21,7 +21,7 @@
  *   PATCH (1.1.X) — багфиксы, рефакторинг, мелкие UX-правки, hardening,
  *                   обновления прайсов без новых фич, compatibility-миграции
  *                   без нового формата данных. */
-export const APP_VERSION = '2.22.26';
+export const APP_VERSION = '2.22.27';
 export const APP_NAME = 'Калькулятор инфраструктуры';
 
 /* ============================================================
@@ -407,7 +407,9 @@ export const UI_TOOLTIPS_SHORT = Object.freeze({
     'q.launch_year':
         'Год вывода на ПРОМ. Влияет на инфляционные коэффициенты на горизонте.',
     'q.schedule_shift_tolerance_months':
-        'Допустимая задержка запуска. Множитель риск-коэффициента сдвига сроков.'
+        'Допустимая задержка запуска. Множитель риск-коэффициента сдвига сроков.',
+    'q.deployment_cost_override_mrub':
+        'Ваша оценка внедрения, млн ₽. 0 — медиана 5 млн ₽; больше 0 заменяет её.'
 });
 
 export const SETTINGS_DESCRIPTIONS = Object.freeze({

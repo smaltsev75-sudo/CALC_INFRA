@@ -41,11 +41,12 @@ describe('wizardToAnswers: acceptance B2B-standard', () => {
         // Stage 5B-Sec (WAF domains scaling): +1 параметр числа доменов (waf_domains_count).
         // Stage 5B-Sec (DLP seats/channels): +2 параметра (dlp_protected_users_count, dlp_channels_count).
         // Package 3A (OS license gate): +1 параметр (os_commercial_license_required).
-        assert.equal(SEED_QUESTIONS.length, 127,
+        // Package 6A (deployment override): +1 параметр (deployment_cost_override_mrub).
+        assert.equal(SEED_QUESTIONS.length, 128,
             'Если количество SEED_QUESTIONS изменилось — обновите WIZARD_PROFILES.md §7.2');
     });
 
-    it('стандартный B2B-профиль без AI заполняет 60 из 127 (не заполняется 67)', () => {
+    it('стандартный B2B-профиль без AI заполняет 60 из 128 (не заполняется 68)', () => {
         const result = wizardToAnswers({
             product_type: 'b2b',
             industry: 'corporate',
@@ -58,8 +59,9 @@ describe('wizardToAnswers: acceptance B2B-standard', () => {
         const answers = result.answers || result;
         const count = Object.keys(answers).length;
         // ⚠ При изменении этого числа — синхронно обновите WIZARD_PROFILES.md §7.2
-        //   («60 полей из 127» и «НЕ заполняется (67)»). Package 3A: +1 поле
-        //   os_commercial_license_required (compliance пишет false для corporate/b2b).
+        //   («60 полей из 128» и «НЕ заполняется (68)»). Package 3A: +1 поле
+        //   os_commercial_license_required (false для corporate/b2b); Package 6A: +1 поле
+        //   deployment_cost_override_mrub (budget-секция, не заполняется wizard'ом).
         assert.equal(count, 60,
             `wizardToAnswers(B2B-standard).count = ${count}, ожидалось 60. ` +
             `Если матрица заполнения изменилась — обновите WIZARD_PROFILES.md §7.2.`);

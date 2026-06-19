@@ -130,6 +130,35 @@ function backfillOsLicenseFlag(calc) {
     }
 }
 
+/**
+ * Package 6A (one-deployment override): ЭК переведён в единицу «млн ₽» (price 1 000 000,
+ * qty = млн ₽). Если у legacy-расчёта кастомная цена внедрения (≠ старой медианы
+ * 5 000 000 и старая единица ≠ «млн ₽») — переносим её в ответ
+ * deployment_cost_override_mrub = price/1e6 (1 знак), чтобы enrichment-рефреш unit/price
+ * не потерял пользовательскую оценку. Дефолтная цена 5М → override не вносим (остаётся
+ * медиана). Явно заданный override не перезаписываем.
+ */
+function backfillDeploymentCostOverride(calc) {
+    const items = calc && calc.dictionaries && calc.dictionaries.items;
+    if (!Array.isArray(items)) return;
+    const dep = items.find(i => i && i.id === 'one-deployment');
+    if (!dep) return;
+    const price = Number(dep.pricePerUnit);
+    if (!Number.isFinite(price) || price <= 0) return;
+    if (price === 5_000_000 || dep.unit === 'млн ₽') return; // дефолт или уже мигрирован
+    const mrub = Math.round(price / 1_000_000 * 10) / 10;
+    if (!(mrub > 0)) return;
+    const backfill = (answers) => {
+        if (!answers || typeof answers !== 'object') return;
+        if (answers.deployment_cost_override_mrub !== undefined) return;
+        answers.deployment_cost_override_mrub = mrub;
+    };
+    backfill(calc.answers);
+    if (Array.isArray(calc.scenarios)) {
+        for (const scenario of calc.scenarios) backfill(scenario?.answers);
+    }
+}
+
 export const MIGRATIONS = [
     {
         from: 0, to: 1,
@@ -707,6 +736,18 @@ export const MIGRATIONS = [
                      'фантомной безусловной ОС-лицензии. Явный флаг (в т.ч. false) не трогаем.',
         run(calc) {
             backfillOsLicenseFlag(calc);
+        }
+    },
+    {
+        from: 21, to: 22,
+        description: 'Package 6A: ЭК one-deployment переведён в единицу «млн ₽» (qty = млн ₽ ' +
+                     'проекта, price 1 000 000) для читаемости Детализации. Чтобы legacy-расчёт с ' +
+                     'кастомной ценой внедрения (≠ медианы 5 000 000) не потерял её при ' +
+                     'enrichment-рефреше unit/price — переносим цену в ответ ' +
+                     'deployment_cost_override_mrub = price/1e6. Дефолтная цена 5М → override не ' +
+                     'вносим (остаётся медиана 5 млн ₽), golden drift 0.',
+        run(calc) {
+            backfillDeploymentCostOverride(calc);
         }
     }
 ];
