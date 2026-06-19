@@ -262,7 +262,7 @@ export function renderQuestionnaire(state, ctx) {
 
     const sections = SECTION_IDS.map(sec => renderSection(sec, calc, state, ctx));
 
-    return el('section', { class: 'tab-pane' },
+    const pane = el('section', { class: 'tab-pane questionnaire-tab-pane' },
         renderCalcHeader(calc, state, ctx),
         renderProgressBar(calc),
         // Stage 15.1: компактный health-chip под прогресс-баром — синхронизирован
@@ -294,6 +294,54 @@ export function renderQuestionnaire(state, ctx) {
             )
         )
     );
+
+    scheduleQuestionnaireFieldAlignment(pane);
+    return pane;
+}
+
+/* Длинные заголовки с бейджами не должны опускать поле ввода только в своей
+   колонке. После отрисовки выравниваем область заголовка в пределах каждой
+   визуальной строки сетки: строка берёт высоту самого длинного заголовка, а не
+   глобальный запас для всего Опросника. */
+function scheduleQuestionnaireFieldAlignment(root) {
+    if (typeof window === 'undefined' || !root) return;
+    window.requestAnimationFrame(() => alignQuestionnaireFieldRows(root));
+}
+
+function alignQuestionnaireFieldRows(root) {
+    if (!root || !root.isConnected) return;
+    const grids = Array.from(root.querySelectorAll('.settings-grid, .questionnaire-grid, .questionnaire-grid-explicit'));
+    const tolerance = 3;
+
+    const fieldsByGrid = grids.map(grid => Array.from(grid.children)
+        .filter(field => field.classList?.contains('field') && field.querySelector(':scope > .field-label')));
+
+    fieldsByGrid.flat().forEach(field => field.style.removeProperty('--question-field-label-height'));
+
+    fieldsByGrid.forEach(fields => {
+        const rows = [];
+        fields.forEach(field => {
+            const rect = field.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) return;
+            let row = rows.find(candidate => Math.abs(candidate.top - rect.top) <= tolerance);
+            if (!row) {
+                row = { top: rect.top, fields: [] };
+                rows.push(row);
+            }
+            row.fields.push(field);
+        });
+
+        rows.forEach(row => {
+            if (row.fields.length < 2) return;
+            const maxLabelHeight = Math.max(...row.fields.map(field => {
+                const label = field.querySelector(':scope > .field-label');
+                return label ? label.getBoundingClientRect().height : 0;
+            }));
+            if (maxLabelHeight <= 0) return;
+            const value = `${Math.ceil(maxLabelHeight)}px`;
+            row.fields.forEach(field => field.style.setProperty('--question-field-label-height', value));
+        });
+    });
 }
 
 /* ---------- 12.U1: empty state ---------- */

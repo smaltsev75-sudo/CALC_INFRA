@@ -91,16 +91,19 @@ describe('PATCH 2.4.33 / .questionnaire-grid .field — grid layout для align
             '.field перешёл с flex на grid для детерминированной y-позиции controls');
     });
 
-    it('.questionnaire-grid .field использует grid-template-rows с label floor (≥4em для 2-3 строк labels)', () => {
+    it('.questionnaire-grid .field использует grid-template-rows с row-aware label floor', () => {
         // PATCH 2.4.33 floor был 3em (=42px) — фитил 1-2 строки label-text.
         // PATCH 2.4.37 поднял до 4.5em (=63px) — фитит 3+ строки, нужно
         // когда у label есть бейджи «Из мастера AI» / «Не знаю» (~150px)
         // и текст вроде «Запросов к ИИ на одного активного пользователя
         // в день» wrap'ится в 3 строки на ~210px доступного места.
+        // PATCH 2.22.40: высота label floor стала row-aware через CSS-переменную:
+        // строка сетки берёт максимум по заголовкам именно этой строки, а 4.5em
+        // остаётся fallback'ом до JS-измерения.
         const body = ruleBody(cssRaw, '.questionnaire-grid .field');
         assert.match(body,
-            /grid-template-rows:\s*minmax\(\s*[4-9](?:\.\d+)?em\s*,\s*auto\s*\)\s+auto\s+1fr/,
-            'rows: минимум ≥4em для label / auto для control / 1fr для desc');
+            /grid-template-rows:\s*minmax\(\s*var\(--question-field-label-height,\s*4\.5em\)\s*,\s*auto\s*\)\s+auto\s+1fr/,
+            'rows: row-aware label height / auto для control / 1fr для desc');
     });
 
     it('.questionnaire-grid .field > .field-description top-aligned (PATCH 2.4.35 заменил end → start)', () => {

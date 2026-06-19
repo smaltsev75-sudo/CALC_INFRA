@@ -8,6 +8,8 @@ const VIEWPORTS = [
     { name: 'mobile', width: 390, height: 844 }
 ];
 
+const DESKTOP_ALIGNMENT_VIEWPORT = { name: 'desktop', width: 1800, height: 900 };
+
 async function openExpandedQuestionnaire(page, viewport) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     const pageIssues = await bootCleanApp(page);
@@ -126,6 +128,83 @@ async function collectQuestionnaireLayoutIssues(page) {
     });
 }
 
+async function collectQuestionnaireVerticalAlignmentIssues(page) {
+    return page.evaluate(() => {
+        const tolerance = 3;
+        const round = (value) => Math.round(value * 100) / 100;
+        const rectOf = (el) => {
+            const r = el.getBoundingClientRect();
+            return {
+                left: round(r.left),
+                top: round(r.top),
+                right: round(r.right),
+                bottom: round(r.bottom),
+                width: round(r.width),
+                height: round(r.height)
+            };
+        };
+        const labelOf = (el) => (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+        const directControl = (field) => field.querySelector(
+            ':scope > .switch, :scope > .input, :scope > select.input, :scope > .percent-input, :scope > .segmented, :scope > .multiselect'
+        );
+        const issues = [];
+
+        document.querySelectorAll('.settings-grid, .questionnaire-grid, .questionnaire-grid-explicit').forEach((grid, gridIndex) => {
+            const fields = Array.from(grid.children)
+                .filter((el) => el.classList?.contains('field'))
+                .map((field, fieldIndex) => {
+                    const control = directControl(field);
+                    if (!control) return null;
+                    const fieldRect = rectOf(field);
+                    const controlRect = rectOf(control);
+                    if (fieldRect.width <= 0 || fieldRect.height <= 0 || controlRect.width <= 0 || controlRect.height <= 0) return null;
+                    return {
+                        field,
+                        fieldIndex,
+                        fieldRect,
+                        controlRect,
+                        text: labelOf(field)
+                    };
+                })
+                .filter(Boolean)
+                .sort((a, b) => a.fieldRect.top - b.fieldRect.top || a.fieldRect.left - b.fieldRect.left);
+
+            const rows = [];
+            for (const field of fields) {
+                let row = rows.find((candidate) => Math.abs(candidate.top - field.fieldRect.top) <= tolerance);
+                if (!row) {
+                    row = { top: field.fieldRect.top, fields: [] };
+                    rows.push(row);
+                }
+                row.fields.push(field);
+            }
+
+            rows.forEach((row, rowIndex) => {
+                if (row.fields.length < 2) return;
+                const controlTops = row.fields.map((field) => field.controlRect.top);
+                const minTop = Math.min(...controlTops);
+                const maxTop = Math.max(...controlTops);
+                if (maxTop - minTop > tolerance) {
+                    issues.push({
+                        type: 'row-control-y-misalignment',
+                        gridIndex,
+                        rowIndex,
+                        delta: round(maxTop - minTop),
+                        controls: row.fields.map((field) => ({
+                            fieldIndex: field.fieldIndex,
+                            text: field.text,
+                            fieldRect: field.fieldRect,
+                            controlRect: field.controlRect
+                        }))
+                    });
+                }
+            });
+        });
+
+        return issues;
+    });
+}
+
 for (const viewport of VIEWPORTS) {
     test(`questionnaire layout has no horizontal overflow on ${viewport.name}`, async ({ page }) => {
         const pageIssues = await openExpandedQuestionnaire(page, viewport);
@@ -135,3 +214,11 @@ for (const viewport of VIEWPORTS) {
         expect(layoutIssues).toEqual([]);
     });
 }
+
+test('questionnaire row controls share the same vertical baseline on desktop', async ({ page }) => {
+    const pageIssues = await openExpandedQuestionnaire(page, DESKTOP_ALIGNMENT_VIEWPORT);
+    const alignmentIssues = await collectQuestionnaireVerticalAlignmentIssues(page);
+
+    expect(pageIssues).toEqual([]);
+    expect(alignmentIssues).toEqual([]);
+});

@@ -177,8 +177,8 @@
     justify-content: flex-end;
 }
 .settings-grid .field > .field-label {
-    min-height: 2.4em;
-    align-items: flex-end;
+    min-height: var(--question-field-label-height, 2.4em);
+    align-items: flex-start;
     line-height: 1.2;
     min-width: 0;
     overflow-wrap: anywhere;
@@ -188,9 +188,9 @@
    `min-width: 0 + overflow-wrap: anywhere` дублируют PATCH 2.4.27 fix
    для grid-item-default-min-width-auto ловушки. */
 .settings-grid .field-percent > .field-label {
-    min-height: 2.4em;
+    min-height: var(--question-field-label-height, 2.4em);
     display: inline-flex;
-    align-items: center;
+    align-items: flex-start;
     line-height: 1.2;
     min-width: 0;
     overflow-wrap: anywhere;
@@ -760,7 +760,7 @@
    min-height: 64px на cell сохраняется для общего вертикального ритма. */
 .questionnaire-grid .field {
     display: grid;
-    grid-template-rows: minmax(4.5em, auto) auto 1fr;
+    grid-template-rows: minmax(var(--question-field-label-height, 4.5em), auto) auto 1fr;
     gap: 6px;
     min-height: 64px;
     min-width: 0;
@@ -810,7 +810,7 @@
    comma-группы — тесты ruleBody match'ат каждое отдельно). */
 .questionnaire-grid-explicit .field {
     display: grid;
-    grid-template-rows: minmax(4.5em, auto) auto 1fr;
+    grid-template-rows: minmax(var(--question-field-label-height, 4.5em), auto) auto 1fr;
     gap: 6px;
     min-height: 64px;
     min-width: 0;
