@@ -56,6 +56,23 @@ Disputes are handled by stop-and-escalate, not by unilateral edits.
    the next coordination pass. Do not wait for the user to ping unless the
    question truly requires a domain decision from the user.
 
+## Product-Value Filter
+
+The team does not do work for work's sake.
+
+1. A task is worth doing only if it improves budget correctness, prevents a real
+   user misunderstanding, fixes a release/test/legacy risk, or produces a
+   concrete domain decision needed for the model.
+2. Cosmetic text polish, extra guards, or new tests are not enough by
+   themselves. They need a clear product risk: wrong money, wrong interpretation,
+   broken migration, flaky release, or a decision the user can act on.
+3. If an audit finds only low-value cleanup, report it as "do not do now" and
+   move to a more important read-only decision pack. Do not create a release just
+   to keep moving.
+4. If a formula needs coefficients, market prices, duty cycles, or regulatory
+   policy, agents must not invent them. Prepare a short decision table for the
+   user instead.
+
 ## No-Idle Rule
 
 The user must not have to ping either agent to keep the work moving.

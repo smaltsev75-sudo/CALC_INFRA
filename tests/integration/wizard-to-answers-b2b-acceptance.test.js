@@ -21,7 +21,7 @@ import { wizardToAnswers } from '../../js/domain/wizardProfiles.js';
 import { SEED_QUESTIONS } from '../../js/domain/seed.js';
 
 describe('wizardToAnswers: acceptance B2B-standard', () => {
-    it('SEED_QUESTIONS.length = 130 — общее количество вопросов в детальном опроснике', () => {
+    it('SEED_QUESTIONS.length = 132 — общее количество вопросов в детальном опроснике', () => {
         // ⚠ При изменении этого числа — синхронно обновите WIZARD_PROFILES.md «X полей из N».
         // Stage 1 (qty-модель ПРОМ): +3 RAG-параметра (rag_embeddings_manual,
         // rag_avg_chunk_tokens, rag_refresh_delta_percent).
@@ -44,11 +44,13 @@ describe('wizardToAnswers: acceptance B2B-standard', () => {
         // Package 6A (deployment override): +1 параметр (deployment_cost_override_mrub).
         // Package 6B-light (staff training cycles): +1 параметр (staff_training_cycles).
         // Package 8A (DB license vCPU override): +1 параметр (db_license_vcpu_per_node).
-        assert.equal(SEED_QUESTIONS.length, 130,
+        // Package 10H (protected data direct volume): +2 параметра
+        // (protected_data_volume_gb, protected_data_growth_gb_year).
+        assert.equal(SEED_QUESTIONS.length, 132,
             'Если количество SEED_QUESTIONS изменилось — обновите WIZARD_PROFILES.md §7.2');
     });
 
-    it('стандартный B2B-профиль без AI заполняет 60 из 130 (не заполняется 70)', () => {
+    it('стандартный B2B-профиль без AI заполняет 60 из 132 (не заполняется 72)', () => {
         const result = wizardToAnswers({
             product_type: 'b2b',
             industry: 'corporate',
@@ -61,11 +63,12 @@ describe('wizardToAnswers: acceptance B2B-standard', () => {
         const answers = result.answers || result;
         const count = Object.keys(answers).length;
         // ⚠ При изменении этого числа — синхронно обновите WIZARD_PROFILES.md §7.2
-        //   («60 полей из 130» и «НЕ заполняется (70)»). Package 3A: +1 поле
+        //   («60 полей из 132» и «НЕ заполняется (72)»). Package 3A: +1 поле
         //   os_commercial_license_required (false для corporate/b2b); Package 6A: +1 поле
         //   deployment_cost_override_mrub; Package 6B-light: +1 поле staff_training_cycles
         //   (оба budget-секция, не заполняются wizard'ом); Package 8A: +1 поле
-        //   db_license_vcpu_per_node (expert DB-license override, не заполняется wizard'ом).
+        //   db_license_vcpu_per_node (expert DB-license override, не заполняется wizard'ом);
+        //   Package 10H: +2 поля прямого объёма защищаемых данных.
         assert.equal(count, 60,
             `wizardToAnswers(B2B-standard).count = ${count}, ожидалось 60. ` +
             `Если матрица заполнения изменилась — обновите WIZARD_PROFILES.md §7.2.`);

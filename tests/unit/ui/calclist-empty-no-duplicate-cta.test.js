@@ -41,6 +41,17 @@ function buttons(node, acc = []) {
     return acc;
 }
 
+function findByClass(node, className) {
+    if (!node || typeof node !== 'object') return null;
+    const classes = String(node.className || '').split(/\s+/);
+    if (classes.includes(className)) return node;
+    for (const c of (node.childNodes || [])) {
+        const found = findByClass(c, className);
+        if (found) return found;
+    }
+    return null;
+}
+
 const ctx = {
     openQuickStart() {}, exportStateBundle() {}, importStateBundle() {},
     importCalc() {}, createCalc() {},
@@ -64,5 +75,16 @@ describe('Расчёты: пустое состояние без дубля CTA 
         const tree = renderCalcList({ calcList: [] }, ctx);
         const imp = buttons(tree).filter(b => /Полный импорт/.test(b.textContent));
         assert.equal(imp.length, 1, '«Полный импорт» должен оставаться для восстановления резервной копии');
+    });
+
+    it('при 0 расчётов hero использует фирменную иконку приложения, а не старый график', () => {
+        const tree = renderCalcList({ calcList: [], ui: { theme: 'light' } }, ctx);
+        const hero = findByClass(tree, 'empty-state-hero');
+
+        assert.ok(hero, 'hero-блок пустого состояния должен существовать');
+        assert.ok(findByClass(hero, 'app-icon'),
+            'hero должен использовать единую иконку приложения из appIcon.js');
+        assert.equal(findByClass(hero, 'lucide'), null,
+            'старый line-icon графика не должен оставаться в hero пустого состояния');
     });
 });

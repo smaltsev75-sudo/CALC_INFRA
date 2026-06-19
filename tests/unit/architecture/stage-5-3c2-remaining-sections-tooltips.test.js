@@ -1,7 +1,7 @@
 /**
  * Stage 5.3.C.2 — Tooltip Short/Full spread на 6 оставшихся секций seed.js.
  *
- * 70 полей: data_storage(23) + sla(6) + security(21) + integrations(8) +
+ * 72 поля: data_storage(25) + sla(6) + security(21) + integrations(8) +
  * testing(6) + budget(6). Завершает покрытие всех seed-вопросов через
  * UI_TOOLTIPS_SHORT['q.<id>'].
  *
@@ -18,6 +18,7 @@ const SECTIONS = {
         'db_size_initial_gb', 'db_growth_gb_month', 'db_count', 'db_replicas_count',
         'db_commercial_license_required', 'db_license_vcpu_per_node',
         'ram_per_vcpu_ratio', 'file_storage_volume_tb', 'file_storage_growth_tb_year',
+        'protected_data_volume_gb', 'protected_data_growth_gb_year',
         'hot_data_share_percent', 'cache_size_gb', 'backup_retention_days',
         // Stage 3 (qty-модель ПРОМ): расширенные storage-параметры.
         'db_index_ratio', 'db_wal_overhead_percent', 'db_size_per_user_kb',

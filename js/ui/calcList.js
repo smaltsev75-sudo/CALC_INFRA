@@ -11,6 +11,7 @@
 
 import { el } from './dom.js';
 import { icon } from './icons.js';
+import { appIconEl } from './appIcon.js';
 import { formatRubThousands, dateTime } from '../services/format.js';
 import { SEED_QUESTIONS, SEED_ITEMS } from '../domain/seed.js';
 import { STAND_IDS, STAND_LABELS } from '../utils/constants.js';
@@ -68,22 +69,24 @@ export function renderCalcList(state, ctx) {
         ),
 
         list.length === 0
-            ? renderEmptyState(ctx)
+            ? renderEmptyState(state, ctx)
             : el('div', { class: 'calc-cards' },
                 ...list.map(meta => renderCalcCard(meta, state, ctx))
             )
     );
 }
 
-function renderEmptyState(ctx) {
+function renderEmptyState(state, ctx) {
     // Welcome / entry-point: позитивный фрейминг, hero-icon в круге, три stat-чипа
     // с фактами наполнения справочников (вопросы / ЭК / стенды), primary CTA
     // «Quick Start» рядом с ghost-кнопкой «Импорт JSON». Импорт здесь
     // дублирует кнопку «Импорт JSON» в шапке, но в empty-state это первичная точка
     // входа, поэтому она не должна быть скрыта в мелком hint-блоке.
+    const iconVariant = state?.ui?.theme === 'light' ? 'light' : 'dark';
+
     return el('div', { class: 'empty-state empty-state-welcome' },
-        el('div', { class: 'empty-state-hero', attrs: { 'aria-hidden': 'true' } },
-            icon('bar-chart-3', { size: 44 })
+        el('div', { class: 'empty-state-hero empty-state-hero-app', attrs: { 'aria-hidden': 'true' } },
+            appIconEl({ size: 96, variant: iconVariant })
         ),
         el('div', { class: 'empty-state-title', text: 'Создайте ваш первый расчёт' }),
         el('div', { class: 'empty-state-subtitle',

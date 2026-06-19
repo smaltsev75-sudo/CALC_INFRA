@@ -1066,6 +1066,46 @@ export const SEED_QUESTIONS = [
         assumptionRisk: 'medium'
     },
     {
+        id: 'protected_data_volume_gb',
+        section: 'data_storage',
+        subgroup: 'Файлы и кэш',
+        order: 211,
+        title: 'Объём защищаемых данных, ГБ (сейчас/при запуске)',
+        type: 'number',
+        min: 0, max: 100_000_000, step: 1,
+        defaultValue: 0,
+        description:
+            'Сколько гигабайт занимают именно данные, которые нужно хранить в защищённом контуре: сканы документов, файлы с персональными данными, выгрузки, архивы или отдельные защищаемые наборы данных.\n\n' +
+            'Если указать 0, калькулятор сохранит прежнее поведение: грубо оценит защищаемый объём от размера БД или числа пользователей. Это запасной расчёт, а не точное знание о составе защищённых данных.',
+        recommendation:
+            'Указывайте общий защищаемый объём на момент запуска продукта. Не включайте сюда всю БД автоматически, если защищается только часть данных.\n' +
+            'Примеры: сканы паспортов и договоров; вложения с ПДн; архив подписанных документов; выгрузки для регулируемой отчётности.',
+        impact: 'Если больше 0 — напрямую задаёт объём ЭК «Защищённое хранилище» вместо грубой оценки от БД.',
+        allowUnknown: true,
+        defaultIfUnknown: 0,
+        assumptionRisk: 'medium'
+    },
+    {
+        id: 'protected_data_growth_gb_year',
+        section: 'data_storage',
+        subgroup: 'Файлы и кэш',
+        order: 212,
+        title: 'Годовой прирост защищаемых данных, ГБ/год',
+        type: 'number',
+        min: 0, max: 100_000_000, step: 1,
+        defaultValue: 0,
+        description:
+            'На сколько гигабайт в год увеличивается объём данных, которые хранятся в защищённом контуре.\n\n' +
+            'Если указать 0, прирост защищаемого объёма не добавляется. При заданном прямом объёме это поле увеличивает промышленный контур на годовой прирост.',
+        recommendation:
+            'Заполняйте, если защищаемые документы или файлы постоянно накапливаются: новые сканы, договоры, заявления, отчёты, архивы.\n' +
+            'Если защищаемый объём почти постоянный, оставьте 0.',
+        impact: 'Увеличивает объём защищённого хранилища на ПРОМ; тестовые контуры остаются от объёма на запуске.',
+        allowUnknown: true,
+        defaultIfUnknown: 0,
+        assumptionRisk: 'medium'
+    },
+    {
         id: 'file_storage_growth_tb_year',
         section: 'data_storage',
         subgroup: 'Файлы и кэш',
@@ -3675,6 +3715,9 @@ const STORAGE_HOT_FILE_SSD_TB = `(${STORAGE_FILE_TOTAL_TB} * Q.hot_data_share_pe
 const STORAGE_DB_BACKUP_TB = `(${STORAGE_DB_EFFECTIVE_GB} * Q.db_count * Q.backup_retention_days / 30 / max(1, Q.backup_compression_ratio) / 1024)`;
 const STORAGE_COLD_FILE_HDD_TB = `(Q.file_storage_volume_tb * max(0, 100 - Q.hot_data_share_percent) / 100 * Q.cold_file_hdd_share_percent / 100)`;
 const STORAGE_OBJECT_TB = `(${STORAGE_FILE_TOTAL_TB} * (1 + if(Q.s3_versioning_enabled, Q.s3_versioning_overhead_percent, 0) / 100))`;
+const PROTECTED_DATA_DIRECT_PAYLOAD = `(Q.protected_data_volume_gb + Q.protected_data_growth_gb_year > 0)`;
+const PROTECTED_DATA_CURRENT_GB = `(if(${PROTECTED_DATA_DIRECT_PAYLOAD}, Q.protected_data_volume_gb, max(Q.db_size_initial_gb, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count))`;
+const PROTECTED_DATA_PROD_GB = `(if(${PROTECTED_DATA_DIRECT_PAYLOAD}, Q.protected_data_volume_gb + Q.protected_data_growth_gb_year, max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count))`;
 const RAG_EMBEDDINGS_MILLION = '(if(Q.rag_embeddings_manual, Q.rag_embeddings_million, Q.rag_corpus_size_gb * 200000000 / max(1, Q.rag_avg_chunk_tokens) / 1000000))';
 const RAG_EMBEDDINGS_PAYLOAD = `(${RAG_EMBEDDINGS_MILLION} > 0)`;
 
@@ -3924,21 +3967,21 @@ export const SEED_ITEMS = [
         resourceClass: 'STORAGE',
         applicableStands: ['PSI', 'PROD', 'LOAD'],
         description:
-            'Сертифицированное хранилище для ПДн: соответствие 152-ФЗ или шифрование at-rest.\n' +
+            'Сертифицированное хранилище для отдельных защищаемых данных: ПДн, сканы документов, файлы или выгрузки, которые по проекту должны храниться в защищённом контуре.\n' +
             'Включается при Q.pdn_152fz или Q.encryption_at_rest.\n' +
             'Единица измерения: 1 ГБ.\n' +
-            'Пример: БД 100 ГБ × 2 кластера = 200 ГБ защищённого.\n' +
+            'Это не вся БД автоматически: в защищённый объём попадают только определённые защищаемые данные. Если точный объём не задан, формула использует грубую оценку от размера БД / числа пользователей.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
             'Источник: cloud.ru/services/oblako-152fz, на 2026-05-02. Это ОЦЕНКА (точный тариф «по запросу»).\n' +
             'Расчёт: SSD 12.09 ₽/ГБ + 17.5% надбавка за compliance ≈ 14.2 ₽/ГБ/мес.\n' +
             'В контракте уточняйте у провайдера.',
         qtyFormulas: {
-            PSI:  'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count, 0) * S.standSizeRatio.PSI)',
-            PROD: 'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count, 0))',
-            LOAD: 'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count, 0) * min(S.standSizeRatio.LOAD, 1))'
+            PSI:  `ceil(if(Q.pdn_152fz || Q.encryption_at_rest, ${PROTECTED_DATA_CURRENT_GB}, 0) * S.standSizeRatio.PSI)`,
+            PROD: `ceil(if(Q.pdn_152fz || Q.encryption_at_rest, ${PROTECTED_DATA_PROD_GB}, 0))`,
+            LOAD: `ceil(if(Q.pdn_152fz || Q.encryption_at_rest, ${PROTECTED_DATA_CURRENT_GB}, 0) * min(S.standSizeRatio.LOAD, 1))`
         },
-        formulaHelp: 'GB защ. = max(БД, users_total × размер_БД_на_пользователя) × кластеров (+ годовой прирост на ПРОМ) × коэф. стенда. Для НТ коэффициент выше 1 не увеличивает защищённый объём сверх ПРОМ; нагрузочный тест не должен покупать больше compliance-хранилища, чем защищаемый контур. Иначе 0.'
+        formulaHelp: 'ГБ защищ. = если задан прямой объём защищаемых данных, берётся он; годовой прирост добавляется только к ПРОМ. Если прямые поля равны 0, используется грубая оценка: max(БД, users_total × размер_БД_на_пользователя) × кластеров (+ годовой прирост БД на ПРОМ) × коэф. стенда. Это не вся БД автоматически; сканы документов и другие защищаемые файлы учитывайте как часть защищаемого объёма проекта. Для НТ коэффициент выше 1 не увеличивает защищённый объём сверх ПРОМ; нагрузочный тест не должен покупать больше защищённого хранилища, чем защищаемый контур. Иначе 0.'
     },
     {
         id: 'network-lb-l7',
@@ -4565,9 +4608,9 @@ export const SEED_ITEMS = [
             'Годовая подписка оператора ЭДО и базовые расходы на электронную подпись для промышленного контура.\n' +
             'Применять при Q.edo_required.\n' +
             'Единица измерения: 1 контур в год.\n' +
-            'Цена — фиксированная медианная оценка типового контура; большой документооборот и тарифы за документ требуют отдельной оценки/КП.',
+            'Цена — ориентировочная фиксированная оценка типового контура. Формула не считает количество документов; большой документооборот и тарифы за документ требуют отдельной оценки/КП.',
         qtyFormulas: { PROD: 'if(Q.edo_required, 1, 0)' },
-        formulaHelp: 'qty = 1 при Q.edo_required. Тариф annual.'
+        formulaHelp: 'qty = 1 при Q.edo_required. Тариф годовой; количество документов в этой фиксированной оценке не считается.'
     },
     {
         id: 'service-external-api-calls-1m',
@@ -5415,11 +5458,12 @@ export const SEED_ITEMS = [
         resourceClass: 'RESERVE',
         applicableStands: ['PROD'],
         description:
-            'Дополнительный контур и операционный резерв для обновлений без простоя: blue-green/canary, параллельный прогон миграций и переключение трафика.\n' +
+            'Фиксированный операционный резерв для обновлений без простоя: подготовка релиза, параллельная проверка миграций и переключение трафика.\n' +
+            'Это не копия всей боевой инфраструктуры и не расчёт от размера ПРОМ; если нужен отдельный постоянно оплачиваемый контур, оцените его отдельным КП.\n' +
             'Применять при технологическом окне 0-1 час в месяц.\n' +
             'Единица измерения: 1 контур в месяц.',
         qtyFormulas: { PROD: 'if(Q.maintenance_window_hours_month <= 1, 1, 0)' },
-        formulaHelp: 'qty = 1 при maintenance_window_hours_month <= 1.'
+        formulaHelp: 'qty = 1 при maintenance_window_hours_month <= 1. Это фиксированная оценка операционного резерва обновлений, а не копия боевой инфраструктуры.'
     },
     {
         id: 'one-dr-drill',
