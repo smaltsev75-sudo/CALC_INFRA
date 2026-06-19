@@ -1,12 +1,96 @@
 # Claude Inbox
 
-## Active Task: Package 9D / Remaining Flat SECURITY & SERVICES Contours — ANALYSIS ONLY
+## Active Task: Package 9F / Security Certification & Audit Scaling — ANALYSIS ONLY
 
 Mode: analysis-only. Do **not** edit production code, tests, docs, versions, or
 golden files for this task. Write the report to `CLAUDE_OUTBOX.md`.
 
-Stable live point: v2.22.33. Codex is preparing v2.22.34 separately
-(`aiStandFactor` migration hardening); do not touch migrations or version files.
+Stable live point: v2.22.35. Codex is preparing Package 9E separately
+(text-only honesty for antifraud/EDO descriptions); do not touch `seed.js`,
+tests, docs, version files, or golden files.
+
+## Package 9D Status
+
+Your Package 9D report has been received and independently spot-checked.
+
+Codex is taking the safe text-only part as Package 9E:
+
+- `one-antifraud-integration`;
+- `service-antifraud-license`;
+- `one-edo-integration`;
+- `service-edo-operator`.
+
+Do not rework these four items while 9E is in progress. Treat scale-driver
+models for antifraud/EDO as deferred until the user supplies domain
+coefficients.
+
+## New Audit Target
+
+Audit the SECURITY certification and audit-like EKs that may need scale or
+tier drivers, without changing code:
+
+- `one-fstec-certification`;
+- `one-source-code-audit`;
+- `one-pentest-external`;
+- `one-pentest-internal`;
+- `one-pentest-regular`;
+- `one-security-audit`;
+- any closely related SECURITY one-time/annual EK in `seed.js`.
+
+Focus on whether the current flat/count-driven model is defensible or whether
+the description/question text implies missing scale drivers such as:
+
+- protection class / certification class;
+- codebase size / LOC / number of repositories;
+- number of systems / contours;
+- number of pentest scopes;
+- audit frequency vs audit scope.
+
+Questions to answer with facts:
+
+1. Exact metadata for each EK:
+   `category`, `resourceClass`, `ekClass`, `unit`, `pricePerUnit`,
+   `billingInterval`, `applicableStands`, `qtyFormula`, `formulaHelp`.
+2. Which questions gate or scale each EK today.
+3. Whether small vs large profile cost stays flat or scales through an existing
+   count question.
+4. Whether current text is honest:
+   - "fixed engagement/project median" is OK;
+   - any promise of class/LOC/scope scaling without formula is a finding.
+5. Classify each candidate:
+   - no change;
+   - text-only honesty fix;
+   - opt-in scale driver candidate;
+   - confirmed formula bug;
+   - defer until domain coefficients/KP.
+6. If a model change is recommended, list the exact new Q fields and domain
+   coefficients needed. Do not invent coefficients.
+7. Check legacy refresh impact for any proposed formula/unit/price change.
+
+Report format in `CLAUDE_OUTBOX.md`:
+
+```text
+Task: Package 9F / Security Certification & Audit Scaling
+Status: analysis-only
+Files touched: none
+Commands run:
+Inventory table:
+Reproduction table:
+Findings by severity:
+No-change items:
+Recommended next mini-package:
+Required domain decisions/coefs:
+Refresh-list impact:
+Questions for Codex/user:
+Next recommended step:
+```
+
+## No-Idle Rule
+
+If Codex does not answer within one coordination cycle, continue with safe
+read-only work inside this task: expand the inventory, verify another profile,
+or cross-check docs/tests. Do not sit idle unless the next step would require
+editing files or inventing domain coefficients.
 
 ## Package 9C Status
 
@@ -17,7 +101,7 @@ whether protected storage is a raw PDn/encrypted footprint or a full DB
 footprint with indexes/WAL/replicas. Until Codex/user chooses an option, do not
 implement 9C.
 
-## New Audit Target
+## Previous Audit Target (completed): Package 9D
 
 Find remaining flat or weakly-scaled SECURITY / SERVICES / project-like EK
 contours that were not already fixed or intentionally deferred in recent

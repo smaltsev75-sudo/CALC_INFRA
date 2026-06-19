@@ -2,46 +2,48 @@
 
 ## Coordinator State
 
-- Stable live version confirmed: v2.22.34.
-- Current Codex work: release v2.22.35, Package 9C-A.
-- Package 9C-A changes only `storage-secure-gb` on LOAD: НТ no longer buys more
-  protected storage than PROD.
-- Full SSD parity for protected storage (indexes/WAL/replicas) is deferred to
-  Package 9C-B because it needs a domain decision.
+- Stable live version confirmed: v2.22.35.
+- Current Codex work: release v2.22.36, Package 9E.
+- Package 9E changes only descriptions for antifraud/EDO service items.
+- No formulas, prices, units, golden sums, or refresh lists change in 9E.
 
 ## Claude Work
 
-- Active Claude task now: Package 9D / Remaining Flat SECURITY & SERVICES
-  Contours, analysis-only. No code edits.
-- Claude must write facts and recommendations to `CLAUDE_OUTBOX.md`.
-- Codex will verify each actionable finding before implementation or release.
+- Package 9F / Security Certification & Audit Scaling: report received in
+  `CLAUDE_OUTBOX.md`.
+- Current 9F conclusion: no confirmed formula bugs; FSTEC class-tier and source
+  audit LOC-tier require user domain coefficients; optional pentest text note is
+  low-priority.
+- Claude watchdog is running locally and writes `CLAUDE_WATCHDOG.md`.
+- Codex must give Claude the next safe read-only task before or immediately
+  after closing v2.22.36.
 
-## Current Codex Patch: v2.22.35
+## Current Codex Patch: v2.22.36
 
-Purpose in plain language: if protected storage is required, the load-test stand
-must not exceed the production protected footprint just because LOAD ratio is
-120%.
+Purpose in plain language: antifraud and EDO items are still fixed estimates,
+but their descriptions now say that clearly and point high-volume/complex cases
+to a separate estimate or КП.
 
 Expected behavior:
 
-- `storage-secure-gb` PROD: unchanged.
-- `storage-secure-gb` PSI: unchanged.
-- `storage-secure-gb` LOAD: capped at PROD multiplier (`min(LOAD ratio, 1)`).
-- Known drift: only SECURITY/LOAD in scenarios that already had protected
-  storage.
+- Budget drift: 0.
+- `one-antifraud-integration`: text only.
+- `service-antifraud-license`: text only.
+- `one-edo-integration`: text only.
+- `service-edo-operator`: text only.
 
-Verification before bump:
+Verification before release:
 
-- full unit: 6053/6053 PASS;
+- targeted 9E test: 9/9 PASS;
+- full unit: 6062/6062 PASS;
 - desktop e2e: 60 passed;
 - sanity / quantity / prices / syntax / diff: EXIT 0.
 
 Still required before release:
 
-1. bump to 2.22.35;
-2. rerun full release gates after bump;
-3. commit/push/tag/release;
-4. monitor CI → Pages → live `APP_VERSION = 2.22.35`.
+1. commit/push/tag/release v2.22.36;
+2. monitor CI → Pages → live `APP_VERSION = 2.22.36`;
+3. assign Claude the next read-only package.
 
 ## No-Idle Commitment
 

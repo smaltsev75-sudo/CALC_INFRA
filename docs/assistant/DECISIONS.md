@@ -12974,3 +12974,27 @@ footprint. Коэффициенты/семантику compliance-хранили
 `2.22.34 → 2.22.35` (**PATCH**, known SECURITY/LOAD drift). **Метрики:** unit `6053/6053 PASS`,
 desktop e2e `60 passed`, `sanity:check`, `quantity:audit:check`, `prices:freshness:check`, `syntax-check`,
 `git diff --check` — все `EXIT 0`.
+
+## Release 2.22.36 — Package 9E: antifraud/EDO text honesty (2026-06-19)
+
+PATCH поверх 2.22.35. По отчёту Package 9D уточнены только описания четырёх плоских SERVICES-ЭК:
+
+- `one-antifraud-integration`;
+- `service-antifraud-license`;
+- `one-edo-integration`;
+- `service-edo-operator`.
+
+**Что изменено.** В описания добавлено, что это фиксированные медианные/типовые оценки. Для большого объёма операций,
+сложных правил антифрода, нескольких операторов ЭДО, нестандартных подписей или тарификации за документ нужна отдельная
+оценка/КП.
+
+**Что не менялось.** Формулы, цены, единицы, `billingInterval`, `ekClass`, refresh-list, golden-сценарии и бюджетные суммы.
+Новые scale-driver вопросы (`antifraud_transactions_per_month`, `edo_documents_per_year` и т.п.) не вводились: для них
+нужны доменные коэффициенты/КП.
+
+**Tests/guards.**
+- Новый [antifraud-edo-text-9e.test.js](../../tests/unit/domain/antifraud-edo-text-9e.test.js): RED→GREEN на отсутствие
+  медианного/КП-дисклеймера, no-drift инварианты формул/цен/единиц и запрет новых scale-драйверов без коэффициентов.
+
+`2.22.35 → 2.22.36` (**PATCH**, text-only, drift 0). **Метрики:** unit `6062/6062 PASS`, desktop e2e `60 passed`,
+`sanity:check`, `quantity:audit:check`, `prices:freshness:check`, `syntax-check`, `git diff --check` — все `EXIT 0`.
