@@ -353,73 +353,43 @@ SLA — это **главный драйвер** для DR-блока (RTO / RPO
 
 ## 6. Provider-overlay
 
-### 6.1 Провайдеры в MVP
+### 6.1 Runtime-провайдеры
 
-| ID | Имя | Статус в MVP |
+Выбор провайдера — независимая ось расчёта. Базовый seed остаётся источником
+структуры ЭК, а provider-overlay заменяет только известные `pricePerUnit`.
+
+| ID | Runtime-статус | Источник |
 |---|---|---|
-| `sbercloud` | SberCloud | Active (default) |
-| `cloud_ru` | Cloud.ru | Stub («скоро», disabled) |
-| `yandex` | Yandex.Cloud | Stub («скоро», disabled) |
-| `vk` | VK.Cloud | Stub («скоро», disabled) |
-| `onprem` | On-prem | Stub («скоро», disabled) |
+| `sbercloud` | active, Cloud.ru / SberCloud baseline | bundled provider prices, 16 SKU |
+| `yandex` | active, Yandex Cloud | bundled provider prices, 15 SKU |
+| `vk` | active, VK Cloud | bundled provider prices, 10 SKU |
+| `onprem` | inactive, требует отдельной CAPEX-модели | seed fallback |
 
-UI: серый dropdown `Провайдер` с активным `SberCloud`, остальные disabled с `title="Поддержка добавится в следующих релизах"`.
+`cloud_ru` — старый design-ID. В runtime Cloud.ru-цены используют `sbercloud`
+для обратной совместимости сохранённых расчётов.
 
-### 6.2 SberCloud price overlay
+### 6.2 Источник цен
 
-Текущие `pricePerUnit` в seed.js — микс Cloud.ru / Yandex / GigaChat / медианы. Для MVP заменяем на SberCloud-specific. Проект cloud-овской услуги → mapping:
+Источник истины для bundled-прайсов — `js/data/providers-bundled.generated.js`,
+который собирается из `data/providers/*-latest.json`. WIZARD не дублирует
+per-SKU таблицы: при обновлении прайса меняется generated-файл, а документация
+фиксирует только runtime-контракт и число покрытых SKU.
 
-| ЭК | SberCloud-сервис | Цена-ориентир (₽/мес) |
-|---|---|---|
-| `cpu-vcpu-shared` | SberCloud Compute Shared | TBD по тарифу 2026-Q2 |
-| `cpu-vcpu-dedicated` | SberCloud Compute Dedicated | TBD |
-| `ram-gb` | SberCloud RAM | TBD |
-| `storage-ssd-tb` | SberCloud Block Storage SSD | TBD |
-| `storage-hdd-tb` | SberCloud Block Storage HDD | TBD |
-| `storage-object-tb` | SberCloud Object Storage | TBD |
-| `network-lb-l7` | SberCloud Application Load Balancer | TBD |
-| `network-waf` | SberCloud Web Application Firewall | TBD |
-| `traffic-egress-tb` | SberCloud egress | TBD |
-| `llm-tokens-input-1m` | GigaChat (через SberCloud) | 0.0015 ₽/1К ввод |
-| `llm-tokens-output-1m` | GigaChat | 0.0030 ₽/1К вывод |
-| `rag-embeddings-1m` | GigaChat Embeddings | 0.01 ₽/1К |
-| `rag-vector-db-gb` | SberCloud Managed Search | TBD |
+Если provider-overlay не содержит цену для ЭК, расчёт молча использует seed
+fallback. Это важно для лицензий и сервисов: например, Cloud.ru/Yandex не
+переопределяют DB-лицензию, а VK переопределяет её своим MS SQL Enterprise
+тарифом.
 
-**Источник цен:** актуальный SberCloud price list на дату релиза. **Перед стартом реализации запросить у пользователя**: имеется ли документ с тарифами SberCloud, или брать с публичной страницы https://cloud.ru/services?
+### 6.3 Runtime-архитектура
 
-### 6.3 Архитектура provider-overlay в коде
+`js/domain/providerOverlay.js` строит overlay через
+`buildOverlayPricesFromBundled(providerId)` и применяет его функцией
+`applyProviderOverlay(items, providerId)` перед расчётом. Runtime-цена из
+provider-файла трактуется как `pricePerUnitNet`; НДС добавляет калькулятор
+один раз через общие настройки.
 
-В seed.js остаётся **базовая** цена. Добавляется новый файл `js/domain/providerOverlay.js`:
-
-```js
-// js/domain/providerOverlay.js
-export const PROVIDER_OVERLAYS = Object.freeze({
-    sbercloud: {
-        label: 'SberCloud',
-        active: true,
-        prices: {
-            'cpu-vcpu-shared': { pricePerUnit: 800, source: 'cloud.ru/services 2026-05', vendor: 'SberCloud' },
-            'cpu-vcpu-dedicated': { pricePerUnit: 920, source: '...', vendor: 'SberCloud' },
-            // ...
-        }
-    },
-    cloud_ru: { label: 'Cloud.ru', active: false, prices: {} },
-    yandex:   { label: 'Yandex.Cloud', active: false, prices: {} },
-    vk:       { label: 'VK.Cloud', active: false, prices: {} },
-    onprem:   { label: 'On-prem', active: false, prices: {} }
-});
-
-export function applyProviderOverlay(items, providerId) {
-    const overlay = PROVIDER_OVERLAYS[providerId];
-    if (!overlay || !overlay.active) return items;
-    return items.map(item => {
-        const override = overlay.prices[item.id];
-        return override ? { ...item, ...override } : item;
-    });
-}
-```
-
-`calc.settings.provider` хранит выбранный ID (default `'sbercloud'`). Calculator применяет overlay перед расчётом.
+Не возвращать сюда старый MVP-план с ручной TBD-таблицей. Он расходится с
+фактическим runtime и быстро устаревает.
 
 ---
 

@@ -7,7 +7,9 @@
  *     запроса и целевой загрузки (10-90%); иначе RPS/50.
  *   - min_instances_per_stand — нижний порог vCPU (default 0).
  *   - Расширенная модель RAM (ram_advanced_model, OFF): + app baseline + realtime-память.
- *   - Условие 6/7: ЕДИНАЯ база vCPU для CPU и RAM (S.cpuBaseVcpu), тест на рассинхрон.
+ *   - Условие 6/7: RAM выводится из полной базы vCPU. Package 9A намеренно капает
+ *     cpu-vcpu-shared на ПСИ/ПРОМ/НТ, поэтому shared PROD больше не является proxy
+ *     полной базы при peak_rps > 100.
  *   - Условие 8: advanced RAM не учитывает agent memory повторно.
  *   - Условие 9: health CPU>0, RAM=0.
  */
@@ -36,6 +38,20 @@ function qty(answers, itemId, stand = 'PROD') {
     return calculate(calcWith(answers)).items?.[itemId]?.stands?.[stand]?.qty ?? 0;
 }
 function q(id) { return SEED_QUESTIONS.find(x => x.id === id); }
+function fullCpuBase(answers = {}) {
+    const a = { ...BASE, ...answers };
+    const targetUtil = Math.min(90, Math.max(10, Number(a.cpu_target_utilization_percent || 0))) / 100;
+    const rpsCpu = a.cpu_advanced_model
+        ? Number(a.peak_rps || 0) * Number(a.cpu_ms_per_request || 0) / 1000 / targetUtil
+        : Number(a.peak_rps || 0) / 50;
+    const pcuCpu = Number(a.pcu_target || 0) / 200;
+    const realtimeCpu = a.realtime_required ? Math.max(1, Math.ceil(Number(a.pcu_target || 0) / 1000)) : 0;
+    const base = Math.max(rpsCpu, pcuCpu)
+        + Number(a.microservices_count || 0)
+        + Number(a.async_workers_count || 0)
+        + realtimeCpu;
+    return Math.max(base, Number(a.min_instances_per_stand || 0));
+}
 
 // agent off (agentStepFactor=1), model mid.
 const HW = {
@@ -91,19 +107,18 @@ describe('Stage 4 CPU — расширенная модель', () => {
     });
 });
 
-describe('Stage 4 — ЕДИНАЯ база vCPU для CPU и RAM (условие 6/7)', () => {
-    it('ram-gb PROD = ceil(cpu-vcpu-shared PROD × RAM/vCPU + кэш) — базы не расходятся', () => {
+describe('Stage 4 — RAM выводится из полной базы vCPU (условие 6/7 + Package 9A)', () => {
+    it('ram-gb PROD = ceil(полная база vCPU × RAM/vCPU + кэш), а не capped shared PROD', () => {
         for (const variant of [
             { ...HW },
             { ...HW, pcu_target: 5000 },
             { ...HW, cpu_advanced_model: true, cpu_ms_per_request: 120 },
             { ...HW, min_instances_per_stand: 40 }
         ]) {
-            const cpuProd = qty(variant, 'cpu-vcpu-shared');
             const ramProd = qty(variant, 'ram-gb');
-            const expected = Math.ceil(cpuProd * variant.ram_per_vcpu_ratio + variant.cache_size_gb);
+            const expected = Math.ceil(Math.ceil(fullCpuBase(variant)) * variant.ram_per_vcpu_ratio + variant.cache_size_gb);
             assert.equal(ramProd, expected,
-                `RAM должна выводиться из той же базы vCPU (cpu=${cpuProd}): ${JSON.stringify(variant)}`);
+                `RAM должна выводиться из ПОЛНОЙ базы vCPU (${fullCpuBase(variant)}), не из capped shared: ${JSON.stringify(variant)}`);
         }
     });
 });

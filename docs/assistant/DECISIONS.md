@@ -12848,3 +12848,52 @@ no release while dispute is unresolved.
 `2.22.31 → 2.22.32` (**PATCH**, text/doc-only/no-drift + process docs). **Метрики (финальный прогон):** targeted
 `db-license-doc-guard-8b.test.js` — **8/8 PASS**, unit **6028/6028 PASS**, desktop e2e **60 passed**,
 sanity/quantity/prices/syntax/diff — все **EXIT 0**.
+
+## Release 2.22.33 — Package 9A: CPU dedicated replacement + Package 8C provider-overlay doc guard (2026-06-19)
+
+PATCH поверх 2.22.32. Schema без изменений.
+
+**Package 9A / CPU dedicated semantics.** Аудит подтвердил double-count: `cpu-vcpu-shared` считал полный
+`peak_rps / 50`, а `cpu-vcpu-dedicated` дополнительно считал overage выше 100 RPS на ПСИ/ПРОМ/НТ. Решение:
+`cpu-vcpu-dedicated` — **replacement**, а не добавочный резерв сверх полного shared.
+
+**Реализация.**
+- Вынесены RPS-компоненты CPU: full, capped first-100 и overage above-100.
+- `cpu-vcpu-shared` на DEV/ИФТ остаётся на полной базе.
+- `cpu-vcpu-shared` на ПСИ/ПРОМ/НТ считает только первые 100 RPS.
+- `cpu-vcpu-dedicated` на ПСИ/ПРОМ/НТ считает overage выше 100 RPS.
+- `ram-gb` остаётся на полной uncapped CPU-базе: выделенным vCPU тоже нужна RAM.
+- Replacement применяется и в simple, и в `cpu_advanced_model`: advanced shared берёт first-100 через
+  `cpu_ms_per_request / target_util`, dedicated берёт overage тем же способом.
+- `cpu-vcpu-dedicated` добавлен в `_AGENT_FORMULA_REFRESH_IDS`, чтобы legacy/imported расчёты с нулевой/старой
+  dedicated-формулой получали актуальный split.
+
+**Known drift (Quick Start golden).** Сдвиг только там, где RPS-dominated shared раньше повторно считал overage.
+
+| Сценарий | Было ₽/мес | Стало ₽/мес | Drift |
+|---|---:|---:|---:|
+| `smb_b2b_m` | 3 279 676 | 3 275 987 | −3 689 |
+| `fintech_b2b_m` | 11 218 834 | 11 210 300 | −8 534 |
+| `b2g_m_ru_cis` | 6 072 505 | 6 065 130 | −7 375 |
+
+**Tests/guards.**
+- Новый [cpu-dedicated-replacement-9a.test.js](../../tests/unit/domain/cpu-dedicated-replacement-9a.test.js):
+  simple replacement, DEV/ИФТ full-base, RAM full-base, PCU-dominated case, `peak_rps<=100`, advanced-mode split,
+  legacy refresh и source-guards.
+- [cpu-base-single-source.test.js](../../tests/unit/architecture/cpu-base-single-source.test.js) обновлён под новый
+  split-contract: full base vs capped base, RAM full base, shared full/capped by stand.
+- Stage 4 CPU/RAM и quantityTrace tests обновлены под новый контракт.
+
+**Package 8C-light / WIZARD provider-overlay doc guard.** WIZARD §6 больше не описывает старый MVP/stub/TBD overlay.
+Теперь он фиксирует runtime: active providers `sbercloud` (16 SKU), `yandex` (15 SKU), `vk` (10 SKU), `onprem` inactive
+CAPEX; источник истины — `js/data/providers-bundled.generated.js`, runtime функции
+`buildOverlayPricesFromBundled()` / `applyProviderOverlay()`. Новый
+[provider-overlay-doc-guard-8c.test.js](../../tests/unit/architecture/provider-overlay-doc-guard-8c.test.js) запрещает
+возврат старого stub/TBD текста.
+
+**Coordination/no-idle.** Обновлены правила Codex/Claude: no-idle rule, обязательная обработка вопросов Claude в
+следующем coordination pass, явный takeover/stand-down при остановке, монитор `scripts/monitor-claude-coordination.ps1`.
+
+`2.22.32 → 2.22.33` (**PATCH**, known CPU drift + docs/process). **Метрики (до bump):** targeted 9A/Stage4/trace —
+**42/42 PASS**, provider overlay guard group — **18/18 PASS**, unit **6043/6043 PASS**, desktop e2e **60 passed**,
+sanity/quantity/prices/syntax/diff — все **EXIT 0**.

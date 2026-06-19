@@ -65,9 +65,10 @@ describe('quantityTrace: explain one ЭК quantity', () => {
 
         const trace = buildQuantityTrace(calc, 'cpu-vcpu-shared', 'PROD');
 
-        assert.equal(trace.qty, 18);
-        assert.equal(trace.evaluatedQty, 18);
+        assert.equal(trace.qty, 17);
+        assert.equal(trace.evaluatedQty, 17);
         assert.match(trace.formulaHelp, /RPS/);
+        assert.match(trace.formulaHelp, /100 RPS/);
         // Stage 4 (qty-модель ПРОМ): единая база vCPU подставляется инлайн, поэтому все
         // драйверы (вкл. параметры расширенной модели) остаются видимыми в трассе.
         assert.deepEqual(

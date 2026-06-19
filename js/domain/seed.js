@@ -3638,7 +3638,19 @@ const onStands = (map) => Object.fromEntries(STAND_IDS.map(s => [s, map[s] ?? ''
  * Простая модель: peak_rps/50; расширенная (cpu_advanced_model): peak_rps × CPU-время /
  * целевая_загрузка (10-90%). realtime: max(1, ceil(PCU/1000)). min_instances — нижний порог.
  * Идентичность подстановки в обоих ЭК проверяется arch-тестом cpu-base-single-source. */
-const CPU_BASE_VCPU = 'max(max(if(Q.cpu_advanced_model, Q.peak_rps * Q.cpu_ms_per_request / 1000 / (clamp(Q.cpu_target_utilization_percent, 10, 90) / 100), Q.peak_rps / 50), Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, max(1, ceil(Q.pcu_target / 1000)), 0), Q.min_instances_per_stand)';
+const CPU_RPS_FULL = 'if(Q.cpu_advanced_model, Q.peak_rps * Q.cpu_ms_per_request / 1000 / (clamp(Q.cpu_target_utilization_percent, 10, 90) / 100), Q.peak_rps / 50)';
+const CPU_RPS_CAPPED_100 = 'if(Q.cpu_advanced_model, min(Q.peak_rps, 100) * Q.cpu_ms_per_request / 1000 / (clamp(Q.cpu_target_utilization_percent, 10, 90) / 100), min(Q.peak_rps, 100) / 50)';
+const CPU_RPS_OVERAGE_100 = 'if(Q.cpu_advanced_model, max(0, Q.peak_rps - 100) * Q.cpu_ms_per_request / 1000 / (clamp(Q.cpu_target_utilization_percent, 10, 90) / 100), max(0, Q.peak_rps - 100) / 50)';
+const CPU_BASE_VCPU = `max(max(${CPU_RPS_FULL}, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, max(1, ceil(Q.pcu_target / 1000)), 0), Q.min_instances_per_stand)`;
+
+/* Package 9A (CPU dedicated = replacement semantics): на стендах, где есть выделенные ядра
+ * (cpu-vcpu-dedicated применяется на ПСИ/ПРОМ/НТ), общий пул shared НЕ должен повторно
+ * считать RPS-нагрузку выше 100 — её несёт cpu-vcpu-dedicated через overage (пик-100).
+ * Поэтому RPS-член капается на 100 и в simple, и в advanced CPU mode. shared(до 100) +
+ * dedicated(сверх 100) = полная RPS-нагрузка, без двойного счёта. DEV/ИФТ используют ПОЛНУЮ
+ * базу (выделенных ядер там нет), и ram-gb тоже остаётся на ПОЛНОЙ базе (RAM сайзится от
+ * суммарной нагрузки shared+dedicated, иначе выделенный тир остался бы без памяти). */
+const CPU_BASE_VCPU_SHARED_CAPPED = `max(max(${CPU_RPS_CAPPED_100}, Q.pcu_target / 200) + Q.microservices_count + Q.async_workers_count + if(Q.realtime_required, max(1, ceil(Q.pcu_target / 1000)), 0), Q.min_instances_per_stand)`;
 
 /* Stage 4: доп. RAM (только при ram_advanced_model): app baseline на сервис + RAM на
  * realtime-соединения. agent memory сюда НЕ входит (отдельный storage-ЭК — условие 8). */
@@ -3686,6 +3698,7 @@ export const SEED_ITEMS = [
         description:
             'Виртуальное процессорное ядро с общим (shared) распределением мощности.\n' +
             'Применять для DEV/ИФТ и сервисов ПРОМ с невысокой нагрузкой (бэк-офис, фоновые задачи).\n' +
+            'На ПСИ/ПРОМ/НТ RPS-нагрузка сверх 100 RPS НЕ считается здесь повторно — её несёт «vCPU (выделенный)»; на DEV/ИФТ выделенных ядер нет, поэтому общий пул держит полную RPS-нагрузку.\n' +
             'Единица измерения: 1 vCPU.\n' +
             'Пример: API с пиковым RPS 50 и 5 микросервисов → ≈ 6 vCPU.\n' +
             '\n' +
@@ -3694,13 +3707,15 @@ export const SEED_ITEMS = [
             'Расчёт: 1.15 ₽/core·час × 730 ч ≈ 840 ₽/мес.\n' +
             'В контракте уточняйте по фактическому тарифу провайдера.',
         qtyFormulas: {
+            // Package 9A: DEV/ИФТ — ПОЛНАЯ база (cpu-vcpu-dedicated на этих стендах не применяется).
             DEV:  `ceil((${CPU_BASE_VCPU}) * S.standSizeRatio.DEV)`,
             IFT:  `ceil((${CPU_BASE_VCPU}) * S.standSizeRatio.IFT)`,
-            PSI:  `ceil((${CPU_BASE_VCPU}) * S.standSizeRatio.PSI)`,
-            PROD: `ceil(${CPU_BASE_VCPU})`,
-            LOAD: `ceil((${CPU_BASE_VCPU}) * S.standSizeRatio.LOAD)`
+            // ПСИ/ПРОМ/НТ — capped база: простой RPS-член ≤ 100, RPS сверх 100 несёт cpu-vcpu-dedicated.
+            PSI:  `ceil((${CPU_BASE_VCPU_SHARED_CAPPED}) * S.standSizeRatio.PSI)`,
+            PROD: `ceil(${CPU_BASE_VCPU_SHARED_CAPPED})`,
+            LOAD: `ceil((${CPU_BASE_VCPU_SHARED_CAPPED}) * S.standSizeRatio.LOAD)`
         },
-        formulaHelp: 'vCPU = ceil(база × коэф. стенда). База: max(нагрузка_по_RPS, PCU / 200) + микросервисы + фоновые воркеры + realtime (ceil(PCU/1000), мин. 1). Нагрузка_по_RPS = пик_RPS / 50 (простой режим) ИЛИ пик_RPS × CPU-время_запроса/1000 / целевая_загрузка (расширенный режим). min_instances — нижний порог. Та же база используется для расчёта RAM.'
+        formulaHelp: 'vCPU = ceil(база × коэф. стенда). База: max(нагрузка_по_RPS, PCU / 200) + микросервисы + фоновые воркеры + realtime (ceil(PCU/1000), мин. 1). Нагрузка_по_RPS = пик_RPS / 50 (простой режим) ИЛИ пик_RPS × CPU-время_запроса/1000 / целевая_загрузка (расширенный режим). На ПСИ/ПРОМ/НТ RPS-член ограничен первыми 100 RPS — превышение учитывает «vCPU (выделенный)» тем же способом (simple или advanced); на DEV/ИФТ ограничения нет. RAM выводится из ПОЛНОЙ базы (суммарная нагрузка), не из ограниченной.'
     },
     {
         id: 'cpu-vcpu-dedicated',
@@ -3717,6 +3732,7 @@ export const SEED_ITEMS = [
         description:
             'Виртуальное процессорное ядро с гарантированной (dedicated) производительностью.\n' +
             'Применять на ПРОМ при высокой нагрузке (RPS > 100), для критичных сервисов SLA ≥ 99.9%.\n' +
+            'Несёт RPS-нагрузку СВЕРХ 100 RPS на стендах ПСИ/ПРОМ/НТ: общий пул считает RPS только до 100, превышение идёт сюда тем же способом (простой /50 или расширенный CPU-ms) — без двойного счёта.\n' +
             'Единица измерения: 1 vCPU.\n' +
             'Пример: пик 300 RPS → ≈ 4 dedicated vCPU на ПРОМ.\n' +
             '\n' +
@@ -3727,11 +3743,11 @@ export const SEED_ITEMS = [
             'При едином провайдере dedicated обычно +10% к shared.\n' +
             'В контракте уточняйте по фактическому тарифу.',
         qtyFormulas: {
-            PSI:  'ceil(if(Q.peak_rps > 100, max(0, Q.peak_rps - 100) / 50, 0) * S.standSizeRatio.PSI)',
-            PROD: 'ceil(if(Q.peak_rps > 100, max(0, Q.peak_rps - 100) / 50, 0))',
-            LOAD: 'ceil(if(Q.peak_rps > 100, max(0, Q.peak_rps - 100) / 50, 0) * S.standSizeRatio.LOAD)'
+            PSI:  `ceil((${CPU_RPS_OVERAGE_100}) * S.standSizeRatio.PSI)`,
+            PROD: `ceil(${CPU_RPS_OVERAGE_100})`,
+            LOAD: `ceil((${CPU_RPS_OVERAGE_100}) * S.standSizeRatio.LOAD)`
         },
-        formulaHelp: 'vCPU = ceil(превышение пик. RPS над 100 / 50) × множитель стенда.'
+        formulaHelp: 'vCPU = ceil(превышение пик. RPS над 100) × множитель стенда. В простом режиме: overage / 50; в расширенном CPU-режиме: overage × CPU-время_запроса/1000 / целевая_загрузка. Берёт на себя RPS сверх 100 на ПСИ/ПРОМ/НТ; общий пул на этих стендах считает RPS только до 100 (без двойного счёта).'
     },
     {
         id: 'cpu-vcpu-gpu',
@@ -5563,6 +5579,11 @@ const _AGENT_ITEM_IDS = [
    Q.rag_managed_used — legacy расчёты должны подхватить новую формулу. */
 const _AGENT_FORMULA_REFRESH_IDS = [
     'cpu-vcpu-shared',
+    // Package 9A (CPU dedicated = replacement): shared-формула на ПСИ/ПРОМ/НТ перешла на
+    // capped-базу (RPS ≤ 100), overage >100 несёт cpu-vcpu-dedicated. Формула самой dedicated
+    // не менялась, но ЭК добавлен в refresh-list, чтобы legacy/импорт с устаревшей/нулевой
+    // dedicated-формулой получили актуальную при openCalc (иначе остались бы на старой модели).
+    'cpu-vcpu-dedicated',
     'cpu-vcpu-gpu',
     'ram-gb',
     'storage-ssd-tb',

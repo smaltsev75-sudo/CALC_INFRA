@@ -49,10 +49,11 @@ const GOLDEN_SCENARIOS = Object.freeze([
             // Package 3A (OS license gate): b2b/corporate не fintech/b2g → os=false,
             // OS-лицензия убрана (LICENSE 233_820 → 17_893; остаток = СЗИ при pdn).
             // Package 7A: LOAD-cap email/SMS/push → SERVICES ниже (LOAD-стенд capped до PROD).
-            totalMonthly: 3_279_676,
-            totalAnnual: 39_356_109,
+            // Package 9A: cpu-vcpu-dedicated замещает RPS-overage >100, shared не считает его повторно.
+            totalMonthly: 3_275_987,
+            totalAnnual: 39_311_849,
             topCategory: 'SERVICES',
-            byCategoryMonthly: { HW: 354_790, LICENSE: 17_893, TRAFFIC: 106_029, SERVICES: 2_184_073, RESERVES: 0, SECURITY: 616_891, AI: 0 }
+            byCategoryMonthly: { HW: 351_102, LICENSE: 17_893, TRAFFIC: 106_029, SERVICES: 2_184_073, RESERVES: 0, SECURITY: 616_891, AI: 0 }
         }
     },
     {
@@ -90,10 +91,11 @@ const GOLDEN_SCENARIOS = Object.freeze([
             // Package 5A (F1-A): active-active подавляет warm-георезерв →
             // RESERVES 811_534 → 789_415 (−22_119), total −22_119.
             // Package 7A: LOAD-cap email/SMS/push → SERVICES ниже (LOAD-стенд capped до PROD).
-            totalMonthly: 11_218_834,
-            totalAnnual: 134_626_005,
+            // Package 9A: cpu-vcpu-dedicated замещает RPS-overage >100, shared не считает его повторно.
+            totalMonthly: 11_210_300,
+            totalAnnual: 134_523_603,
             topCategory: 'LICENSE',
-            byCategoryMonthly: { HW: 846_629, LICENSE: 3_923_740, TRAFFIC: 86_149, SERVICES: 3_433_991, RESERVES: 789_415, SECURITY: 2_138_910, AI: 0 }
+            byCategoryMonthly: { HW: 842_941, LICENSE: 3_923_740, TRAFFIC: 86_149, SERVICES: 3_433_991, RESERVES: 784_570, SECURITY: 2_138_910, AI: 0 }
         }
     },
     {
@@ -102,10 +104,11 @@ const GOLDEN_SCENARIOS = Object.freeze([
         expected: {
             // Stage 5A (DR post-pass): RESERVES по blended ₽/vCPU вместо фикс. цены за площадку.
             // Package 7A: LOAD-cap email/SMS/push → SERVICES ниже (LOAD-стенд capped до PROD).
-            totalMonthly: 6_072_505,
-            totalAnnual: 72_870_059,
+            // Package 9A: cpu-vcpu-dedicated замещает RPS-overage >100, shared не считает его повторно.
+            totalMonthly: 6_065_130,
+            totalAnnual: 72_781_561,
             topCategory: 'SERVICES',
-            byCategoryMonthly: { HW: 354_790, LICENSE: 1_846_250, TRAFFIC: 159_043, SERVICES: 2_528_503, RESERVES: 62_320, SECURITY: 1_121_598, AI: 0 }
+            byCategoryMonthly: { HW: 351_102, LICENSE: 1_846_250, TRAFFIC: 159_043, SERVICES: 2_528_503, RESERVES: 58_634, SECURITY: 1_121_598, AI: 0 }
         }
     },
     {
