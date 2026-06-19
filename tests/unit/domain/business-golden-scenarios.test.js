@@ -33,11 +33,11 @@ const BUSINESS_SCENARIOS = Object.freeze([
             // Package 3A (OS license gate): startup_mvp нерегулируемый (os_commercial_license_required=false) →
             // OS-лицензия убрана: LICENSE 89_531 → 0, total −89_531. Прочие категории неизменны.
             // Package 7A: LOAD-cap email/SMS/push → SERVICES и LOAD-стенд ниже (capped до PROD).
-            totalMonthly: 2_183_988,
-            totalAnnual: 26_207_854,
+            totalMonthly: 2_183_868,
+            totalAnnual: 26_206_418,
             topCategory: 'SERVICES',
-            byStandMonthly: { DEV: 5_634, IFT: 129_825, PSI: 176_676, PROD: 1_491_828, LOAD: 380_025 },
-            byCategoryMonthly: { HW: 84_678, LICENSE: 0, TRAFFIC: 26_507, SERVICES: 1_723_554, RESERVES: 0, SECURITY: 349_249, AI: 0 },
+            byStandMonthly: { DEV: 5_634, IFT: 129_825, PSI: 176_676, PROD: 1_491_828, LOAD: 379_905 },
+            byCategoryMonthly: { HW: 84_678, LICENSE: 0, TRAFFIC: 26_507, SERVICES: 1_723_554, RESERVES: 0, SECURITY: 349_129, AI: 0 },
             topProdItemIds: ['one-deployment', 'one-pentest-external', 'service-external-api-calls-1m', 'network-ddos-protection', 'one-pentest-regular']
         }
     },
@@ -58,11 +58,11 @@ const BUSINESS_SCENARIOS = Object.freeze([
         expected: {
             // Stage 3 (qty-модель ПРОМ): SSD выше (индексы ×1.3, WAL +10%).
             // Package 7A: LOAD-cap email/SMS/push → SERVICES и LOAD-стенд ниже (capped до PROD).
-            totalMonthly: 3_478_040,
-            totalAnnual: 41_736_484,
+            totalMonthly: 3_476_245,
+            totalAnnual: 41_714_946,
             topCategory: 'SERVICES',
-            byStandMonthly: { DEV: 39_205, IFT: 209_005, PSI: 293_704, PROD: 2_202_943, LOAD: 733_184 },
-            byCategoryMonthly: { HW: 328_463, LICENSE: 376_393, TRAFFIC: 26_507, SERVICES: 1_896_521, RESERVES: 0, SECURITY: 850_155, AI: 0 },
+            byStandMonthly: { DEV: 39_205, IFT: 209_005, PSI: 293_704, PROD: 2_202_943, LOAD: 731_390 },
+            byCategoryMonthly: { HW: 328_463, LICENSE: 376_393, TRAFFIC: 26_507, SERVICES: 1_896_521, RESERVES: 0, SECURITY: 848_360, AI: 0 },
             topProdItemIds: ['one-deployment', 'one-pentest-regular', 'one-pentest-external', 'one-pentest-internal', 'license-os-per-node']
         }
     },
@@ -88,11 +88,11 @@ const BUSINESS_SCENARIOS = Object.freeze([
             // Package 5A (F1-A): active-active подавляет warm-георезерв (geo+active оба firing) →
             // RESERVES 742_403 → 620_746 (−121_657), total −121_657. Прочие категории неизменны.
             // Package 7A: LOAD-cap email/SMS/push → SERVICES и LOAD-стенд ниже (capped до PROD).
-            totalMonthly: 19_292_931,
-            totalAnnual: 231_515_169,
+            totalMonthly: 19_263_017,
+            totalAnnual: 231_156_204,
             topCategory: 'LICENSE',
-            byStandMonthly: { DEV: 598_295, IFT: 1_693_736, PSI: 2_549_860, PROD: 8_215_742, LOAD: 6_235_298 },
-            byCategoryMonthly: { HW: 4_891_060, LICENSE: 6_888_305, TRAFFIC: 145_790, SERVICES: 4_652_311, RESERVES: 620_746, SECURITY: 2_094_719, AI: 0 },
+            byStandMonthly: { DEV: 598_295, IFT: 1_693_736, PSI: 2_549_860, PROD: 8_215_742, LOAD: 6_205_384 },
+            byCategoryMonthly: { HW: 4_891_060, LICENSE: 6_888_305, TRAFFIC: 145_790, SERVICES: 4_652_311, RESERVES: 620_746, SECURITY: 2_064_805, AI: 0 },
             topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'storage-ssd-tb', 'service-sms-per-1k', 'res-dr-active']
         }
     },
@@ -113,11 +113,11 @@ const BUSINESS_SCENARIOS = Object.freeze([
             // Package 3A (OS license gate): internal_ops_tool нерегулируемый → OS-лицензия убрана:
             // LICENSE 131_663 → 0, total −131_662. license-os-per-node вышел из топ-5 PROD.
             // Package 7A: LOAD-cap email (sms/push=0) → SERVICES и LOAD-стенд ниже (capped до PROD).
-            totalMonthly: 1_676_765,
-            totalAnnual: 20_121_179,
+            totalMonthly: 1_676_585,
+            totalAnnual: 20_119_025,
             topCategory: 'SERVICES',
-            byStandMonthly: { DEV: 7_506, IFT: 123_421, PSI: 132_647, PROD: 1_267_680, LOAD: 145_510 },
-            byCategoryMonthly: { HW: 102_237, LICENSE: 0, TRAFFIC: 26_507, SERVICES: 1_456_225, RESERVES: 0, SECURITY: 91_795, AI: 0 },
+            byStandMonthly: { DEV: 7_506, IFT: 123_421, PSI: 132_647, PROD: 1_267_680, LOAD: 145_331 },
+            byCategoryMonthly: { HW: 102_237, LICENSE: 0, TRAFFIC: 26_507, SERVICES: 1_456_225, RESERVES: 0, SECURITY: 91_616, AI: 0 },
             topProdItemIds: ['one-deployment', 'service-external-api-calls-1m', 'network-ddos-protection', 'one-staff-training', 'security-audit-log-storage-gb']
         }
     },
@@ -142,11 +142,11 @@ const BUSINESS_SCENARIOS = Object.freeze([
             // Package 5A (F1-A): active-active подавляет warm-георезерв →
             // RESERVES 504_356 → 426_939 (−77_417), total −77_418. Прочие категории неизменны.
             // Package 7A: LOAD-cap email/SMS/push → SERVICES и LOAD-стенд ниже (capped до PROD).
-            totalMonthly: 18_396_095,
-            totalAnnual: 220_753_140,
+            totalMonthly: 18_367_378,
+            totalAnnual: 220_408_533,
             topCategory: 'LICENSE',
-            byStandMonthly: { DEV: 638_641, IFT: 1_600_678, PSI: 2_400_161, PROD: 7_849_648, LOAD: 5_906_968 },
-            byCategoryMonthly: { HW: 3_992_372, LICENSE: 7_993_349, TRAFFIC: 86_149, SERVICES: 3_645_354, RESERVES: 426_939, SECURITY: 2_251_933, AI: 0 },
+            byStandMonthly: { DEV: 638_641, IFT: 1_600_678, PSI: 2_400_161, PROD: 7_849_648, LOAD: 5_878_251 },
+            byCategoryMonthly: { HW: 3_992_372, LICENSE: 7_993_349, TRAFFIC: 86_149, SERVICES: 3_645_354, RESERVES: 426_939, SECURITY: 2_223_216, AI: 0 },
             topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'storage-ssd-tb', 'service-sms-per-1k', 'one-fstec-certification']
         }
     },
@@ -175,11 +175,11 @@ const BUSINESS_SCENARIOS = Object.freeze([
         expected: {
             // Stage 1: AI вырос на эмбеддинги ЗАПРОСОВ RAG. Stage 3: SSD выше (индексы ×1.3, WAL +10%).
             // Package 7A: LOAD-cap email/SMS/push → SERVICES и LOAD-стенд ниже (capped до PROD).
-            totalMonthly: 465_660_780,
-            totalAnnual: 5_587_929_360,
+            totalMonthly: 465_656_293,
+            totalAnnual: 5_587_875_515,
             topCategory: 'AI',
-            byStandMonthly: { DEV: 3_464_436, IFT: 34_232_308, PSI: 85_206_297, PROD: 172_064_712, LOAD: 170_693_027 },
-            byCategoryMonthly: { HW: 747_318, LICENSE: 501_858, TRAFFIC: 39_761, SERVICES: 2_467_060, RESERVES: 0, SECURITY: 913_296, AI: 460_991_487 },
+            byStandMonthly: { DEV: 3_464_436, IFT: 34_232_308, PSI: 85_206_297, PROD: 172_064_712, LOAD: 170_688_540 },
+            byCategoryMonthly: { HW: 747_318, LICENSE: 501_858, TRAFFIC: 39_761, SERVICES: 2_467_060, RESERVES: 0, SECURITY: 908_809, AI: 460_991_487 },
             topProdItemIds: ['llm-tokens-input-1m', 'llm-tokens-output-1m', 'ai-safety-moderation-tokens-1m', 'ai-agent-sandbox-vcpu', 'one-deployment']
         }
     }

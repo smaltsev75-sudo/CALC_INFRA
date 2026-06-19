@@ -3936,9 +3936,9 @@ export const SEED_ITEMS = [
         qtyFormulas: {
             PSI:  'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count, 0) * S.standSizeRatio.PSI)',
             PROD: 'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb + Q.db_growth_gb_month * 12, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count, 0))',
-            LOAD: 'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count, 0) * S.standSizeRatio.LOAD)'
+            LOAD: 'ceil(if(Q.pdn_152fz || Q.encryption_at_rest, max(Q.db_size_initial_gb, Q.users_total * Q.db_size_per_user_kb / 1000000) * Q.db_count, 0) * min(S.standSizeRatio.LOAD, 1))'
         },
-        formulaHelp: 'GB защ. = max(БД, users_total × 50 КБ) × кластеров (+ годовой прирост на ПРОМ) × коэф. стенда. Иначе 0.'
+        formulaHelp: 'GB защ. = max(БД, users_total × размер_БД_на_пользователя) × кластеров (+ годовой прирост на ПРОМ) × коэф. стенда. Для НТ коэффициент выше 1 не увеличивает защищённый объём сверх ПРОМ; нагрузочный тест не должен покупать больше compliance-хранилища, чем защищаемый контур. Иначе 0.'
     },
     {
         id: 'network-lb-l7',

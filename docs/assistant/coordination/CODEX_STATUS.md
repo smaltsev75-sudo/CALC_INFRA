@@ -2,47 +2,46 @@
 
 ## Coordinator State
 
-- Stable live version confirmed: v2.22.33.
-- Current Codex work: release v2.22.34, a small migration hardening patch for
-  corrupt saved `settings.aiStandFactor` values.
-- No production EK formulas or prices are changed in v2.22.34.
-- GitHub CI/Pages for v2.22.33 were green and live checks confirmed
-  `APP_VERSION = 2.22.33`.
+- Stable live version confirmed: v2.22.34.
+- Current Codex work: release v2.22.35, Package 9C-A.
+- Package 9C-A changes only `storage-secure-gb` on LOAD: НТ no longer buys more
+  protected storage than PROD.
+- Full SSD parity for protected storage (indexes/WAL/replicas) is deferred to
+  Package 9C-B because it needs a domain decision.
 
 ## Claude Work
 
-- Package 9B / AI Service Contours: completed as formula false-positive.
-  Runtime uses `aiStandFactor`, and valid UI/import values cannot make AI LOAD
-  exceed PROD.
-- Package 9C / `storage-secure-gb`: report received. Codex must independently
-  verify before any decision. Main domain question: protected storage as raw
-  PDn/encrypted footprint vs full DB footprint with indexes/WAL/replicas.
 - Active Claude task now: Package 9D / Remaining Flat SECURITY & SERVICES
   Contours, analysis-only. No code edits.
+- Claude must write facts and recommendations to `CLAUDE_OUTBOX.md`.
+- Codex will verify each actionable finding before implementation or release.
 
-## Current Codex Patch: v2.22.34
+## Current Codex Patch: v2.22.35
 
-Purpose in plain language: if an old/manual saved calculation contains invalid
-AI stand percentages, clamp them when the calculation is opened.
+Purpose in plain language: if protected storage is required, the load-test stand
+must not exceed the production protected footprint just because LOAD ratio is
+120%.
 
 Expected behavior:
 
-- Valid calculations: no budget change.
-- Corrupt saved values above 100% or below 0%: normalized into 0..100%.
-- PROD AI factor: always restored to 100%.
+- `storage-secure-gb` PROD: unchanged.
+- `storage-secure-gb` PSI: unchanged.
+- `storage-secure-gb` LOAD: capped at PROD multiplier (`min(LOAD ratio, 1)`).
+- Known drift: only SECURITY/LOAD in scenarios that already had protected
+  storage.
 
-Verification already run before bump:
+Verification before bump:
 
-- targeted migration tests: 33/33 PASS;
-- full unit: 6048/6048 PASS;
+- full unit: 6053/6053 PASS;
+- desktop e2e: 60 passed;
 - sanity / quantity / prices / syntax / diff: EXIT 0.
 
 Still required before release:
 
-1. bump to 2.22.34;
+1. bump to 2.22.35;
 2. rerun full release gates after bump;
 3. commit/push/tag/release;
-4. monitor CI → Pages → live `APP_VERSION = 2.22.34`.
+4. monitor CI → Pages → live `APP_VERSION = 2.22.35`.
 
 ## No-Idle Commitment
 
@@ -52,3 +51,6 @@ Still required before release:
 - If a decision belongs to the user, Codex still gives Claude another safe
   read-only task instead of leaving Claude idle.
 - Shared-state changes require explicit takeover/stand-down in these files.
+- If Codex finishes a release while Claude is still reading, Codex immediately
+  moves to live verification, report review, or a read-only next audit instead
+  of stopping silently.
