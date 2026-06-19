@@ -12604,3 +12604,38 @@ chromium` в цикле retry. На GitHub runner первая попытка у
 `2.22.24 → 2.22.25` (**PATCH**, CI-only). **Метрики (мой прогон):** targeted workflow guard PASS,
 unit/sanity/quantity/prices/syntax/diff — все **EXIT 0**. Desktop smoke production-части уже был зелёным на
 2.22.24; этот патч меняет только GitHub workflow и версию.
+
+## Release 2.22.26 — Package 5A: DR/RESERVE — F1-A (anti-double-count) + F2 (drills any-DR) + F3-A (blue-green text) (2026-06-19)
+
+PATCH, доменная развилка по DR + честный текст. Формула/цена blue-green ЭК не менялись; golden drift только в
+4 сценариях (F1-A), F2/F3-A — drift 0. Версия/схема bundle не трогались.
+
+**F1-A — устранение double-count георезерва.** `res-georedundancy` (warm, 30% ПРОМ vCPU) и `res-dr-active`
+(active-active, 100% ПРОМ vCPU) включались независимыми гейтами и могли срабатывать одновременно → 130% резерва,
+хотя active-active (второй горячий ЦОД) сам по себе и есть георезерв. Решение: `res-georedundancy` подавляется,
+когда активен active-gate `res-dr-active` ([seed.js](../../js/domain/seed.js) res-georedundancy):
+`if(Q.georedundancy_required && !(Q.sla_target >= 99.95 || Q.rto_hours <= 1 || Q.rpo_minutes <= 5), ceil(0.3 * S.prodComputeVcpu), 0)`.
+Warm-only георезерв (флаг гео без active-gate, например b2g/m) сохраняется.
+
+**F2 — DR-учения при любом DR.** `one-dr-drill` гейтился только `georedundancy_required` → active-active без флага
+гео давал DR-кластер без учений. Новая формула: `if(Q.georedundancy_required || Q.sla_target >= 99.95 || Q.rto_hours <= 1 || Q.rpo_minutes <= 5, Q.dr_drills_per_year, 0)`.
+ЭК добавлен в `_AGENT_FORMULA_REFRESH_IDS` (legacy получит формулу; unit/price не менялись).
+
+**F3-A — честный текст blue-green (no-drift).** Вопрос `maintenance_window_hours_month`: description/recommendation/impact
+больше не обещают «+100% к HW» / «удвоение стоимости ПРОМ» — модель реально fixed-резерв ≈250 000 ₽/мес
+(ЭК «Blue-green контур»); гейт описан как «≤1 ч» вместо «0 часов». Формула/цена `res-blue-green-deployment`
+**не тронуты** (250 000 ₽/мес, `if(maintenance_window_hours_month <= 1, 1, 0)`). Вариант B (перевод blue-green в
+% от ПРОМ) отложен — требует коэффициента и отдельного дизайна.
+
+**Golden drift (только F1-A, 4 сценария; падает только RESERVES на величину warm-георезерва):**
+fintech_b2b_m −22 119; regulated_b2g_fintech_xl_ai_global −287 552; enterprise −121 657; regulated_fintech_high
+−77 418 ₽/мес. Остальные golden/business неизменны. F2 drift 0 (нет golden с active-без-geo), F3-A drift 0.
+
+**Тесты:** новый [dr-reserve-package-5a.test.js](../../tests/unit/domain/dr-reserve-package-5a.test.js) (16 проверок:
+F1-A подавление по 3 веткам active-gate + сохранение warm-only + dr-active не задет + source-guard; F2 любой-DR +
+source-guard + refresh-list; F3-A текст без «+100%/удвоение» + честный резерв/≤1 ч + ЭК blue-green не изменён).
+Обновлены 4 golden + регены SANITY_REPORT.md, QUANTITY_LOGIC_AUDIT.md.
+
+`2.22.25 → 2.22.26` (**PATCH**, доменная развилка DR + текст). **Метрики (мой прогон):** unit **5970/5970 PASS**
+(+17), desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**. Формула/цена blue-green,
+post-pass, enrichment unit/price, цены 1750/2300 — не тронуты.

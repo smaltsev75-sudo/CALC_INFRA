@@ -83,11 +83,13 @@ const BUSINESS_SCENARIOS = Object.freeze([
             // Stage 5A (DR post-pass): res-georedundancy/res-dr-active теперь vCPU резерва
             // по blended ₽/vCPU (1750/2300) вместо фикс. 300k/400k за площадку → RESERVES ниже,
             // PROD-итог снизился, res-dr-active опустился в топ-5 PROD.
-            totalMonthly: 19_604_182,
-            totalAnnual: 235_250_179,
+            // Package 5A (F1-A): active-active подавляет warm-георезерв (geo+active оба firing) →
+            // RESERVES 742_403 → 620_746 (−121_657), total −121_657. Прочие категории неизменны.
+            totalMonthly: 19_482_525,
+            totalAnnual: 233_790_302,
             topCategory: 'LICENSE',
-            byStandMonthly: { DEV: 598_295, IFT: 1_693_736, PSI: 2_549_860, PROD: 8_337_398, LOAD: 6_424_892 },
-            byCategoryMonthly: { HW: 4_891_060, LICENSE: 6_888_305, TRAFFIC: 145_790, SERVICES: 4_841_905, RESERVES: 742_403, SECURITY: 2_094_719, AI: 0 },
+            byStandMonthly: { DEV: 598_295, IFT: 1_693_736, PSI: 2_549_860, PROD: 8_215_742, LOAD: 6_424_892 },
+            byCategoryMonthly: { HW: 4_891_060, LICENSE: 6_888_305, TRAFFIC: 145_790, SERVICES: 4_841_905, RESERVES: 620_746, SECURITY: 2_094_719, AI: 0 },
             topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'storage-ssd-tb', 'service-sms-per-1k', 'res-dr-active']
         }
     },
@@ -133,11 +135,13 @@ const BUSINESS_SCENARIOS = Object.freeze([
         expected: {
             // Stage 5A (DR post-pass): DR-ЭК пересчитаны по blended ₽/vCPU (1750/2300) →
             // RESERVES ниже, DR вышли из топ-5 PROD (стали дешевле фикс. цены за площадку).
-            totalMonthly: 18_593_589,
-            totalAnnual: 223_123_070,
+            // Package 5A (F1-A): active-active подавляет warm-георезерв →
+            // RESERVES 504_356 → 426_939 (−77_417), total −77_418. Прочие категории неизменны.
+            totalMonthly: 18_516_171,
+            totalAnnual: 222_194_057,
             topCategory: 'LICENSE',
-            byStandMonthly: { DEV: 638_641, IFT: 1_600_678, PSI: 2_400_161, PROD: 7_927_066, LOAD: 6_027_044 },
-            byCategoryMonthly: { HW: 3_992_372, LICENSE: 7_993_349, TRAFFIC: 86_149, SERVICES: 3_765_431, RESERVES: 504_356, SECURITY: 2_251_933, AI: 0 },
+            byStandMonthly: { DEV: 638_641, IFT: 1_600_678, PSI: 2_400_161, PROD: 7_849_648, LOAD: 6_027_044 },
+            byCategoryMonthly: { HW: 3_992_372, LICENSE: 7_993_349, TRAFFIC: 86_149, SERVICES: 3_765_431, RESERVES: 426_939, SECURITY: 2_251_933, AI: 0 },
             topProdItemIds: ['license-db-per-vcpu', 'one-deployment', 'storage-ssd-tb', 'service-sms-per-1k', 'one-fstec-certification']
         }
     },
