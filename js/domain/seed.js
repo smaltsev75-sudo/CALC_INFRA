@@ -4101,8 +4101,8 @@ export const SEED_ITEMS = [
             'Пример: 2 кластера × (1 master + 1 реплика) × 4 vCPU/узел = 16 vCPU.\n' +
             '\n' +
             '— Цена-ориентир —\n' +
-            'Источник: syssoft.ru/tantor-labs/platforma-tantor/2101972/ — Tantor SE на 1 ядро/год, на 2025-05.\n' +
-            'Postgres Pro Enterprise существенно дороже (~622 908 ₽/vCPU/год).\n' +
+            'Seed-baseline: Tantor SE 167 000 ₽/vCPU/год (syssoft.ru/tantor-labs/platforma-tantor/2101972/, 2025-05).\n' +
+            'Postgres Pro Enterprise (~622 908 ₽/vCPU/год), Oracle и MS SQL Enterprise существенно дороже — их цену задавайте через provider overlay (например VK для MS SQL Enterprise), импорт прайса провайдера или КП; seed-цена остаётся ориентиром Tantor SE.\n' +
             'ВАЖНО: цена с 2025-05 — может быть устаревшей (российские СУБД-вендоры обычно индексируют +5–15%/год). ' +
             'Перепроверьте актуальную цену у вендора.',
         qtyFormulas: {

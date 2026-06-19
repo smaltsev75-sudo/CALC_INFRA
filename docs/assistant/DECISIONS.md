@@ -12814,3 +12814,37 @@ default/defaultIfUnknown `4`, min `1`, step `1`). Формулы `license-db-per
 
 `2.22.30 → 2.22.31` (**PATCH**, no-drift). **Метрики (мой прогон до bump):** targeted **5/5 PASS**, unit
 **6020/6020 PASS**, desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**.
+
+## Release 2.22.32 — Package 8B-light: честная семантика DB license edition + Codex/Claude coordination protocol (2026-06-19)
+
+PATCH поверх 2.22.31. **Text/doc-only для модели**: формула, `pricePerUnit`, `unit`, `billingInterval`, gate,
+`refresh-list`, provider overlay и golden НЕ менялись.
+
+**Package 8B-light / DB license edition.** Аудит подтвердил, что расчёт `license-db-per-vcpu` после 8A корректен:
+годовая seed-цена `167000 ₽/vCPU/год`, gate `db_commercial_license_required`, параметр
+`db_license_vcpu_per_node` и VK overlay работают. Проблема была только в тексте/документации: WIZARD §13.6 устарел
+и смешивал edition'ы и единицы.
+
+**WIZARD §13.6 обновлён по фактическому runtime:**
+- Cloud.ru/sbercloud overlay: 16 SKU, DB-лицензии нет → fallback на seed baseline Tantor SE.
+- Yandex overlay: 15 SKU, DB-лицензии нет → fallback на seed baseline Tantor SE.
+- VK overlay: 10 SKU, `license-db-per-vcpu` = MS SQL Enterprise `598214.75 ₽/vCPU/год` net.
+- Единицы лицензий исправлены на годовые: DB = `₽/vCPU/год`, OS/SIEM = `₽/узел/год`.
+- Убрана устаревшая таблица/фраза, где `license-db-per-vcpu` выглядел как `167000 ₽/мес` внутри sbercloud overlay.
+
+**Seed-текст `license-db-per-vcpu` уточнён:** seed baseline = Tantor SE `167000 ₽/vCPU/год`; Postgres Pro Enterprise,
+Oracle и MS SQL Enterprise обычно дороже и требуют provider overlay, импорта прайса или КП. Это честно разделяет
+baseline и edition-specific pricing без выдумывания новых коэффициентов.
+
+**Guard:** новый [db-license-doc-guard-8b.test.js](../../tests/unit/architecture/db-license-doc-guard-8b.test.js)
+(8 проверок): запрет неверной месячной единицы в WIZARD, актуальные SKU-count 16/15/10, VK price `598214.75`,
+seed fallback, описание Tantor SE + overlay/import/КП, no-drift-инвариант по цене/unit/billing/formula.
+
+**Coordination protocol.** Добавлены рабочие файлы `docs/assistant/coordination/*` для совместной работы Codex+Claude:
+инструкция, inbox/outbox, статус Codex, правила anti-clobber и dispute-resolution. Спорные ситуации решаются так:
+domain/price uncertainty → options + user decision; shared-file conflict → stop; failing test → exact command/output;
+no release while dispute is unresolved.
+
+`2.22.31 → 2.22.32` (**PATCH**, text/doc-only/no-drift + process docs). **Метрики (финальный прогон):** targeted
+`db-license-doc-guard-8b.test.js` — **8/8 PASS**, unit **6028/6028 PASS**, desktop e2e **60 passed**,
+sanity/quantity/prices/syntax/diff — все **EXIT 0**.
