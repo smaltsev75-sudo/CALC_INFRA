@@ -12739,3 +12739,48 @@ SSO/IdP-текст содержит «медиан…»+«федераци…»,
 отсутствие новых scale-драйверов).
 
 `2.22.28 → 2.22.29` (**PATCH**, text-only/no-drift). Заодно синхронизирован отставший `package-lock.json` (был 2.22.27).
+
+## Release 2.22.30 — Package 7A: LOAD-cap платных внешних коммуникаций (email/SMS/push) + текст (2026-06-19)
+
+PATCH поверх 2.22.29. Schema без изменений. Drift — **known**, только под LOAD-cap (детерминированно проверен).
+
+Аудит Package 7 (TRAFFIC + внешние коммуникации, analysis-only) выявил: `service-email-per-1k` / `service-sms-per-1k` /
+`service-push-per-1m` считались на стенде НТ по полному `standSizeRatio.LOAD` (1.2×) — т.е. при нагрузочном тесте модель
+«отправляла» 120% прод-объёма реальных платных писем/SMS/PUSH. У `service-external-api-calls-1m` защита `min(S.standSizeRatio.LOAD, 1)`
+уже была — у email/SMS/push её не было (внутренняя непоследовательность). Для SMS-heavy fintech-профиля не-PROD стенды давали
+~68% стоимости строки.
+
+**Реализация (LOAD-cap, F1 из аудита).** LOAD-формулы трёх ЭК переведены на `ceil((X) * min(S.standSizeRatio.LOAD, 1))`
+(зеркало external-api). **IFT/PSI/PROD не трогались, PROD-only не делался** (PROD-only давал бы кратно больший drift и требовал
+отдельного решения). formulaHelp дополнен пояснением про НТ-cap. Три ЭК добавлены в `_AGENT_FORMULA_REFRESH_IDS`
+(external-api/egress/ingress там уже были) — legacy-расчёты получат новую LOAD-формулу при openCalc.
+
+**Drift (known, только SERVICES/LOAD; PROD-драйверы, topProdItemIds, прочие категории неизменны):**
+
+| Сценарий | Было ₽/мес | Стало ₽/мес | Drift |
+|---|---:|---:|---:|
+| regulated_b2g_fintech_xl_ai_global | 587 745 578 | 580 572 590 | −7 172 988 |
+| enterprise_b2c_xl_ai_global | 726 823 639 | 724 822 364 | −2 001 275 |
+| остальные golden | — | — | меньше (пропорц. объёму email/SMS/push) |
+
+Обновлены 14 golden (8 Quick Start + 6 business), SANITY_REPORT.md, QUANTITY_LOGIC_AUDIT.md — изменяются только
+`totalMonthly`/`totalAnnual`/`byCategoryMonthly.SERVICES` (+ `byStandMonthly.LOAD` в business).
+
+**F3 (SMS text-only).** Цена SMS **3000 ₽/1000 не менялась**. В описании добавлено: 3 ₽/SMS — транзакционный ориентир;
+рекламный/смешанный микс выше; прежний ориентир 6 ₽/SMS (внутренняя запись 14.U7) не применяется без подтверждения КП.
+**Рассинхрон 14.U7 зафиксирован:** запись 14.U7 заявляла overlay-цену 6000, но в текущих bundled-оверлеях SMS отсутствует
+→ эффективная цена всегда seed 3000; смена цены — только по доменному подтверждению (отдельное решение, в 7A не делалось).
+
+**F2 (external-api text-only).** Цена (50000) и формула не менялись. В описании добавлен дисклеймер: это бюджет сторонних
+API/провайдеров внутри операционной модели продукта, а не облачная инфраструктура; вынос бизнес-комиссий за периметр требует
+отдельных правил/коэффициентов (аналогично границе эквайринга в 6C).
+
+**Не делалось:** SMS 3000→6000, PROD-only, новые scale-драйверы (idp_users_count/payment_transactions/gmv), смена цены/границы
+external-api — всё это требует доменных коэффициентов/отдельного решения.
+
+**Тесты:** новый [traffic-comms-load-cap-7a.test.js](../../tests/unit/domain/traffic-comms-load-cap-7a.test.js) (14 проверок:
+LOAD ≤ PROD при ratio>1, PROD/IFT/PSI неизменны, LOAD-формула содержит `min(...,1)`, refresh-list, SMS/external-api тексты,
+цены не тронуты).
+
+`2.22.29 → 2.22.30` (**PATCH**, known LOAD-cap drift + text-only). **Метрики (мой прогон):** targeted **14/14 PASS**,
+unit **6015/6015 PASS**, desktop e2e **60 passed**, sanity/quantity/prices/syntax/diff — все **EXIT 0**.

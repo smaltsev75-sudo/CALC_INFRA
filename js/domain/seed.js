@@ -4328,9 +4328,9 @@ export const SEED_ITEMS = [
             IFT:  'ceil((Q.email_per_month / 1000) * S.standSizeRatio.IFT)',
             PSI:  'ceil((Q.email_per_month / 1000) * S.standSizeRatio.PSI)',
             PROD: 'ceil(Q.email_per_month / 1000)',
-            LOAD: 'ceil((Q.email_per_month / 1000) * S.standSizeRatio.LOAD)'
+            LOAD: 'ceil((Q.email_per_month / 1000) * min(S.standSizeRatio.LOAD, 1))'
         },
-        formulaHelp: 'Тыс. писем = email_per_month / 1000 × коэф. стенда.'
+        formulaHelp: 'Тыс. писем = email_per_month / 1000 × коэф. стенда. Для НТ коэффициент выше 1 не увеличивает объём писем автоматически (нагрузочный тест не шлёт больше прод-объёма реальных писем).'
     },
     {
         id: 'service-sms-per-1k',
@@ -4353,14 +4353,16 @@ export const SEED_ITEMS = [
             'Источник: оценка по рынку (SMS Aero / SMSC / тарифы операторов «Большой четвёрки»), 2026.\n' +
             'Расчёт: ~3 ₽/SMS × 1000 = 3 000 ₽/тыс. SMS.\n' +
             'ВАЖНО: цена не подтверждена конкретным КП — для вашего проекта получите тариф у выбранного агрегатора. ' +
-            'Цена сильно зависит от типа SMS (информационная / транзакционная / 2FA) и оператора.',
+            'Цена сильно зависит от типа SMS (информационная / транзакционная / 2FA) и оператора.\n' +
+            'Текущая модель: 3 ₽/SMS — транзакционный ориентир. Рекламный или смешанный микс может быть выше; ' +
+            'прежний ориентир 6 ₽/SMS (внутренняя запись 14.U7) не применяется без подтверждения КП.',
         qtyFormulas: {
             IFT:  'ceil((Q.sms_per_month / 1000) * S.standSizeRatio.IFT)',
             PSI:  'ceil((Q.sms_per_month / 1000) * S.standSizeRatio.PSI)',
             PROD: 'ceil(Q.sms_per_month / 1000)',
-            LOAD: 'ceil((Q.sms_per_month / 1000) * S.standSizeRatio.LOAD)'
+            LOAD: 'ceil((Q.sms_per_month / 1000) * min(S.standSizeRatio.LOAD, 1))'
         },
-        formulaHelp: 'Тыс. SMS = sms_per_month / 1000 × коэф. стенда.'
+        formulaHelp: 'Тыс. SMS = sms_per_month / 1000 × коэф. стенда. Для НТ коэффициент выше 1 не увеличивает объём SMS автоматически (нагрузочный тест не шлёт больше прод-объёма реальных SMS).'
     },
     {
         id: 'service-push-per-1m',
@@ -4388,9 +4390,9 @@ export const SEED_ITEMS = [
             IFT:  'ceil((Q.push_per_month / 1000000) * S.standSizeRatio.IFT)',
             PSI:  'ceil((Q.push_per_month / 1000000) * S.standSizeRatio.PSI)',
             PROD: 'ceil(Q.push_per_month / 1000000)',
-            LOAD: 'ceil((Q.push_per_month / 1000000) * S.standSizeRatio.LOAD)'
+            LOAD: 'ceil((Q.push_per_month / 1000000) * min(S.standSizeRatio.LOAD, 1))'
         },
-        formulaHelp: 'Млн PUSH = push_per_month / 1 000 000 × коэф. стенда.'
+        formulaHelp: 'Млн PUSH = push_per_month / 1 000 000 × коэф. стенда. Для НТ коэффициент выше 1 не увеличивает объём PUSH автоматически (нагрузочный тест не шлёт больше прод-объёма реальных PUSH).'
     },
     {
         id: 'one-payment-gateway-integration',
@@ -4546,7 +4548,9 @@ export const SEED_ITEMS = [
             '\n' +
             '— Цена-ориентир —\n' +
             'Источник: модельная blended-оценка из вопроса «Вызовов внешних API в месяц», 2026-05.\n' +
-            'ВАЖНО: фактические API сильно различаются по цене; для финального бюджета импортируйте КП ключевых провайдеров.',
+            'ВАЖНО: фактические API сильно различаются по цене; для финального бюджета импортируйте КП ключевых провайдеров.\n' +
+            'Это бюджет сторонних API/провайдеров внутри операционной модели продукта, а не облачная инфраструктура. ' +
+            'Вынос бизнес-комиссий за периметр инфраструктурного бюджета требует отдельных правил/коэффициентов.',
         qtyFormulas: {
             IFT:  'ceil((Q.external_api_calls_per_month / 1000000) * S.standSizeRatio.IFT)',
             PSI:  'ceil((Q.external_api_calls_per_month / 1000000) * S.standSizeRatio.PSI)',
@@ -5564,6 +5568,12 @@ const _AGENT_FORMULA_REFRESH_IDS = [
     'service-external-api-calls-1m',
     'traffic-egress-tb',
     'traffic-ingress-tb',
+    // Package 7A: LOAD-cap (min(standSizeRatio.LOAD, 1)) для платных внешних коммуникаций
+    // — стенд НТ не шлёт больше прод-объёма реальных писем/SMS/PUSH. legacy должен
+    // получить новую LOAD-формулу (как уже сделано для service-external-api-calls-1m).
+    'service-email-per-1k',
+    'service-sms-per-1k',
+    'service-push-per-1m',
     'res-dr-active',
     'res-georedundancy',
     // Package 5A (F1-A/F2): res-georedundancy получил подавление при active-active,

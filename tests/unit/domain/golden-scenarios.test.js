@@ -35,10 +35,11 @@ const GOLDEN_SCENARIOS = Object.freeze([
         expected: {
             // Package 3A (OS license gate): b2b/corporate не fintech/b2g → os=false,
             // OS-лицензия убрана (LICENSE 142_573 → 10_910; остаток = СЗИ при pdn).
-            totalMonthly: 1_932_356,
-            totalAnnual: 23_188_276,
+            // Package 7A: LOAD-cap email/SMS/push → SERVICES ниже (LOAD-стенд capped до PROD).
+            totalMonthly: 1_931_724,
+            totalAnnual: 23_180_692,
             topCategory: 'SERVICES',
-            byCategoryMonthly: { HW: 107_419, LICENSE: 10_910, TRAFFIC: 33_134, SERVICES: 1_568_788, RESERVES: 0, SECURITY: 212_105, AI: 0 }
+            byCategoryMonthly: { HW: 107_419, LICENSE: 10_910, TRAFFIC: 33_134, SERVICES: 1_568_156, RESERVES: 0, SECURITY: 212_105, AI: 0 }
         }
     },
     {
@@ -47,10 +48,11 @@ const GOLDEN_SCENARIOS = Object.freeze([
         expected: {
             // Package 3A (OS license gate): b2b/corporate не fintech/b2g → os=false,
             // OS-лицензия убрана (LICENSE 233_820 → 17_893; остаток = СЗИ при pdn).
-            totalMonthly: 3_294_422,
-            totalAnnual: 39_533_064,
+            // Package 7A: LOAD-cap email/SMS/push → SERVICES ниже (LOAD-стенд capped до PROD).
+            totalMonthly: 3_279_676,
+            totalAnnual: 39_356_109,
             topCategory: 'SERVICES',
-            byCategoryMonthly: { HW: 354_790, LICENSE: 17_893, TRAFFIC: 106_029, SERVICES: 2_198_819, RESERVES: 0, SECURITY: 616_891, AI: 0 }
+            byCategoryMonthly: { HW: 354_790, LICENSE: 17_893, TRAFFIC: 106_029, SERVICES: 2_184_073, RESERVES: 0, SECURITY: 616_891, AI: 0 }
         }
     },
     {
@@ -59,10 +61,11 @@ const GOLDEN_SCENARIOS = Object.freeze([
         expected: {
             // Package 3A (OS license gate): b2c/edtech не fintech/b2g → os=false,
             // OS-лицензия убрана (LICENSE 222_414 → 17_020; остаток = СЗИ при pdn).
-            totalMonthly: 31_018_954,
-            totalAnnual: 372_227_452,
+            // Package 7A: LOAD-cap email/SMS/push → SERVICES ниже (LOAD-стенд capped до PROD).
+            totalMonthly: 30_978_929,
+            totalAnnual: 371_747_147,
             topCategory: 'AI',
-            byCategoryMonthly: { HW: 1_067_478, LICENSE: 17_020, TRAFFIC: 205_431, SERVICES: 3_228_949, RESERVES: 0, SECURITY: 785_419, AI: 25_714_657 }
+            byCategoryMonthly: { HW: 1_067_478, LICENSE: 17_020, TRAFFIC: 205_431, SERVICES: 3_188_923, RESERVES: 0, SECURITY: 785_419, AI: 25_714_657 }
         }
     },
     {
@@ -71,10 +74,11 @@ const GOLDEN_SCENARIOS = Object.freeze([
         expected: {
             // Package 3A (OS license gate): b2c/consumer не fintech/b2g → os=false,
             // OS-лицензия убрана (LICENSE 564_590 → 43_205; остаток = СЗИ при pdn).
-            totalMonthly: 149_241_701,
-            totalAnnual: 1_790_900_418,
+            // Package 7A: LOAD-cap email/SMS/push → SERVICES ниже (LOAD-стенд capped до PROD).
+            totalMonthly: 148_841_447,
+            totalAnnual: 1_786_097_360,
             topCategory: 'AI',
-            byCategoryMonthly: { HW: 29_851_065, LICENSE: 43_205, TRAFFIC: 9_244_399, SERVICES: 27_381_696, RESERVES: 0, SECURITY: 1_446_108, AI: 81_275_229 }
+            byCategoryMonthly: { HW: 29_851_065, LICENSE: 43_205, TRAFFIC: 9_244_399, SERVICES: 26_981_441, RESERVES: 0, SECURITY: 1_446_108, AI: 81_275_229 }
         }
     },
     {
@@ -85,10 +89,11 @@ const GOLDEN_SCENARIOS = Object.freeze([
             // вместо фикс. цены за площадку → RESERVES ниже, итог ниже.
             // Package 5A (F1-A): active-active подавляет warm-георезерв →
             // RESERVES 811_534 → 789_415 (−22_119), total −22_119.
-            totalMonthly: 11_265_179,
-            totalAnnual: 135_182_149,
+            // Package 7A: LOAD-cap email/SMS/push → SERVICES ниже (LOAD-стенд capped до PROD).
+            totalMonthly: 11_218_834,
+            totalAnnual: 134_626_005,
             topCategory: 'LICENSE',
-            byCategoryMonthly: { HW: 846_629, LICENSE: 3_923_740, TRAFFIC: 86_149, SERVICES: 3_480_337, RESERVES: 789_415, SECURITY: 2_138_910, AI: 0 }
+            byCategoryMonthly: { HW: 846_629, LICENSE: 3_923_740, TRAFFIC: 86_149, SERVICES: 3_433_991, RESERVES: 789_415, SECURITY: 2_138_910, AI: 0 }
         }
     },
     {
@@ -96,10 +101,11 @@ const GOLDEN_SCENARIOS = Object.freeze([
         wizard: { product_type: 'b2g', industry: 'corporate', scale: 'm', geography: 'ru_cis', pdn: true, activity: 'medium', ai_used: false },
         expected: {
             // Stage 5A (DR post-pass): RESERVES по blended ₽/vCPU вместо фикс. цены за площадку.
-            totalMonthly: 6_106_211,
-            totalAnnual: 73_274_527,
+            // Package 7A: LOAD-cap email/SMS/push → SERVICES ниже (LOAD-стенд capped до PROD).
+            totalMonthly: 6_072_505,
+            totalAnnual: 72_870_059,
             topCategory: 'SERVICES',
-            byCategoryMonthly: { HW: 354_790, LICENSE: 1_846_250, TRAFFIC: 159_043, SERVICES: 2_562_208, RESERVES: 62_320, SECURITY: 1_121_598, AI: 0 }
+            byCategoryMonthly: { HW: 354_790, LICENSE: 1_846_250, TRAFFIC: 159_043, SERVICES: 2_528_503, RESERVES: 62_320, SECURITY: 1_121_598, AI: 0 }
         }
     },
     {
@@ -108,10 +114,11 @@ const GOLDEN_SCENARIOS = Object.freeze([
         expected: {
             // Package 3A (OS license gate): b2c/consumer не fintech/b2g → os=false,
             // OS-лицензия убрана (LICENSE 1_209_021 → 92_521; остаток = СЗИ при pdn).
-            totalMonthly: 726_823_639,
-            totalAnnual: 8_721_883_663,
+            // Package 7A: LOAD-cap email/SMS/push → SERVICES ниже (LOAD-стенд capped до PROD); −2_001_275.
+            totalMonthly: 724_822_364,
+            totalAnnual: 8_697_868_372,
             topCategory: 'HW',
-            byCategoryMonthly: { HW: 291_698_621, LICENSE: 92_521, TRAFFIC: 46_221_993, SERVICES: 127_782_466, RESERVES: 0, SECURITY: 5_648_622, AI: 255_379_416 }
+            byCategoryMonthly: { HW: 291_698_621, LICENSE: 92_521, TRAFFIC: 46_221_993, SERVICES: 125_781_192, RESERVES: 0, SECURITY: 5_648_622, AI: 255_379_416 }
         }
     },
     {
@@ -121,10 +128,11 @@ const GOLDEN_SCENARIOS = Object.freeze([
             // Stage 5A (DR post-pass): RESERVES по blended ₽/vCPU вместо фикс. цены за площадку.
             // Package 5A (F1-A): active-active подавляет warm-георезерв →
             // RESERVES 2_239_812 → 1_952_261 (−287_551), total −287_552.
-            totalMonthly: 587_745_578,
-            totalAnnual: 7_052_946_941,
+            // Package 7A: LOAD-cap email/SMS/push → SERVICES ниже (LOAD-стенд capped до PROD); −7_172_988.
+            totalMonthly: 580_572_590,
+            totalAnnual: 6_966_871_082,
             topCategory: 'AI',
-            byCategoryMonthly: { HW: 53_860_258, LICENSE: 16_984_903, TRAFFIC: 6_474_392, SERVICES: 160_298_082, RESERVES: 1_952_261, SECURITY: 7_463_136, AI: 340_712_546 }
+            byCategoryMonthly: { HW: 53_860_258, LICENSE: 16_984_903, TRAFFIC: 6_474_392, SERVICES: 153_125_094, RESERVES: 1_952_261, SECURITY: 7_463_136, AI: 340_712_546 }
         }
     }
 ]);
