@@ -4,84 +4,76 @@ Claude writes reports, blockers, and questions here.
 
 ## Latest Report
 
-Task: Package 9F / Security Certification & Audit Scaling
+Task: Package 9G / AI-RAG-GPU Edge Consistency
 
-Status: analysis-only (no code/test/doc/version/golden changes; live point v2.22.35)
+Status: analysis-only (no code/test/doc/version/golden changes; live point v2.22.36)
 
-Files touched: none. Read-only repro: `d:/tmp/9f-repro.mjs` (outside repo).
+Files touched: none. Read-only repro: `d:/tmp/9g-repro.mjs` (outside repo).
 
 Commands run:
-- `node d:/tmp/9f-repro.mjs` — qty + ₽/мес for each EK on count=1 vs count=3 profiles.
-- Read-only: seed.js SECURITY cert/audit EK defs + `security-pdn-category-hardening`.
+- `node d:/tmp/9g-repro.mjs` — billable EK qty (PROD) + operational AI metrics (`aggregateAiMetrics`) on 6 edge scenarios.
+- Read-only: seed.js (llm-tokens, rag-embeddings, rag-vector-db, rag-managed-kb, cpu-vcpu-gpu, ai-agent-*); `js/ui/dashboardAggregates.js` `aggregateAiMetrics` + `applyAiMetricDemandFallback`.
 
-Inventory table (SECURITY cert/audit EKs):
-- `one-fstec-certification` SECURITY/ONE_TIME oneTime 2500000 [PROD] flag-fixed `if(Q.fstec_certification_required,1,0)`.
-- `one-source-code-audit` SECURITY/ONE_TIME oneTime 500000 [PROD] flag-fixed `if(Q.pdn_152fz||Q.iso_27001_required,1,0)`.
-- `one-pentest-external` SECURITY/ONE_TIME oneTime 600000 [PROD] flag-fixed `if(Q.pentest_external,1,0)`.
-- `one-pentest-internal` SECURITY/ONE_TIME oneTime 600000 [PROD] flag-fixed `if(Q.pentest_internal,1,0)`.
-- `one-pentest-regular` SECURITY/ONE_TIME annual 350000 [PROD] count-driven `Q.pentest_per_year`.
-- `one-security-audit` SECURITY/ONE_TIME annual 450000 [PROD] count-driven `if(Q.iso_27001_required||Q.pdn_152fz, Q.security_audit_per_year, 0)`.
-- Related: `security-pdn-category-hardening` SECURITY/SERVICE monthly 50000 [PROD] class-driven
-  `if(Q.pdn_152fz, if(pdn_category=="1",3, "2"→2, "3"→1, else 0), 0)`.
+Inventory table (key gates):
+- `llm-tokens-input-1m` / `-output-1m` AI/AI_LLM monthly ai-driven, gate `ai_llm_used && ai_hosting_mode != "on_prem_gpu"`, dashboardAiMetric TOKENS.
+- `rag-embeddings-1m` AI/AI_LLM monthly, gate `rag_needed && ai_hosting_mode != "on_prem_gpu"`, dashboardAiMetric EMBEDDINGS. (corpus reindex part + query part)
+- `rag-vector-db-gb` AI monthly, gate `rag_needed && !rag_managed_used`, dashboardAiMetric RAG_VECTORS.
+- `rag-managed-knowledge-base-gb` AI monthly, gate `rag_needed && rag_managed_used`, dashboardAiMetric RAG_VECTORS.
+- `cpu-vcpu-gpu` AI/CPU monthly, gate `ai_llm_used && ai_hosting_mode == "on_prem_gpu"`, dashboardResource GPU.
+- `ai-low-latency-inference-reserve` AI/SERVICE monthly, gate `ai_llm_used && ai_inference_latency_ms == "<500ms"`.
+- `ai-agent-sandbox-vcpu` (gate ai_agent_mode, dashboardResource CPU + AI metric AGENT_CPU), `ai-agent-memory-storage-tb` (gate ai_agent_mode && agent_memory_used).
+- Operational fallback: `applyAiMetricDemandFallback` rebuilds TOKENS (from llm-tokens-* + safety) and EMBEDDINGS (from rag-embeddings) FROM ANSWERS when the billable total is 0.
 
-Reproduction table (flags on; P1 counts=1, P2 counts=3):
-- one-pentest-regular: qty 1→3, 61 443 → 184 328 ₽/мес → SCALES by count. ✓
-- one-security-audit:  qty 1→3, 78 998 → 236 993 ₽/мес → SCALES by count. ✓
-- one-fstec-certification: qty 1 (both), 504 707 ₽/мес flat → does NOT scale (class promised in text).
-- one-source-code-audit:  qty 1 (both), 100 941 ₽/мес flat → does NOT scale (LOC promised in text).
-- one-pentest-external / -internal: qty 1, 121 130 ₽/мес flat → per-engagement (no scale promised).
-- security-pdn-category-hardening: my repro showed 0 — HONEST NOTE: I passed `pdn_category:"K1/K2"` but
-  the formula expects `"1"/"2"/"3"`, so it returned 0. By formula inspection it DOES scale 3/2/1 by ПДн
-  category; not a defect — it is the existing class-tier precedent. (Repro mis-encoded the value, EK is fine.)
+Reproduction table (PROD billable qty; operational = total across active stands):
+- A external + self-hosted RAG: vector-db=16, managed=0, embeddings=60900, llm-in=2700, gpu=0 | ops TOKENS=17970 EMB=260026 RAG_VECTORS=71.
+- B external + managed RAG: managed=16, vector-db=0, embeddings=60900 | ops same. (mutually exclusive; embeddings separate)
+- C on-prem GPU + self-hosted: llm-in=0, embeddings=0, gpu=15, vector-db=16 | ops TOKENS=17970 EMB=260026 (via fallback).
+- D external, RAG corpus=0: embeddings=900 (query part only), vector-db=0 | ops EMB=3843, RAG_VECTORS=0.
+- E AI off (ai_llm_used=false) + rag_needed still true: vector-db=16 BILLED, llm-in=0 | ops TOKENS=17970 EMB=260026 RAG_VECTORS=71.
+- F low-latency "<500ms": ai-low-latency-inference-reserve=1 (was 0 at "<2s").
 
 Findings by severity:
 
-1) Opt-in scale-driver candidates (MEDIUM; description promises scaling the formula does not implement;
-   DEFER — needs a new Q field + domain coefficients I will NOT invent):
-   - `one-fstec-certification` — description: "Стоимость зависит от класса защищённости, регулятора
-     (ФСТЭК/ФСБ)". Real FSTEC cost scales with protection class (КИИ значимость К1/К2/К3; ГИС класс;
-     АСУ ТП). Formula is flat 2.5M regardless. The codebase ALREADY has a class-tier precedent
-     (`security-pdn-category-hardening` = 3/2/1 by ПДн category), so a class multiplier is design-consistent.
-     Needs: a cert-class Q (e.g. `fstec_class` К1/К2/К3) + per-class multipliers (domain/КП).
-   - `one-source-code-audit` — description: "Стоимость зависит от объёма кода (LOC)…". Real SAST/DAST
-     scales with LOC / number of repositories. Formula is flat 500k. Needs: a codebase-size Q
-     (LOC or repo count) + tier breakpoints + multipliers (domain/КП). Precedent: SIEM log_gb tiers, DLP channels.
+1) Intended divergence / by-design (CONFIRMED — no action):
+   - on-prem GPU: external-API token/embedding BILL = 0, but GPU compute (`cpu-vcpu-gpu`) and local
+     `rag-vector-db-gb` storage ARE billed (real local cost), and operational TOKENS/EMBEDDINGS stay
+     visible via `applyAiMetricDemandFallback`. Matches documented contract "AI workload ≠ external API billing".
+   - Managed vs self-hosted RAG: exactly one of `rag-vector-db-gb` / `rag-managed-knowledge-base-gb` bills;
+     embeddings (`rag-embeddings-1m`) are always separate (NOT included in Managed). By design.
+   - `ai-low-latency-inference-reserve` activates only at the strictest "<500ms". By design.
 
-2) Text-only honesty (LOW; optional; drift 0):
-   - `one-pentest-external` / `one-pentest-internal` carry only a generic "уточняйте по тарифу"; the sibling
-     `one-pentest-regular` already discloses "зависит от scope (web/api/mobile), уровня (Black/Grey/White Box)".
-     Adding the same scope/level note to external/internal would be consistent. Not required.
+2) LOW — consistency / defense-in-depth (scenario E): `rag-vector-db-gb` and `rag-managed-knowledge-base-gb`
+   gate ONLY on `Q.rag_needed`, NOT on `Q.ai_llm_used`. The LLM-token EKs gate on `ai_llm_used`. So in an
+   inconsistent state (ai_llm_used=false + rag_needed=true) the RAG storage still bills while llm-tokens are 0
+   — internally asymmetric. The UI master-toggle cascade nulls `rag_needed` when `ai_llm_used` is turned off,
+   so this is reachable ONLY via an inconsistent JSON import (no cascade on import). I did NOT find a guard for
+   the rag_needed-without-ai_llm_used case in `calculationHealth.js` (the documented stale-flag token warning
+   may live elsewhere — please verify). Recommend: add `Q.ai_llm_used &&` to the two RAG-storage gates
+   (symmetry with llm-tokens) OR confirm Health Check + cascade fully cover it.
 
-3) Confirmed formula bugs: NONE.
+3) LOW — edge (scenario D): with `rag_corpus_size_gb=0`, `rag-embeddings-1m` still bills the query-embedding
+   part (900) while `rag-vector-db-gb`=0 (nothing stored). Embedding search queries against an empty index is
+   degenerate. Consider gating the query-embedding term on corpus>0, OR document that queries are embedded
+   regardless. Minor.
 
-No-change items (defensible as-is):
-- `one-pentest-external`, `one-pentest-internal` — fixed per-engagement medians (cited BI.ZONE market);
-  a pentest is a per-engagement unit, scope is a КП detail.
-- `one-pentest-regular`, `one-security-audit` — already scale by an explicit frequency count question
-  (pentest_per_year / security_audit_per_year); honest text on scope/standard → КП.
-- `security-pdn-category-hardening` — already class-driven (3/2/1 by ПДн category); the precedent, not a finding.
+No confirmed formula bugs. No false positives beyond the by-design items above.
 
-Recommended next mini-package: NONE requiring code now. Both opt-in drivers (FSTEC class-tier,
-source-audit LOC-tier) are DEFERRED pending user domain coefficients. If the user supplies them, model
-each as an opt-in tier driver (pattern: pdn-category-hardening / SIEM / DLP). The optional pentest
-external/internal scope-text note could fold into the in-progress 9E text pass if desired.
+Recommended next mini-package: optional small "9H" consistency guard — add `Q.ai_llm_used &&` to
+`rag-vector-db-gb` / `rag-managed-knowledge-base-gb` gates (symmetry with llm-tokens). Golden/business drift
+≈ 0 (normal calcs never have rag_needed without ai_llm_used due to the cascade); it only hardens against
+inconsistent imports. Low priority — or defer. Corpus=0 query-embedding gate is an even smaller optional follow-up.
 
-Required domain decisions/coefs (must come from user/КП — not invented):
-- FSTEC: which class taxonomy to use (КИИ К1/К2/К3 vs ГИС class), the gating Q, and base×class multipliers.
-- Source-code audit: LOC/repo-size tiers (breakpoints) and per-tier multipliers (or ₽/100k LOC).
-
-Refresh-list impact: none now (no formula change). If a driver is later added, that EK must be added to
-`_AGENT_FORMULA_REFRESH_IDS` (none of these are currently in it). Applying a multiplier to qty keeps unit
-(`мероприятие`) and base price intact → no `_AGENT_UNIT_PRICE_REFRESH_IDS`. (Only a unit-semantics change
-would need it.)
+Refresh-list impact: `rag-embeddings-1m`, `rag-vector-db-gb`, `rag-managed-knowledge-base-gb` are ALREADY in
+`_AGENT_FORMULA_REFRESH_IDS`, so adding an `ai_llm_used` guard would propagate to legacy/imported calcs at
+openCalc. No unit/price change → `_AGENT_UNIT_PRICE_REFRESH_IDS` not needed.
 
 Questions for Codex/user:
-1. Model FSTEC certification as an opt-in class-tier driver? If yes, user must supply the class taxonomy
-   + multipliers (I will not invent them).
-2. Model source-code audit as an opt-in LOC/repo-tier driver? If yes, user must supply tier breakpoints
-   + multipliers.
-3. Optional: fold the pentest external/internal scope-text note into 9E, or skip?
+1. Confirm the on-prem / managed-vs-self-hosted / latency divergences are intended (no action)?
+2. RAG-storage `ai_llm_used` asymmetry (finding 2): add the guard for symmetry, or rely on UI cascade +
+   Health Check? (Please confirm whether Health Check flags rag_needed-without-ai_llm_used — I did not find it
+   in calculationHealth.js.)
+3. RAG corpus=0 query-embeddings (finding 3): gate on corpus>0 or document as intended?
 
-Next recommended step: Codex verify the inventory + repro (count-scaling vs flat; pdn-hardening already
-class-scaled). No formula bug → no required change. Both scale candidates await a user domain decision.
-No implementation or release now (analysis-only).
+Next recommended step: Codex verify the repro (esp. E asymmetry and C fallback). No formula bug requires
+change. The two LOW items are defense-in-depth/edge — Codex decides whether to schedule 9H or defer. No
+implementation or release now (analysis-only).

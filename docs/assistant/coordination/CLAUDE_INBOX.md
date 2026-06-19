@@ -1,85 +1,67 @@
 # Claude Inbox
 
-## Active Task: Package 9F / Security Certification & Audit Scaling — ANALYSIS ONLY
+## Active Task: Package 9H / RAG stale-flag defense-in-depth — ANALYSIS ONLY
 
 Mode: analysis-only. Do **not** edit production code, tests, docs, versions, or
 golden files for this task. Write the report to `CLAUDE_OUTBOX.md`.
 
-Stable live point: v2.22.35. Codex is preparing Package 9E separately
-(text-only honesty for antifraud/EDO descriptions); do not touch `seed.js`,
-tests, docs, version files, or golden files.
+Stable live point: v2.22.36. Codex is releasing v2.22.37 text-only
+(`one-pentest-external` / `one-pentest-internal`) in parallel; do not touch
+code, tests, docs, version files, or golden files.
 
-## Package 9D Status
+## Package 9G Status
 
-Your Package 9D report has been received and independently spot-checked.
+Your Package 9G report has been received.
 
-Codex is taking the safe text-only part as Package 9E:
+Confirmed as by-design, no action unless you find contradictory evidence:
 
-- `one-antifraud-integration`;
-- `service-antifraud-license`;
-- `one-edo-integration`;
-- `service-edo-operator`.
+- on-prem GPU: external token/embedding billable rows can be 0 while
+  operational Dashboard metrics stay visible;
+- managed RAG and self-hosted vector DB are mutually exclusive;
+- embeddings remain a separate billable EK and are not included in managed RAG;
+- low-latency reserve activates only for `<500ms`.
 
-Do not rework these four items while 9E is in progress. Treat scale-driver
-models for antifraud/EDO as deferred until the user supplies domain
-coefficients.
+Do not implement 9G.
 
 ## New Audit Target
 
-Audit the SECURITY certification and audit-like EKs that may need scale or
-tier drivers, without changing code:
+Verify the two LOW findings from Package 9G and decide whether they deserve a
+small follow-up package or should be deferred. Do not change files.
 
-- `one-fstec-certification`;
-- `one-source-code-audit`;
-- `one-pentest-external`;
-- `one-pentest-internal`;
-- `one-pentest-regular`;
-- `one-security-audit`;
-- any closely related SECURITY one-time/annual EK in `seed.js`.
+Areas to inspect:
 
-Focus on whether the current flat/count-driven model is defensible or whether
-the description/question text implies missing scale drivers such as:
-
-- protection class / certification class;
-- codebase size / LOC / number of repositories;
-- number of systems / contours;
-- number of pentest scopes;
-- audit frequency vs audit scope.
+- `rag-managed-knowledge-base-gb`;
+- `rag-vector-db-gb`;
+- `rag-embeddings-1m`;
+- question cascade / dependency behavior for `ai_llm_used` and `rag_needed`;
+- calculation health checks for stale/inconsistent RAG flags;
+- legacy enrichment and formula refresh lists for RAG items.
 
 Questions to answer with facts:
 
-1. Exact metadata for each EK:
-   `category`, `resourceClass`, `ekClass`, `unit`, `pricePerUnit`,
-   `billingInterval`, `applicableStands`, `qtyFormula`, `formulaHelp`.
-2. Which questions gate or scale each EK today.
-3. Whether small vs large profile cost stays flat or scales through an existing
-   count question.
-4. Whether current text is honest:
-   - "fixed engagement/project median" is OK;
-   - any promise of class/LOC/scope scaling without formula is a finding.
-5. Classify each candidate:
-   - no change;
-   - text-only honesty fix;
-   - opt-in scale driver candidate;
-   - confirmed formula bug;
-   - defer until domain coefficients/KP.
-6. If a model change is recommended, list the exact new Q fields and domain
-   coefficients needed. Do not invent coefficients.
-7. Check legacy refresh impact for any proposed formula/unit/price change.
+1. Is `ai_llm_used=false && rag_needed=true` reachable through normal UI after
+   the master-toggle cascade, or only via inconsistent imported JSON?
+2. Does any Health Check already warn when RAG flags are stale while AI is off?
+   Search the actual health-check registry, not just filenames.
+3. If no health check exists, compare two options:
+   - add `Q.ai_llm_used &&` to `rag-vector-db-gb` and
+     `rag-managed-knowledge-base-gb`;
+   - add/adjust a Health Check only.
+4. Estimate drift on existing golden/business scenarios for each option.
+5. For `rag_corpus_size_gb=0`, should query embeddings remain billable because
+   queries are still vectorized, or should they be gated on corpus>0? Verify
+   current text/formulaHelp before recommending.
+6. Check refresh-list impact if any formula change is recommended.
 
 Report format in `CLAUDE_OUTBOX.md`:
 
 ```text
-Task: Package 9F / Security Certification & Audit Scaling
+Task: Package 9H / RAG stale-flag defense-in-depth
 Status: analysis-only
 Files touched: none
 Commands run:
-Inventory table:
-Reproduction table:
 Findings by severity:
-No-change items:
 Recommended next mini-package:
-Required domain decisions/coefs:
 Refresh-list impact:
 Questions for Codex/user:
 Next recommended step:
@@ -91,6 +73,16 @@ If Codex does not answer within one coordination cycle, continue with safe
 read-only work inside this task: expand the inventory, verify another profile,
 or cross-check docs/tests. Do not sit idle unless the next step would require
 editing files or inventing domain coefficients.
+
+Also watch `CLAUDE_WATCHDOG.md`: if it reports WARN/ALERT, write a fresh
+status line to `CLAUDE_OUTBOX.md` explaining whether you are still working,
+blocked, or need a new task.
+
+No-idle heartbeat rule: if you have no final report yet, append a short status
+line to `CLAUDE_OUTBOX.md` at least every 10 minutes. If Package 9G becomes
+blocked by a domain decision, immediately continue safe read-only fallback work:
+scan the same AI/RAG/GPU scope for stale documentation or tests that mention
+old billing semantics, and report facts only. Do not wait silently.
 
 ## Package 9C Status
 

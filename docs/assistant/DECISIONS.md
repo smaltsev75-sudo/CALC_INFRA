@@ -12998,3 +12998,30 @@ PATCH поверх 2.22.35. По отчёту Package 9D уточнены тол
 
 `2.22.35 → 2.22.36` (**PATCH**, text-only, drift 0). **Метрики:** unit `6062/6062 PASS`, desktop e2e `60 passed`,
 `sanity:check`, `quantity:audit:check`, `prices:freshness:check`, `syntax-check`, `git diff --check` — все `EXIT 0`.
+
+## Release 2.22.37 — Package 9F-light: pentest scope text honesty (2026-06-19)
+
+PATCH поверх 2.22.36. По отчёту Package 9F внесена только безопасная текстовая правка для двух одноразовых
+пентест-ЭК:
+
+- `one-pentest-external`;
+- `one-pentest-internal`.
+
+**Что изменено.** Описания теперь явно говорят, что scope (`web/API/mobile`) и уровень проверки
+(`Black/Grey/White Box`) уточняются по КП. Это выравнивает external/internal пентесты с уже существующим
+текстом регулярного пентеста, где scope и уровень проверки были раскрыты раньше.
+
+**Что не менялось.** Формулы, цены, единицы, `billingInterval`, `ekClass`, refresh-list, golden-сценарии и бюджетные
+суммы. Модель FSTEC class-tier и source-code audit LOC-tier не вводилась: для неё нужны доменные коэффициенты/КП от
+пользователя.
+
+**Coordination/no-idle.** В общий inbox для Claude добавлено правило heartbeat: если итогового отчёта ещё нет, Claude
+пишет короткий статус не реже раза в 10 минут. Если текущий пакет упирается в доменное решение, Claude продолжает
+безопасный read-only fallback в том же scope вместо молчаливого ожидания.
+
+**Tests/guards.**
+- Новый [pentest-text-9f.test.js](../../tests/unit/domain/pentest-text-9f.test.js): RED→GREEN на отсутствие
+  scope/level-дисклеймера, no-drift инварианты формул/цен/единиц и отсутствие новых scale-драйверов без коэффициентов.
+
+`2.22.36 → 2.22.37` (**PATCH**, text-only, drift 0). **Метрики:** unit `6066/6066 PASS`, desktop e2e `60 passed`,
+`sanity:check`, `quantity:audit:check`, `prices:freshness:check`, `syntax-check`, `git diff --check` — все `EXIT 0`.

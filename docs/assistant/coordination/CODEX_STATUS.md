@@ -1,58 +1,41 @@
 # Codex Status
 
-## Coordinator State
+## Current Stable Point
 
-- Stable live version confirmed: v2.22.35.
-- Current Codex work: release v2.22.36, Package 9E.
-- Package 9E changes only descriptions for antifraud/EDO service items.
-- No formulas, prices, units, golden sums, or refresh lists change in 9E.
+- Live version confirmed before this patch: v2.22.36.
+- Current Codex patch: v2.22.37 / Package 9F-light.
+- Scope: text-only clarification for `one-pentest-external` and
+  `one-pentest-internal`.
+- Budget drift: 0. Formulas, prices, units, `ekClass`, refresh lists and golden
+  scenarios are unchanged.
+
+## What Codex Is Doing Now
+
+- Release v2.22.37 after green checks.
+- Patch content in plain language: pentest descriptions now say that scope
+  (`web/API/mobile`) and test level (`Black/Grey/White Box`) are clarified by
+  КП.
+- Tests already green before version bump:
+  - full unit: 6066/6066 PASS;
+  - desktop smoke: 60 passed;
+  - sanity / quantity / prices / syntax / diff: EXIT 0.
 
 ## Claude Work
 
-- Package 9F / Security Certification & Audit Scaling: report received in
-  `CLAUDE_OUTBOX.md`.
-- Current 9F conclusion: no confirmed formula bugs; FSTEC class-tier and source
-  audit LOC-tier require user domain coefficients; optional pentest text note is
-  low-priority.
-- Claude watchdog is running locally and writes `CLAUDE_WATCHDOG.md`.
-- Codex must give Claude the next safe read-only task before or immediately
-  after closing v2.22.36.
+- Package 9G report received. By-design divergences are accepted unless new
+  evidence appears: on-prem billable rows vs operational AI metrics, managed
+  RAG vs self-hosted vector DB, embeddings as separate EK, `<500ms` reserve.
+- Active Claude task now: Package 9H / RAG stale-flag defense-in-depth,
+  analysis-only.
+- Claude must not edit code, tests, docs, version files or golden files for 9H.
+- Claude must write status to `CLAUDE_OUTBOX.md` at least every 10 minutes if
+  the final report is not ready.
+- If 9H is blocked by a domain decision, Claude continues safe read-only
+  fallback work in the same AI/RAG/GPU scope instead of waiting silently.
 
-## Current Codex Patch: v2.22.36
+## No-Idle Rule
 
-Purpose in plain language: antifraud and EDO items are still fixed estimates,
-but their descriptions now say that clearly and point high-volume/complex cases
-to a separate estimate or КП.
-
-Expected behavior:
-
-- Budget drift: 0.
-- `one-antifraud-integration`: text only.
-- `service-antifraud-license`: text only.
-- `one-edo-integration`: text only.
-- `service-edo-operator`: text only.
-
-Verification before release:
-
-- targeted 9E test: 9/9 PASS;
-- full unit: 6062/6062 PASS;
-- desktop e2e: 60 passed;
-- sanity / quantity / prices / syntax / diff: EXIT 0.
-
-Still required before release:
-
-1. commit/push/tag/release v2.22.36;
-2. monitor CI → Pages → live `APP_VERSION = 2.22.36`;
-3. assign Claude the next read-only package.
-
-## No-Idle Commitment
-
-- Codex does not wait idly for Claude when a safe non-overlapping action exists.
-- Claude questions to Codex are Codex-owned blockers and must be answered or
-  routed in the next coordination pass.
-- If a decision belongs to the user, Codex still gives Claude another safe
-  read-only task instead of leaving Claude idle.
-- Shared-state changes require explicit takeover/stand-down in these files.
-- If Codex finishes a release while Claude is still reading, Codex immediately
-  moves to live verification, report review, or a read-only next audit instead
-  of stopping silently.
+- Codex keeps moving on safe non-overlapping work.
+- Claude always has an active read-only task or a fallback task.
+- If `CLAUDE_WATCHDOG.md` reports WARN/ALERT, Codex must either answer/reroute
+  Claude or assign a safe fallback task in the next coordination pass.
