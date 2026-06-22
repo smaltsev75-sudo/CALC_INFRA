@@ -52,6 +52,14 @@ function findByClass(node, className) {
     return null;
 }
 
+function findAllByClass(node, className, acc = []) {
+    if (!node || typeof node !== 'object') return acc;
+    const classes = String(node.className || '').split(/\s+/);
+    if (classes.includes(className)) acc.push(node);
+    for (const c of (node.childNodes || [])) findAllByClass(c, className, acc);
+    return acc;
+}
+
 const ctx = {
     openQuickStart() {}, exportStateBundle() {}, importStateBundle() {},
     importCalc() {}, createCalc() {},
@@ -86,5 +94,15 @@ describe('Расчёты: пустое состояние без дубля CTA 
             'hero должен использовать единую иконку приложения из appIcon.js');
         assert.equal(findByClass(hero, 'lucide'), null,
             'старый line-icon графика не должен оставаться в hero пустого состояния');
+    });
+
+    it('при 0 расчётов не показывает нижнюю строку с горячими клавишами', () => {
+        const tree = renderCalcList({ calcList: [], ui: { theme: 'dark' } }, ctx);
+        const hotkeys = findAllByClass(tree, 'empty-state-hotkeys');
+
+        assert.equal(hotkeys.length, 0,
+            'в пустом окне расчётов не должно быть строки Ctrl+Alt+N / Ctrl+Alt+O под кнопками');
+        assert.doesNotMatch(tree.textContent, /Ctrl\+Alt\+N|Ctrl\+Alt\+O/,
+            'под кнопками не должны дублироваться подсказки горячих клавиш');
     });
 });

@@ -305,7 +305,18 @@ export function renderQuestionnaire(state, ctx) {
    глобальный запас для всего Опросника. */
 function scheduleQuestionnaireFieldAlignment(root) {
     if (typeof window === 'undefined' || !root) return;
-    window.requestAnimationFrame(() => alignQuestionnaireFieldRows(root));
+    const requestFrame = typeof window.requestAnimationFrame === 'function'
+        ? window.requestAnimationFrame.bind(window)
+        : (fn) => fn();
+    const defer = typeof window.setTimeout === 'function'
+        ? window.setTimeout.bind(window)
+        : (typeof setTimeout === 'function' ? setTimeout : null);
+    const alignOnFrame = () => requestFrame(() => alignQuestionnaireFieldRows(root));
+
+    alignOnFrame();
+    if (!defer) return;
+    defer(alignOnFrame, 80);
+    defer(alignOnFrame, 180);
 }
 
 function alignQuestionnaireFieldRows(root) {

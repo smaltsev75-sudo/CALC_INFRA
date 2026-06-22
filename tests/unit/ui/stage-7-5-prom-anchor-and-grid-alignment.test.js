@@ -84,6 +84,7 @@ describe('PATCH 2.4.33 / ПРОМ anchor — CSS', () => {
 
 describe('PATCH 2.4.33 / .questionnaire-grid .field — grid layout для alignment', () => {
     const cssRaw = read('css/forms.css');
+    const questionnaireJs = stripJsComments(read('js/ui/questionnaire.js'));
 
     it('.questionnaire-grid .field использует display: grid', () => {
         const body = ruleBody(cssRaw, '.questionnaire-grid .field');
@@ -121,5 +122,19 @@ describe('PATCH 2.4.33 / .questionnaire-grid .field — grid layout для align
         assert.match(stripped,
             /\.questionnaire-grid\s+\.field\s*>\s*\.switch[\s\S]{0,400}?align-self:\s*center/,
             'switch / input / segmented / multiselect должны иметь align-self: center');
+    });
+
+    it('scheduleQuestionnaireFieldAlignment повторяет пересчёт после монтирования DOM', () => {
+        const start = questionnaireJs.indexOf('function scheduleQuestionnaireFieldAlignment');
+        assert.ok(start > 0, 'scheduleQuestionnaireFieldAlignment должна существовать');
+        const end = questionnaireJs.indexOf('\nfunction ', start + 30);
+        const body = questionnaireJs.slice(start, end);
+
+        assert.match(body, /requestAnimationFrame/,
+            'первый пересчёт должен идти через requestAnimationFrame');
+        assert.match(body, /setTimeout/,
+            'нужны повторные попытки после вставки вкладки в DOM и стабилизации layout');
+        assert.match(body, /80|120|160|240|250/,
+            'повторный пересчёт должен быть отложен на следующий layout-tick, а не только на текущий кадр');
     });
 });

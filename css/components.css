@@ -443,7 +443,6 @@ span.info-icon,
  *   .empty-state-subtitle  — длинная описательная строка (наследуется)
  *   .empty-state-stats     — три stat-карточки: вопросы / ЭК / стенды
  *   .empty-state-actions   — primary CTA + ghost «Загрузить из JSON»
- *   .empty-state-hotkeys   — мелкая шпаргалка по горячим клавишам с <kbd>
  *
  * Цветов своих нет — только токены (--accent / --bg-card / --text*),
  * поэтому переключение тем работает автоматически.
@@ -551,35 +550,6 @@ span.info-icon,
 .empty-state-welcome .empty-state-actions .btn-primary:hover:not(:disabled) {
     box-shadow: 0 6px 20px var(--accent-glow);
     transform: translateY(-1px);
-}
-
-/* Шпаргалка горячих клавиш — без тяжёлой подложки, только мелкий текст
-   и обёртка <kbd> с тонкой рамкой. */
-.empty-state-hotkeys {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-3);
-    flex-wrap: wrap;
-    justify-content: center;
-    font-size: var(--font-xs);
-    color: var(--text-dim);
-}
-.empty-state-hotkeys kbd {
-    display: inline-block;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    color: var(--text-muted);
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    border-bottom-width: 2px;
-    border-radius: var(--radius-sm);
-    padding: 1px 6px;
-    margin-right: 4px;
-    line-height: 1.4;
-}
-.empty-state-hotkeys-sep {
-    color: var(--border-light);
-    font-weight: 700;
 }
 
 /* Адаптив: на узком экране кнопки занимают всю строку, hero чуть меньше. */

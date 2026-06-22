@@ -121,18 +121,6 @@ function renderEmptyState(state, ctx) {
                 icon('folder-open', { size: 18 }),
                 el('span', { text: 'Импорт JSON' })
             )
-        ),
-
-        el('div', { class: 'empty-state-hotkeys', attrs: { 'aria-hidden': 'true' } },
-            el('span', {},
-                el('kbd', { text: 'Ctrl+Alt+N' }),
-                el('span', { text: ' — Quick Start' })
-            ),
-            el('span', { class: 'empty-state-hotkeys-sep', text: '·' }),
-            el('span', {},
-                el('kbd', { text: 'Ctrl+Alt+O' }),
-                el('span', { text: ' — открыть из файла' })
-            )
         )
     );
 }
